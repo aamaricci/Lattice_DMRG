@@ -4,6 +4,10 @@ MODULE HLOCAL
   private
 
   integer,save                     :: Ns       !Number of levels per spin
+  integer,save                     :: Ns_Ud
+  integer,save                     :: Ns_Orb
+  integer,save                     :: Ns_UP
+  integer,save                     :: Ns_DW
   integer,save                     :: Nspin,Norb
   integer,save                     :: Nfock    !Dim of the local Fock space
   integer,save                     :: Nsectors !Number of sectors
@@ -46,7 +50,6 @@ MODULE HLOCAL
   public :: Build_Hlocal_operator
   public :: Build_C_Operator
   public :: Build_Cdg_Operator
-  public :: Build_CdgC_Operator
   public :: Build_Dens_Operator
   public :: Build_Docc_Operator
 
@@ -69,12 +72,17 @@ contains
     Norb     = Norb_
     Nspin    = Nspin_
     Ns       = Norb
-    Nfock    = 4**Ns
-    Nsectors = (Ns+1)*(Ns+1)
+    Ns_Orb   = Ns
+    Ns_Ud    = 1
+    Ns_UP    = 2**Ns
+    Ns_DW    = 2**Ns
+    Nfock    = Ns_Up*Ns_Dw
+    Nsectors = ((Ns_Orb+1)*(Ns_Orb+1))**Ns_Ud
     !
     write(*,"(A)")"Init Local Fock space:"
     write(*,"(A,I15)") '# of levels           = ',Ns
-    write(*,"(A,I15)") 'Total system size     = ',2*Ns
+    write(*,"(A,I15)") 'Up space dimension    = ',Ns_UP
+    write(*,"(A,I15)") 'Dw space dimension    = ',Ns_DW
     write(*,"(A,I15)") 'Fock space dimension  = ',Nfock
     write(*,"(A,I15)") 'Number of sectors     = ',Nsectors
     write(*,"(A)")"--------------------------------------------"
@@ -84,8 +92,6 @@ contains
     !
     !
     do isector=1,Nsectors
-       call get_Nup(isector,Nups)
-       call get_Ndw(isector,Ndws)
        call get_DimUp(isector,DimUps)
        call get_DimDw(isector,DimDws)
        DimUp = product(DimUps)
@@ -95,249 +101,6 @@ contains
     !
     return
   end subroutine Init_LocalFock_Sectors
-
-
-
-
-
-
-  !##################################################################
-  !##################################################################
-  !               BUILD LOCAL FOCK OPERATORS
-  !##################################################################
-  !##################################################################
-  !+-------------------------------------------------------------------+
-  !PURPOSE: 
-  !+-------------------------------------------------------------------+
-  function build_Hlocal_operator(hloc,xmu,uloc) result(Hmat)
-    real(8),dimension(:,:,:)           :: hloc ![Nspin,Norb,Norb]
-    real(8)                            :: xmu,uloc
-    type(local_fock_sector)            :: sectorI
-    real(8),dimension(:,:),allocatable :: Hmat
-    real(8)                            :: htmp
-    integer                            :: isector,i,m,iorb,jorb
-    integer                            :: nvec(2*Ns),nup(Ns),ndw(Ns)
-    !
-    if(allocated(Hmat))deallocate(Hmat)
-    allocate(Hmat(Nfock,Nfock))
-    !
-    call assert_shape(Hloc,[Nspin,Norb,Norb],"build_hlocal_operator","Hloc")
-    !
-    !
-    Hmat=0d0
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          m    = sectorI%H(1)%map(i)
-          nvec = bdecomp(m,2*Ns)
-          nup  = nvec(1:Ns)
-          ndw  = nvec(Ns+1:2*Ns)
-          !
-          htmp = 0d0
-          !LOCAL HAMILTONIAN PART:
-          htmp = htmp - xmu*(sum(nup)+sum(ndw))
-          do iorb=1,Norb
-             htmp = htmp + Hloc(1,iorb,iorb)*nup(iorb)
-             htmp = htmp + Hloc(Nspin,iorb,iorb)*ndw(iorb)
-          enddo
-          !
-          Hmat(m+1,m+1)=Hmat(m+1,m+1) + htmp
-          !
-          !Density-density interaction: same orbital, opposite spins
-          !Euloc=\sum=i U_i*(n_u*n_d)_i
-          htmp = 0d0
-          do iorb=1,Norb
-             htmp = htmp + Uloc*nup(iorb)*ndw(iorb)
-          enddo
-          !
-          if(Norb>1)then
-             !density-density interaction: different orbitals, opposite spins:
-             ! =   U'   *     sum_{i/=j} [ n_{i,up}*n_{j,dw} + n_{j,up}*n_{i,dw} ]
-             ! =  (Uloc-2*Jh)*sum_{i/=j} [ n_{i,up}*n_{j,dw} + n_{j,up}*n_{i,dw} ]
-             do iorb=1,Norb
-                do jorb=iorb+1,Norb
-                   htmp = htmp + (Uloc-2*0d0)*(nup(iorb)*ndw(jorb) + nup(jorb)*ndw(iorb))
-                enddo
-             enddo
-             !density-density interaction: different orbitals, parallel spins
-             ! = \sum_{i<j}    U''     *[ n_{i,up}*n_{j,up} + n_{i,dw}*n_{j,dw} ]
-             ! = \sum_{i<j} (Uloc-3*Jh)*[ n_{i,up}*n_{j,up} + n_{i,dw}*n_{j,dw} ]
-             do iorb=1,Norb
-                do jorb=iorb+1,Norb
-                   htmp = htmp + (Uloc-3*0d0)*(nup(iorb)*nup(jorb) + ndw(iorb)*ndw(jorb))
-                enddo
-             enddo
-          endif
-          !if using the Hartree-shifted chemical potential: mu=0 for half-filling
-          !sum up the contributions of hartree terms:
-          if(hfmode)then
-             do iorb=1,Norb
-                htmp = htmp - 0.5d0*Uloc*(nup(iorb)+ndw(iorb))
-             enddo
-             if(Norb>1)then
-                do iorb=1,Norb
-                   do jorb=iorb+1,Norb
-                      htmp=htmp-0.5d0*(Uloc-2*0d0)*(nup(iorb)+ndw(iorb)+nup(jorb)+ndw(jorb))
-                      htmp=htmp-0.5d0*(Uloc-3*0d0)*(nup(iorb)+ndw(iorb)+nup(jorb)+ndw(jorb))
-                   enddo
-                enddo
-             endif
-          endif
-          !
-          Hmat(m+1,m+1)=Hmat(m+1,m+1) + htmp
-       enddo
-       call Delete_LocalFock_Sector(sectorI)
-    enddo
-  end function build_hlocal_operator
-
-
-
-  function build_C_operator(ispin,iorb) result(Cmat)
-    integer                            :: ispin,iorb
-    type(local_fock_sector)            :: sectorI
-    real(8),dimension(:,:),allocatable :: Cmat
-    real(8)                            :: c_
-    integer                            :: imp,isector,i,min,mout
-    integer                            :: nvec(2*Ns)
-    !
-    if(allocated(Cmat))deallocate(Cmat)
-    allocate(Cmat(Nfock,Nfock))
-    if(iorb<1.OR.iorb>Ns)stop "build_C_operator error: iorb<1 OR iorb>Ns. check."
-    !
-    imp = iorb+(ispin-1)*Norb
-    !
-    Cmat=0d0
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          min  = sectorI%H(1)%map(i)
-          nvec = bdecomp(min,2*Ns)
-          if(nvec(imp) == 0) cycle
-          call c(imp,min,mout,c_)          
-          Cmat(min+1,mout+1) = c_
-       enddo
-       call Delete_LocalFock_Sector(sectorI)
-    enddo
-  end function build_c_operator
-
-
-  function build_Cdg_operator(ispin,iorb) result(CDGmat)
-    integer                            :: ispin,iorb
-    type(local_fock_sector)            :: sectorI
-    real(8),dimension(:,:),allocatable :: CDGmat
-    real(8)                            :: cdg_
-    integer                            :: imp,isector,i,min,mout
-    integer                            :: nvec(2*Ns)
-    !
-    if(allocated(CDGmat))deallocate(CDGmat)
-    allocate(CDGmat(Nfock,Nfock))
-    if(iorb<1.OR.iorb>Ns)stop "build_CDG_operator error: iorb<1 OR iorb>Ns. check."
-    !
-    imp = iorb+(ispin-1)*Norb
-    !
-    CDGmat=0d0
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          min  = sectorI%H(1)%map(i)
-          nvec = bdecomp(min,2*Ns)
-          if(nvec(imp) == 1) cycle
-          call cdg(imp,min,mout,cdg_)          
-          CDGmat(min+1,mout+1) = cdg_
-       enddo
-       call Delete_LocalFock_Sector(sectorI)
-    enddo
-  end function build_cdg_operator
-
-  function build_CdgC_operator(ispin,iorb,jorb) result(CdgCmat)
-    integer                            :: ispin,iorb,jorb
-    type(local_fock_sector)            :: sectorI
-    real(8),dimension(:,:),allocatable :: CdgCmat
-    real(8)                            :: cdg_,c_
-    integer                            :: imp,jmp,isector,i,min,k,mout
-    integer                            :: nvec(2*Ns)
-    !
-    if(allocated(CdgCmat))deallocate(CdgCmat)
-    allocate(CdgCmat(Nfock,Nfock))
-    if(iorb<1.OR.iorb>Ns)stop "build_CDG_operator error: iorb<1 OR iorb>Ns. check."
-    !
-    imp = iorb+(ispin-1)*Norb
-    jmp = jorb+(ispin-1)*Norb
-    !
-    CdgCmat=0d0
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          min  = sectorI%H(1)%map(i)
-          nvec = bdecomp(min,2*Ns)
-          if(nvec(imp)==1.AND.nvec(jmp)==0)then
-             call c(imp,min,k,c_)          
-             call cdg(jmp,k,mout,cdg_)
-             CdgCmat(min+1,mout+1) = c_*cdg_
-          endif
-       enddo
-       call Delete_LocalFock_Sector(sectorI)
-    enddo
-  end function build_CdgC_operator
-
-  function build_Dens_operator(ispin,iorb) result(Dmat)
-    integer                            :: ispin,iorb
-    type(local_fock_sector)            :: sectorI
-    real(8),dimension(:,:),allocatable :: Dmat
-    real(8)                            :: dens
-    integer                            :: imp,isector,i,m
-    integer                            :: nvec(2*Ns)
-    !
-    if(allocated(Dmat))deallocate(Dmat)
-    allocate(Dmat(Nfock,Nfock))
-    if(iorb<1.OR.iorb>Ns)stop "build_Dens_operator error: iorb<1 OR iorb>Ns. check."
-    !
-    imp = iorb+(ispin-1)*Norb
-    !
-    Dmat=0d0
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          m    = sectorI%H(1)%map(i)
-          nvec = bdecomp(m,2*Ns)
-          dens = dble(nvec(imp))
-          Dmat(m+1,m+1) = dens
-       enddo
-       call Delete_LocalFock_Sector(sectorI)
-    enddo
-  end function build_dens_operator
-
-
-  function build_Docc_operator(iorb) result(Dmat)
-    integer                            :: iorb
-    type(local_fock_sector)            :: sectorI
-    real(8),dimension(:,:),allocatable :: Dmat
-    real(8)                            :: n_up,n_dw
-    integer                            :: imp_up,imp_dw,isector,i,m
-    integer                            :: nvec(2*Ns)
-    !
-    if(allocated(Dmat))deallocate(Dmat)
-    allocate(Dmat(Nfock,Nfock))
-    if(iorb<1.OR.iorb>Ns)stop "build_docc_operator error: iorb<1 OR iorb>Ns. check."
-    !Put IF condition on iorb value: iorb=1,...,Ns
-    imp_up = iorb
-    imp_dw = iorb + Ns
-    !
-    Dmat=0d0
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          m    = sectorI%H(1)%map(i)
-          nvec = bdecomp(m,2*Ns)
-          n_up = dble(nvec(imp_up))
-          n_dw = dble(nvec(imp_dw))
-          Dmat(m+1,m+1) = n_up*n_dw
-       enddo
-       call Delete_LocalFock_Sector(sectorI)
-    enddo
-  end function build_docc_operator
-
-
 
 
 
@@ -353,17 +116,17 @@ contains
     type(local_fock_sector)             :: self
     integer                             :: iup,idw
     integer                             :: nup_,ndw_
-    integer                             :: dim
+    integer                             :: dim,iud
     !
     if(self%status)call Delete_LocalFock_Sector(self)
     !
     self%index = isector
     !
-    allocate(self%H(1))
-    allocate(self%DimUps(1))
-    allocate(self%DimDws(1))
-    allocate(self%Nups(1))
-    allocate(self%Ndws(1))
+    allocate(self%H(2*Ns_Ud))
+    allocate(self%DimUps(Ns_Ud))
+    allocate(self%DimDws(Ns_Ud))
+    allocate(self%Nups(Ns_Ud))
+    allocate(self%Ndws(Ns_Ud))
     !
     call get_Nup(isector,self%Nups);self%Nup=sum(self%Nups)
     call get_Ndw(isector,self%Ndws);self%Ndw=sum(self%Ndws)
@@ -371,17 +134,25 @@ contains
     call get_DimDw(isector,self%DimDws);self%DimDw=product(self%DimDws)
     self%Dim=self%DimUp*self%DimDw
     !
-    call map_allocate(self%H,[self%Dim])
+
+    call map_allocate(self%H,[self%DimUps,self%DimDws])
     !
-    dim=0
-    do idw=0,2**Ns-1
-       ndw_= popcnt(idw)
-       if(ndw_ /= self%Ndws(1))cycle
-       do iup=0,2**Ns-1
+    do iud=1,Ns_Ud
+       !UP    
+       dim=0
+       do iup=0,2**Ns_Orb-1
           nup_ = popcnt(iup)
-          if(nup_ /= self%Nups(1))cycle
-          dim      = dim+1
-          self%H(1)%map(dim) = iup + idw*2**Ns
+          if(nup_ /= self%Nups(iud))cycle
+          dim  = dim+1
+          self%H(iud)%map(dim) = iup
+       enddo
+       !DW
+       dim=0
+       do idw=0,2**Ns_Orb-1
+          ndw_= popcnt(idw)
+          if(ndw_ /= self%Ndws(iud))cycle
+          dim = dim+1
+          self%H(iud+Ns_Ud)%map(dim) = idw
        enddo
     enddo
     !
@@ -406,6 +177,249 @@ contains
     self%Ndw=0
     self%status=.false.
   end subroutine Delete_LocalFock_Sector
+
+
+
+
+
+
+  !##################################################################
+  !##################################################################
+  !               BUILD LOCAL FOCK OPERATORS
+  !##################################################################
+  !##################################################################
+  !+-------------------------------------------------------------------+
+  !PURPOSE: 
+  !+-------------------------------------------------------------------+
+  function build_Hlocal_operator(hloc,xmu,uloc) result(Hmat)
+    real(8),dimension(:,:,:)           :: hloc ![Nspin,Norb,Norb]
+    real(8)                            :: xmu,uloc
+    type(local_fock_sector)            :: sectorI
+    real(8),dimension(:,:),allocatable :: Hmat
+    real(8)                            :: htmp
+    integer                            :: isector,i,m,iorb,jorb
+    integer                            :: iup,idw,mup,mdw
+    integer                            :: nup(Ns),ndw(Ns)
+    !
+    if(allocated(Hmat))deallocate(Hmat)
+    allocate(Hmat(Nfock,Nfock))
+    !
+    call assert_shape(Hloc,[Nspin,Norb,Norb],"build_hlocal_operator","Hloc")
+    !
+    !
+    Hmat=0d0
+    do isector=1,Nsectors
+       call Build_LocalFock_Sector(isector,SectorI)
+       do i=1,sectorI%Dim
+          iup = iup_index(i,SectorI%DimUp)
+          idw = idw_index(i,SectorI%DimUp)
+          !
+          mup = sectorI%H(1)%map(iup)
+          mdw = sectorI%H(2)%map(idw)
+          m   = mup + mdw*2**Ns + 1
+          !
+          nup = bdecomp(mup,Ns)
+          ndw = bdecomp(mdw,Ns)
+          !
+          htmp = 0d0
+          !LOCAL HAMILTONIAN PART:
+          htmp = htmp - xmu*(sum(nup)+sum(ndw))
+          do iorb=1,Norb
+             htmp = htmp + Hloc(1,iorb,iorb)*nup(iorb)
+             htmp = htmp + Hloc(Nspin,iorb,iorb)*ndw(iorb)
+          enddo
+          !
+          Hmat(m,m)=Hmat(m,m) + htmp
+          !
+          !Density-density interaction: same orbital, opposite spins
+          !Euloc=\sum=i U_i*(n_u*n_d)_i
+          htmp = 0d0
+          do iorb=1,Norb
+             htmp = htmp + Uloc*nup(iorb)*ndw(iorb)
+          enddo
+          !
+          if(Norb>1)then
+             !density-density interaction: different orbitals, opposite spins:
+             ! =   U'   *     sum_{i/=j} [ n_{i,up}*n_{j,dw} + n_{j,up}*n_{i,dw} ]
+             do iorb=1,Norb
+                do jorb=iorb+1,Norb
+                   htmp = htmp + (Uloc-2*0d0)*(nup(iorb)*ndw(jorb) + nup(jorb)*ndw(iorb))
+                enddo
+             enddo
+             !density-density interaction: different orbitals, parallel spins
+             ! = \sum_{i<j}    U''     *[ n_{i,up}*n_{j,up} + n_{i,dw}*n_{j,dw} ]
+             do iorb=1,Norb
+                do jorb=iorb+1,Norb
+                   htmp = htmp + (Uloc-3*0d0)*(nup(iorb)*nup(jorb) + ndw(iorb)*ndw(jorb))
+                enddo
+             enddo
+          endif
+          !if using the Hartree-shifted chemical potential: mu=0 for half-filling
+          !sum up the contributions of hartree terms:
+          if(hfmode)then
+             do iorb=1,Norb
+                htmp = htmp - 0.5d0*Uloc*(nup(iorb)+ndw(iorb))
+             enddo
+             if(Norb>1)then
+                do iorb=1,Norb
+                   do jorb=iorb+1,Norb
+                      htmp=htmp-0.5d0*(Uloc-2*0d0)*(nup(iorb)+ndw(iorb)+nup(jorb)+ndw(jorb))
+                      htmp=htmp-0.5d0*(Uloc-3*0d0)*(nup(iorb)+ndw(iorb)+nup(jorb)+ndw(jorb))
+                   enddo
+                enddo
+             endif
+          endif
+          !
+          Hmat(m,m)=Hmat(m,m) + htmp
+       enddo
+       call Delete_LocalFock_Sector(sectorI)
+    enddo
+  end function build_hlocal_operator
+
+
+
+  function build_C_operator(ispin,iorb) result(Cmat)
+    integer                            :: ispin,iorb
+    type(local_fock_sector)            :: sectorI
+    real(8),dimension(:,:),allocatable :: Cmat
+    real(8)                            :: c_
+    integer                            :: isector,i,min,mout
+    integer                            :: nvec(Ns),Dim
+    !
+    if(allocated(Cmat))deallocate(Cmat)
+    select case(ispin)
+    case(1);allocate(Cmat(Ns_UP,Ns_UP))
+    case(2);allocate(Cmat(Ns_DW,Ns_DW))
+    case default;stop "build_C_operator error: ispin!=1,2"
+    end select
+    if(iorb<1.OR.iorb>Ns)stop "build_C_operator error: iorb<1 OR iorb>Ns. check."
+    !
+    !
+    Cmat=0d0
+    do isector=1,Nsectors
+       call Build_LocalFock_Sector(isector,SectorI)
+       select case(ispin)
+       case(1);Dim=sectorI%DimUp
+       case(2);Dim=sectorI%DimDw
+       end select
+       do i=1,Dim
+          min  = sectorI%H(ispin)%map(i)
+          nvec = bdecomp(min,Ns)
+          if(nvec(iorb) == 0) cycle
+          call c(iorb,min,mout,c_)        
+          Cmat(mout+1,min+1) = c_
+       enddo
+       call Delete_LocalFock_Sector(sectorI)
+    enddo
+  end function build_c_operator
+
+
+  function build_Cdg_operator(ispin,iorb) result(CDGmat)
+    integer                            :: ispin,iorb
+    type(local_fock_sector)            :: sectorI
+    real(8),dimension(:,:),allocatable :: CDGmat
+    real(8)                            :: cdg_
+    integer                            :: isector,i,min,mout
+    integer                            :: nvec(Ns),Dim
+    !
+    if(allocated(CDGmat))deallocate(CDGmat)
+    select case(ispin)
+    case(1);allocate(CDGmat(Ns_UP,Ns_UP))
+    case(2);allocate(CDGmat(Ns_DW,Ns_DW))
+    case default;stop "build_CDG_operator error: ispin!=1,2"
+    end select
+    if(iorb<1.OR.iorb>Ns)stop "build_CDG_operator error: iorb<1 OR iorb>Ns. check."
+    !
+    !
+    CDGmat=0d0
+    do isector=1,Nsectors
+       call Build_LocalFock_Sector(isector,SectorI)
+       select case(ispin)
+       case(1);Dim=sectorI%DimUp
+       case(2);Dim=sectorI%DimDw
+       end select
+       do i=1,Dim
+          min  = sectorI%H(ispin)%map(i)
+          nvec = bdecomp(min,Ns)
+          if(nvec(iorb) == 1) cycle
+          call cdg(iorb,min,mout,cdg_)          
+          CDGmat(mout+1,min+1) = cdg_
+       enddo
+       call Delete_LocalFock_Sector(sectorI)
+    enddo
+  end function build_cdg_operator
+
+
+  function build_Dens_operator(ispin,iorb) result(Dmat)
+    integer                            :: ispin,iorb
+    type(local_fock_sector)            :: sectorI
+    real(8),dimension(:,:),allocatable :: Dmat
+    integer                            :: isector,i,m
+    integer                            :: nvec(Ns),Dim
+    !
+    if(allocated(Dmat))deallocate(Dmat)
+    select case(ispin)
+    case(1);allocate(Dmat(Ns_UP,Ns_UP))
+    case(2);allocate(Dmat(Ns_DW,Ns_DW))
+    case default;stop "build_Dens_operator error: ispin!=1,2"
+    end select
+    if(iorb<1.OR.iorb>Ns)stop "build_Dens_operator error: iorb<1 OR iorb>Ns. check."
+    !
+    Dmat=0d0
+    do isector=1,Nsectors
+       call Build_LocalFock_Sector(isector,SectorI)
+       select case(ispin)
+       case(1);Dim=sectorI%DimUp
+       case(2);Dim=sectorI%DimDw
+       end select
+       do i=1,Dim
+          m    = sectorI%H(ispin)%map(i)
+          nvec = bdecomp(m,Ns)
+          Dmat(m+1,m+1) = dble(nvec(iorb))
+       enddo
+       call Delete_LocalFock_Sector(sectorI)
+    enddo
+  end function build_dens_operator
+
+
+  function build_Docc_operator(iorb) result(Dmat)
+    integer                            :: iorb
+    type(local_fock_sector)            :: sectorI
+    real(8),dimension(:,:),allocatable :: Dmat
+    integer                            :: isector,i,m
+    integer                            :: iup,idw,mup,mdw
+    integer                            :: nup(Ns),ndw(Ns)
+    !
+    if(allocated(Dmat))deallocate(Dmat)
+    allocate(Dmat(Nfock,Nfock))
+    if(iorb<1.OR.iorb>Ns)stop "build_docc_operator error: iorb<1 OR iorb>Ns. check."
+    !
+    Dmat=0d0
+    do isector=1,Nsectors
+       call Build_LocalFock_Sector(isector,SectorI)
+       do i=1,sectorI%Dim
+          iup = iup_index(i,SectorI%DimUp)
+          idw = idw_index(i,SectorI%DimUp)
+          !
+          mup = sectorI%H(1)%map(iup)
+          mdw = sectorI%H(2)%map(idw)
+          m   = mup + mdw*2**Ns + 1
+          !
+          nup = bdecomp(mup,Ns)
+          ndw = bdecomp(mdw,Ns)
+          !
+          Dmat(m,m) = dble(nup(iorb))*dble(ndw(iorb))
+       enddo
+       call Delete_LocalFock_Sector(sectorI)
+    enddo
+  end function build_docc_operator
+
+
+
+
+
+
+
 
 
 
@@ -458,6 +472,44 @@ contains
   end subroutine get_DimDw
 
 
+  subroutine indices2state(ivec,Nvec,istate)
+    integer,dimension(:)          :: ivec
+    integer,dimension(size(ivec)) :: Nvec
+    integer                       :: istate,i
+    istate=ivec(1)
+    do i=2,size(ivec)
+       istate = istate + (ivec(i)-1)*product(Nvec(1:i-1))
+    enddo
+  end subroutine indices2state
+
+  subroutine state2indices(istate,Nvec,ivec)
+    integer                       :: istate
+    integer,dimension(:)          :: Nvec
+    integer,dimension(size(Nvec)) :: Ivec
+    integer                       :: i,count,N
+    count = istate-1
+    N     = size(Nvec)
+    do i=1,N
+       Ivec(i) = mod(count,Nvec(i))+1
+       count   = count/Nvec(i)
+    enddo
+  end subroutine state2indices
+
+
+  function iup_index(i,DimUp) result(iup)
+    integer :: i
+    integer :: DimUp
+    integer :: iup
+    iup = mod(i,DimUp);if(iup==0)iup=DimUp
+  end function iup_index
+
+
+  function idw_index(i,DimUp) result(idw)
+    integer :: i
+    integer :: DimUp
+    integer :: idw
+    idw = (i-1)/DimUp+1
+  end function idw_index
 
 
 

@@ -1,9 +1,10 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag
+  USE SCIFOR, only: str,diag,zeros,eye,kron
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
   USE LIST_SECTORS
+  USE HLOCAL
   implicit none
   private
 
@@ -37,6 +38,7 @@ MODULE SITES
   public :: pauli_site
   public :: spin_onehalf_site
   public :: spin_one_site
+  public :: hubbard_site
   public :: assignment(=)
 
 
@@ -226,32 +228,32 @@ contains
   end function spin_one_site
 
 
-
-
-  !1,2,3,4 --> |0>,|dw>,|up>,|dw,up>
+  !up : |0>, |1>
+  !dw : |0>, |1>
+  !Fock = up x dw
   function hubbard_site(uloc,xmu) result(self)
-    type(site)                             :: self
-    real(8)                                :: uloc
-    real(8)                                :: xmu
-    integer,parameter                      :: model_dim=4
-    real(8),dimension(model_dim,model_dim) :: Hloc
-    real(8),dimension(model_dim,model_dim) :: Cup,Cdw
+    type(site)                         :: self
+    real(8)                            :: uloc
+    real(8)                            :: xmu
+    real(8),dimension(:,:),allocatable :: Hloc
+    real(8),dimension(:,:),allocatable :: Cup,Cdw
     !
-    Hloc      = diag([0d0,-xmu,-xmu,-2d0*xmu+Uloc]) + &
-         diag([Uloc/2d0,Uloc/2d0,Uloc/2d0,Uloc/2d0])
-    Cup       = 0d0
-    Cup(3,1)  = 1d0
-    Cup(4,2)  = 1d0
-    Cdw       = 0d0
-    Cdw(2,1)  = 1d0
-    Cdw(4,3)  = 1d0
+    call Init_LocalFock_Sectors(1,1)
+    !
+    Hloc = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
+    Cup  = build_C_operator(ispin=1,iorb=1)
+    Cdw  = build_C_operator(ispin=2,iorb=1)
     !
     call self%free()
-    self%dim=3
-    call self%put("H",sparse(Hzero))
-    call self%put("Sz",sparse(Szeta))
-    call self%put("Sp",sparse(Splus))
-    self%sectors = sectors_list([-1d0,0d0,1d0])
+    self%dim=4
+    call self%put("H",sparse(Hloc))
+    !One should avoid this (which makes useless the simplifications in HLOCAL)
+    !However this requires operator_list to accept different dimensions (2 rather than 4 here).
+    call self%put("Cup",sparse(kron(eye(2),Cup)))
+    call self%put("Cdw",sparse(kron(Cdw,eye(2))))
+    self%sectors = sectors_list([0d0,1d0])
   end function hubbard_site
+
+
 
 END MODULE SITES

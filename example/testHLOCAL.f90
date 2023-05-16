@@ -16,23 +16,28 @@ program testHLOCAL
   allocate(h0(nspin,norb,norb));h0=0d0
   print*,""
   print*,"H:"
-  Hlocal = build_Hlocal_operator(h0,xmu=0d0,uloc=5d0)
+  Hlocal = build_Hlocal_operator(h0,xmu=0d0,uloc=4d0)
   call print_mat(Hlocal)
 
 
   print*,""
-  print*,"C:"
+  print*,"C_up:"
   Cop = build_C_operator(ispin=1,iorb=1)
   call print_mat(Cop)
-
+  call print_mat(kron(Cop,eye(2)))
 
   print*,""
-  print*,"CDG:"
+  print*,"C_dw:"
+  Cop = build_C_operator(ispin=2,iorb=1)
+  call print_mat(Cop)
+
+  print*,""
+  print*,"CDG_up:"
   CDGop = build_CDG_operator(ispin=1,iorb=1)
   call print_mat(CDGop)
 
   print*,""
-  print*,"CDG:"
+  print*,"CDG_dw:"
   CDGop = build_CDG_operator(ispin=2,iorb=1)
   call print_mat(CDGop)
 
@@ -51,9 +56,6 @@ program testHLOCAL
   docc = build_Docc_operator(iorb=1)
   call print_mat(docc)
 
-  print*,""
-  CdgC = build_CdgC_operator(ispin=1,iorb=1,jorb=2)
-  call print_mat(CdgC)
 
 contains
 

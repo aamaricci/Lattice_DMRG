@@ -51,9 +51,7 @@ blocks: $(OBJS)
 	${FC} $(FFLAG) ${OBJS} ./example/testBLOCKS.f90 -o ./test/testBLOCKS ${SF_INC} ${SF_LIB}
 
 dmrg:  $(OBJS)
-	${FC} $(FFLAG) ${OBJS} ./testDMRGinfinite.f90 -o ./test/DMRGinfinite/testDMRGinfinite ${SF_INC} ${SF_LIB}
-	${FC} $(FFLAG) ${OBJS} ./testDMRGqn.f90 -o ./test/DMRGqn/testDMRGqn ${SF_INC} ${SF_LIB}
-	${FC} $(FFLAG) ${OBJS} ./testDMRG_Sone.f90 -o ./test/DMRG_Sone/testDMRG_Sone ${SF_INC} ${SF_LIB}
+	${FC} $(FFLAG) ${OBJS} ./testEDkron.f90 -o ./test/testEDkron ${SF_INC} ${SF_LIB}
 
 clean: 
 	@echo "Cleaning:"
