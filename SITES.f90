@@ -249,8 +249,8 @@ contains
     call self%put("H",sparse(Hloc))
     !One should avoid this (which makes useless the simplifications in HLOCAL)
     !However this requires operator_list to accept different dimensions (2 rather than 4 here).
-    call self%put("Cup",sparse(kron(eye(2),Cup)))
-    call self%put("Cdw",sparse(kron(Cdw,eye(2))))
+    call self%put("Cup",sparse(Cup))
+    call self%put("Cdw",sparse(Cdw))
     self%sectors = sectors_list([0d0,1d0])
   end function hubbard_site
 

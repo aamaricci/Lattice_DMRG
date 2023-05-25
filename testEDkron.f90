@@ -17,7 +17,7 @@ program testEDkron
   integer             :: lanc_niter
   real(8)             :: lanc_tolerance
   integer             :: lanc_threshold
-  type(block)         :: my_block,dimer
+  type(block)         :: my_block,dimer,trimer
   type(sparse_matrix) :: spHsb,spH
   type(site)          :: dot
   real(8)             :: gs_energy,target_Sz
@@ -58,22 +58,28 @@ program testEDkron
 
 
   dimer = enlarge_block(my_block,dot)
-  call dimer%show()
+  call dimer%show(fmt='F4.1')
 
   SpH = dimer%operators%op("H")
   Hmatrix = spH%as_matrix()
   allocate(Evals(16))
   call eigh(Hmatrix,Evals)
-  print*,Evals
+  do i=1,size(evals)
+     print*,i,Evals(i)
+  enddo
   deallocate(evals)
 
-  dimer = enlarge_block(dimer,dot)
-  SpH = dimer%operators%op("H")
+  stop
+  
+  trimer = enlarge_block(dimer,dot)
+  SpH = trimer%operators%op("H")
   Hmatrix = spH%as_matrix()
   allocate(Evals(16*4))
   call eigh(Hmatrix,Evals)
-  print*,Evals
-
+  do i=1,size(evals)
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals)
 
 
   ! !Run DMRG algorithm

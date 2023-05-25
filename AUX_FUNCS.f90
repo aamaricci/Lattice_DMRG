@@ -20,11 +20,44 @@ MODULE AUX_FUNCS
   public :: append
   public :: add_to
   public :: binary_search
+  public :: Id
+  public :: Sz
 
   logical,parameter,public           :: show_dble=.true.
   character(len=12),parameter,public :: show_fmt='F9.3'
 
 contains
+
+
+
+  function Id(n) result(A)
+    integer, intent(in) :: n
+    real(8)             :: A(2**n, 2**n)
+    integer             :: i
+    A = 0d0
+    forall(i=1:2**n)A(i,i) = 1d0
+  end function Id
+
+  recursive function Sz(n) result(A)
+    integer, intent(in) :: n
+    real(8)             :: A(2**n, 2**n)
+    integer             :: d(2**n)
+    integer             :: i
+    d = szvec(n)
+    A = 0d0
+    forall(i=1:2**n)A(i,i) = dble(d(i))
+  end function Sz
+
+  recursive function szvec(n) result(vec)
+    integer,intent(in)      :: n
+    integer,dimension(2**n) :: vec
+    if(n==1)then
+       vec = [1,-1]
+    else
+       vec = [szvec(n-1),-szvec(n-1)]
+    endif
+  end function szvec
+
 
 
   !##################################################################
@@ -150,7 +183,7 @@ contains
     bsresult = Order(bsresult)
     !
   end function binary_search
-  
+
 
 
   !+------------------------------------------------------------------+

@@ -53,6 +53,10 @@ blocks: $(OBJS)
 dmrg:  $(OBJS)
 	${FC} $(FFLAG) ${OBJS} ./testEDkron.f90 -o ./test/testEDkron ${SF_INC} ${SF_LIB}
 
+ed: MYOBJ=AUX_FUNCS.o MATRIX_BLOCKS.o
+ed:  AUX_FUNCS.o MATRIX_BLOCKS.o
+	${FC} $(FFLAG) $(MYOBJ) ./testEDnsites.f90 -o ./test/testEDnsites ${SF_INC} ${SF_LIB}
+
 clean: 
 	@echo "Cleaning:"
 	@rm -fv *.mod *.o *~ 
