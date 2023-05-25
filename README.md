@@ -1,13 +1,13 @@
-# Electrons DMRG
+# Lattice DMRG
 
 *This library is under rapid development. Be cautious.  
 Name and repo will also be changed in a future release.*
 
 This is a simple enough DMRG code to solve Electrons problems on a lattice (1d so far) as a milestone in the construction of a Quantum Impurity solver for application to Dynamical Mean-Field Theory. 
 
-This code features Quantum Number conservation. 
+This code should also include Quantum Number conservation at some point. 
 
-This code is largely based on the more simple Spin_DMRG and extend it to the case of interacting electrons.  
+The structure of this code is largely based on the simple Spin_DMRG and extend it to the case of interacting electrons. It is possible in the future the two codes will merge.  
 
 ### Dependencies
 
@@ -15,7 +15,7 @@ The code is based on:
 
 * SciFortran [https://github.com/aamaricci/SciFortran](https://github.com/aamaricci/SciFortran)  
 
-* MPI 
+* MPI [ma non è una cosa seria]
 
   
 ### Installation
