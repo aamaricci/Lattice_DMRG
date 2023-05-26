@@ -1,4 +1,4 @@
-program testDMRGqn
+program testEDkron
   USE SCIFOR
   USE AUX_FUNCS
   USE MATRIX_SPARSE, id=>sp_eye
@@ -9,25 +9,23 @@ program testDMRGqn
   USE BLOCKS
   implicit none
 
-  character(len=64)   :: finput
-  real(8)             :: Jx,Jz
-  integer             :: Lmax,i,m,Neigen,current_L
-  integer             :: lanc_ncv_factor
-  integer             :: lanc_ncv_add
-  integer             :: lanc_niter
-  real(8)             :: lanc_tolerance
-  integer             :: lanc_threshold
-  type(block)         :: my_block
-  type(sparse_matrix) :: spHsb
-  type(site)          :: dot
-  real(8)             :: gs_energy,target_Sz
-  integer             :: unit
-  integer,parameter   :: model_d=2
-
+  character(len=64)                  :: finput
+  real(8)                            :: ts
+  integer                            :: Lmax,i,m,Neigen,current_L
+  integer                            :: lanc_ncv_factor
+  integer                            :: lanc_ncv_add
+  integer                            :: lanc_niter
+  real(8)                            :: lanc_tolerance
+  integer                            :: lanc_threshold
+  type(block)                        :: my_block,dimer,trimer
+  type(sparse_matrix)                :: spHsb,spH
+  type(site)                         :: dot
+  real(8)                            :: gs_energy,target_Sz
+  integer                            :: unit
+  integer                            :: model_d=4
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
-  call parse_input_variable(Jx,"Jx",finput,default=1d0,comment="Jx term in the XXZ model")
-  call parse_input_variable(Jz,"Jz",finput,default=1d0,comment="Jz term in the XXZ model")
+  call parse_input_variable(ts,"ts",finput,default=-1d0,comment="Hopping amplitude")
   call parse_input_variable(Lmax,"LMAX",finput,default=1,comment="Final chain length ")
   call parse_input_variable(m,"M",finput,default=20,&
        comment="Number of states retained at truncation of \rho")
@@ -47,13 +45,15 @@ program testDMRGqn
 
 
 
+
   !
   !Init the single dot structure:
-  dot = spin_onehalf_site()
+  dot = hubbard_site(0d0,0d0)
   !
   !Init block from single dot
   my_block=block(dot)
   call my_block%show()
+
 
 
   !Run DMRG algorithm
@@ -81,46 +81,30 @@ contains
 
 
 
-  function H2model(left,right,states) result(H2)
-    type(block)                   :: left
-    type(block)                   :: right
-    integer,dimension(:),optional :: states
-    type(sparse_matrix)           :: Sz1,Sp1
-    type(sparse_matrix)           :: Sz2,Sp2
-    type(sparse_matrix)           :: H2
-    Sz1 = left%operators%op("Sz")
-    Sp1 = left%operators%op("Sp")
-    Sz2 = right%operators%op("Sz")
-    Sp2 = right%operators%op("Sp")
-    if(present(states))then
-       H2 = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states) +  Jx/2d0*sp_kron(Sp1%dgr(),Sp2,states)  + Jz*sp_kron(Sz1,Sz2,states)
-    else
-       H2 = Jx/2d0*(Sp1.x.Sp2%dgr()) +  Jx/2d0*(Sp1%dgr().x.Sp2)  + Jz*(Sz1.x.Sz2)
-    endif
-    call Sz1%free()
-    call Sp1%free()
-    call Sz2%free()
-    call Sp2%free()
-  end function H2model
-
-
   function enlarge_block(self,dot) result(enl_self)
     type(block),intent(inout)        :: self
     type(site),intent(inout)         :: dot
     type(block)                      :: enl_self
     integer                          :: mblock,len
     real(8),dimension(:),allocatable :: self_basis, dot_basis
+    real(8),dimension(4,4)           :: Cup,Cdw,P
+    !
+    P = kSz(2)
+    Cup =  as_matrix(dot%operators%op("Cup"))
+    Cdw =  as_matrix(dot%operators%op("Cdw"))
     !
     mblock =  self%dim
     len    =  self%length
     !
-    enl_self%length = self%length + 1
+    enl_self%length = len + 1
     enl_self%dim    = mblock*model_d
     !
     call enl_self%put("H", (self%operators%op("H").x.id(model_d)) + (id(mblock).x.dot%operators%op("H")) + &
          H2model(self,as_block(dot)))
-    call enl_self%put("Sz", id(mblock).x.dot%operators%op("Sz"))
-    call enl_self%put("Sp", id(mblock).x.dot%operators%op("Sp"))
+    !Cup = Id(Mblock).x.(P_dot.Cup_dot) = Id(Mblock).x.\tilde{Cup}_dot
+    !Cdw = Id(Mblock).x.(P_dot.Cdw_dot) = Id(Mblock).x.\tilde{Cdw}_dot
+    call enl_self%put("Cup", Id(mblock).x.as_sparse(matmul(P,Cup)) )
+    call enl_self%put("Cdw", Id(mblock).x.as_sparse(matmul(P,Cdw)) )
     !
     self_basis = self%sectors%basis()
     dot_basis  = dot%sectors%basis()
@@ -128,6 +112,46 @@ contains
     !
     deallocate(self_basis,dot_basis)
   end function enlarge_block
+
+
+  function H2model(left,right) result(H2)
+    type(block)                   :: left
+    type(block)                   :: right
+    type(sparse_matrix)           :: CupL,CdwL
+    type(sparse_matrix)           :: CupR,CdwR
+    type(sparse_matrix)           :: H2
+    CupL = left%operators%op("Cup")
+    CdwL = left%operators%op("Cdw")
+    CupR = right%operators%op("Cup")
+    CdwR = right%operators%op("Cdw")
+    !H_lr        = H_lr(up) + H_lr(dw)
+    !H_lr(sigma) = -t( C^+_l,sigma . C_r,sigma)  + H.c.
+    H2 = ts*(CupL%dgr().x.CupR) + ts*(CdwL%dgr().x.CdwR)  
+    H2 = H2 + H2%dgr()
+    call CupL%free
+    call CdwL%free
+    call CupR%free
+    call CdwR%free
+  end function H2model
+
+  subroutine print_mat(M,name,n)
+    real(8),dimension(:,:) :: M
+    character(len=*) :: name
+    integer :: i,j,stride,unit,n
+    stride=2**n
+    open(free_unit(unit),file=str(name)//".dat")
+    write(unit,*)"Matrix: "//str(name)
+    do i=1,size(M,1)
+       do j=1,size(M,2)
+          write(unit,"(("//str(stride)//"I2))",advance="no")int(M(i,j))
+          if(mod(j,stride)==0)write(unit,"(A1)",advance="no")""
+       enddo
+       write(unit,*)
+       if(mod(i,stride)==0)write(unit,*)
+    enddo
+    write(unit,*)""
+    close(unit)
+  end subroutine print_mat
 
 
 
@@ -325,27 +349,4 @@ contains
   end subroutine sb_HxV
 
 
-end program testDMRGqn
-
-
-
-
-
-
-!
-!Here we need to construct two things:
-!1. the indices of the reduced SB hamiltonian, ie the indices of the row/col
-!   corresponding to the sectors contributing to target_Sz. How?
-!   One loops over the enlarged blocksys  QNs. For each get the enlarged env QNs such
-!   that the sum is the target QN: esys.qn + eenv.qn = targetQN. {This can probably be
-!   simplified building a double list [esys.qn, eenv.qn].}
-!   For any couple of QNs use the sector map to get the list of states corresponding to
-!   each QN of the esys and eenv, say istate and jstate.
-!   For any couple of istate, jstate form the index "jstate + (istate-1)*eenv.dim"
-!   corresponding to the state in the SB hamiltonian.
-!2. the map of the states for the new updated block. How?
-!   Labelling the states found at 1. in terms of the QNs of the system. This map
-!   will be used later on to block decompose the density matrix, the rotation matrix
-!   and so on.
-!Store here the states in 1.
-! allocate(sb_states(0))
+end program testEDkron

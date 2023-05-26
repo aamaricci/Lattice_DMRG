@@ -649,7 +649,7 @@ program testEDnsites
   integer                            :: Nsites
   real(8),dimension(:,:),allocatable :: hij,H
   real(8),dimension(:),allocatable   :: Evals
-  real(8),dimension(:,:),allocatable :: Cup,Cdw
+  real(8),dimension(:,:),allocatable :: Cup,Cdw,Cdgup,Cdgdw,Hp,Hp2,P,A,B,C,D,HH
   real(8),dimension(2,2) :: Cp!,Sz,Id
   real(8)                            :: ts
   integer                            :: i
@@ -692,88 +692,95 @@ program testEDnsites
   call eigh(H,Evals)
   do i=1,size(evals)
      print*,i,Evals(i)
+     write(100,*)i,Evals(i)
   enddo
   deallocate(evals)
 
 
 
-  !C_up(i) = (Id(n) x ... x Id(1))_dw x (Id(n) x ... x C_p(i) x Sz(i-1) x...xSz(1))_up
-  !        = Id^n x (Id^{n-i} x C_p(i) x Sz^{i-1})
-  !C_dw(i) = (Id(n) x ... x C_p(i) x Sz(i-1) x ... x Sz(1))_dw x (Id(n) x ... x Id(1))_up
-  !        = (Id^{n-i} x C_p(i) x Sz^{i-1}) x Sz^n 
 
+  ! !C_up(i) = (Id(n) x ... x Id(1))_dw x (Id(n) x ... x C_p(i) x Sz(i-1) x...xSz(1))_up
+  ! !        = Id^n x (Id^{n-i} x C_p(i) x Sz^{i-1})
+  ! !C_dw(i) = (Id(n) x ... x C_p(i) x Sz(i-1) x ... x Sz(1))_dw x (Id(n) x ... x Id(1))_up
+  ! !        = (Id^{n-i} x C_p(i) x Sz^{i-1}) x Sz^n 
+  ! do i=1,Nsites
+  !    Cup = build_C_operator(i,ispin=1)  
+  !    call print_mat(Cup,"C_up_"//str(i))
+  ! enddo
 
-  do i=1,Nsites
-     Cup = build_C_operator(i,ispin=1)  
-     call print_mat(Cup,"C_up_"//str(i))
-  enddo
-
-
-
-  if(Nsites==1)then
-     !C_up(1) = Id^1 x C_p(1)
-     Cup = Id(1).kx.Cp
-     call print_mat(Cup,"newC_up_1")
-  elseif(Nsites==2)then
-     !Cup(1) = Id^2 x (Id^{2-1} x C_p x Sz^{1-1})
-     !Cup(2) = Id^2 x (Id^{2-2} x C_p x Sz^{2-1})
-     Cup = Id(2).kx.Id(1).kx.Cp
-     call print_mat(Cup,"newC_up_1")
-     Cup = Id(2).kx.Cp.kx.Sz(1)
-     call print_mat(Cup,"newC_up_2")
-  elseif(Nsites==3)then
-     !Cup(1) = Id^3 x (Id^{3-1} x C_p x Sz^{1-1})
-     !Cup(2) = Id^3 x (Id^{2-1} x C_p x Sz^{2-1})
-     !Cup(3) = Id^3 x (Id^{1-1} x C_p x Sz^{3-1})
-     Cup = Id(3).kx.(Id(2).kx.Cp)
-     call print_mat(Cup,"newC_up_1")
-     Cup = Id(3).kx.(Id(1).kx.Cp.kx.Sz(1))
-     call print_mat(Cup,"newC_up_2")
-     Cup = Id(3).kx.(Cp.kx.Sz(2))
-     call print_mat(Cup,"newC_up_3")
-  endif
+  ! if(Nsites==1)then
+  !    !C_up(1) = Id^1 x C_p(1)
+  !    Cup = KId(1).kx.Cp
+  !    call print_mat(Cup,"newC_up_1")
+  ! elseif(Nsites==2)then
+  !    !Cup(1) = Id^2 x (Id^{2-1} x C_p x Sz^{1-1})
+  !    !Cup(2) = Id^2 x (Id^{2-2} x C_p x Sz^{2-1})
+  !    Cup = KId(2).kx.KId(1).kx.Cp
+  !    call print_mat(Cup,"newC_up_1")
+  !    Cup = KId(2).kx.Cp.kx.KSz(1)
+  !    call print_mat(Cup,"newC_up_2")
+  ! elseif(Nsites==3)then
+  !    !Cup(1) = Id^3 x (Id^{3-1} x C_p x Sz^{1-1})
+  !    !Cup(2) = Id^3 x (Id^{2-1} x C_p x Sz^{2-1})
+  !    !Cup(3) = Id^3 x (Id^{1-1} x C_p x Sz^{3-1})
+  !    Cup = KId(3).kx.(KId(2).kx.Cp)
+  !    call print_mat(Cup,"newC_up_1")
+  !    Cup = KId(3).kx.(KId(1).kx.Cp.kx.KSz(1))
+  !    call print_mat(Cup,"newC_up_2")
+  !    Cup = KId(3).kx.(Cp.kx.KSz(2))
+  !    call print_mat(Cup,"newC_up_3")
+  ! endif
 
 
 
 
-  do i=1,Nsites
-     Cdw = build_C_operator(i,ispin=2)  
-     call print_mat(Cdw,"C_dw_"//str(i))
-  enddo
-  if(Nsites==1)then
-     !C_dw(1) = C_p(1) x Sz
-     Cdw = Cp.kx.Sz(1)
-     call print_mat(Cdw,"newC_dw_1")
-  elseif(Nsites==2)then
-     !Cdw(1) = (Id x C_p) x Sz^2
-     !Cdw(2) = (C_p x Sz) x Sz^2
-     Cdw = (Id(1).kx.Cp).kx.Sz(2)
-     call print_mat(Cdw,"newC_dw_1")
-     Cdw = (Cp.kx.Sz(1)).kx.Sz(2)
-     call print_mat(Cdw,"newC_dw_2")
-  elseif(Nsites==3)then
-     !Cdw(1) = (Id^{2} x C_p)          x Sz^3
-     !Cdw(2) = (Id^{1} x C_p x Sz^{1}) x Sz^3
-     !Cdw(3) = (C_p x Sz^{2})          x Sz^3
-     Cdw = Id(2).kx.Cp.kx.Sz(3)
-     call print_mat(Cdw,"newC_dw_1")
-     Cdw = Id(1).kx.Cp.kx.Sz(1).kx.Sz(3)
-     call print_mat(Cdw,"newC_dw_2")
-     Cdw = Cp.kx.Sz(2).kx.Sz(3)
-     call print_mat(Cdw,"newC_dw_3")
-  endif
+  ! do i=1,Nsites
+  !    Cdw = build_C_operator(i,ispin=2)  
+  !    call print_mat(Cdw,"C_dw_"//str(i))
+  ! enddo
+  ! if(Nsites==1)then
+  !    !C_dw(1) = C_p(1) x Sz
+  !    Cdw = Cp.kx.KSz(1)
+  !    call print_mat(Cdw,"newC_dw_1")
+  ! elseif(Nsites==2)then
+  !    !Cdw(1) = (Id x C_p) x Sz^2
+  !    !Cdw(2) = (C_p x Sz) x Sz^2
+  !    Cdw = (KId(1).kx.Cp).kx.KSz(2)
+  !    call print_mat(Cdw,"newC_dw_1")
+  !    Cdw = (Cp.kx.KSz(1)).kx.KSz(2)
+  !    call print_mat(Cdw,"newC_dw_2")
+  ! elseif(Nsites==3)then
+  !    !Cdw(1) = (Id^{2} x C_p)          x Sz^3
+  !    !Cdw(2) = (Id^{1} x C_p x Sz^{1}) x Sz^3
+  !    !Cdw(3) = (C_p x Sz^{2})          x Sz^3
+  !    Cdw = KId(2).kx.Cp.kx.KSz(3)
+  !    call print_mat(Cdw,"newC_dw_1")
+  !    Cdw = KId(1).kx.Cp.kx.KSz(1).kx.KSz(3)
+  !    call print_mat(Cdw,"newC_dw_2")
+  !    Cdw = Cp.kx.KSz(2).kx.KSz(3)
+  !    call print_mat(Cdw,"newC_dw_3")
+  ! endif
+
+
+
+
+
 
 
 
 contains
 
 
-  subroutine print_mat(M,name)
+  subroutine print_mat(M,name,file)
     real(8),dimension(:,:) :: M
-    character(len=*) :: name
-    integer :: i,j,stride,unit
+    character(len=*)       :: name
+    logical,optional       :: file
+    logical                :: file_
+    integer                :: i,j,stride,unit
     stride=2**Nsites
-    open(free_unit(unit),file=str(name)//".dat")
+    file_=.true.;if(present(file))file_=file
+    unit=6
+    if(file_)open(free_unit(unit),file=str(name)//".dat")
     write(unit,*)"Matrix: "//str(name)
     do i=1,size(M,1)
        do j=1,size(M,2)
@@ -784,7 +791,7 @@ contains
        if(mod(i,stride)==0)write(unit,*)
     enddo
     write(unit,*)""
-    close(unit)
+    if(file_)close(unit)
   end subroutine print_mat
 
 

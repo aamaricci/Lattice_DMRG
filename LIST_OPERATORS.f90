@@ -488,16 +488,13 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Pretty print an operators_list
   !+------------------------------------------------------------------+
-  recursive subroutine show_operators_list(self,dble,fmt)
+  recursive subroutine show_operators_list(self,fmt)
     class(operators_list),intent(inout) :: self
-    logical,optional                    :: dble
     character(len=*),optional           :: fmt
-    logical                             :: dble_
     character(len=32)                   :: fmt_
     integer                             :: i,count=0
     type(optype),pointer                 :: c
     !
-    dble_=show_dble;if(present(dble))dble_=dble
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     !
     write(*,"(A6,I12)")"Size :",self%size
@@ -509,7 +506,7 @@ contains
        write(*,"(A6,I12)")  "Index:",c%index
        write(*,"(A6,A)")"Key  :",str(c%ckey)
        write(*,*)"Op  :"
-       call c%ope%show(dble=dble_,fmt=fmt_)
+       call c%ope%show(fmt=fmt_)
        write(*,*)""
        c => c%next
     end do

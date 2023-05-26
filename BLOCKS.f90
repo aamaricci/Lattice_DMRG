@@ -165,20 +165,17 @@ contains
   !              SHOW 
   !##################################################################
   !##################################################################
-  subroutine show_block(self,dble,fmt)
+  subroutine show_block(self,fmt)
     class(block)              :: self
-    logical,optional          :: dble
     character(len=*),optional :: fmt
-    logical                   :: dble_
     character(len=32)         :: fmt_
-    dble_=show_dble;if(present(dble))dble_=dble
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,*)"Block Length  =",self%length
     write(*,*)"Block Dim     =",self%dim
     write(*,*)"Block Sectors :"
     call self%sectors%show()
     write(*,*)"Site Operators:"
-    call self%operators%show(dble=dble_,fmt=fmt_)
+    call self%operators%show(fmt=fmt_)
   end subroutine show_block
 
 

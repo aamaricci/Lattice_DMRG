@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,eye,kron
+  USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,xi
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
@@ -155,19 +155,16 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Pretty print the site structure
   !+------------------------------------------------------------------+
-  subroutine show_site(self,dble,fmt)
+  subroutine show_site(self,fmt)
     class(site)               :: self
-    logical,optional          :: dble
     character(len=*),optional :: fmt
-    logical                   :: dble_
     character(len=32)         :: fmt_
-    dble_=show_dble;if(present(dble))dble_=dble
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,*)"Site Dim      =",self%dim
     write(*,*)"Site Sectors  ="
     call self%sectors%show()
     write(*,*)"Site Operators="
-    call self%operators%show(dble=dble_,fmt=fmt_)
+    call self%operators%show(fmt=fmt_)
   end subroutine show_site
 
 
@@ -236,13 +233,13 @@ contains
     real(8)                            :: uloc
     real(8)                            :: xmu
     real(8),dimension(:,:),allocatable :: Hloc
-    real(8),dimension(:,:),allocatable :: Cup,Cdw
+    real(8),dimension(:,:),allocatable :: Cup,Cdw,Cp
     !
     call Init_LocalFock_Sectors(1,1)
     !
     Hloc = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
-    Cup  = build_C_operator(ispin=1,iorb=1)
-    Cdw  = build_C_operator(ispin=2,iorb=1)
+    Cup  = build_C_operator(1,1)
+    Cdw  = build_C_operator(1,2)
     !
     call self%free()
     self%dim=4

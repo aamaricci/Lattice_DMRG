@@ -23,6 +23,7 @@ program testEDkron
   real(8)             :: gs_energy,target_Sz
   integer             :: unit
   integer :: model_d=4
+  ! type(sparse_matrix) :: Cp
   real(8),dimension(:,:),allocatable :: Hmatrix
   real(8),dimension(:),allocatable :: Evals
 
@@ -47,6 +48,7 @@ program testEDkron
 
 
 
+
   !
   !Init the single dot structure:
   dot = hubbard_site(0d0,0d0)
@@ -56,31 +58,49 @@ program testEDkron
   call my_block%show()
 
 
-
+  print*,"o--o"
   dimer = enlarge_block(my_block,dot)
-  call dimer%show(fmt='F4.1')
-
+  call dimer%show(fmt='F3.0')
   SpH = dimer%operators%op("H")
   Hmatrix = spH%as_matrix()
-  allocate(Evals(16))
+  call print_mat(Hmatrix,"dimerH",2)
+
+  allocate(Evals(4**2))
   call eigh(Hmatrix,Evals)
   do i=1,size(evals)
      print*,i,Evals(i)
   enddo
   deallocate(evals)
+  print*,""
 
-  stop
-  
-  trimer = enlarge_block(dimer,dot)
+
+  print*,"o--o--o"
+  trimer= enlarge_block(dimer,dot)
+  call trimer%show(fmt='F3.0')
+
   SpH = trimer%operators%op("H")
   Hmatrix = spH%as_matrix()
-  allocate(Evals(16*4))
+  allocate(Evals(4**3))
   call eigh(Hmatrix,Evals)
   do i=1,size(evals)
      print*,i,Evals(i)
   enddo
   deallocate(evals)
 
+
+
+  print*,"o--o--o--o"
+  my_block= enlarge_block(trimer,dot)
+  ! call my_block%show(fmt='F3.0')
+
+  SpH = my_block%operators%op("H")
+  Hmatrix = spH%as_matrix()
+  allocate(Evals(4**4))
+  call eigh(Hmatrix,Evals)
+  do i=1,size(evals)
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals)
 
   ! !Run DMRG algorithm
   ! open(free_unit(unit),file="energyVSlength_L"//str(Lmax)//"_m"//str(m)//".dmrg")
@@ -113,17 +133,25 @@ contains
     type(block)                      :: enl_self
     integer                          :: mblock,len
     real(8),dimension(:),allocatable :: self_basis, dot_basis
+    real(8),dimension(4,4)           :: Cup,Cdw,P
+    !
+    P = kSz(2)
+    Cup =  as_matrix(dot%operators%op("Cup"))
+    Cdw =  as_matrix(dot%operators%op("Cdw"))
     !
     mblock =  self%dim
     len    =  self%length
     !
-    enl_self%length = self%length + 1
+    enl_self%length = len + 1
     enl_self%dim    = mblock*model_d
     !
     call enl_self%put("H", (self%operators%op("H").x.id(model_d)) + (id(mblock).x.dot%operators%op("H")) + &
          H2model(self,as_block(dot)))
-    call enl_self%put("Cup", id(mblock).x.dot%operators%op("Cup"))
-    call enl_self%put("Cdw", id(mblock).x.dot%operators%op("Cdw"))
+
+    !Cup = Id(Mblock).x.(P_dot.Cup_dot) = Id(Mblock).x.\tilde{Cup}_dot
+    !Cdw = Id(Mblock).x.(P_dot.Cdw_dot) = Id(Mblock).x.\tilde{Cdw}_dot
+    call enl_self%put("Cup", Id(mblock).x.as_sparse(matmul(P,Cup)) )
+    call enl_self%put("Cdw", Id(mblock).x.as_sparse(matmul(P,Cdw)) )
     !
     self_basis = self%sectors%basis()
     dot_basis  = dot%sectors%basis()
@@ -131,7 +159,8 @@ contains
     !
     deallocate(self_basis,dot_basis)
   end function enlarge_block
-
+  ! call enl_self%put("Cup", Id(mblock).x.as_sparse(matmul(kSz(2),(kId(1).kx.Cp))))
+  ! call enl_self%put("Cdw", Id(mblock).x.as_sparse(matmul(kSz(2),(Cp.kx.kSz(1)))))
 
   function H2model(left,right) result(H2)
     type(block)                   :: left
@@ -145,7 +174,7 @@ contains
     CdwR = right%operators%op("Cdw")
     !H_lr        = H_lr(up) + H_lr(dw)
     !H_lr(sigma) = -t( C^+_l,sigma . C_r,sigma)  + H.c.
-    H2 = ts*(CupL%dgr().x.CupR) + ts*(CdwL%dgr().x.CdwR)
+    H2 = ts*(CupL%dgr().x.CupR) + ts*(CdwL%dgr().x.CdwR)  
     H2 = H2 + H2%dgr()
     call CupL%free
     call CdwL%free
@@ -153,6 +182,24 @@ contains
     call CdwR%free
   end function H2model
 
+  subroutine print_mat(M,name,n)
+    real(8),dimension(:,:) :: M
+    character(len=*) :: name
+    integer :: i,j,stride,unit,n
+    stride=2**n
+    open(free_unit(unit),file=str(name)//".dat")
+    write(unit,*)"Matrix: "//str(name)
+    do i=1,size(M,1)
+       do j=1,size(M,2)
+          write(unit,"(("//str(stride)//"I2))",advance="no")int(M(i,j))
+          if(mod(j,stride)==0)write(unit,"(A1)",advance="no")""
+       enddo
+       write(unit,*)
+       if(mod(i,stride)==0)write(unit,*)
+    enddo
+    write(unit,*)""
+    close(unit)
+  end subroutine print_mat
 
 
 

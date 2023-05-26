@@ -42,6 +42,10 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_construct_matrix
   end interface as_sparse
 
+  interface as_matrix
+     module procedure :: sp_as_matrix
+  end interface as_matrix
+
   interface sparse
      module procedure :: sp_construct_matrix
   end interface sparse
@@ -105,6 +109,7 @@ MODULE MATRIX_SPARSE
 
   public :: sparse_matrix
   public :: as_sparse
+  public :: as_matrix
   public :: sparse
   public :: assignment(=)
   public :: operator(+)
@@ -325,43 +330,24 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE: show matrix
   !+------------------------------------------------------------------+
-  subroutine sp_show_matrix(sparse,dble,fmt)
+  subroutine sp_show_matrix(sparse,fmt)
     class(sparse_matrix)      :: sparse
-    logical,optional          :: dble
     character(len=*),optional :: fmt
     character(len=12)         :: fmt_
-    logical                   :: dble_
     integer                   :: i,j,unit_,Ns,NN
     character(len=64)         :: format
     real(8)                   :: val
     unit_=6
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
-    dble_=show_dble;if(present(dble))dble_=dble
-    ! if(dble_)then
     format='('//str(fmt_)//',1x)'
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
-          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')val!dreal(val)
+          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')val
        enddo
        write(unit_,*)
     enddo
-    !    write(unit_,*)
-    ! else       
-    !    format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
-    !    Ns=sparse%Nrow
-    !    do i=1,sparse%Nrow
-    !       do j=1,sparse%Ncol
-    !          val = sp_get_element(sparse,i,j)
-    !          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')&
-    !               "(",dreal(val),",",dimag(val),")"
-    !       enddo
-    !       write(unit_,*)
-    !    enddo
-    !    write(unit_,*)
-    ! endif
-
   end subroutine sp_show_matrix
 
   subroutine sp_print_matrix(sparse,file)

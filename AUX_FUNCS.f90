@@ -20,8 +20,8 @@ MODULE AUX_FUNCS
   public :: append
   public :: add_to
   public :: binary_search
-  public :: Id
-  public :: Sz
+  public :: KId
+  public :: KSz
 
   logical,parameter,public           :: show_dble=.true.
   character(len=12),parameter,public :: show_fmt='F9.3'
@@ -30,15 +30,15 @@ contains
 
 
 
-  function Id(n) result(A)
+  function KId(n) result(A)
     integer, intent(in) :: n
     real(8)             :: A(2**n, 2**n)
     integer             :: i
     A = 0d0
     forall(i=1:2**n)A(i,i) = 1d0
-  end function Id
+  end function KId
 
-  recursive function Sz(n) result(A)
+  recursive function KSz(n) result(A)
     integer, intent(in) :: n
     real(8)             :: A(2**n, 2**n)
     integer             :: d(2**n)
@@ -46,7 +46,7 @@ contains
     d = szvec(n)
     A = 0d0
     forall(i=1:2**n)A(i,i) = dble(d(i))
-  end function Sz
+  end function KSz
 
   recursive function szvec(n) result(vec)
     integer,intent(in)      :: n
