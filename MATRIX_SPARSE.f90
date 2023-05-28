@@ -30,6 +30,7 @@ MODULE MATRIX_SPARSE
      procedure,pass :: spy       => sp_spy_matrix
      procedure,pass :: as_matrix => sp_as_matrix
      procedure,pass :: dgr       => sp_dgr_matrix
+     procedure,pass :: t         => sp_transpose_matrix
      procedure,pass :: nnz       => sp_nnz_matrix
   end type sparse_matrix
 
@@ -82,6 +83,12 @@ MODULE MATRIX_SPARSE
   end interface operator(/)
 
 
+  !Matrix-Matrix PRODUCT
+  interface operator(.m.)
+     module procedure :: sp_matmul_matrix
+  end interface operator(.m.)
+
+
   !KRONECKER PRODUCT
   interface operator(.x.)
      module procedure :: sp_kron_matrix
@@ -92,20 +99,23 @@ MODULE MATRIX_SPARSE
   end interface sp_kron
 
 
-  !RETURN SHAPE OF THE SPARSE MATRIX [Nrow,Ncol]
+  !RETURN SHAPE OF THE SPARSE MATRIX
   intrinsic :: shape
   interface shape
      module procedure :: sp_shape_matrix
   end interface shape
 
+  !EXTEND TRANSPOSE TO SPARSE MATRIX
   intrinsic :: transpose
   interface transpose
      module procedure :: sp_transpose_matrix
   end interface transpose
 
-  interface hconjg
-     module procedure :: sp_dgr_matrix
-  end interface hconjg
+  intrinsic :: matmul
+  interface matmul
+     module procedure :: sp_matmul_matrix
+  end interface matmul
+
 
   public :: sparse_matrix
   public :: as_sparse
@@ -116,11 +126,12 @@ MODULE MATRIX_SPARSE
   public :: operator(-)
   public :: operator(*)
   public :: operator(/)
+  public :: operator(.m.)
   public :: operator(.x.)
   public :: sp_kron
   public :: shape
   public :: transpose
-  public :: hconjg
+  public :: matmul
   public :: sp_eye
 
 
@@ -497,6 +508,49 @@ contains
     enddo
   end function sp_restricted_kron_matrix
 
+
+  ! function sp_matmul_matrix(A,B) result(AxB)
+  !   type(sparse_matrix), intent(in)    :: A,B
+  !   type(sparse_matrix)                :: AxB
+  !   real(8),dimension(:,:),allocatable :: aA,bB
+  !   call AxB%free()
+  !   call AxB%init(a%Nrow,b%Ncol)
+  !   aA = as_matrix(A)
+  !   bB = as_matrix(B)
+  !   AxB = as_sparse(matmul(aA,bB))
+  !   deallocate(aA,bB)
+  ! end function sp_matmul_matrix
+
+
+  function sp_matmul_matrix(A,B) result(AxB)
+    type(sparse_matrix), intent(in) :: A,B
+    type(sparse_matrix)             :: Bt,AxB
+    integer                         :: i,icol,j,jcol,k
+    real(8)                         :: value
+    !
+    call AxB%free
+    call AxB%init(a%Nrow,b%Ncol)
+    Bt = B%t()
+    !
+    do i=1,AxB%Nrow    !==A.Nrow
+       !
+       do j=1,AxB%Ncol       !==B.Ncol=Bt.Nrow
+          value=0d0
+          do icol=1,A%row(i)%size
+             k = A%row(i)%cols(icol) !we sum over k
+             do jcol=1,Bt%row(j)%size
+                if(k/=Bt%row(j)%cols(jcol))cycle !if there are no elements in B^T.row(j) at index k cycle
+                value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
+             enddo
+          enddo
+          if(value==0d0)cycle
+          call append(AxB%row(i)%vals,value)
+          call append(AxB%row(i)%cols,j)
+          AxB%row(i)%Size = AxB%row(i)%Size + 1
+       enddo
+    enddo
+    call Bt%free
+  end function sp_matmul_matrix
 
 
   !##################################################################

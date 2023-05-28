@@ -101,10 +101,8 @@ contains
     !
     call enl_self%put("H", (self%operators%op("H").x.id(model_d)) + (id(mblock).x.dot%operators%op("H")) + &
          H2model(self,as_block(dot)))
-    !Cup = Id(Mblock).x.(P_dot.Cup_dot) = Id(Mblock).x.\tilde{Cup}_dot
-    !Cdw = Id(Mblock).x.(P_dot.Cdw_dot) = Id(Mblock).x.\tilde{Cdw}_dot
-    call enl_self%put("Cup", Id(mblock).x.as_sparse(matmul(P,Cup)) )
-    call enl_self%put("Cdw", Id(mblock).x.as_sparse(matmul(P,Cdw)) )
+    call enl_self%put("Cup", Id(mblock).x.as_sparse(matmul(P,Cup)) ) !Cup = Id(Mblock).x.(P_dot.Cup_dot)
+    call enl_self%put("Cdw", Id(mblock).x.as_sparse(matmul(P,Cdw)) ) !Cdw = Id(Mblock).x.(P_dot.Cdw_dot)
     !
     self_basis = self%sectors%basis()
     dot_basis  = dot%sectors%basis()
@@ -134,6 +132,7 @@ contains
     call CdwR%free
   end function H2model
 
+  
   subroutine print_mat(M,name,n)
     real(8),dimension(:,:) :: M
     character(len=*) :: name
@@ -185,25 +184,12 @@ contains
 
     !Build SuperBLock Sector
     call start_timer()
-    do isys=1,size(esys%sectors)
-       esys_qn = esys%sectors%qn(index=isys)       
-       eenv_qn = target_Sz - esys_qn
-       if(.not.eenv%sectors%has_qn(eenv_qn))cycle
-       esys_map= esys%sectors%map(qn=esys_qn)
-       eenv_map= eenv%sectors%map(qn=eenv_qn)
-       do i=1,size(esys_map)
-          do j=1,size(eenv_map)
-             call append(sb_states, eenv_map(j) + (esys_map(i)-1)*eenv%dim)
-             call sb_sector%append(qn=esys_qn,istate=size(sb_states))
-          enddo
-       enddo
-    enddo
-    m_sb = size(sb_states)
-    print*,"Super Block dimensions:", m_esys*m_esys, m_sb
+    m_sb = m_esys*m_esys
+    print*,"Super Block dimensions:", m_sb
     !BUild SuperBlock matrix:
-    spHsb =         sp_kron(esys%operators%op("H"),id(m_esys),sb_states)
-    spHsb = spHsb + sp_kron(id(m_esys),esys%operators%op("H"),sb_states)
-    spHsb = spHsb + H2model(esys,esys,sb_states)
+    spHsb =         sp_kron(esys%operators%op("H"),id(m_esys))
+    spHsb = spHsb + sp_kron(id(m_esys),esys%operators%op("H"))
+    spHsb = spHsb + H2model(esys,esys)
     call stop_timer("Build H_sb")
 
 
@@ -235,33 +221,18 @@ contains
 
 
     call start_timer()
-    do isys=1,size(sb_sector)
-       sb_qn = sb_sector%qn(index=isys)
-       sb_map= sb_sector%map(index=isys)
-       Nsys= size(esys%sectors%map(qn=sb_qn))
-       Nenv= size(eenv%sectors%map(qn=(target_Sz - sb_qn)))
-       if(Nsys*Nenv==0)cycle
-       call rho_sector%append(&
-            build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map),&
-            qn=sb_qn,&
-            map=esys%sectors%map(qn=sb_qn))
-    enddo
-    call stop_timer("Build Rho")
-
+    allocate(rho(m_esys,m_esys));rho=0d0
+    allocate(evals(m_esys))
+    rho = build_density_matrix(m_esys,m_esys,eig_basis(:,1))
+    call eigh(rho,evals)
+    evals    = evals(m_esys:1:-1)
+    rho(:,:) = rho(:,m_esys:1:-1)
+    call stop_timer("Get Rho")
 
     call start_timer()
     m_ = min(m,m_esys);
-    allocate(truncation_rho(m_esys,m_));truncation_rho=0d0
-    allocate(sys_basis(m_))
-    call rho_sector%eigh(sort=.true.,reverse=.true.)
-    do im=1,m_
-       rho_vec  = rho_sector%evec(m=im)
-       esys_map = rho_sector%map(m=im)
-       truncation_rho(esys_map,im) = rho_vec
-       !
-       sys_basis(im) = rho_sector%qn(m=im)
-    enddo
-    evals = rho_sector%evals()
+    allocate(truncation_rho(m_esys,m_))
+    truncation_rho(:,1:m_) = rho(:,1:m_)
     truncation_error = 1d0 - sum(evals(1:m_))
     call stop_timer("Build U")
     write(*,*)"Truncating      :",m<=m_esys
@@ -281,37 +252,26 @@ contains
     call stop_timer("Update+Truncate Block")
 
 
-    if(allocated(esys_map))deallocate(esys_map)
-    if(allocated(eenv_map))deallocate(eenv_map)
-    if(allocated(sb_map))deallocate(sb_map)
-    if(allocated(sb_states))deallocate(sb_states)
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
-    if(allocated(sys_basis))deallocate(sys_basis)
     if(allocated(evals))deallocate(evals)
-    if(allocated(rho_vec))deallocate(rho_vec)
     if(allocated(rho))deallocate(rho)
-    if(allocated(truncation_rho))deallocate(truncation_rho)
-    call spHsb%free()
     call esys%free()
     call eenv%free()
-    call sb_sector%free()
-    call rho_sector%free()
+    call spHsb%free()
+
   end subroutine single_dmrg_step
 
 
 
 
 
-  function build_density_matrix(nsys,nenv,psi,map) result(rho)
+  function build_density_matrix(nsys,nenv,psi) result(rho)
     integer                      :: nsys
     integer                      :: nenv
-    real(8),dimension(:)         :: psi
-    integer,dimension(nsys*nenv) :: map
-    real(8),dimension(nsys,nenv) :: rho_restricted
+    real(8),dimension(nsys,nenv) :: psi
     real(8),dimension(nsys,nsys) :: rho
-    rho_restricted = transpose(reshape(psi(map), [nenv,nsys]))
-    rho  = matmul(rho_restricted,  transpose(rho_restricted) )
+    rho  = matmul(psi,  (transpose(psi)) )
   end function build_density_matrix
 
 
@@ -349,4 +309,4 @@ contains
   end subroutine sb_HxV
 
 
-end program testEDkron
+end program

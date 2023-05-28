@@ -671,8 +671,6 @@ program testEDnsites
 
 
 
-
-
   allocate(Hij(Nsites,Nsites));Hij=0d0
   if(Nsites>1)then
      Hij(1,2) = ts
@@ -690,9 +688,8 @@ program testEDnsites
   call print_mat(H,"H")
   allocate(evals(size(H,1)))
   call eigh(H,Evals)
-  do i=1,size(evals)
+  do i=1,min(10,size(evals))
      print*,i,Evals(i)
-     write(100,*)i,Evals(i)
   enddo
   deallocate(evals)
 

@@ -315,24 +315,12 @@ program testSPARSE_MATRICES
 
 
 
-  print*, "TEST TRANSPOSE CONJUGATE"
-  call a%load(Sx+Sz)
-  call a%show()
-  b = hconjg(a)
-  call b%show()
-
-  if(any( a%as_matrix()-b%as_matrix() /= 0d0) )then
-     write(*,*)"Wrong TRANSPOSE"
-  else
-     write(*,*)"Good TRANSPOSE"
-  endif
-
 
 
   print*, "TEST TRANSPOSE CONJUGATE"
   call a%load(Splus)
   call a%show()
-  b = a%dgr()
+  b = a%t()
   call b%show()
 
   if(any( a%as_matrix()-b%as_matrix() /= 0d0) )then
@@ -341,4 +329,41 @@ program testSPARSE_MATRICES
      write(*,*)"Good TRANSPOSE"
   endif
 
+
+  deallocate(Amat,Bmat,Cmat)
+
+  print*,""
+  print*,"test KRON PRODUCT 3"
+
+  allocate(Amat(5,5));Amat=0d0
+  Amat(1,2) = 1d0
+  do i=2,5-1
+     Amat(i,i-1) = 1d0
+     Amat(i,i+1) = 1d0    
+  enddo
+  Amat(5,5-1) = 1d0
+
+  allocate(Bmat(5,5))
+  Bmat = dble((reshape([1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1],[5,5])))
+
+  call a%load(Amat)
+  call b%load(Bmat)
+  !
+  print*,"A"
+  call a%show()
+  print*,"B"
+  call b%show()
+  print*,""
+
+
+  allocate(Cmat(5,5))
+  Cmat = matmul(Amat,Bmat)
+  do i=1,5
+     write(*,"(5F9.3,1x)")(Cmat(i,j),j=1,5)
+  enddo
+
+  print*,""
+  c = a.m.b
+  call c%show()
+  print*,c%nnz()
 end program testSPARSE_MATRICES
