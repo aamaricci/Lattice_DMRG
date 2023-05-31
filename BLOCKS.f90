@@ -3,7 +3,7 @@ MODULE BLOCKS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
-  USE LIST_SECTORS
+  ! USE LIST_SECTORS
   USE SITES
   implicit none
   private
@@ -12,13 +12,13 @@ MODULE BLOCKS
   type block
      integer              :: length=0
      integer              :: dim=1
-     type(sectors_list)   :: sectors
+     ! type(sectors_list)   :: sectors
      type(operators_list) :: operators
    contains
      procedure,pass     :: free     => free_block
      procedure,pass     :: put      => put_op_block
      procedure,pass     :: load     => load_op_block
-     procedure,pass     :: set_sectors => set_sectors_block
+     ! procedure,pass     :: set_sectors => set_sectors_block
      procedure,pass     :: show     => show_block
      procedure,pass     :: is_valid => is_valid_block
   end type block
@@ -36,14 +36,14 @@ MODULE BLOCKS
      module procedure :: build_block_from_site
   end interface as_block
 
-  ! !EQUALITY 
-  ! interface assignment(=)
-  !    module procedure :: block_equal_block
-  ! end interface assignment(=)
+  !EQUALITY 
+  interface assignment(=)
+     module procedure :: block_equal_block
+  end interface assignment(=)
 
   public :: block
   public :: as_block
-  ! public :: assignment(=)
+  public :: assignment(=)
 
 
 contains
@@ -57,15 +57,15 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function build_block_from_scrath(length,dim,sectors,operators) result(self)
+  function build_block_from_scrath(length,dim,operators) result(self) !,sectors
     integer,intent(in)              :: length
     integer,intent(in)              :: dim
-    type(sectors_list),intent(in)   :: sectors
+    ! type(sectors_list),intent(in)   :: sectors
     type(operators_list),intent(in) :: operators
     type(block)                     :: self
     self%length    = length
     self%dim       = dim
-    self%sectors   = sectors
+    ! self%sectors   = sectors
     self%operators = operators
   end function build_block_from_scrath
 
@@ -74,7 +74,7 @@ contains
     type(block)           :: self
     self%length    = 1
     self%dim       = ssite%dim
-    self%sectors   = ssite%sectors        
+    ! self%sectors   = ssite%sectors        
     self%operators = ssite%operators
   end function build_block_from_site
 
@@ -87,7 +87,7 @@ contains
     self%length = 0
     self%dim    = 1
     call self%operators%free()
-    call self%sectors%free()
+    ! call self%sectors%free()
   end subroutine free_block
 
 
@@ -120,14 +120,14 @@ contains
 
 
 
-  !+------------------------------------------------------------------+
-  !PURPOSE:  Put a QN array in the site
-  !+------------------------------------------------------------------+
-  subroutine set_sectors_block(self,vec)
-    class(block)         :: self
-    real(8),dimension(:) :: vec
-    self%sectors = sectors_list(vec)
-  end subroutine set_sectors_block
+  ! !+------------------------------------------------------------------+
+  ! !PURPOSE:  Put a QN array in the site
+  ! !+------------------------------------------------------------------+
+  ! subroutine set_sectors_block(self,vec)
+  !   class(block)         :: self
+  !   real(8),dimension(:) :: vec
+  !   self%sectors = sectors_list(vec)
+  ! end subroutine set_sectors_block
 
 
 
@@ -146,14 +146,14 @@ contains
     A%length = B%length
     A%dim    = B%dim
     A%operators  = B%operators
-    A%sectors= B%sectors
+    ! A%sectors= B%sectors
   end subroutine block_equal_block
 
 
   function is_valid_block(self) result(bool)
     class(block) :: self
     logical      :: bool
-    bool = self%operators%is_valid(self%dim).AND.(self%dim==len(self%sectors))
+    bool = self%operators%is_valid(self%dim)!.AND.(self%dim==len(self%sectors))
   end function is_valid_block
 
 
@@ -172,8 +172,8 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,*)"Block Length  =",self%length
     write(*,*)"Block Dim     =",self%dim
-    write(*,*)"Block Sectors :"
-    call self%sectors%show()
+    ! write(*,*)"Block Sectors :"
+    ! call self%sectors%show()
     write(*,*)"Site Operators:"
     call self%operators%show(fmt=fmt_)
   end subroutine show_block

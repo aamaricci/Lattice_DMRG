@@ -9,23 +9,22 @@ program testEDkron
   USE BLOCKS
   implicit none
 
-  character(len=64)   :: finput
-  real(8)             :: ts
-  integer             :: Lmax,i,m,Neigen,current_L
-  integer             :: lanc_ncv_factor
-  integer             :: lanc_ncv_add
-  integer             :: lanc_niter
-  real(8)             :: lanc_tolerance
-  integer             :: lanc_threshold
-  type(block)         :: my_block,dimer,trimer
-  type(sparse_matrix) :: spHsb,spH
-  type(site)          :: dot
-  real(8)             :: gs_energy,target_Sz
-  integer             :: unit
-  integer :: model_d=4
-  ! type(sparse_matrix) :: Cp
-  real(8),dimension(:,:),allocatable :: Hmatrix
-  real(8),dimension(:),allocatable :: Evals
+  character(len=64)                  :: finput
+  real(8)                            :: ts
+  integer                            :: Lmax,i,m,Neigen,current_L
+  integer                            :: lanc_ncv_factor
+  integer                            :: lanc_ncv_add
+  integer                            :: lanc_niter
+  real(8)                            :: lanc_tolerance
+  integer                            :: lanc_threshold
+  type(block)                        :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR
+  type(sparse_matrix)                :: spHsb,spH
+  type(site)                         :: dot
+  real(8)                            :: gs_energy,target_Sz
+  integer                            :: unit
+  integer                            :: model_d=4
+  real(8),dimension(:,:),allocatable :: Hmatrix,Evecs
+  real(8),dimension(:),allocatable   :: Evals
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"ts",finput,default=-1d0,comment="Hopping amplitude")
@@ -95,7 +94,82 @@ program testEDkron
   print*,""
 
 
+  print*,"o--o--o--o->o"
+  dimer= enlarge_block(my_block,dot,grow='left')
+  Hmatrix = as_matrix(dimer%operators%op("H"))
+  allocate(Evals(4**5))
+  call eigh(Hmatrix,Evals)
+  do i=1,min(3,size(evals))
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals)
+  print*,""
 
+
+  print*,"o--o--o--o--o->o"
+  my_block= enlarge_block(dimer,dot,grow='left')
+  spHsb = my_block%operators%op("H")
+  allocate(Evals(2))
+  allocate(Evecs(4**6,2))
+  call sp_eigh(sb_HxV,evals,evecs,&
+       10,&
+       500,&
+       tol=1d-12,&
+       iverbose=.false.)
+  do i=1,2
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals,evecs)
+  print*,""
+
+
+
+
+  !Init block from single dot
+  my_block=block(dot)
+
+  print*,"o->o++o<-o"
+  dimerL = enlarge_block(my_block,dot,grow='left')
+  dimerR = enlarge_block(my_block,dot,grow='right')
+  spHsb  = (dimerL%operators%op("H").x.id(dimerR%dim)) + (id(dimerL%dim).x.dimerR%operators%op("H")) + H2model(dimerL,dimerR)
+  allocate(Evals(2))
+  allocate(Evecs(4**4,2))
+  call sp_eigh(sb_HxV,evals,evecs,&
+       10,&
+       500,&
+       tol=1d-12,&
+       iverbose=.false.)
+  do i=1,2
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals,evecs)
+  print*,""
+
+
+
+
+  print*,"o--o->o++o<-o--o"
+  trimerL = enlarge_block(dimerL,dot,grow='left')
+  trimerR = enlarge_block(dimerR,dot,grow='right')
+  spHsb  = (trimerL%operators%op("H").x.id(trimerR%dim)) + (id(trimerL%dim).x.trimerR%operators%op("H")) + H2model(trimerL,trimerR)
+  allocate(Evals(2))
+  allocate(Evecs(4**6,2))
+  call sp_eigh(sb_HxV,evals,evecs,&
+       10,&
+       500,&
+       tol=1d-12,&
+       iverbose=.false.)
+  do i=1,2
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals,evecs)
+  print*,""
+
+
+
+
+
+  stop
 
   !Init block from single dot
   my_block=block(dot)
@@ -145,6 +219,21 @@ contains
 
 
 
+  subroutine sb_HxV(Nloc,v,Hv)
+    integer                 :: Nloc
+    real(8),dimension(Nloc) :: v
+    real(8),dimension(Nloc) :: Hv
+    real(8)                 :: val
+    integer                 :: i,j,jcol
+    Hv=0d0
+    do i=1,Nloc
+       matmul: do jcol=1, spHsb%row(i)%Size
+          val = spHsb%row(i)%vals(jcol)
+          j   = spHsb%row(i)%cols(jcol)
+          Hv(i) = Hv(i) + val*v(j)
+       end do matmul
+    end do
+  end subroutine sb_HxV
 
 
 
@@ -156,7 +245,7 @@ contains
     type(block)                      :: enl_self
     integer                          :: mblock,len
     real(8),dimension(:),allocatable :: self_basis, dot_basis
-
+    !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
     mblock =  self%dim
