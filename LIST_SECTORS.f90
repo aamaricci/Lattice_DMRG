@@ -110,7 +110,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Free an sectors_list (destructor) 
   !+------------------------------------------------------------------+
-  subroutine free_sectors_list(self)
+  elemental subroutine free_sectors_list(self)
     class(sectors_list),intent(inout) :: self
     type(qtype),pointer               :: p,c
     if(.not.associated(self%root))return

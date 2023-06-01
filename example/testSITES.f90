@@ -20,7 +20,7 @@ program testSITES
   
   my_site = site(&
        dim      = 2, &
-       sectors  = sectors_list([-0.5d0,0.5d0]),&
+       sectors  = [sectors_list([-0.5d0,0.5d0])],&
        operators= operators_list(['H0','Sz','Sp'],&
        [sparse(Hzero),sparse(Sz),sparse(Splus)]))
   print*,"Is site valid:",my_site%is_valid()
@@ -39,5 +39,10 @@ program testSITES
   print*,"Test PAULI SITE"
   b = pauli_site()
   call b%show()
+  call b%free()
 
+  b = hubbard_site(0d0,0d0)
+  call b%show()
+  print*,"Is site valid:",b%is_valid()
+  call b%free()
 end program testSITES

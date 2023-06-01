@@ -3,22 +3,22 @@ MODULE BLOCKS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
-  ! USE LIST_SECTORS
+  USE LIST_SECTORS
   USE SITES
   implicit none
   private
 
 
   type block
-     integer              :: length=0
-     integer              :: dim=1
-     ! type(sectors_list)   :: sectors
-     type(operators_list) :: operators
+     integer                                     :: length=0
+     integer                                     :: dim=1
+     type(sectors_list),dimension(:),allocatable :: sectors
+     type(operators_list)                        :: operators
    contains
      procedure,pass     :: free     => free_block
      procedure,pass     :: put      => put_op_block
      procedure,pass     :: load     => load_op_block
-     ! procedure,pass     :: set_sectors => set_sectors_block
+     procedure,pass     :: set_sectors => set_sectors_block
      procedure,pass     :: show     => show_block
      procedure,pass     :: is_valid => is_valid_block
   end type block
@@ -26,14 +26,14 @@ MODULE BLOCKS
 
   !GENERIC CONSTRUCTOR
   interface block
-     module procedure :: build_block_from_scrath
-     module procedure :: build_block_from_site
+     module procedure :: constructor_from_scrath
+     module procedure :: constructor_from_site
   end interface block
 
   !GENERIC CONSTRUCTOR
   interface as_block
-     module procedure :: build_block_from_scrath
-     module procedure :: build_block_from_site
+     module procedure :: constructor_from_scrath
+     module procedure :: constructor_from_site
   end interface as_block
 
   !EQUALITY 
@@ -46,6 +46,8 @@ MODULE BLOCKS
   public :: assignment(=)
 
 
+  integer :: i,j
+
 contains
 
 
@@ -57,26 +59,33 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function build_block_from_scrath(length,dim,operators) result(self) !,sectors
+  function constructor_from_scrath(length,dim,sectors,operators) result(self)
     integer,intent(in)              :: length
     integer,intent(in)              :: dim
-    ! type(sectors_list),intent(in)   :: sectors
+    type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(block)                     :: self
     self%length    = length
     self%dim       = dim
-    ! self%sectors   = sectors
     self%operators = operators
-  end function build_block_from_scrath
+    allocate(self%sectors(size(sectors)))
+    do i=1,size(self%sectors)
+       self%sectors(i)   = sectors(i)
+    enddo
+  end function constructor_from_scrath
 
-  function build_block_from_site(ssite) result(self)
+
+  function constructor_from_site(ssite) result(self)
     type(site),intent(in) :: ssite
     type(block)           :: self
     self%length    = 1
     self%dim       = ssite%dim
-    ! self%sectors   = ssite%sectors        
     self%operators = ssite%operators
-  end function build_block_from_site
+    allocate(self%sectors(size(ssite%sectors)))
+    do i=1,size(self%sectors)
+       self%sectors(i)   = ssite%sectors(i)
+    enddo
+  end function constructor_from_site
 
 
   !+------------------------------------------------------------------+
@@ -87,7 +96,10 @@ contains
     self%length = 0
     self%dim    = 1
     call self%operators%free()
-    ! call self%sectors%free()
+    if(allocated(self%sectors))then
+       call self%sectors%free()
+       deallocate(self%sectors)
+    endif
   end subroutine free_block
 
 
@@ -120,14 +132,16 @@ contains
 
 
 
-  ! !+------------------------------------------------------------------+
-  ! !PURPOSE:  Put a QN array in the site
-  ! !+------------------------------------------------------------------+
-  ! subroutine set_sectors_block(self,vec)
-  !   class(block)         :: self
-  !   real(8),dimension(:) :: vec
-  !   self%sectors = sectors_list(vec)
-  ! end subroutine set_sectors_block
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Put a QN array in the site
+  !+------------------------------------------------------------------+
+  subroutine set_sectors_block(self,indx,vec)
+    class(block)         :: self
+    integer              :: indx
+    real(8),dimension(:) :: vec
+    if(indx<1.OR.indx>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
+    self%sectors(indx) = sectors_list(vec)
+  end subroutine set_sectors_block
 
 
 
@@ -146,19 +160,26 @@ contains
     A%length = B%length
     A%dim    = B%dim
     A%operators  = B%operators
-    ! A%sectors= B%sectors
+    allocate(A%sectors(size(B%sectors)))
+    do i=1,size(A%sectors)
+       A%sectors(i)   = B%sectors(i)
+    enddo
   end subroutine block_equal_block
 
 
   function is_valid_block(self) result(bool)
     class(block) :: self
     logical      :: bool
-    bool = self%operators%is_valid(self%dim)!.AND.(self%dim==len(self%sectors))
+    integer,dimension(size(self%sectors)) :: Lvec
+    bool = self%operators%is_valid(self%dim)
+    do i=1,size(self%sectors)
+       Lvec = len(self%sectors(i))
+    enddo
+    bool=bool.AND.(self%dim==product(Lvec))
   end function is_valid_block
 
 
-
-
+  
 
   !##################################################################
   !##################################################################
@@ -172,9 +193,11 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,*)"Block Length  =",self%length
     write(*,*)"Block Dim     =",self%dim
-    ! write(*,*)"Block Sectors :"
-    ! call self%sectors%show()
-    write(*,*)"Site Operators:"
+    do i=1,size(self%sectors)
+       write(*,*)"Block Sectors: ",i
+       call self%sectors(i)%show()
+    enddo
+    write(*,*)"Block Operators:"
     call self%operators%show(fmt=fmt_)
   end subroutine show_block
 

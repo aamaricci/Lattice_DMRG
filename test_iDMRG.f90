@@ -1,4 +1,4 @@
-program testEDkron
+program test_iDMRG
   USE SCIFOR
   USE AUX_FUNCS
   USE MATRIX_SPARSE, id=>sp_eye
@@ -324,33 +324,6 @@ contains
   end subroutine sb_HxV
 
 
-  function to_upper(StrIn) result(StrOut)
-    character(len=*), intent(in) :: strIn
-    character(len=len(strIn))    :: strOut
-    integer :: i
-    do i = 1,len(StrIn)
-       select case(StrIn(i:i))
-       case("a":"z")
-          StrOut(i:i) = achar(iachar(StrIn(i:i))-32)
-       case default
-          StrOut(i:i) = StrIn(i:i)
-       end select
-    end do
-  end function to_upper
-
-  function to_lower(StrIn) result(StrOut)
-    character(len=*), intent(in) :: strIn
-    character(len=len(strIn))    :: strOut
-    integer :: i
-    do i = 1,len(StrIn)
-       select case(StrIn(i:i))
-       case("A":"Z")
-          StrOut(i:i) = achar(iachar(StrIn(i:i))+32)
-       case default
-          StrOut(i:i) = StrIn(i:i)
-       end select
-    end do
-  end function to_lower
 
   subroutine print_mat(M,unit)
     real(8),dimension(:,:) :: M
@@ -368,4 +341,4 @@ contains
     write(unit,*)""
   end subroutine print_mat
 
-end program testEDkron
+end program test_iDMRG

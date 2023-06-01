@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,xi
+  USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,xi,operator(.kx.)
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
@@ -10,9 +10,9 @@ MODULE SITES
 
 
   type site
-     integer              :: dim=1
-     type(sectors_list)   :: sectors
-     type(operators_list) :: operators
+     integer                                     :: dim=1
+     type(sectors_list),dimension(:),allocatable :: sectors
+     type(operators_list)                        :: operators
    contains
      procedure,pass     :: free        => free_site
      procedure,pass     :: put         => put_op_site
@@ -39,8 +39,10 @@ MODULE SITES
   public :: spin_onehalf_site
   public :: spin_one_site
   public :: hubbard_site
+  public :: hubbard_site_ud
   public :: assignment(=)
 
+  integer :: i
 
 contains
 
@@ -55,12 +57,15 @@ contains
   !+------------------------------------------------------------------+
   function constructor_site(dim,sectors,operators) result(self)
     integer,intent(in)              :: dim
-    type(sectors_list),intent(in)   :: sectors
+    type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(site)                      :: self
     self%dim       = dim
-    self%sectors   = sectors
     self%operators = operators
+    allocate(self%sectors(size(sectors)))
+    do i=1,size(self%sectors)
+       self%sectors(i)   = sectors(i)
+    enddo
   end function constructor_site
 
 
@@ -69,10 +74,13 @@ contains
   !PURPOSE:  Destructor
   !+------------------------------------------------------------------+
   subroutine free_site(self)
-    class(site)               :: self
+    class(site) :: self
     self%dim   = 1
     call self%operators%free()
-    call self%sectors%free()
+    if(allocated(self%sectors))then
+       call self%sectors%free()
+       deallocate(self%sectors)
+    endif
   end subroutine free_site
 
 
@@ -111,10 +119,12 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Put a QN array in the site
   !+------------------------------------------------------------------+
-  subroutine set_sectors_site(self,vec)
+  subroutine set_sectors_site(self,indx,vec)
     class(site)                 :: self
+    integer                     :: indx
     real(8),dimension(self%dim) :: vec
-    self%sectors = sectors_list(vec)
+    if(indx<1.OR.indx>size(self%sectors))stop "SET_SECTORS_SITE ERROR: indx out of range"
+    self%sectors(indx) = sectors_list(vec)
   end subroutine set_sectors_site
 
 
@@ -132,15 +142,23 @@ contains
     type(site),intent(in)    :: B
     call A%free
     A%dim       = B%dim
-    A%sectors   = B%sectors
     A%operators = B%operators
+    allocate(A%sectors(size(B%sectors)))
+    do i=1,size(A%sectors)
+       A%sectors(i)   = B%sectors(i)
+    enddo
   end subroutine site_equal_site
 
 
   function is_valid_site(self) result(bool)
-    class(site) :: self
-    logical     :: bool
-    bool = self%operators%is_valid(self%dim).AND.(self%dim==len(self%sectors))
+    class(site)                           :: self
+    logical                               :: bool
+    integer,dimension(size(self%sectors)) :: Lvec
+    bool = self%operators%is_valid(self%dim)
+    do i=1,size(self%sectors)
+       Lvec = len(self%sectors(i))
+    enddo
+    bool=bool.AND.(self%dim==product(Lvec))
   end function is_valid_site
 
 
@@ -161,9 +179,11 @@ contains
     character(len=32)         :: fmt_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,*)"Site Dim      =",self%dim
-    write(*,*)"Site Sectors  ="
-    call self%sectors%show()
-    write(*,*)"Site Operators="
+    do i=1,size(self%sectors)
+       write(*,*)"Site Sectors: ",i
+       call self%sectors(i)%show()
+    enddo
+    write(*,*)"Site Operators:"
     call self%operators%show(fmt=fmt_)
   end subroutine show_site
 
@@ -186,7 +206,8 @@ contains
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
     call self%put("Sp",sparse(Splus))
-    self%sectors = sectors_list([0.5d0,-0.5d0])
+    allocate(self%sectors(1))
+    self%sectors(1) = sectors_list([0.5d0,-0.5d0])
   end function pauli_site
 
 
@@ -200,7 +221,8 @@ contains
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
     call self%put("Sp",sparse(Splus))
-    self%sectors = sectors_list([0.5d0,-0.5d0])
+    allocate(self%sectors(1))
+    self%sectors(1) = sectors_list([0.5d0,-0.5d0])
   end function spin_onehalf_site
 
 
@@ -221,13 +243,12 @@ contains
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(Szeta))
     call self%put("Sp",sparse(Splus))
-    self%sectors = sectors_list([-1d0,0d0,1d0])
+    allocate(self%sectors(1))
+    self%sectors(1) = sectors_list([-1d0,0d0,1d0])
   end function spin_one_site
 
 
-  !up : |0>, |1>
-  !dw : |0>, |1>
-  !Fock = up x dw
+  !Fock = [|0,0>,|0,1>,|1,0>,|1,1>] <- |up,dw> <- fill DW first = 1_dw x 1_up
   function hubbard_site(uloc,xmu) result(self)
     type(site)                         :: self
     real(8)                            :: uloc
@@ -238,8 +259,8 @@ contains
     call Init_LocalFock_Sectors(1,1)
     !
     Hloc = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
-    Cup  = build_C_operator(1,1)
-    Cdw  = build_C_operator(1,2)
+    Cp  = build_C_operator(1,1);Cup=KId(1).kx.Cp
+    Cp  = build_C_operator(1,2);Cdw=Cp.kx.KSz(1)
     !
     call self%free()
     self%dim=4
@@ -247,9 +268,38 @@ contains
     call self%put("Cup",sparse(Cup))
     call self%put("Cdw",sparse(Cdw))
     call self%put("P",sparse(kSz(2)))
-    self%sectors = sectors_list([0d0,1d0])
+    allocate(self%sectors(2))
+    self%sectors(1) = sectors_list([0d0,1d0])
+    self%sectors(2) = sectors_list([0d0,1d0])
   end function hubbard_site
 
+
+
+  !Fock =  [|0>,|1>]_dw x [|0>,|1>]_up reproduces the same as above
+  function hubbard_site_ud(uloc,xmu) result(self)
+    type(site)                         :: self
+    real(8)                            :: uloc
+    real(8)                            :: xmu
+    real(8),dimension(:,:),allocatable :: Hd
+    real(8),dimension(:,:),allocatable :: Cup,Cdw,Cp
+    !
+    call Init_LocalFock_Sectors(1,1)
+    !
+    Hd = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
+    Cp = build_C_operator(1,1)
+    !== identical for Up and Dw as it acts in reduced Fock space of a given spin
+    !
+    call self%free()
+    self%dim=4
+    call self%put("Hd",sparse(Hd)) !this is diagonal at the beginning
+    call self%put("Hup",sparse(dble(zeros(2,2))))
+    call self%put("Hdw",sparse(dble(zeros(2,2)))) 
+    call self%put("Cp",sparse(Cp))   !2x2 will break operators%is_valid()
+    call self%put("P",sparse(kSz(1))) !2x2
+    allocate(self%sectors(2))
+    self%sectors(1) = sectors_list([0d0,1d0])
+    self%sectors(2) = sectors_list([0d0,1d0])
+  end function hubbard_site_ud
 
 
 END MODULE SITES

@@ -2,13 +2,12 @@ program testHLOCAL
   USE SCIFOR
   USE HLOCAL
   implicit none
-
-
   integer :: Norb,Nspin
   real(8),dimension(:,:),allocatable   :: Docc,Cop,CDGop,Dens,Hlocal
   real(8),dimension(:,:,:),allocatable :: h0
   real(8),dimension(:,:),allocatable :: CdgC
 
+  
   Nspin=1
   Norb =1
   call Init_LocalFock_Sectors(Norb,Nspin)
@@ -22,39 +21,38 @@ program testHLOCAL
 
   print*,""
   print*,"C_up:"
-  Cop = build_C_operator(ispin=1,iorb=1)
+  Cop = build_C_operator(iorb=1,ispin=1)
   call print_mat(Cop)
-  call print_mat(kron(Cop,eye(2)))
+  call print_mat(kron(eye(2),Cop))
 
   print*,""
   print*,"C_dw:"
-  Cop = build_C_operator(ispin=2,iorb=1)
+  Cop = build_C_operator(iorb=1,ispin=2)
   call print_mat(Cop)
+  call print_mat(kron(Cop,dble(pauli_z)))
 
   print*,""
   print*,"CDG_up:"
-  CDGop = build_CDG_operator(ispin=1,iorb=1)
-  call print_mat(CDGop)
+  CDGop = build_CDG_operator(iorb=1,ispin=1)
+  call print_mat(transpose(kron(eye(2),Cop)))
 
   print*,""
   print*,"CDG_dw:"
-  CDGop = build_CDG_operator(ispin=2,iorb=1)
-  call print_mat(CDGop)
+  CDGop = build_CDG_operator(iorb=1,ispin=2)
+  call print_mat(transpose(kron(Cop,dble(pauli_z))))
 
 
   print*,""
   print*,"Dens_up:"
-  Dens = build_Dens_operator(ispin=1,iorb=1)
+  Dens = build_Dens_operator(iorb=1,ispin=1)
   call print_mat(dens)
-  print*,""
-  print*,"Dens_dw:"  
-  Dens = build_Dens_operator(ispin=2,iorb=1)
-  call print_mat(dens)
+  call print_mat(kron(eye(2),Dens))
 
   print*,""
-  print*,"Docc:"
-  docc = build_Docc_operator(iorb=1)
-  call print_mat(docc)
+  print*,"Dens_dw:"  
+  Dens = build_Dens_operator(iorb=1,ispin=2)
+  call print_mat(dens)
+  call print_mat(kron(Dens,eye(2)))
 
 
 contains

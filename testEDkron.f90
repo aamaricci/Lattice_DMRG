@@ -269,11 +269,11 @@ contains
        call enl_self%put("P"  , dot%operators%op("P").x.Id(mblock))
     end select
     !
-    self_basis = self%sectors%basis()
-    dot_basis  = dot%sectors%basis()
-    call enl_self%set_sectors( outsum(self_basis,dot_basis) )
-    !
-    deallocate(self_basis,dot_basis)
+    ! self_basis = self%sectors%basis()
+    ! dot_basis  = dot%sectors%basis()
+    ! call enl_self%set_sectors( outsum(self_basis,dot_basis) )
+    ! !
+    ! deallocate(self_basis,dot_basis)
   end function enlarge_block
 
 
@@ -319,37 +319,5 @@ contains
 
 
 
-
-
-
-
-
-  function to_upper(StrIn) result(StrOut)
-    character(len=*), intent(in) :: strIn
-    character(len=len(strIn))    :: strOut
-    integer :: i
-    do i = 1,len(StrIn)
-       select case(StrIn(i:i))
-       case("a":"z")
-          StrOut(i:i) = achar(iachar(StrIn(i:i))-32)
-       case default
-          StrOut(i:i) = StrIn(i:i)
-       end select
-    end do
-  end function to_upper
-
-  function to_lower(StrIn) result(StrOut)
-    character(len=*), intent(in) :: strIn
-    character(len=len(strIn))    :: strOut
-    integer :: i
-    do i = 1,len(StrIn)
-       select case(StrIn(i:i))
-       case("A":"Z")
-          StrOut(i:i) = achar(iachar(StrIn(i:i))+32)
-       case default
-          StrOut(i:i) = StrIn(i:i)
-       end select
-    end do
-  end function to_lower
-
+  
 end program testEDkron

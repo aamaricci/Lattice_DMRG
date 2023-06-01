@@ -4,9 +4,11 @@ program testLIST_SECTORS
   implicit none
 
   type(sectors_list)               :: a
+  type(sectors_list) :: b(2)
   integer,dimension(:),allocatable :: map,basis
   integer                          :: i
   real(8)                          :: qn
+
 
   print*,"TEST CONSTRUCTOR 1"
   print*,[3, 5, 5, 7, 3]
@@ -20,6 +22,14 @@ program testLIST_SECTORS
   call a%load([-1d0,0d0,0d0,1d0])
   call a%show()
   call a%free()
+
+
+  print*,size(b)
+  b(1) = sectors_list([3, 5, 5, 7, 3])
+  b(2) = sectors_list([3, 5, 5, 7, 3,10])
+  print*,size(b)
+  print*,size(b(1)),size(b(2))
+  call b%free()
 
   print*,"TEST APPEND:"
   call a%load([-1d0,0d0,0d0,1d0])
@@ -56,7 +66,7 @@ program testLIST_SECTORS
   basis = a%basis()
   print*,basis
 
-    
+
   deallocate(map)
   map= a%map(index=size(a))
   print*,"Curent:",allocated(map),map

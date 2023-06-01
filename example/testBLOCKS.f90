@@ -27,7 +27,7 @@ program testBLOCKS
   my_block=block(&
        length=1, &       
        dim=2,&
-       sectors=sectors_list([-0.5d0,0.5d0]),&
+       sectors=[sectors_list([-0.5d0,0.5d0])],&
        operators=operators_list(['H0','Sz','Sp'],&
        [sparse(Hzero),sparse(Sz),sparse(Splus)]))
   print*,"Showing the operator list:"
@@ -73,7 +73,7 @@ program testBLOCKS
 
 
   print*,"Test retrieve Sector: sect=a.sectors"
-  sect = a%sectors
+  sect = a%sectors(1)
   call sect%show()
   print*,""
 

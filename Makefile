@@ -5,8 +5,8 @@ SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
 
 #FFLAG=-ffree-line-length-none
-FFLAG = -O2 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
-#FFLAG = -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
+#FFLAG = -O2 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
+FFLAG = -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
 #FFLAG=-O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check -fsanitize=address -fdebug-aux-vars -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999
 
 OBJS     = AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o  LIST_SECTORS.o LIST_OPERATORS.o  SITES.o BLOCKS.o
@@ -43,8 +43,8 @@ operators: AUX_FUNCS.o MATRIX_SPARSE.o LIST_OPERATORS.o
 
 
 
-sites: MYOBJ=AUX_FUNCS.o MATRIX_SPARSE.o LIST_OPERATORS.o LIST_SECTORS.o SITES.o
-sites: AUX_FUNCS.o MATRIX_SPARSE.o LIST_OPERATORS.o LIST_SECTORS.o SITES.o
+sites: MYOBJ=AUX_FUNCS.o MATRIX_SPARSE.o LIST_OPERATORS.o LIST_SECTORS.o HLOCAL.o SITES.o
+sites: AUX_FUNCS.o MATRIX_SPARSE.o LIST_OPERATORS.o LIST_SECTORS.o HLOCAL.o SITES.o
 	${FC} $(FFLAG) ${MYOBJ} ./example/testSITES.f90 -o ./test/testSITES ${SF_INC} ${SF_LIB}
 
 blocks: $(OBJS)
@@ -53,10 +53,9 @@ blocks: $(OBJS)
 dmrg:  $(OBJS)
 	${FC} $(FFLAG) ${OBJS} ./test_iDMRG.f90 -o ./test/test_iDMRG ${SF_INC} ${SF_LIB}
 
-ed: MYOBJ=AUX_FUNCS.o MATRIX_BLOCKS.o
-ed:  AUX_FUNCS.o MATRIX_BLOCKS.o
-	${FC} $(FFLAG) $(MYOBJ) ./testEDnsites.f90 -o ./test/testEDnsites ${SF_INC} ${SF_LIB}
+ed:  $(OBJS)
 	${FC} $(FFLAG) ${OBJS} ./testEDkron.f90 -o ./test/testEDkron ${SF_INC} ${SF_LIB}
+	${FC} $(FFLAG) ${OBJS} ./testEDkronUD.f90 -o ./test/testEDkronUD ${SF_INC} ${SF_LIB}
 
 clean: 
 	@echo "Cleaning:"
