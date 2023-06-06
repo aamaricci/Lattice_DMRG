@@ -10,7 +10,9 @@ MODULE SITES
 
 
   type site
-     integer                                     :: dim=1
+     integer                                     :: Dim=1
+     integer                                     :: DimUp=1
+     integer                                     :: DimDw=1
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
    contains
@@ -55,12 +57,14 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_site(dim,sectors,operators) result(self)
-    integer,intent(in)              :: dim
+  function constructor_site(Dims,sectors,operators) result(self)
+    integer,intent(in)              :: Dims(2)
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(site)                      :: self
-    self%dim       = dim
+    self%DimUp     = Dims(1)
+    self%DimDw     = Dims(2)
+    self%Dim       = product(Dims)
     self%operators = operators
     allocate(self%sectors(size(sectors)))
     do i=1,size(self%sectors)
@@ -120,9 +124,9 @@ contains
   !PURPOSE:  Put a QN array in the site
   !+------------------------------------------------------------------+
   subroutine set_sectors_site(self,indx,vec)
-    class(site)                 :: self
-    integer                     :: indx
-    real(8),dimension(self%dim) :: vec
+    class(site)          :: self
+    integer              :: indx
+    real(8),dimension(:) :: vec
     if(indx<1.OR.indx>size(self%sectors))stop "SET_SECTORS_SITE ERROR: indx out of range"
     self%sectors(indx) = sectors_list(vec)
   end subroutine set_sectors_site
@@ -141,7 +145,9 @@ contains
     type(site),intent(inout) :: A
     type(site),intent(in)    :: B
     call A%free
-    A%dim       = B%dim
+    A%DimUp  = B%DimUp
+    A%DimDw  = B%DimDw
+    A%Dim    = B%Dim
     A%operators = B%operators
     allocate(A%sectors(size(B%sectors)))
     do i=1,size(A%sectors)
@@ -154,7 +160,7 @@ contains
     class(site)                           :: self
     logical                               :: bool
     integer,dimension(size(self%sectors)) :: Lvec
-    bool = self%operators%is_valid(self%dim)
+    bool = self%operators%is_valid([self%DimUp,self%DimDw])
     do i=1,size(self%sectors)
        Lvec = len(self%sectors(i))
     enddo
@@ -178,7 +184,9 @@ contains
     character(len=*),optional :: fmt
     character(len=32)         :: fmt_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
-    write(*,*)"Site Dim      =",self%dim
+    write(*,*)"Site DimUp    =",self%DimUp
+    write(*,*)"Site DimDw    =",self%DimDw
+    write(*,*)"Site Dim      =",self%Dim
     do i=1,size(self%sectors)
        write(*,*)"Site Sectors: ",i
        call self%sectors(i)%show()
@@ -202,7 +210,9 @@ contains
     real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
     real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
-    self%dim=2
+    self%DimUp=2
+    self%DimDw=1
+    self%Dim=2
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
     call self%put("Sp",sparse(Splus))
@@ -217,7 +227,9 @@ contains
     real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
     real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
-    self%dim=2
+    self%DimUp=2
+    self%DimDw=1
+    self%Dim=2
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
     call self%put("Sp",sparse(Splus))
@@ -239,7 +251,9 @@ contains
     Splus(2,3) = sqrt(2d0)
     !
     call self%free()
-    self%dim=3
+    self%DimUp=3
+    self%DimDw=1
+    self%Dim=3
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(Szeta))
     call self%put("Sp",sparse(Splus))
@@ -263,7 +277,9 @@ contains
     Cp  = build_C_operator(1,2);Cdw=Cp.kx.KSz(1)
     !
     call self%free()
-    self%dim=4
+    self%DimUp=2
+    self%DimDw=2
+    self%Dim=4
     call self%put("H",sparse(Hloc))
     call self%put("Cup",sparse(Cup))
     call self%put("Cdw",sparse(Cdw))
@@ -290,11 +306,13 @@ contains
     !== identical for Up and Dw as it acts in reduced Fock space of a given spin
     !
     call self%free()
-    self%dim=4
+    self%Dim=4
+    self%DimUp=2
+    self%DimDw=2
     call self%put("Hd",sparse(Hd)) !this is diagonal at the beginning
     call self%put("Hup",sparse(dble(zeros(2,2))))
     call self%put("Hdw",sparse(dble(zeros(2,2)))) 
-    call self%put("Cp",sparse(Cp))   !2x2 will break operators%is_valid()
+    call self%put("Cp",sparse(Cp))   !2x2 
     call self%put("P",sparse(kSz(1))) !2x2
     allocate(self%sectors(2))
     self%sectors(1) = sectors_list([0d0,1d0])

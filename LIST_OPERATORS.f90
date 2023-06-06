@@ -405,24 +405,34 @@ contains
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Check if operators_list is a valid one, ie the operators in the
-  ! dictionary have the same dimensions
+  ! dictionary have the right dimensions:
+  ! N = size(dim)
+  ! N=1 => shape(op)=[dim(1),dim(1)]
+  ! N>1 => shape(op)= [dim(1),dim(1)]&&...&&[dim(N),dim(N)].OR.[prod(dim),prod(dim)]
   !+------------------------------------------------------------------+
-  function is_valid_operators_list(self,dim) result(bool)
+  function is_valid_operators_list(self,dims) result(bool)
     class(operators_list),intent(inout) :: self
-    integer,optional                    :: dim
-    integer                             :: dim_,oshape(2)
-    logical                             :: bool
+    integer                             :: dims(:)
+    integer                             :: oshape(2),Ndim,i,dim
+    logical                             :: bool,bdim
     type(optype),pointer                :: c
     bool = .true.
-    dim_ = 0;if(present(dim))dim_=dim    
+    Ndim = size(dims)
     c => self%root%next
     do 
-       if(.not.associated(c))exit       
-       if(dim_==0)then
-          oshape = shape(c%ope)
-          dim_   = oshape(1)
+       if(.not.associated(c))exit
+       !This loop returns T if it exists at least on dim in dims
+       !corresponding to the shape of c%ope
+       dim  = product(dims)
+       bdim = (all(shape(c%ope) == [dim,dim]))
+       if(.not.bdim)then
+          do i=1,Ndim
+             dim  = dims(i)
+             bdim = bdim.OR.(all(shape(c%ope) == [dim,dim]))
+             if(bdim)exit
+          enddo
        endif
-       bool = bool.AND.(all(shape(c%ope) == [dim_,dim_]))
+       bool = bool.AND.bdim
        c => c%next
     enddo
     c=>null()
