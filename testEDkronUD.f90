@@ -23,7 +23,7 @@ program testEDkron
   real(8)                            :: gs_energy,target_Sz
   integer                            :: unit
   real(8),dimension(:,:),allocatable :: Hmatrix,Evecs,rho,rhoUP,rhoDW,rho2
-  real(8),dimension(:),allocatable   :: Evals
+  real(8),dimension(:),allocatable   :: Evals,ev,evUP,evDW
   type(sparse_matrix)       :: op
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
@@ -163,23 +163,20 @@ program testEDkron
      print*,i,Evals(i)
   enddo
 
-  allocate(rho(dimerL%dim,dimerL%dim));rho=0d0
-  rho = build_density_matrix(dimerL,dimerR,evecs(:,1))
+  rho = build_density_matrix(dimerL,dimerR,evecs(:,1),'left')
   where(abs(rho)<1d-10)rho=0d0
+  rhoUP = build_spin_density_matrix(dimerL,rho,'up')
+  rhoDW = build_spin_density_matrix(dimerL,rho,'dw')
   call spRho%load(rho)
   print*,shape(spRho)
   call spRho%spy("dimer_rho")
   call spRho%free()
 
-  allocate(rhoUP(dimerL%DimUp,dimerL%DimUp));rhoUP=0d0
-  rhoUP = build_density_matrix_UP(dimerL,rho)
   call spRho%load(rhoUP)
   print*,shape(spRho)
   call spRho%spy("dimer_rhoUP")
   call spRho%free()
 
-  allocate(rhoDW(dimerL%DimDw,dimerL%DimDw));rhoDW=0d0
-  rhoDW = build_density_matrix_DW(dimerL,rho)
   call spRho%load(rhoDW)
   print*,shape(spRho)
   call spRho%spy("dimer_rhoDW")
@@ -191,12 +188,40 @@ program testEDkron
   print*,shape(spRho)
   call spRho%spy("dimer_rho2")
   call spRho%free()
-
   print*,all(abs(rho-rho2)<1d-10)
+  deallocate(rho2)
 
-  deallocate(rho,rho2,rhoUP,rhoDW)
+  allocate(ev(dimerL%Dim))
+  allocate(evUP(dimerL%DimUp))
+  allocate(evDW(dimerL%DimDw))
+  call eigh(rho,ev)
+  call eigh(rhoUP,evUP)
+  call eigh(rhoDW,evDW)
+
+  call spRho%load(rho)
+  call spRho%spy("eigh_rho")
+  call spRho%free()
+
+  call spRho%load(rhoUP)
+  call spRho%spy("eigh_rhoUP")
+  call spRho%free()
+
+  call spRho%load(rhoDW)
+  call spRho%spy("eigh_rhoDW")
+  call spRho%free()
 
 
+  allocate(rho2(dimerL%dim,dimerL%dim));rho2=0d0
+  rho2 = kron(rhoDW,rhoUP)
+  call spRho%load(rho2)
+  call spRho%spy("eigh_rho2")
+  call spRho%free()
+  print*,all(abs(rho-rho2)<1d-10)
+  deallocate(rho2)
+
+  deallocate(rho,rhoUP,rhoDW)
+
+  stop
 
   deallocate(evals,evecs)
   print*,""
@@ -220,7 +245,7 @@ program testEDkron
   enddo
 
   allocate(rho(trimerL%dim,trimerL%dim));rho=0d0
-  rho = build_density_matrix(trimerL,trimerR,evecs(:,1))
+  rho = build_density_matrix(trimerL,trimerR,evecs(:,1),'left')
   where(abs(rho)<1d-10)rho=0d0
   call spRho%load(rho)
   print*,shape(spRho)
@@ -293,23 +318,21 @@ program testEDkron
      print*,i,Evals(i)
   enddo
 
-  allocate(rho(tetramerL%dim,tetramerL%dim));rho=0d0
-  rho = build_density_matrix(tetramerL,tetramerR,evecs(:,1))
+
+  rho = build_density_matrix(tetramerL,tetramerR,evecs(:,1),'left')
   where(abs(rho)<1d-10)rho=0d0
   call spRho%load(rho)
   print*,shape(spRho)
   call spRho%spy("tetramer_rho")
   call spRho%free()
 
-  allocate(rhoUP(tetramerL%DimUp,tetramerL%DimUp));rhoUP=0d0
-  rhoUP = build_density_matrix_UP(tetramerL,rho)
+  rhoUP = build_spin_density_matrix(tetramerL,rho,'up')
+  rhoDW = build_spin_density_matrix(tetramerL,rho,'dw')
   call spRho%load(rhoUP)
   print*,shape(spRho)
   call spRho%spy("tetramer_rhoUP")
   call spRho%free()
 
-  allocate(rhoDW(tetramerL%DimDw,tetramerL%DimDw));rhoDW=0d0
-  rhoDW = build_density_matrix_DW(tetramerL,rho)
   call spRho%load(rhoDW)
   print*,shape(spRho)
   call spRho%spy("tetramer_rhoDW")
@@ -327,6 +350,40 @@ program testEDkron
   deallocate(rho,rho2,rhoUP,rhoDW)
 
 
+  ! allocate(rho(tetramerL%dim,tetramerL%dim));rho=0d0
+  ! rho = build_density_matrix(tetramerL,tetramerR,evecs(:,1),'left')
+  ! where(abs(rho)<1d-10)rho=0d0
+  ! call spRho%load(rho)
+  ! print*,shape(spRho)
+  ! call spRho%spy("tetramer_rho")
+  ! call spRho%free()
+
+  ! allocate(rhoUP(tetramerL%DimUp,tetramerL%DimUp));rhoUP=0d0
+  ! rhoUP = build_density_matrix_UP(tetramerL,rho)
+  ! call spRho%load(rhoUP)
+  ! print*,shape(spRho)
+  ! call spRho%spy("tetramer_rhoUP")
+  ! call spRho%free()
+
+  ! allocate(rhoDW(tetramerL%DimDw,tetramerL%DimDw));rhoDW=0d0
+  ! rhoDW = build_density_matrix_DW(tetramerL,rho)
+  ! call spRho%load(rhoDW)
+  ! print*,shape(spRho)
+  ! call spRho%spy("tetramer_rhoDW")
+  ! call spRho%free()
+
+  ! allocate(rho2(tetramerL%dim,tetramerL%dim));rho2=0d0
+  ! rho2 = kron(rhoDW,rhoUP)
+  ! call spRho%load(rho2)
+  ! print*,shape(spRho)
+  ! call spRho%spy("tetramer_rho2")
+  ! call spRho%free()
+
+  ! print*,all(abs(rho-rho2)<1d-10)
+
+  ! deallocate(rho,rho2,rhoUP,rhoDW)
+
+
   deallocate(evals,evecs)
   print*,""
 
@@ -337,80 +394,151 @@ program testEDkron
 contains
 
 
-  function build_density_matrix(sys,env,psi) result(rho)
-    type(block),intent(in)                                     :: sys,env
-    integer                                                    :: DsysUp,DsysDw
-    integer                                                    :: DenvUp,DenvDw
-    real(8),dimension(:)                                       :: psi
-    real(8),dimension(sys%DimUp*env%DimUp,sys%DimDw*env%DimDw) :: rho2
-    real(8),dimension(sys%DimUp,env%DimUp,sys%DimDw,env%DimDw) :: rho4
-    real(8),dimension(sys%DimUp*sys%DimDw,env%DimUp*env%DimDw) :: rho
-    integer                                                    :: iup,idw,i2(2),j2(2)
-    integer                                                    :: s,sp,sup,sdw,spup,spdw,eup,edw
+  function build_density_matrix(sys,env,psi,direction) result(rho)
+    type(block),intent(in)                 :: sys,env
+    integer                                :: DsysUp,DsysDw
+    integer                                :: DenvUp,DenvDw
+    real(8),dimension(sys%Dim*env%Dim)     :: psi
+    character(len=*)                       :: direction
+    real(8),dimension(:,:),allocatable     :: rho  ![DsysUp*DsysDw,DenvUp*DenvDw] < output
+    real(8),dimension(:,:),allocatable     :: rho2 ![DsysUp*DenvUp,DsysDw*DenvDw]
+    real(8),dimension(:,:,:,:),allocatable :: rho4 ![DsysUp,DenvUp,DsysDw,DenvDw]
+    integer                                :: iup,idw,i2(2),j2(2)
+    integer                                :: s,sp,e,ep
+    integer                                :: sup,sdw,spup,spdw
+    integer                                :: eup,edw,epup,epdw
+    ! real(8),dimension(sys%DimUp*env%DimUp,sys%DimDw*env%DimDw) :: rho2
+    ! real(8),dimension(sys%DimUp,env%DimUp,sys%DimDw,env%DimDw) :: rho4
+    ! real(8),dimension(sys%DimUp*sys%DimDw,env%DimUp*env%DimDw) :: rho
+    !
+    if(allocated(rho))deallocate(rho)
     !
     DsysUp=sys%DimUp
     DsysDw=sys%DimDw
     DenvUp=env%DimUp
-    DenvDw=env%DimDw    
+    DenvDw=env%DimDw
+    !
+    allocate(rho2(DsysUp*DenvUp,DsysDw*DenvDw));rho2=0d0    
     rho2 = transpose(reshape(psi, [DenvDw*DsysDw,DenvUp*DsysUp]))
+    !
+    allocate(rho4(DsysUp,DenvUp,DsysDw,DenvDw));rho4=0d0    
     do concurrent (iup=1:DsysUp*DenvUp, idw=1:DsysDw*DenvDw)
        i2 = state2indices(iup,[DsysUp,DenvUp])
        j2 = state2indices(idw,[DsysDw,DenvDw])
        rho4(i2(1),i2(2),j2(1),j2(2)) = rho2(iup,idw)
     enddo
     !
-    rho = 0d0
-    do concurrent(s=1:DsysUp*DsysDw,sp=1:DsysUp*DsysDw)
-       i2 = state2indices(s,[DsysUp,DsysDw])
-       j2 = state2indices(sp,[DsysUp,DsysDw])
-       sup = i2(1);spup=j2(1)
-       sdw = i2(2);spdw=j2(2)       
-       do concurrent(eup=1:DenvUp,edw=1:DenvDw)
-          rho(s,sp) = rho(s,sp) + rho4(sup,eup,sdw,edw)*rho4(spup,eup,spdw,edw)
+    allocate(rho(DsysUp*DsysDw,DenvUp*DenvDw));rho=0d0
+    select case(to_lower(str(direction)))
+    case ('left','l')
+       do concurrent(s=1:DsysUp*DsysDw,sp=1:DsysUp*DsysDw)
+          i2 = state2indices(s,[DsysUp,DsysDw])
+          j2 = state2indices(sp,[DsysUp,DsysDw])
+          sup = i2(1);spup=j2(1)
+          sdw = i2(2);spdw=j2(2)       
+          do concurrent(eup=1:DenvUp,edw=1:DenvDw)
+             rho(s,sp) = rho(s,sp) + rho4(sup,eup,sdw,edw)*rho4(spup,eup,spdw,edw)
+          enddo
        enddo
-    enddo
+    case ('right','r')
+       do concurrent(e=1:DenvUp*DenvDw,ep=1:DenvUp*DenvDw)
+          i2 = state2indices(e,[DenvUp,DenvDw])
+          j2 = state2indices(ep,[DenvUp,DenvDw])
+          eup = i2(1);epup=j2(1)
+          edw = i2(2);epdw=j2(2)       
+          do concurrent(sup=1:DsysUp,sdw=1:DsysDw)
+             rho(e,ep) = rho(e,ep) + rho4(sup,eup,sdw,edw)*rho4(sup,epup,sdw,epdw)
+          enddo
+       enddo
+    end select
     !
   end function build_density_matrix
 
+  function build_spin_density_matrix(self,rho,spin) result(rhoS)
+    type(block),intent(in)                                         :: self
+    real(8),dimension(self%DimUp*self%DimDw,self%DimUp*self%DimDw) :: rho
+    character(len=*)                                               :: spin
+    integer                                                        :: DimUp,DimDw
+    real(8),dimension(:,:),allocatable                             :: rhoS
+    integer                                                        :: iup,idw,i2(2),j2(2)
+    integer                                                        :: s,sp,sup,sdw,spup,spdw
+    !
+    if(allocated(rhoS))deallocate(rhoS)
+    !
+    DimUp=self%DimUp
+    DimDw=self%DimDw
+    !
+    select case(to_lower(str(spin)))
+    case("up","u")
+       allocate(rhoS(DimUp,DimUp))
+       rhoS=0d0
+       do concurrent(sup=1:DimUp,spup=1:DimUp)
+          do concurrent(sdw=1:DimDw)
+             s  = indices2state([sup,sdw],[DimUp,DimDw])
+             sp = indices2state([spup,sdw],[DimUp,DimDw])
+             rhoS(sup,spup) = rhoS(sup,spup) + rho(s,sp)
+          enddo
+       enddo
+    case("dw","down","d")
+       allocate(rhoS(DimDw,DimDw))
+       rhoS = 0d0
+       do concurrent(sdw=1:DimDw,spdw=1:DimDw)
+          do concurrent(sup=1:DimUp)
+             s  = indices2state([sup,sdw],[DimUp,DimDw])
+             sp = indices2state([sup,spdw],[DimUp,DimDw])
+             rhoS(sdw,spdw) = rhoS(sdw,spdw) + rho(s,sp)
+          enddo
+       enddo
+    case default
+       stop "build_spin_density_matrix error: spin is not defined"
+    end select
+  end function build_spin_density_matrix
 
-  function build_density_matrix_UP(sys,rho) result(rhoUP)
-    type(block),intent(in)                                     :: sys
-    integer                                                    :: DsysUp,DsysDw
-    real(8),dimension(sys%DimUp*sys%DimDw,sys%DimUp*sys%DimDw) :: rho
-    real(8),dimension(sys%DimUp,sys%DimUp)                     :: rhoUP
-    integer                                                    :: iup,idw,i2(2),j2(2)
-    integer                                                    :: s,sp,sup,sdw,spup,spdw
+
+  function build_density_matrix_UP(self,rho) result(rhoUP)
+    type(block),intent(in)                                         :: self
+    integer                                                        :: DimUp,DimDw
+    real(8),dimension(self%DimUp*self%DimDw,self%DimUp*self%DimDw) :: rho
+    real(8),dimension(:,:),allocatable                             :: rhoUP ![DimUp,DimUp]
+    integer                                                        :: iup,idw,i2(2),j2(2)
+    integer                                                        :: s,sp,sup,sdw,spup,spdw
     !
-    DsysUp=sys%DimUp
-    DsysDw=sys%DimDw
+    if(allocated(rhoUP))deallocate(rhoUP)
     !
+    DimUp=self%DimUp
+    DimDw=self%DimDw
+    !
+    allocate(rhoUP(DimUp,DimUp))
     rhoUP=0d0
-    do concurrent(sup=1:DsysUp,spup=1:DsysUp)
-       do concurrent(sdw=1:DsysDw)
-          s  = indices2state([sup,sdw],[DsysUp,DsysDw])
-          sp = indices2state([spup,sdw],[DsysUp,DsysDw])
+    do concurrent(sup=1:DimUp,spup=1:DimUp)
+       do concurrent(sdw=1:DimDw)
+          s  = indices2state([sup,sdw],[DimUp,DimDw])
+          sp = indices2state([spup,sdw],[DimUp,DimDw])
           rhoUP(sup,spup) = rhoUP(sup,spup) + rho(s,sp)
        enddo
     enddo
   end function build_density_matrix_UP
 
 
-  function build_density_matrix_DW(sys,rho) result(rhoDW)
-    type(block),intent(in)                                     :: sys
-    integer                                                    :: DsysUp,DsysDw
-    real(8),dimension(sys%DimUp*sys%DimDw,sys%DimUp*sys%DimDw) :: rho
-    real(8),dimension(sys%DimDw,sys%DimDw)                     :: rhoDW
-    integer                                                    :: iup,idw,i2(2),j2(2)
-    integer                                                    :: s,sp,sup,sdw,spup,spdw
+  function build_density_matrix_DW(self,rho) result(rhoDW)
+    type(block),intent(in)                                         :: self
+    integer                                                        :: DimUp,DimDw
+    real(8),dimension(self%DimUp*self%DimDw,self%DimUp*self%DimDw) :: rho
+    real(8),dimension(:,:),allocatable                             :: rhoDW ![DimDw,DimDw]
+    integer                                                        :: iup,idw,i2(2),j2(2)
+    integer                                                        :: s,sp,sup,sdw,spup,spdw
     !
-    DsysUp=sys%DimUp
-    DsysDw=sys%DimDw
+    if(allocated(rhoDW))deallocate(rhoDW)
     !
+    DimUp=self%DimUp
+    DimDw=self%DimDw
+    !
+    allocate(rhoDW(DimDw,DimDw))
     rhoDW = 0d0
-    do concurrent(sdw=1:DsysDw,spdw=1:DsysDw)
-       do concurrent(sup=1:DsysUp)
-          s  = indices2state([sup,sdw],[DsysUp,DsysDw])
-          sp = indices2state([sup,spdw],[DsysUp,DsysDw])
+    do concurrent(sdw=1:DimDw,spdw=1:DimDw)
+       do concurrent(sup=1:DimUp)
+          s  = indices2state([sup,sdw],[DimUp,DimDw])
+          sp = indices2state([sup,spdw],[DimUp,DimDw])
           rhoDW(sdw,spdw) = rhoDW(sdw,spdw) + rho(s,sp)
        enddo
     enddo
