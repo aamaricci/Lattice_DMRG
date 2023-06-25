@@ -38,14 +38,14 @@ MODULE BLOCKS
      module procedure :: constructor_from_site
   end interface as_block
 
-  !EQUALITY 
-  interface assignment(=)
-     module procedure :: block_equal_block
-  end interface assignment(=)
+  ! !EQUALITY 
+  ! interface assignment(=)
+  !    module procedure :: block_equal_block
+  ! end interface assignment(=)
 
   public :: block
   public :: as_block
-  public :: assignment(=)
+  ! public :: assignment(=)
 
 
   integer :: i,j
@@ -181,11 +181,16 @@ contains
     class(block) :: self
     logical      :: bool
     integer,dimension(size(self%sectors)) :: Lvec
-    bool = self%operators%is_valid([self%DimUp,self%DimDw])
+    ! bool = self%operators%is_valid([self%DimUp,self%DimDw])
+    bool = self%operators%is_valid([self%Dim])
+    ! write(100,*)bool
     do i=1,size(self%sectors)
-       Lvec = len(self%sectors(i))
+       Lvec(i) = len(self%sectors(i))
+       ! write(100,*)i,Lvec(i)
     enddo
     bool=bool.AND.(self%dim==product(Lvec))
+    ! write(100,*)bool,self%dim,product(Lvec)
+    ! write(100,*)""
   end function is_valid_block
 
 
@@ -196,21 +201,28 @@ contains
   !              SHOW 
   !##################################################################
   !##################################################################
-  subroutine show_block(self,fmt)
+  subroutine show_block(self,fmt,wOP)
     class(block)              :: self
     character(len=*),optional :: fmt
+    logical,optional          :: wOP
     character(len=32)         :: fmt_
+    logical :: wOP_
+
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
+    wOP_=.true.;if(present(wOP))wOP_=wOP
     write(*,*)"Block Length  =",self%length
     write(*,*)"Block DimUp   =",self%DimUp
     write(*,*)"Block DimDw   =",self%DimDw
     write(*,*)"Block Dim     =",self%Dim
+    write(*,*)"Block Sectors =",size(self%sectors)
     do i=1,size(self%sectors)
-       write(*,*)"Block Sectors: ",i
+       write(*,*)"Block Sector: ",i
        call self%sectors(i)%show()
     enddo
-    write(*,*)"Block Operators:"
-    call self%operators%show(fmt=fmt_)
+    if(wOP_)then
+       write(*,*)"Block Operators:"
+       call self%operators%show(fmt=fmt_)
+    endif
   end subroutine show_block
 
 

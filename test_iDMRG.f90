@@ -87,7 +87,7 @@ contains
     character(len=*),optional        :: grow
     character(len=16)                :: grow_
     type(block)                      :: enl_self
-    integer                          :: mblock,len
+    integer                          :: mblock,len,iqn
     real(8),dimension(:),allocatable :: self_basis, dot_basis
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
@@ -113,11 +113,13 @@ contains
        call enl_self%put("P"  , dot%operators%op("P").x.Id(mblock))
     end select
     !
-    ! self_basis = self%sectors%basis()
-    ! dot_basis  = dot%sectors%basis()
-    ! call enl_self%set_sectors( outsum(self_basis,dot_basis) )
-    ! !
-    ! deallocate(self_basis,dot_basis)
+    allocate(enl_self%sectors(size(self%sectors)))
+    do iqn=1,size(self%sectors)       
+       self_basis = self%sectors(iqn)%basis()
+       dot_basis  = dot%sectors(iqn)%basis()
+       call enl_self%set_sectors( indx=iqn, vec=outsum(self_basis,dot_basis) )       
+       deallocate(self_basis,dot_basis)
+    enddo
   end function enlarge_block
 
 

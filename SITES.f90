@@ -262,7 +262,7 @@ contains
   end function spin_one_site
 
 
-  !Fock = [|0,0>,|0,1>,|1,0>,|1,1>] <- |up,dw> <- fill DW first = 1_dw x 1_up
+  !Fock = [|0,0>,|1,0>,|0,1>,|1,1>] <- |up,dw> <- cycle UP first 1_dw x 1_up
   function hubbard_site(uloc,xmu) result(self)
     type(site)                         :: self
     real(8)                            :: uloc

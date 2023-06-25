@@ -635,6 +635,26 @@ contains
 
 
 
+  subroutine print_conf(i,Ns,advance)
+    integer :: dim,i,j,unit_,Ntot,Ns,iup,idw
+    logical :: advance
+    integer :: ivec(2*Ns)
+    unit_=6
+    iup  = iup_index(i,2**Ns)
+    idw  = idw_index(i,2**Ns)
+    Ntot = 2*Ns
+    ivec = bdecomp(i,Ntot)
+    write(unit_,"(I3,1x,2I2)",advance="no")i,iup,idw
+    write(unit_,"(A1)",advance="no")"|"
+    write(unit_,"(10I1)",advance="no")(ivec(j),j=1,Ntot)
+    if(advance)then
+       write(unit_,"(A1)",advance="yes")">"
+    else
+       write(unit_,"(A1)",advance="no")">"
+    endif
+  end subroutine print_conf
+
+
 
 END MODULE HLOCAL
 

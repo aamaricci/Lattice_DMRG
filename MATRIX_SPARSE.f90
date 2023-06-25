@@ -26,7 +26,7 @@ MODULE MATRIX_SPARSE
      procedure,pass :: insert    => sp_insert_element
      procedure,pass :: get       => sp_get_element
      procedure,pass :: show      => sp_show_matrix
-     procedure,pass :: print     => sp_print_matrix
+     procedure,pass :: display   => sp_display_matrix
      procedure,pass :: spy       => sp_spy_matrix
      procedure,pass :: as_matrix => sp_as_matrix
      procedure,pass :: dgr       => sp_dgr_matrix
@@ -341,14 +341,16 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE: show matrix
   !+------------------------------------------------------------------+
-  subroutine sp_show_matrix(sparse,fmt)
+  subroutine sp_show_matrix(sparse,fmt,file)
     class(sparse_matrix)      :: sparse
-    character(len=*),optional :: fmt
+    character(len=*),optional :: fmt,file
     character(len=12)         :: fmt_
-    integer                   :: i,j,unit_,Ns,NN
+    integer                   :: unit_
+    integer                   :: i,j,Ns,NN
     character(len=64)         :: format
     real(8)                   :: val
     unit_=6
+    if(present(file))open(free_unit(unit_),file=str(file))
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
     format='('//str(fmt_)//',1x)'
     Ns=sparse%Nrow
@@ -359,27 +361,26 @@ contains
        enddo
        write(unit_,*)
     enddo
+    if(present(file))close(unit_)
   end subroutine sp_show_matrix
 
-  subroutine sp_print_matrix(sparse,file)
+  subroutine sp_display_matrix(sparse)
     class(sparse_matrix) :: sparse
-    character(len=*)     :: file
     integer              :: unit_
     integer              :: i,j,Ns
-    character(len=64)    :: fmt
+    character(len=20)    :: fmtR,fmtI
     real(8)              :: val
-    open(free_unit(unit_),file=str(file))
-    fmt='(ES10.3,1x)'
-    Ns=sparse%Nrow
+    unit_=6
+    fmtI='(I10)'
+    fmtR='(ES10.3)'
     do i=1,sparse%Nrow
-       do j=1,sparse%Ncol
-          val = sp_get_element(sparse,i,j)
-          write(unit_,"("//str(sparse%Ncol)//str(fmt)//")",advance='no')val
-       enddo
+       Ns = size(sparse%row(i)%cols)
+       if(Ns==0)cycle
+       write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
+       write(unit_,"("//str(Ns)//"(F10.2))",advance='yes')sparse%row(i)%vals
        write(unit_,*)
     enddo
-    close(unit_)
-  end subroutine sp_print_matrix
+  end subroutine sp_display_matrix
 
 
 
@@ -497,6 +498,7 @@ contains
              l = B%row(k)%cols(kcol)
              indx_col = l + (j-1)*B%Ncol
              jstate   = inv_states(indx_col)
+             if(jstate==0)cycle
              value    = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
              !
              call append(AxB%row(istate)%vals,value)

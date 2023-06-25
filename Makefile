@@ -53,10 +53,17 @@ blocks: $(OBJS)
 dmrg:  $(OBJS)
 	@echo "compiling test_iDMRG"
 	${FC} $(FFLAG) ${OBJS} ./test_iDMRG.f90 -o ./test/test_iDMRG ${SF_INC} ${SF_LIB}
+	${FC} $(FFLAG) ${OBJS} ./test_iDMRGqn.f90 -o ./test/test_iDMRGqn ${SF_INC} ${SF_LIB}
+
+
+qn:  $(OBJS)
+	@echo "compiling testQN"
+	${FC} $(FFLAG) ${OBJS} ./testQN.f90 -o ./test/testQN ${SF_INC} ${SF_LIB}
 
 ed:  $(OBJS)
 	@echo "compiling testEDkronUD"
-	${FC} $(FFLAG) ${OBJS} ./testEDkronUD.f90 -o ./test/testEDkronUD ${SF_INC} ${SF_LIB}
+	${FC} $(FFLAG) ${OBJS} example/testEDnsites.f90 -o ./test/testEDnsites ${SF_INC} ${SF_LIB}
+	${FC} $(FFLAG) ${OBJS} ./testEDkron.f90 -o ./test/testEDkron ${SF_INC} ${SF_LIB}
 
 clean: 
 	@echo "Cleaning:"

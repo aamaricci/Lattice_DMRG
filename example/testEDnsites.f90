@@ -43,12 +43,13 @@ MODULE Hsimple
 
   public :: Init_LocalFock
 
-  public :: Build_H_operator
+  public :: Build_H_operator,build_Hsector_operator
   public :: Build_C_Operator
   public :: Build_Cdg_Operator
   public :: Build_Dens_Operator
   public :: Build_Docc_Operator
-
+  public :: Show_LocalFock_sector
+  public :: local_fock_sector
 
   ! interface operator(.k.)
   !    module procedure :: d_kronecker_product
@@ -125,10 +126,10 @@ contains
        getDim(isector)  = DimUp*DimDw
     enddo
     !
-    do i=1,Nfock
-       call print_conf(i,Ns,.true.)
-    end do
-    print*,""
+    ! do i=1,Nfock
+    !    call print_conf(i,Ns,.true.)
+    ! end do
+    ! print*,""
     !
     return
   end subroutine Init_LocalFock
@@ -201,6 +202,67 @@ contains
     enddo
   end function build_H_operator
 
+  function build_Hsector_operator(isector,Hij,xmu,uloc) result(Hmat)
+    integer :: isector
+    real(8),dimension(:,:)             :: Hij ![Ns,Ns]
+    real(8)                            :: xmu,uloc
+    type(local_fock_sector)            :: sectorI
+    real(8),dimension(:,:),allocatable :: Hmat
+    real(8)                            :: htmp,sg1,sg2
+    integer                            :: i,j,m,k,k1,k2,io,jo
+    integer                            :: iup,idw,mup,mdw
+    integer                            :: nup(Ns),ndw(Ns),nvec(2*Ns)
+    logical                            :: Jcondition
+    !
+    call Build_LocalFock_Sector(isector,sectorI)
+    !
+    if(allocated(Hmat))deallocate(Hmat)
+    allocate(Hmat(sectorI%Dim,sectorI%Dim))
+    !
+    call assert_shape(Hij,[Ns,Ns],"build_hlocal_operator","Hloc")
+    !
+    !
+    Hmat=0d0
+    do i=1,sectorI%Dim
+       m    = sectorI%H(1)%map(i)
+       nvec = bdecomp(m,2*Ns)
+       nup  = nvec(1:Ns)
+       ndw  = nvec(Ns+1:2*Ns)
+       !
+       !LOCAL HAMILTONIAN PART:
+       htmp = 0d0
+       do io=1,Ns
+          htmp = htmp + Hij(io,io)*(nup(io)+ndw(io)) - xmu*(nup(io)+ndw(io))
+          htmp = htmp + Uloc*nup(io)*ndw(io) - 0.5d0*Uloc*(nup(io)+ndw(io))
+       enddo
+       Hmat(i,i)=Hmat(i,i) + htmp
+       !
+       !Non local part
+       do io=1,Ns
+          do jo=1,Ns
+             !UP electrons
+             Jcondition = (Hij(io,jo)/=zero) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
+             if (Jcondition) then
+                call c(jo,m,k1,sg1)
+                call cdg(io,k1,k,sg2)
+                htmp = Hij(io,jo)*sg1*sg2
+                j=binary_search(sectorI%H(1)%map,k)
+                Hmat(j,i) = Hmat(j,i)+htmp
+             endif
+             !DW electrons
+             Jcondition = (Hij(io,jo)/=zero) .AND. (Ndw(jo)==1) .AND. (Ndw(io)==0)
+             if (Jcondition) then
+                call c(jo+Ns,m,k1,sg1)
+                call cdg(io+Ns,k1,k,sg2)
+                htmp = Hij(io,jo)*sg1*sg2
+                j=binary_search(sectorI%H(1)%map,k)
+                Hmat(j,i) = Hmat(j,i)+htmp
+             endif
+          enddo
+       enddo
+       !
+    enddo
+  end function build_Hsector_operator
 
 
 
@@ -354,13 +416,43 @@ contains
           nup_ = popcnt(iup)
           if(nup_ /= self%Nups(1))cycle
           dim      = dim+1
-          self%H(1)%map(dim) = iup + idw*2**Ns          
+          self%H(1)%map(dim) = iup+1 + idw*2**Ns
        enddo
     enddo
     !
     self%status=.true.
     !
   end subroutine Build_LocalFock_Sector
+
+
+
+  subroutine Show_LocalFock_sector(isector)
+    integer,intent(in)                  :: isector
+    integer                             :: i,iup,idw,ipup,ipdw
+    integer                             :: nup_,ndw_,Nups(1),Ndws(1),Nup,Ndw
+    integer                             :: dim,iel,iimp,DimUps(1),DimDws(1),DimUp,DimDw
+    !
+    call get_Nup(isector,Nups);Nup=sum(Nups);
+    call get_Ndw(isector,Ndws);Ndw=sum(Ndws);
+    call get_DimUp(isector,DimUps);DimUp=product(DimUps);
+    call get_DimDw(isector,DimDws);DimDw=product(DimDws);
+    Dim=DimUp*DimDw
+    !
+    print*,"Nup,Ndw,Dim=",Nup,Ndw,Dim
+    !UP
+    do idw=0,2**Ns-1
+       if(popcnt(idw) /= ndw) cycle
+       do iup=0,2**Ns-1
+          if(popcnt(iup) /= nup) cycle
+          write(*,"(2I6,A1,I12)",advance='no')&
+               iup,idw,"-",iup+1 + idw*2**Ns
+          call print_conf(iup+1,Ns,.false.)
+          call print_conf(idw+1,Ns,.true.)
+       enddo
+    enddo
+    !
+  end subroutine Show_LocalFock_sector
+
 
 
 
@@ -567,23 +659,60 @@ contains
     nchoos = int(xh + 0.5d0)
   end function binomial
 
-
-  subroutine print_conf(i,Ns,advance)
-    integer :: dim,i,j,unit_,Ntot,Ns,iup,idw
-    logical :: advance
-    integer :: ivec(2*Ns)
-    unit_=6
-    iup  = iup_index(i,2**Ns)
-    idw  = idw_index(i,2**Ns)
-    Ntot = 2*Ns
-    ivec = bdecomp(i,Ntot)
-    write(unit_,"(I3,1x,2I2)",advance="no")i,iup,idw
-    write(unit_,"(A1)",advance="no")"|"
-    write(unit_,"(10I1)",advance="no")(ivec(j),j=1,Ntot)
-    if(advance)then
-       write(unit_,"(A1)",advance="yes")">"
+  !+------------------------------------------------------------------+
+  !PURPOSE : binary search of a value in an array
+  !+------------------------------------------------------------------+
+  recursive function binary_search(a,value) result(bsresult)
+    integer,intent(in) :: a(:), value
+    integer            :: bsresult, mid
+    mid = size(a)/2 + 1
+    if (size(a) == 0) then
+       bsresult = 0        ! not found
+       !stop "binary_search error: value not found"
+    else if (a(mid) > value) then
+       bsresult= binary_search(a(:mid-1), value)
+    else if (a(mid) < value) then
+       bsresult = binary_search(a(mid+1:), value)
+       if (bsresult /= 0) then
+          bsresult = mid + bsresult
+       end if
     else
-       write(unit_,"(A1)",advance="no")">"
+       bsresult = mid      ! SUCCESS!!
+    end if
+  end function binary_search
+
+
+
+  ! subroutine print_conf(i,Ns,advance)
+  !   integer :: dim,i,j,unit_,Ntot,Ns,iup,idw
+  !   logical :: advance
+  !   integer :: ivec(2*Ns)
+  !   unit_=6
+  !   iup  = iup_index(i,2**Ns)
+  !   idw  = idw_index(i,2**Ns)
+  !   Ntot = 2*Ns
+  !   ivec = bdecomp(i,Ntot)
+  !   write(unit_,"(I3,1x,2I3)",advance="no")i,iup,idw
+  !   write(unit_,"(A1)",advance="no")"|"
+  !   write(unit_,"("//str(Ntot)//"I1)",advance="no")(ivec(j),j=1,Ntot)
+  !   if(advance)then
+  !      write(unit_,"(A1)",advance="yes")">"
+  !   else
+  !      write(unit_,"(A1)",advance="no")">"
+  !   endif
+  ! end subroutine print_conf
+
+  subroutine print_conf(i,Ntot,advance)
+    integer :: dim,i,j,Ntot
+    logical :: advance
+    integer :: ivec(Ntot)
+    ivec = bdecomp(i,Ntot)
+    write(*,"(A1)",advance="no")"|"
+    write(*,"(10I1)",advance="no")(ivec(j),j=1,Ntot)
+    if(advance)then
+       write(*,"(A1)",advance="yes")">"
+    else
+       write(*,"(A1)",advance="no")">"
     endif
   end subroutine print_conf
 
@@ -652,24 +781,15 @@ program testEDnsites
   real(8),dimension(:,:),allocatable :: Cup,Cdw,Cdgup,Cdgdw,Hp,Hp2,P,A,B,C,D,HH
   real(8),dimension(2,2) :: Cp!,Sz,Id
   real(8)                            :: ts
-  integer                            :: i
+  integer                            :: i,isector
 
 
 
-
-  call parse_cmd_variable(nsites,"NSITES",default=1)
+  call parse_cmd_variable(nsites,"NSITES",default=4)
+  call parse_cmd_variable(isector,"ISECTOR",default=13)
   ts    = -1d0
+
   call Init_LocalFock(Nsites)
-
-
-
-  ! Id = pauli_0
-  ! Sz = pauli_z
-  Cp = (pauli_x+xi*pauli_y)/2d0
-
-
-
-
 
   allocate(Hij(Nsites,Nsites));Hij=0d0
   if(Nsites>1)then
@@ -680,18 +800,49 @@ program testEDnsites
      enddo
      Hij(Nsites,Nsites-1) = ts
   endif
-  call print_mat(Hij,"Hij")
+  ! call print_mat(Hij,"Hij",N=0)
 
 
 
-  H =  build_H_operator(hij=Hij,xmu=0d0,uloc=0d0)
-  call print_mat(H,"H")
+  print*,"Sector=",isector
+  call Show_LocalFock_sector(isector)
+  print*,""
+
+  H =  build_Hsector_operator(isector,hij=Hij,xmu=0d0,uloc=0d0)
+  call print_mat(H,"Hsector",N=0)
   allocate(evals(size(H,1)))
   call eigh(H,Evals)
-  do i=1,min(10,size(evals))
+  do i=1,min(16,size(evals))
      print*,i,Evals(i)
   enddo
   deallocate(evals)
+  stop
+
+
+
+
+
+
+  ! ! Id = pauli_0
+  ! ! Sz = pauli_z
+  ! Cp = (pauli_x+xi*pauli_y)/2d0
+
+
+
+
+
+
+
+
+
+  ! H =  build_H_operator(hij=Hij,xmu=0d0,uloc=0d0)
+  ! call print_mat(H,"H")
+  ! allocate(evals(size(H,1)))
+  ! call eigh(H,Evals)
+  ! do i=1,min(16,size(evals))
+  !    print*,i,Evals(i)
+  ! enddo
+  ! deallocate(evals)
 
 
 
@@ -768,13 +919,13 @@ program testEDnsites
 contains
 
 
-  subroutine print_mat(M,name,file)
+  subroutine print_mat(M,name,file,N)
     real(8),dimension(:,:) :: M
     character(len=*)       :: name
     logical,optional       :: file
     logical                :: file_
-    integer                :: i,j,stride,unit
-    stride=2**Nsites
+    integer                :: i,j,stride,unit,N
+    stride=2**N
     file_=.true.;if(present(file))file_=file
     unit=6
     if(file_)open(free_unit(unit),file=str(name)//".dat")
@@ -782,10 +933,10 @@ contains
     do i=1,size(M,1)
        do j=1,size(M,2)
           write(unit,"(("//str(stride)//"I2))",advance="no")int(M(i,j))
-          if(mod(j,stride)==0)write(unit,"(A1)",advance="no")""
+          if(n>0.and.mod(j,stride)==0)write(unit,"(A1)",advance="no")""
        enddo
        write(unit,*)
-       if(mod(i,stride)==0)write(unit,*)
+       if(n>0.and.mod(i,stride)==0)write(unit,*)
     enddo
     write(unit,*)""
     if(file_)close(unit)

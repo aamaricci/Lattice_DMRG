@@ -323,7 +323,7 @@ contains
     loop:do                            !traverse the list until QN is found
        if(.not.associated(c))exit
        if(present(qn))then
-          if (c%qn == qn) then
+          if(c%qn == qn) then
              ifound=.true.
              exit loop
           endif

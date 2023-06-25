@@ -17,7 +17,7 @@ program testEDkron
   integer                            :: lanc_niter
   real(8)                            :: lanc_tolerance
   integer                            :: lanc_threshold
-  type(block)                        :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR,left,right
+  type(block)                        :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR,left,right,tetramer
   type(sparse_matrix)                :: spHsb,spH
   type(site)                         :: dot
   real(8)                            :: gs_energy,target_Sz
@@ -55,15 +55,20 @@ program testEDkron
   !
   !Init block from single dot
   my_block=block(dot)
+  print*,"MY BLOCK = DOT"
   call my_block%show()
+  print*,""
 
+  
   print*,"o->o"
   dimer    = enlarge_block(my_block,dot,grow='left')
-  Hmatrix = as_matrix(dimer%operators%op("H"))
-  call print_mat(Hmatrix,"dimerH1",n=2)
+  print*,"DIMER"
+  call dimer%show()
+  Hmatrix  = as_matrix(dimer%operators%op("H"))
+  call print_mat(Hmatrix,"dimer_growH",n=2)
   allocate(Evals(4**2))
   call eigh(Hmatrix,Evals)
-  do i=1,min(4,size(evals))
+  do i=1,min(100,size(evals))
      print*,i,Evals(i)
   enddo
   deallocate(evals)
@@ -78,7 +83,7 @@ program testEDkron
   spHsb  = (left%operators%op("H").x.id(right%dim)) + (id(left%dim).x.right%operators%op("H")) + H2model(left,right)
   Hmatrix = as_matrix(spHsb)
   !
-  call print_mat(Hmatrix,"dimerH2",n=2)
+  call print_mat(Hmatrix,"dimer_Hsb",n=2)
   allocate(Evals(4**2))
   call eigh(Hmatrix,Evals)
   do i=1,min(4,size(evals))
@@ -89,7 +94,7 @@ program testEDkron
 
   sb_states = get_sb_states(left,right,[1,1])
   Hmatrix = as_matrix(spHsb)  
-  call print_mat(Hmatrix(sb_states,sb_states),"dimerH_sectorHF",n=1)
+  call print_mat(Hmatrix(sb_states,sb_states),"dimer_sectorHsb",n=1)
   allocate(Evals(4),Evecs(4,4))
   Evecs = Hmatrix(sb_states,sb_states)
   call print_mat(Evecs,"Evecs",n=1)
@@ -98,24 +103,25 @@ program testEDkron
      print*,i,Evals(i)
   enddo
   deallocate(evecs,evals)
+
+
+
+  print*,""
+  print*,""
   print*,""
 
 
-  ! !##################################################################
-  ! !##################################################################
-  ! stop
-  ! !##################################################################
-  ! !##################################################################
-
-
+  
 
   print*,"o--o--o->o"
   trimer   = enlarge_block(dimer,dot,grow='left')
-  my_block = enlarge_block(trimer,dot,grow='left')
-  Hmatrix  = as_matrix(my_block%operators%op("H"))
+  tetramer = enlarge_block(trimer,dot,grow='left')
+  call tetramer%show(wOP=.false.)
+  Hmatrix  = as_matrix(tetramer%operators%op("H"))
+  call print_mat(Hmatrix,"tetramer_H",n=4)
   allocate(Evals(4**4))
   call eigh(Hmatrix,Evals)
-  do i=1,min(4,size(evals))
+  do i=1,min(16,size(evals))
      print*,i,Evals(i)
   enddo
   deallocate(evals)
@@ -127,12 +133,14 @@ program testEDkron
   left  = enlarge_block(my_block,dot,grow='left')
   right = enlarge_block(my_block,dot,grow='right')
   !
-  spHsb  = (left%operators%op("H").x.id(right%dim)) + (id(left%dim).x.right%operators%op("H")) + H2model(left,right)
+  spHsb  = (left%operators%op("H").x.id(right%dim))
+  spHsb  = spHsb + (id(left%dim).x.right%operators%op("H")) 
+  spHsb  = spHsb + H2model(left,right)
   Hmatrix  = as_matrix(spHsb)
-  call print_mat(Hmatrix,"tetramerH",n=4)
+  call print_mat(Hmatrix,"tetramer_Hsb",n=4)
   allocate(Evals(4**4))
   call eigh(Hmatrix,Evals)
-  do i=1,min(4,size(evals))
+  do i=1,min(16,size(evals))
      print*,i,Evals(i)
   enddo
   deallocate(evals)
@@ -141,168 +149,20 @@ program testEDkron
 
   sb_states = get_sb_states(left,right,[2,2])
   m_sb      = size(sb_states)
-  Hmatrix = as_matrix(spHsb)
-  call print_mat(Hmatrix(sb_states,sb_states),"tetramerH_sectorHF",n=1)
+  !Hmatrix = as_matrix(spHsb)
+  Hmatrix  = as_matrix(tetramer%operators%op("H"))
+  call print_mat(Hmatrix(sb_states,sb_states),"tetramer_sectorHsb",n=0)
   allocate(Evals(m_sb),Evecs(m_sb,m_sb))
   Evecs = Hmatrix(sb_states,sb_states)
   call print_mat(Evecs,"Evecs",n=1)
   call eigh(Evecs,Evals)
-  do i=1,min(4,size(evals))
+  do i=1,min(16,size(evals))
      print*,i,Evals(i)
   enddo
   deallocate(evecs,evals)
   print*,""
 
 
-
-  !##################################################################
-  !##################################################################
-  stop
-  !##################################################################
-  !##################################################################
-
-
-
-
-  ! print*,"o--o->o"
-  ! trimer= enlarge_block(dimer,dot,grow='left')
-  ! Hmatrix = as_matrix(trimer%operators%op("H"))
-  ! allocate(Evals(4**3))
-  ! call eigh(Hmatrix,Evals)
-  ! do i=1,min(3,size(evals))
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals)
-  ! print*,""
-
-
-
-  ! print*,"o--o--o->o"
-  ! my_block= enlarge_block(trimer,dot,grow='left')
-  ! Hmatrix = as_matrix(my_block%operators%op("H"))
-  ! allocate(Evals(4**4))
-  ! call eigh(Hmatrix,Evals)
-  ! do i=1,min(3,size(evals))
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals)
-  ! print*,""
-
-
-  ! print*,"o--o--o--o->o"
-  ! dimer= enlarge_block(my_block,dot,grow='left')
-  ! Hmatrix = as_matrix(dimer%operators%op("H"))
-  ! allocate(Evals(4**5))
-  ! call eigh(Hmatrix,Evals)
-  ! do i=1,min(3,size(evals))
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals)
-  ! print*,""
-
-
-  ! print*,"o--o--o--o--o->o"
-  ! my_block= enlarge_block(dimer,dot,grow='left')
-  ! spHsb = my_block%operators%op("H")
-  ! allocate(Evals(2))
-  ! allocate(Evecs(4**6,2))
-  ! call sp_eigh(sb_HxV,evals,evecs,&
-  !      10,&
-  !      500,&
-  !      tol=1d-12,&
-  !      iverbose=.false.)
-  ! do i=1,2
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals,evecs)
-  ! print*,""
-
-
-
-
-  ! !Init block from single dot
-  ! my_block=block(dot)
-
-  ! print*,"o->o++o<-o"
-  ! dimerL = enlarge_block(my_block,dot,grow='left')
-  ! dimerR = enlarge_block(my_block,dot,grow='right')
-  ! spHsb  = (dimerL%operators%op("H").x.id(dimerR%dim)) + (id(dimerL%dim).x.dimerR%operators%op("H")) + H2model(dimerL,dimerR)
-  ! allocate(Evals(2))
-  ! allocate(Evecs(4**4,2))
-  ! call sp_eigh(sb_HxV,evals,evecs,&
-  !      10,&
-  !      500,&
-  !      tol=1d-12,&
-  !      iverbose=.false.)
-  ! do i=1,2
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals,evecs)
-  ! print*,""
-
-
-
-
-  ! print*,"o--o->o++o<-o--o"
-  ! trimerL = enlarge_block(dimerL,dot,grow='left')
-  ! trimerR = enlarge_block(dimerR,dot,grow='right')
-  ! spHsb  = (trimerL%operators%op("H").x.id(trimerR%dim)) + (id(trimerL%dim).x.trimerR%operators%op("H")) + H2model(trimerL,trimerR)
-  ! allocate(Evals(2))
-  ! allocate(Evecs(4**6,2))
-  ! call sp_eigh(sb_HxV,evals,evecs,&
-  !      10,&
-  !      500,&
-  !      tol=1d-12,&
-  !      iverbose=.false.)
-  ! do i=1,2
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals,evecs)
-  ! print*,""
-
-
-
-
-
-  ! stop
-
-  ! !Init block from single dot
-  ! my_block=block(dot)
-
-  ! print*,"o<-o"
-  ! dimer = enlarge_block(my_block,dot,grow='right')
-  ! Hmatrix = as_matrix(dimer%operators%op("H"))
-  ! allocate(Evals(4**2))
-  ! call eigh(Hmatrix,Evals)
-  ! do i=1,min(3,size(evals))
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals)
-  ! print*,""
-
-  ! print*,"o<-o--o"
-  ! trimer= enlarge_block(dimer,dot,grow='right')
-  ! Hmatrix = as_matrix(trimer%operators%op("H"))
-  ! allocate(Evals(4**3))
-  ! call eigh(Hmatrix,Evals)
-  ! do i=1,min(3,size(evals))
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals)
-  ! print*,""
-
-
-
-  ! print*,"o<-o--o--o"
-  ! my_block= enlarge_block(trimer,dot,grow='right')
-  ! Hmatrix = as_matrix(my_block%operators%op("H"))
-  ! allocate(Evals(4**4))
-  ! call eigh(Hmatrix,Evals)
-  ! do i=1,min(3,size(evals))
-  !    print*,i,Evals(i)
-  ! enddo
-  ! deallocate(evals)
-  ! print*,""
 
 
 
@@ -356,7 +216,8 @@ contains
                    do jup=1,size(right_map_up)
                       iright = right_map_up(jup) + (right_map_dw(jdw)-1)*right%DimUp
                       i=iright + (ileft-1)*right%Dim
-                      print*,ileft,iright,i
+                      print*,left_map_up(iup),left_map_dw(idw),"--",right_map_up(jup),right_map_dw(jdw)
+                      print*,ileft,":",iright,"=",i
                       call append(sb_states, i)
                       ! call sb_left_sector%append(qn=left_qn,istate=size(sb_states))
                    enddo
@@ -406,6 +267,8 @@ contains
     enl_self%DimUp  = self%DimUp*dot%DimUp
     enl_self%DimDw  = self%DimDw*dot%DimDw   !
     !
+    allocate(enl_self%sectors(size(self%sectors)))
+    !
     select case(str(grow_))
     case ("left","l")
        call enl_self%put("H", &
@@ -414,6 +277,13 @@ contains
        call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
        call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
        call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
+       do iqn=1,size(self%sectors)       
+          self_basis = self%sectors(iqn)%basis()
+          dot_basis  = dot%sectors(iqn)%basis()
+          print*,outsum(self_basis,dot_basis)
+          call enl_self%set_sectors( indx=iqn, vec=outsum(self_basis,dot_basis) )       
+          deallocate(self_basis,dot_basis)
+       enddo
     case ("right","r")
        call enl_self%put("H", &
             (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
@@ -421,16 +291,17 @@ contains
        call enl_self%put("Cup", dot%operators%op("Cup").x.Id(self%dim))
        call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
        call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
+       do iqn=1,size(self%sectors)       
+          self_basis = self%sectors(iqn)%basis()
+          dot_basis  = dot%sectors(iqn)%basis()
+          print*,outsum(dot_basis,self_basis)
+          call enl_self%set_sectors( indx=iqn, vec=outsum(dot_basis,self_basis) )       
+          deallocate(self_basis,dot_basis)
+       enddo
     end select
     !
-    allocate(enl_self%sectors(size(self%sectors)))
-    do iqn=1,size(self%sectors)       
-       self_basis = self%sectors(iqn)%basis()
-       dot_basis  = dot%sectors(iqn)%basis()
-       ! print*,outsum(self_basis,dot_basis)
-       call enl_self%set_sectors( indx=iqn, vec=outsum(self_basis,dot_basis) )       
-       deallocate(self_basis,dot_basis)
-    enddo
+
+
     !
   end function enlarge_block
 
@@ -443,13 +314,14 @@ contains
     type(sparse_matrix)           :: CupL,CdwL
     type(sparse_matrix)           :: CupR,CdwR
     type(sparse_matrix)           :: H2,P
-    P    = left%operators%op("P") 
+    P   = left%operators%op("P") 
     CupL = left%operators%op("Cup")
     CdwL = left%operators%op("Cdw")
     CupR = right%operators%op("Cup")
     CdwR = right%operators%op("Cdw")
-    H2 = ts*(matmul(CupL%t(),P).x.CupR) + ts*(matmul(CdwL%t(),P).x.CdwR)  
-    H2 = H2 + H2%dgr()
+    H2 =   ts*(matmul(CupL%t(),P).x.CupR) + ts*(matmul(CdwL%t(),P).x.CdwR)  &
+         - ts*(matmul(CupL,P).x.CupR%t()) - ts*(matmul(CdwL,P).x.CdwR%t())
+    ! H2 = H2 + H2%dgr()
     call CupL%free
     call CdwL%free
     call CupR%free
@@ -459,17 +331,17 @@ contains
   subroutine print_mat(M,name,n)
     real(8),dimension(:,:) :: M
     character(len=*) :: name
-    integer :: i,j,stride,unit,n
+    integer :: i,j,stride,unit,n    
     stride=2**n
     open(free_unit(unit),file=str(name)//".dat")
     write(unit,*)"Matrix: "//str(name)
     do i=1,size(M,1)
        do j=1,size(M,2)
           write(unit,"(("//str(stride)//"I2))",advance="no")int(M(i,j))
-          if(mod(j,stride)==0)write(unit,"(A1)",advance="no")""
+          if(n>0.and.mod(j,stride)==0)write(unit,"(A1)",advance="no")""
        enddo
        write(unit,*)
-       if(mod(i,stride)==0)write(unit,*)
+       if(n>0.and.mod(i,stride)==0)write(unit,*)
     enddo
     write(unit,*)""
     close(unit)
