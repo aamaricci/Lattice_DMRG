@@ -9,7 +9,7 @@ SF_LIB:=$(shell pkg-config --libs scifor)
 FFLAG = -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
 #FFLAG=-O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check -fsanitize=address -fdebug-aux-vars -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999
 
-OBJS     = AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o  LIST_SECTORS.o LIST_OPERATORS.o  SITES.o BLOCKS.o
+OBJS     = AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o TUPLE_BASIS.o LIST_SECTORS.o LIST_OPERATORS.o  SITES.o BLOCKS.o
 ##$ Extends the implicit support of the Makefile to .f90 files
 .SUFFIXES: .f90
 
@@ -32,8 +32,13 @@ matrix_blocks: AUX_FUNCS.o MATRIX_BLOCKS.o
 	${FC} $(FFLAG) $(MYOBJ) ./example/testMATRIX_BLOCKS.f90 -o ./test/testMATRIX_BLOCKS ${SF_INC} ${SF_LIB}
 
 
-sectors: MYOBJ=AUX_FUNCS.o LIST_SECTORS.o
-sectors: AUX_FUNCS.o LIST_SECTORS.o
+tuples: MYOBJ=AUX_FUNCS.o TUPLE_BASIS.o
+tuples: AUX_FUNCS.o TUPLE_BASIS.o
+	${FC} $(FFLAG) ${MYOBJ} ./example/testTUPLE_BASIS.f90 -o ./test/testTUPLE_BASIS ${SF_INC} ${SF_LIB}
+
+
+sectors: MYOBJ=AUX_FUNCS.o TUPLES.o LIST_SECTORS.o
+sectors: AUX_FUNCS.o TUPLES.o LIST_SECTORS.o
 	${FC} $(FFLAG) ${MYOBJ} ./example/testLIST_SECTORS.f90 -o ./test/testLIST_SECTORS ${SF_INC} ${SF_LIB}
 
 
