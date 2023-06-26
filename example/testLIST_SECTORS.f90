@@ -5,17 +5,19 @@ program testLIST_SECTORS
   USE LIST_SECTORS
   implicit none
 
-  type(sectors_list)               :: a
+  type(sectors_list)               :: a,dot,c
   type(sectors_list)               :: b(2)
   integer,dimension(:),allocatable :: map,qn
-  type(tbasis)                     :: vec1,vec2,vec3,basis
+  type(tbasis)                     :: vec1,vec2,vec3,basis,a_basis,dot_basis
   logical,dimension(:),allocatable :: mask
   integer                          :: i,j
 
   vec1 = tbasis([0,0, 1,0, 0,1, 1,1, 0,0, 0,1],Qdim=2)
-  vec2 = tbasis([0,0, 5,1, 5,1, 7,2, 0,0, 3,2],2)
+  vec3 = tbasis([0,0, 5,1, 5,1, 7,2, 0,0, 3,2],2)
+  vec2 = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
   print*,shape(vec1)
   print*,shape(vec2)
+  print*,shape(vec3)
 
   print*,"TEST CONSTRUCTOR 1: vec2"
   call vec2%show
@@ -83,5 +85,14 @@ program testLIST_SECTORS
   print*,"HAS_QN [5,23]:F"
   print*,a%has_qn([5d0,23d0])
 
+
+  print*,"TEST RETURN BASIS INTO A TUPLE_BASIS"    
+  a   = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )
+  dot = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )
+
+  basis = a%basis().o.dot%basis()
+  call basis%show()
+  c = sectors_list( basis)
+  call c%show()
 
 end program testLIST_SECTORS

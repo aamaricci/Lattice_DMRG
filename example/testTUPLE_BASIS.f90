@@ -6,7 +6,7 @@ program testTUPLE_BASIS
 
   integer,dimension(:),allocatable   :: qn
   integer                            :: i
-  type(tbasis)                       :: basis,a,b
+  type(tbasis)                       :: basis,a,b,v1,v2
   integer,dimension(:),allocatable   :: map
   real(8),dimension(:,:),allocatable :: tvec
   real(8),dimension(:),allocatable   :: array
@@ -88,6 +88,20 @@ program testTUPLE_BASIS
   print*,[0,0, 1,0, 0,1, 1,1, 0,0, 0,1]+[0,1, 1,1, 0,1, 0,0, 0,1, 0,0]
   print*,int(basis%flat())
 
+
+
+
+  print*,"TEST OUTSUM"
+  a = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
+  b = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
+  basis=a.o.b
+  call basis%show
+  print*,int(basis%flat())
+  print*,""
+  
+  call basis%free()
+  basis = tsum(a,b)
+  call basis%show
 contains
 
 

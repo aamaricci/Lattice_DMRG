@@ -46,10 +46,20 @@ MODULE TUPLE_BASIS
      module procedure :: sum_tbasis
   end interface operator (+)
 
+  !BASIS DIRECT SUM
+  interface operator(.o.)
+     module procedure :: outsum_tbasis
+  end interface operator(.o.)
+
+  interface tsum
+     module procedure :: outsum_tbasis
+  end interface tsum
+
   public :: tbasis
   public :: shape
+  public :: tsum
   public :: operator(+)
-
+  public :: operator(.o.)
 
 contains
 
@@ -273,7 +283,7 @@ contains
   end function shape_tbasis
 
 
- 
+
 
 
   !##################################################################
@@ -301,6 +311,31 @@ contains
   end function sum_tbasis
 
 
+
+  function outsum_tbasis(a,b) result(c)
+    type(tbasis), intent(in)  :: a,b
+    type(tbasis)              :: c
+    integer                   :: Na,Nb,Qdim,i,j,io
+    real(8),dimension(a%qdim) :: qn
+    if(a%qdim/=b%qdim)stop "sum_tbasis error: a.Qdim != b.Qdim"
+    !
+    call c%free()
+    !
+    Na   = a%size
+    Nb   = b%size
+    Qdim = a%qdim
+    !
+    c%size=Na*Nb
+    c%qdim=Qdim
+    allocate(c%basis(Na*Nb))
+    do i=1,Na
+       do j=1,Nb
+          io = j + (i-1)*Nb          
+          qn =  a%basis(i)%qn + b%basis(j)%qn
+          allocate(c%basis(io)%qn, source=qn)
+       enddo
+    enddo
+  end function outsum_tbasis
 
 
 

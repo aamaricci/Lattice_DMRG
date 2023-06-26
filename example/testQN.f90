@@ -3,6 +3,7 @@ program testEDkron
   USE AUX_FUNCS
   USE MATRIX_SPARSE, id=>sp_eye
   USE MATRIX_BLOCKS
+  USE TUPLE_BASIS
   USE LIST_OPERATORS
   USE LIST_SECTORS
   USE SITES
@@ -59,7 +60,7 @@ program testEDkron
   call my_block%show()
   print*,""
 
-  
+
   print*,"o->o"
   dimer    = enlarge_block(my_block,dot,grow='left')
   print*,"DIMER"
@@ -86,7 +87,7 @@ program testEDkron
   call print_mat(Hmatrix,"dimer_Hsb",n=2)
   allocate(Evals(4**2))
   call eigh(Hmatrix,Evals)
-  do i=1,min(4,size(evals))
+  do i=1,min(16,size(evals))
      print*,i,Evals(i)
   enddo
   deallocate(evals)
@@ -111,7 +112,7 @@ program testEDkron
   print*,""
 
 
-  
+
 
   print*,"o--o--o->o"
   trimer   = enlarge_block(dimer,dot,grow='left')
@@ -149,8 +150,7 @@ program testEDkron
 
   sb_states = get_sb_states(left,right,[2,2])
   m_sb      = size(sb_states)
-  !Hmatrix = as_matrix(spHsb)
-  Hmatrix  = as_matrix(tetramer%operators%op("H"))
+  Hmatrix = as_matrix(spHsb)
   call print_mat(Hmatrix(sb_states,sb_states),"tetramer_sectorHsb",n=0)
   allocate(Evals(m_sb),Evecs(m_sb,m_sb))
   Evecs = Hmatrix(sb_states,sb_states)
@@ -173,99 +173,22 @@ program testEDkron
 contains
 
 
-  function get_sb_states(left,right,target_qn) result(sb_states)
-    type(block)                      :: left,right
-    integer,dimension(2)             :: target_qn
-    integer,dimension(:),allocatable :: sb_states
-    !
-    real(8)                          :: left_qn,right_qn,sb_qn
-    real(8)                          :: left_qn_dw,right_qn_dw
-    real(8)                          :: left_qn_up,right_qn_up
-    integer,dimension(:),allocatable :: left_map,right_map,sb_map,states
-    integer,dimension(:),allocatable :: left_map_dw,right_map_dw
-    integer,dimension(:),allocatable :: left_map_up,right_map_up
-    integer,dimension(:),allocatable :: sb_states_up,sb_states_dw
-    integer                          :: m_sb
-    integer                          :: m_left,m_right,Nleft,Nright
-    integer                          :: ileft,ileft_up,ileft_dw
-    integer                          :: iright,iright_up,iright_dw
-    integer                          :: iup,idw,jup,jdw
-    integer                          :: i,j,iqn,Ncv,im
-
-    if(allocated(sb_states))deallocate(sb_states)
-    do ileft_dw=1,size(left%sectors(2))
-       left_qn_dw = left%sectors(2)%qn(index=ileft_dw)
-       right_qn_dw = target_qn(2) - left_qn_dw
-       if(.not.right%sectors(2)%has_qn(right_qn_dw))cycle
-       do ileft_up=1,size(left%sectors(1))
-          left_qn_up = left%sectors(1)%qn(index=ileft_up)
-          right_qn_up = target_qn(1) - left_qn_up
-          if(.not.right%sectors(1)%has_qn(right_qn_up))cycle
-          !
-          left_map_up = left%sectors(1)%map(qn=left_qn_up)
-          left_map_dw = left%sectors(2)%map(qn=left_qn_dw)
-          right_map_up= right%sectors(1)%map(qn=right_qn_up)
-          right_map_dw= right%sectors(2)%map(qn=right_qn_dw)
-          !
-          print*,left_qn_up,left_qn_dw,"|",right_qn_up,right_qn_dw
-          do idw=1,size(left_map_dw)
-             do iup=1,size(left_map_up)
-                ileft = left_map_up(iup) + (left_map_dw(idw)-1)*left%DimUp
-                !
-                do jdw=1,size(right_map_dw)
-                   do jup=1,size(right_map_up)
-                      iright = right_map_up(jup) + (right_map_dw(jdw)-1)*right%DimUp
-                      i=iright + (ileft-1)*right%Dim
-                      print*,left_map_up(iup),left_map_dw(idw),"--",right_map_up(jup),right_map_dw(jdw)
-                      print*,ileft,":",iright,"=",i
-                      call append(sb_states, i)
-                      ! call sb_left_sector%append(qn=left_qn,istate=size(sb_states))
-                   enddo
-                enddo
-             enddo
-          enddo
-          print*,""
-       enddo
-    enddo
-    !
-    m_sb = size(sb_states)
-    print*,sb_states
-    !
-  end function get_sb_states
-
-
-  subroutine sb_HxV(Nloc,v,Hv)
-    integer                 :: Nloc
-    real(8),dimension(Nloc) :: v
-    real(8),dimension(Nloc) :: Hv
-    real(8)                 :: val
-    integer                 :: i,j,jcol
-    Hv=0d0
-    do i=1,Nloc
-       matmul: do jcol=1, spHsb%row(i)%Size
-          val = spHsb%row(i)%vals(jcol)
-          j   = spHsb%row(i)%cols(jcol)
-          Hv(i) = Hv(i) + val*v(j)
-       end do matmul
-    end do
-  end subroutine sb_HxV
-
-
   function enlarge_block(self,dot,grow) result(enl_self)
-    type(block),intent(inout)        :: self
-    type(site)                       :: dot
-    character(len=*),optional        :: grow
-    character(len=16)                :: grow_
-    type(block)                      :: enl_self
-    real(8),dimension(:),allocatable :: self_basis,dot_basis
-    integer :: iqn
+    type(block),intent(inout) :: self
+    type(site)                :: dot
+    character(len=*),optional :: grow
+    character(len=16)         :: grow_
+    type(block)               :: enl_self
+    type(tbasis)              :: self_basis,dot_basis,enl_basis
+    integer                   :: iqn
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
+    allocate(enl_self%Dims(2))
+    !
     enl_self%length = self%length + 1
     enl_self%Dim    = self%Dim*dot%Dim
-    enl_self%DimUp  = self%DimUp*dot%DimUp
-    enl_self%DimDw  = self%DimDw*dot%DimDw   !
+    enl_self%Dims   = self%Dims*dot%Dims
     !
     allocate(enl_self%sectors(size(self%sectors)))
     !
@@ -277,13 +200,11 @@ contains
        call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
        call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
        call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
-       do iqn=1,size(self%sectors)       
-          self_basis = self%sectors(iqn)%basis()
-          dot_basis  = dot%sectors(iqn)%basis()
-          print*,outsum(self_basis,dot_basis)
-          call enl_self%set_sectors( indx=iqn, vec=outsum(self_basis,dot_basis) )       
-          deallocate(self_basis,dot_basis)
+       do iqn=1,size(self%sectors)
+          enl_basis = self%sectors(iqn)%basis().o.dot%sectors(iqn)%basis()
+          call enl_self%set_basis( indx=iqn,  basis=enl_basis )       
        enddo
+       !
     case ("right","r")
        call enl_self%put("H", &
             (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
@@ -292,16 +213,11 @@ contains
        call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
        call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
        do iqn=1,size(self%sectors)       
-          self_basis = self%sectors(iqn)%basis()
-          dot_basis  = dot%sectors(iqn)%basis()
-          print*,outsum(dot_basis,self_basis)
-          call enl_self%set_sectors( indx=iqn, vec=outsum(dot_basis,self_basis) )       
-          deallocate(self_basis,dot_basis)
+          enl_basis = dot%sectors(iqn)%basis().o.self%sectors(iqn)%basis()
+          call enl_self%set_basis( indx=iqn,  basis=enl_basis )       
        enddo
+       !
     end select
-    !
-
-
     !
   end function enlarge_block
 
@@ -328,6 +244,71 @@ contains
     call CdwR%free
   end function H2model
 
+
+
+  function get_sb_states(left,right,target_qn) result(sb_states)
+    type(block)                      :: left,right
+    integer,dimension(2)             :: target_qn
+    integer,dimension(:),allocatable :: sb_states
+
+    integer :: ileft,iright
+    real(8),dimension(:),allocatable :: left_qn,right_qn
+    integer,dimension(:),allocatable :: left_map,right_map,sb_map,states
+
+    integer,dimension(:),allocatable :: sb_states_up,sb_states_dw
+    integer                          :: m_sb
+    integer                          :: m_left,m_right,Nleft,Nright
+    integer                          :: iup,idw,jup,jdw
+    integer                          :: i,j,istate,Ncv,im
+
+    if(allocated(sb_states))deallocate(sb_states)
+    
+    do ileft=1,size(left%sectors(1))
+       left_qn  = left%sectors(1)%qn(index=ileft)
+       right_qn = target_qn - left_qn
+       if(.not.right%sectors(1)%has_qn(right_qn))cycle
+       !
+       left_map = left%sectors(1)%map(qn=left_qn)
+       right_map= right%sectors(1)%map(qn=right_qn)
+       !
+       print*,left_qn,"|",right_qn
+       do i=1,size(left_map)
+          do j=1,size(right_map)
+             istate=right_map(j) + (left_map(i)-1)*right%Dim
+             print*,left_map(i),":",right_map(j),"=",istate
+             call append(sb_states, istate)
+             ! call sb_left_sector%append(qn=left_qn,istate=size(sb_states))
+          enddo
+          print*,""
+       enddo
+    enddo
+    !
+    m_sb = size(sb_states)
+    print*,sb_states
+    !
+  end function get_sb_states
+
+
+
+
+
+  subroutine sb_HxV(Nloc,v,Hv)
+    integer                 :: Nloc
+    real(8),dimension(Nloc) :: v
+    real(8),dimension(Nloc) :: Hv
+    real(8)                 :: val
+    integer                 :: i,j,jcol
+    Hv=0d0
+    do i=1,Nloc
+       matmul: do jcol=1, spHsb%row(i)%Size
+          val = spHsb%row(i)%vals(jcol)
+          j   = spHsb%row(i)%cols(jcol)
+          Hv(i) = Hv(i) + val*v(j)
+       end do matmul
+    end do
+  end subroutine sb_HxV
+
+
   subroutine print_mat(M,name,n)
     real(8),dimension(:,:) :: M
     character(len=*) :: name
@@ -350,7 +331,7 @@ contains
 
 
 
-end program
+end program testEDkron
 
 
 

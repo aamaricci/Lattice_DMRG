@@ -2,6 +2,7 @@ MODULE SITES
   USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,xi,operator(.kx.)
   USE AUX_FUNCS
   USE MATRIX_SPARSE
+  USE TUPLE_BASIS
   USE LIST_OPERATORS
   USE LIST_SECTORS
   USE HLOCAL
@@ -11,15 +12,14 @@ MODULE SITES
 
   type site
      integer                                     :: Dim=1
-     integer                                     :: DimUp=1
-     integer                                     :: DimDw=1
+     integer,dimension(:),allocatable            :: Dims
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
    contains
      procedure,pass     :: free        => free_site
      procedure,pass     :: put         => put_op_site
      procedure,pass     :: load        => load_op_site
-     procedure,pass     :: set_sectors => set_sectors_site
+     procedure,pass     :: set_basis   => set_basis_site
      procedure,pass     :: show        => show_site
      procedure,pass     :: is_valid    => is_valid_site
   end type site
@@ -55,15 +55,31 @@ contains
   !##################################################################
   !##################################################################
   !+------------------------------------------------------------------+
+  !PURPOSE:  Destructor
+  !+------------------------------------------------------------------+
+  subroutine free_site(self)
+    class(site) :: self
+    if(allocated(self%dims))deallocate(self%dims)
+    self%dim   = 1
+    call self%operators%free()
+    if(allocated(self%sectors))then
+       call self%sectors%free()
+       deallocate(self%sectors)
+    endif
+  end subroutine free_site
+
+
+
+  !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
   function constructor_site(Dims,sectors,operators) result(self)
-    integer,intent(in)              :: Dims(2)
+    integer,intent(in)              :: Dims(:)
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(site)                      :: self
-    self%DimUp     = Dims(1)
-    self%DimDw     = Dims(2)
+    allocate(self%dims(size(dims)))
+    self%Dims      = dims
     self%Dim       = product(Dims)
     self%operators = operators
     allocate(self%sectors(size(sectors)))
@@ -74,18 +90,6 @@ contains
 
 
 
-  !+------------------------------------------------------------------+
-  !PURPOSE:  Destructor
-  !+------------------------------------------------------------------+
-  subroutine free_site(self)
-    class(site) :: self
-    self%dim   = 1
-    call self%operators%free()
-    if(allocated(self%sectors))then
-       call self%sectors%free()
-       deallocate(self%sectors)
-    endif
-  end subroutine free_site
 
 
 
@@ -123,13 +127,15 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Put a QN array in the site
   !+------------------------------------------------------------------+
-  subroutine set_sectors_site(self,indx,vec)
+  subroutine set_basis_site(self,basis,indx)
     class(site)          :: self
-    integer              :: indx
-    real(8),dimension(:) :: vec
-    if(indx<1.OR.indx>size(self%sectors))stop "SET_SECTORS_SITE ERROR: indx out of range"
-    self%sectors(indx) = sectors_list(vec)
-  end subroutine set_sectors_site
+    type(tbasis)         :: basis
+    integer,optional     :: indx
+    integer              :: indx_
+    indx_=1;if(present(indx))indx_=indx
+    if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_SITE ERROR: indx out of range"
+    self%sectors(indx) = sectors_list( basis )
+  end subroutine set_basis_site
 
 
 
@@ -145,9 +151,8 @@ contains
     type(site),intent(inout) :: A
     type(site),intent(in)    :: B
     call A%free
-    A%DimUp  = B%DimUp
-    A%DimDw  = B%DimDw
-    A%Dim    = B%Dim
+    allocate(A%Dims, source=B%Dims)
+    A%Dim       = B%Dim
     A%operators = B%operators
     allocate(A%sectors(size(B%sectors)))
     do i=1,size(A%sectors)
@@ -160,7 +165,7 @@ contains
     class(site)                           :: self
     logical                               :: bool
     integer,dimension(size(self%sectors)) :: Lvec
-    bool = self%operators%is_valid([self%DimUp,self%DimDw])
+    bool = self%operators%is_valid([self%Dims])
     do i=1,size(self%sectors)
        Lvec = len(self%sectors(i))
     enddo
@@ -184,14 +189,13 @@ contains
     character(len=*),optional :: fmt
     character(len=32)         :: fmt_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
-    write(*,*)"Site DimUp    =",self%DimUp
-    write(*,*)"Site DimDw    =",self%DimDw
-    write(*,*)"Site Dim      =",self%Dim
+    write(*,"(A14,"//str(size(self%dims))//"I6)")"Site Dims    =",self%Dims
+    write(*,"(A14,I6)")"Site Dim     =",self%Dim
     do i=1,size(self%sectors)
-       write(*,*)"Site Sectors: ",i
+       write(*,"(A14,I6)")"Site Sectors =",i
        call self%sectors(i)%show()
     enddo
-    write(*,*)"Site Operators:"
+    write(*,"(A14)")"Site Ops     ="
     call self%operators%show(fmt=fmt_)
   end subroutine show_site
 
@@ -210,14 +214,14 @@ contains
     real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
     real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
-    self%DimUp=2
-    self%DimDw=1
-    self%Dim=2
+    allocate(self%Dims(1))
+    self%Dims=[2]
+    self%Dim = 2
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
     call self%put("Sp",sparse(Splus))
     allocate(self%sectors(1))
-    self%sectors(1) = sectors_list([0.5d0,-0.5d0])
+    self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
   end function pauli_site
 
 
@@ -227,14 +231,14 @@ contains
     real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
     real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
-    self%DimUp=2
-    self%DimDw=1
-    self%Dim=2
+    allocate(self%Dims(1))
+    self%Dims=[2]
+    self%Dim = 2
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
     call self%put("Sp",sparse(Splus))
     allocate(self%sectors(1))
-    self%sectors(1) = sectors_list([0.5d0,-0.5d0])
+    self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
   end function spin_onehalf_site
 
 
@@ -251,14 +255,14 @@ contains
     Splus(2,3) = sqrt(2d0)
     !
     call self%free()
-    self%DimUp=3
-    self%DimDw=1
-    self%Dim=3
+    allocate(self%Dims(1))
+    self%Dims=[3]
+    self%Dim = 3
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(Szeta))
     call self%put("Sp",sparse(Splus))
     allocate(self%sectors(1))
-    self%sectors(1) = sectors_list([-1d0,0d0,1d0])
+    self%sectors(1) = sectors_list( tbasis([-1d0,0d0,1d0],qdim=1) )
   end function spin_one_site
 
 
@@ -277,16 +281,15 @@ contains
     Cp  = build_C_operator(1,2);Cdw=Cp.kx.KSz(1)
     !
     call self%free()
-    self%DimUp=2
-    self%DimDw=2
-    self%Dim=4
+    allocate(self%Dims(2))
+    self%Dims=[2,2]
+    self%Dim = 4
     call self%put("H",sparse(Hloc))
     call self%put("Cup",sparse(Cup))
     call self%put("Cdw",sparse(Cdw))
     call self%put("P",sparse(kSz(2)))
-    allocate(self%sectors(2))
-    self%sectors(1) = sectors_list([0d0,1d0])
-    self%sectors(2) = sectors_list([0d0,1d0])
+    allocate(self%sectors(1))
+    self%sectors(1) = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )    
   end function hubbard_site
 
 
@@ -306,17 +309,17 @@ contains
     !== identical for Up and Dw as it acts in reduced Fock space of a given spin
     !
     call self%free()
-    self%Dim=4
-    self%DimUp=2
-    self%DimDw=2
+    allocate(self%dims(2))
+    self%Dims = [2,2]
+    self%Dim  = 4
     call self%put("Hd",sparse(Hd)) !this is diagonal at the beginning
     call self%put("Hup",sparse(dble(zeros(2,2))))
     call self%put("Hdw",sparse(dble(zeros(2,2)))) 
     call self%put("Cp",sparse(Cp))   !2x2 
     call self%put("P",sparse(kSz(1))) !2x2
     allocate(self%sectors(2))
-    self%sectors(1) = sectors_list([0d0,1d0])
-    self%sectors(2) = sectors_list([0d0,1d0])
+    self%sectors(1) = sectors_list( tbasis([0d0,1d0], qdim=1) )
+    self%sectors(2) = sectors_list( tbasis([0d0,1d0], qdim=1) )
   end function hubbard_site_ud
 
 
