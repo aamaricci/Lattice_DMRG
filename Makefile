@@ -37,8 +37,8 @@ tuples: AUX_FUNCS.o TUPLE_BASIS.o
 	${FC} $(FFLAG) ${MYOBJ} ./example/testTUPLE_BASIS.f90 -o ./test/testTUPLE_BASIS ${SF_INC} ${SF_LIB}
 
 
-sectors: MYOBJ=AUX_FUNCS.o TUPLES.o LIST_SECTORS.o
-sectors: AUX_FUNCS.o TUPLES.o LIST_SECTORS.o
+sectors: MYOBJ=AUX_FUNCS.o TUPLE_BASIS.o LIST_SECTORS.o
+sectors: AUX_FUNCS.o TUPLE_BASIS.o LIST_SECTORS.o
 	${FC} $(FFLAG) ${MYOBJ} ./example/testLIST_SECTORS.f90 -o ./test/testLIST_SECTORS ${SF_INC} ${SF_LIB}
 
 

@@ -4,9 +4,8 @@ program testTUPLE_BASIS
   USE TUPLE_BASIS
   implicit none
 
-  integer,parameter                  :: Nqn=2  
-  integer,dimension(Nqn)             :: qn
-
+  integer,dimension(:),allocatable   :: qn
+  integer                            :: i
   type(tbasis)                       :: basis,a,b
   integer,dimension(:),allocatable   :: map
   real(8),dimension(:,:),allocatable :: tvec
@@ -19,8 +18,17 @@ program testTUPLE_BASIS
   qn  = [0,0]
   basis = tbasis([0,0, 1,0, 0,1, 1,1, 0,0, 0,1],Qdim=2)
   call basis%show
-  print*,shape(basis)
+  print*,"shape:",shape(basis)
+  print*,"size :",basis%size
+  print*,""
 
+
+  print*,"TEST GET QN"
+  do i=1,basis%size
+     qn = basis%qn(i)
+     print*,"QN:",qn
+  enddo
+  print*,""
 
 
 
@@ -61,6 +69,7 @@ program testTUPLE_BASIS
   call basis%show
   print*,shape(basis)
 
+
   print*,"TEST DUMP"
   tvec = basis%dump()
   call show_tvec(tvec)
@@ -78,7 +87,7 @@ program testTUPLE_BASIS
   call basis%show
   print*,[0,0, 1,0, 0,1, 1,1, 0,0, 0,1]+[0,1, 1,1, 0,1, 0,0, 0,1, 0,0]
   print*,int(basis%flat())
-  
+
 contains
 
 

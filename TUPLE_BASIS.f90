@@ -16,11 +16,13 @@ MODULE TUPLE_BASIS
   type tbasis
      type(tuple),dimension(:),allocatable :: basis
      integer                              :: qdim=0
+     integer                              :: size=0
    contains
      procedure,pass      :: free     => free_tbasis     !destructor
      procedure,pass      :: dimq     => dimq_tbasis     !return qdim of the QN tuples
      procedure,pass      :: dump     => dump_tbasis     !dump basis to a rank-2 array [Nbasis,Qdim]
-     procedure,pass      :: flat     => flat_tbasis     !flat basis to a rank-1 array as used to create the basis
+     procedure,pass      :: flat     => flat_tbasis     !flat basis to a rank-1 array
+     procedure,pass      :: qn       => qn_tbasis     !flat basis to a rank-1 array
      procedure,pass      :: expand   => expand_tbasis   !expand the entire basis adding a new layer of qn
      procedure,pass      :: index    => index_tbasis    !create index from a given qn
      procedure,pass      :: show     => show_tbasis     !show
@@ -32,7 +34,7 @@ MODULE TUPLE_BASIS
      module procedure :: construct_tbasis_D
   end interface tbasis
 
-  !RETURN SHAPE OF THE SPARSE MATRIX
+  !RETURN SHAPE OF THE TBASIS
   intrinsic :: shape
   interface shape
      module procedure :: shape_tbasis
@@ -69,6 +71,7 @@ contains
     enddo
     if(allocated(self%basis))deallocate(self%basis)
     self%qdim=0
+    self%size=0
   end subroutine free_tbasis
 
 
@@ -96,6 +99,7 @@ contains
        allocate(self%basis(i)%qn, source=tvec(i,:))
     enddo
     self%qdim=Qdim
+    self%size=Nbasis
   end function construct_tbasis_I
 
   function construct_tbasis_D(array,qdim) result(self)
@@ -115,6 +119,7 @@ contains
        allocate(self%basis(i)%qn, source=tvec(i,:))
     enddo
     self%qdim=Qdim
+    self%size=Nbasis
   end function construct_tbasis_D
 
 
@@ -146,6 +151,7 @@ contains
           allocate(self%basis(i)%qn, source=tvec(i,:))
        enddo
        self%qdim=1
+       self%size=Nbasis
        return
     endif
     !
@@ -195,6 +201,19 @@ contains
   end function flat_tbasis
 
 
+  function qn_tbasis(self,index) result(qn)
+    class(tbasis),intent(inout)      :: self
+    real(8),dimension(:),allocatable :: qn
+    integer                          :: index
+    integer                          :: index_
+    integer                          :: i,Nbasis,Qdim
+    index_=index
+    if(index_>self%size.OR.index_<=0)stop "qn_tbasis: index !in [1,self.size]"
+    if(allocated(qn))deallocate(qn)
+    Nbasis = size(self%basis)
+    Qdim   = self%qdim
+    allocate(qn, source=self%basis(index_)%qn)
+  end function qn_tbasis
 
 
   !##################################################################
@@ -225,7 +244,7 @@ contains
     integer                           :: i,N,pos,Nbasis
     !
     if(allocated(index))deallocate(index)
-    allocate(mask(size(self%basis)))
+    allocate(mask(self%size))
     forall(i=1:size(mask))mask(i) = all(self%basis(i)%qn==qn)
     N   = count(mask)
     pos = 0
@@ -249,11 +268,12 @@ contains
     integer,dimension(2)     :: shape
     integer                  :: Nbasis,Qdim
     Qdim  = self%qdim
-    Nbasis= 0
-    if(allocated(self%basis))Nbasis = size(self%basis)
+    Nbasis = self%size
     shape = [Nbasis,Qdim]
   end function shape_tbasis
 
+
+ 
 
 
   !##################################################################
@@ -266,12 +286,13 @@ contains
     type(tbasis)              :: c
     integer                   :: N,i,Qdim
     real(8),dimension(a%qdim) :: qn
-    if(size(a%basis)/=size(b%basis))stop "sum_tbasis error: size(a.basis) != size(b.basis)"
+    if(a%size/=b%size)stop "sum_tbasis error: size(a.basis) != size(b.basis)"
     if(a%qdim/=b%qdim)stop "sum_tbasis error: a.Qdim != b.Qdim"
     call c%free()
-    N=size(a%basis)
+    N=a%size
     Qdim=a%qdim
     c%qdim=Qdim
+    c%size=N
     allocate(c%basis(N))
     do i=1,N
        qn =  a%basis(i)%qn + b%basis(i)%qn
