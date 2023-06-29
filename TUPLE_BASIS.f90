@@ -22,8 +22,9 @@ MODULE TUPLE_BASIS
      procedure,pass      :: dimq     => dimq_tbasis     !return qdim of the QN tuples
      procedure,pass      :: dump     => dump_tbasis     !dump basis to a rank-2 array [Nbasis,Qdim]
      procedure,pass      :: flat     => flat_tbasis     !flat basis to a rank-1 array
-     procedure,pass      :: qn       => qn_tbasis     !flat basis to a rank-1 array
-     procedure,pass      :: expand   => expand_tbasis   !expand the entire basis adding a new layer of qn
+     procedure,pass      :: qn       => qn_tbasis       !return a QN tuple at a given index
+     procedure,pass      :: append   => append_tbasis   !append a QN tuple to the basis
+     procedure,pass      :: expand   => expand_tbasis   !expand the basis adding a new layer of qn
      procedure,pass      :: index    => index_tbasis    !create index from a given qn
      procedure,pass      :: show     => show_tbasis     !show
   end type tbasis
@@ -135,6 +136,51 @@ contains
 
   !##################################################################
   !##################################################################
+  !                        APPEND 
+  !##################################################################
+  !##################################################################
+  !+------------------------------------------------------------------+
+  !PURPOSE: append a QN tuple to the basis
+  !+------------------------------------------------------------------+
+  subroutine append_tbasis(self,qn)
+    class(tbasis),intent(inout)        :: self
+    real(8),dimension(:)               :: qn
+    integer                            :: Nbasis,N,i,Qdim
+    real(8),dimension(:,:),allocatable :: tvec
+    real(8),dimension(:),allocatable   :: array
+    !
+    Qdim = size(qn)
+    !
+    if(.not.allocated(self%basis))then
+       Nbasis = 1
+       allocate(self%basis(Nbasis))
+       allocate(self%basis(1)%qn, source=qn)
+       self%qdim=Qdim
+       self%size=Nbasis
+       return
+    endif
+    !
+    if(Qdim/=self%Qdim)stop "append_tbasis error: size(qn) != self.Qdim"
+    Nbasis= self%size + 1
+    array = self%flat()
+    call self%free()
+    do i=1,Qdim
+       call append(array,qn(i))
+    enddo
+    tvec = dble(transpose(reshape(array, shape=[Qdim,Nbasis])))
+    allocate(self%basis(Nbasis))
+    do i=1,Nbasis
+       allocate(self%basis(i)%qn, source=tvec(i,:))
+    enddo
+    self%qdim=Qdim
+    self%size=Nbasis
+  end subroutine append_tbasis
+
+
+
+
+  !##################################################################
+  !##################################################################
   !       EXPAND THE BASIS VERTICALLY ADDING A NEW LAYER
   !       OF QN GIVEN A SUITABLE ARRAY OF STATES (ie LIST OF QNs)
   !##################################################################
@@ -171,9 +217,6 @@ contains
     enddo
     self%qdim=self%qdim+1
   end subroutine expand_tbasis
-
-
-
 
   !##################################################################
   !##################################################################

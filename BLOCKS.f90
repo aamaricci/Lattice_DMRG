@@ -13,7 +13,6 @@ MODULE BLOCKS
   type block
      integer                                     :: length=0
      integer                                     :: Dim=1
-     integer,dimension(:),allocatable            :: Dims
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
    contains
@@ -59,7 +58,6 @@ contains
   subroutine free_block(self)
     class(block) :: self
     self%length = 0
-    if(allocated(self%Dims))deallocate(self%Dims)
     self%Dim   = 1
     call self%operators%free()
     if(allocated(self%sectors))then
@@ -73,16 +71,14 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_from_scrath(length,Dims,sectors,operators) result(self)
+  function constructor_from_scrath(length,Dim,sectors,operators) result(self)
     integer,intent(in)              :: length
-    integer,intent(in)              :: Dims(:)
+    integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(block)                     :: self
     self%length    = length
-    allocate(self%Dims(size(Dims)))
-    self%Dims      = Dims
-    self%Dim       = product(Dims)
+    self%Dim       = Dim
     self%operators = operators
     allocate(self%sectors(size(sectors)))
     do i=1,size(self%sectors)
@@ -95,7 +91,6 @@ contains
     type(site),intent(in) :: ssite
     type(block)           :: self
     self%length    = 1
-    allocate(self%Dims, source=ssite%Dims)
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
     allocate(self%sectors(size(ssite%sectors)))
@@ -163,8 +158,7 @@ contains
     type(block),intent(inout) :: A
     type(block),intent(in)    :: B
     call A%free
-    A%length = B%length
-    allocate(A%Dims, source=B%Dims)
+    A%length    = B%length
     A%Dim       = B%Dim
     A%operators = B%operators
     allocate(A%sectors(size(B%sectors)))
@@ -178,7 +172,7 @@ contains
     class(block) :: self
     logical      :: bool
     integer,dimension(size(self%sectors)) :: Lvec
-    bool = self%operators%is_valid([self%Dims])
+    bool = self%operators%is_valid(self%Dim)
     do i=1,size(self%sectors)
        Lvec(i) = len(self%sectors(i))
     enddo
@@ -202,9 +196,8 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     wOP_=.true.;if(present(wOP))wOP_=wOP
     write(*,"(A15,I6)")"Block Length  =",self%length
-    write(*,"(A15,"//str(size(self%dims))//"I6)")"Block Dims    =",self%Dims
     write(*,"(A15,I6)")"Block Dim     =",self%Dim
-    write(*,"(A15,I6)")   "Block Sectors =",size(self%sectors)
+    write(*,"(A15,I6)")"Block Sectors =",size(self%sectors)
     do i=1,size(self%sectors)
        write(*,"(A14,I6)")"Block Sector  =",i
        call self%sectors(i)%show()

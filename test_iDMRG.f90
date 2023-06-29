@@ -3,6 +3,7 @@ program test_iDMRG
   USE AUX_FUNCS
   USE MATRIX_SPARSE, id=>sp_eye
   USE MATRIX_BLOCKS
+  USE TUPLE_BASIS
   USE LIST_OPERATORS
   USE LIST_SECTORS
   USE SITES
@@ -82,13 +83,13 @@ contains
 
 
   function enlarge_block(self,dot,grow) result(enl_self)
-    type(block),intent(inout)        :: self
-    type(site),intent(inout)         :: dot
-    character(len=*),optional        :: grow
-    character(len=16)                :: grow_
-    type(block)                      :: enl_self
-    integer                          :: mblock,len,iqn
-    real(8),dimension(:),allocatable :: self_basis, dot_basis
+    type(block),intent(inout) :: self
+    type(site),intent(inout)  :: dot
+    character(len=*),optional :: grow
+    character(len=16)         :: grow_
+    type(block)               :: enl_self
+    integer                   :: mblock,len,iqn
+    type(tbasis)              :: enl_basis
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
@@ -105,21 +106,23 @@ contains
        call enl_self%put("Cup", Id(mblock).x.dot%operators%op("Cup"))
        call enl_self%put("Cdw", Id(mblock).x.dot%operators%op("Cdw"))
        call enl_self%put("P"  , Id(mblock).x.dot%operators%op("P"))
+       do iqn=1,size(self%sectors)
+          enl_basis  = self%sectors(iqn)%basis().o.dot%sectors(iqn)%basis()
+          call enl_self%set_basis( indx=iqn, basis=enl_basis )       
+       enddo
     case ("right","r")
        call enl_self%put("H", (id(model_d).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(mblock)) + &
             H2model(as_block(dot),self))
        call enl_self%put("Cup", dot%operators%op("Cup").x.Id(mblock))
        call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(mblock))
        call enl_self%put("P"  , dot%operators%op("P").x.Id(mblock))
+       do iqn=1,size(self%sectors)
+          enl_basis  = dot%sectors(iqn)%basis().o.self%sectors(iqn)%basis()
+          call enl_self%set_basis( indx=iqn, basis=enl_basis )       
+       enddo
     end select
     !
-    allocate(enl_self%sectors(size(self%sectors)))
-    do iqn=1,size(self%sectors)       
-       self_basis = self%sectors(iqn)%basis()
-       dot_basis  = dot%sectors(iqn)%basis()
-       call enl_self%set_sectors( indx=iqn, vec=outsum(self_basis,dot_basis) )       
-       deallocate(self_basis,dot_basis)
-    enddo
+
   end function enlarge_block
 
 

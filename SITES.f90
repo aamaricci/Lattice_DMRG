@@ -12,7 +12,6 @@ MODULE SITES
 
   type site
      integer                                     :: Dim=1
-     integer,dimension(:),allocatable            :: Dims
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
    contains
@@ -41,7 +40,6 @@ MODULE SITES
   public :: spin_onehalf_site
   public :: spin_one_site
   public :: hubbard_site
-  public :: hubbard_site_ud
   public :: assignment(=)
 
   integer :: i
@@ -59,7 +57,6 @@ contains
   !+------------------------------------------------------------------+
   subroutine free_site(self)
     class(site) :: self
-    if(allocated(self%dims))deallocate(self%dims)
     self%dim   = 1
     call self%operators%free()
     if(allocated(self%sectors))then
@@ -73,14 +70,12 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_site(Dims,sectors,operators) result(self)
-    integer,intent(in)              :: Dims(:)
+  function constructor_site(Dim,sectors,operators) result(self)
+    integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(site)                      :: self
-    allocate(self%dims(size(dims)))
-    self%Dims      = dims
-    self%Dim       = product(Dims)
+    self%Dim       = Dim
     self%operators = operators
     allocate(self%sectors(size(sectors)))
     do i=1,size(self%sectors)
@@ -151,7 +146,6 @@ contains
     type(site),intent(inout) :: A
     type(site),intent(in)    :: B
     call A%free
-    allocate(A%Dims, source=B%Dims)
     A%Dim       = B%Dim
     A%operators = B%operators
     allocate(A%sectors(size(B%sectors)))
@@ -165,7 +159,7 @@ contains
     class(site)                           :: self
     logical                               :: bool
     integer,dimension(size(self%sectors)) :: Lvec
-    bool = self%operators%is_valid([self%Dims])
+    bool = self%operators%is_valid(self%Dim)
     do i=1,size(self%sectors)
        Lvec = len(self%sectors(i))
     enddo
@@ -189,7 +183,6 @@ contains
     character(len=*),optional :: fmt
     character(len=32)         :: fmt_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
-    write(*,"(A14,"//str(size(self%dims))//"I6)")"Site Dims    =",self%Dims
     write(*,"(A14,I6)")"Site Dim     =",self%Dim
     do i=1,size(self%sectors)
        write(*,"(A14,I6)")"Site Sectors =",i
@@ -214,8 +207,6 @@ contains
     real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
     real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
-    allocate(self%Dims(1))
-    self%Dims=[2]
     self%Dim = 2
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
@@ -231,8 +222,6 @@ contains
     real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
     real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
-    allocate(self%Dims(1))
-    self%Dims=[2]
     self%Dim = 2
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(0.5d0*Szeta))
@@ -255,8 +244,6 @@ contains
     Splus(2,3) = sqrt(2d0)
     !
     call self%free()
-    allocate(self%Dims(1))
-    self%Dims=[3]
     self%Dim = 3
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(Szeta))
@@ -281,8 +268,6 @@ contains
     Cp  = build_C_operator(1,2);Cdw=Cp.kx.KSz(1)
     !
     call self%free()
-    allocate(self%Dims(2))
-    self%Dims=[2,2]
     self%Dim = 4
     call self%put("H",sparse(Hloc))
     call self%put("Cup",sparse(Cup))
@@ -294,33 +279,31 @@ contains
 
 
 
-  !Fock =  [|0>,|1>]_dw x [|0>,|1>]_up reproduces the same as above
-  function hubbard_site_ud(uloc,xmu) result(self)
-    type(site)                         :: self
-    real(8)                            :: uloc
-    real(8)                            :: xmu
-    real(8),dimension(:,:),allocatable :: Hd
-    real(8),dimension(:,:),allocatable :: Cup,Cdw,Cp
-    !
-    call Init_LocalFock_Sectors(1,1)
-    !
-    Hd = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
-    Cp = build_C_operator(1,1)
-    !== identical for Up and Dw as it acts in reduced Fock space of a given spin
-    !
-    call self%free()
-    allocate(self%dims(2))
-    self%Dims = [2,2]
-    self%Dim  = 4
-    call self%put("Hd",sparse(Hd)) !this is diagonal at the beginning
-    call self%put("Hup",sparse(dble(zeros(2,2))))
-    call self%put("Hdw",sparse(dble(zeros(2,2)))) 
-    call self%put("Cp",sparse(Cp))   !2x2 
-    call self%put("P",sparse(kSz(1))) !2x2
-    allocate(self%sectors(2))
-    self%sectors(1) = sectors_list( tbasis([0d0,1d0], qdim=1) )
-    self%sectors(2) = sectors_list( tbasis([0d0,1d0], qdim=1) )
-  end function hubbard_site_ud
+  ! !Fock =  [|0>,|1>]_dw x [|0>,|1>]_up reproduces the same as above
+  ! function hubbard_site_ud(uloc,xmu) result(self)
+  !   type(site)                         :: self
+  !   real(8)                            :: uloc
+  !   real(8)                            :: xmu
+  !   real(8),dimension(:,:),allocatable :: Hd
+  !   real(8),dimension(:,:),allocatable :: Cup,Cdw,Cp
+  !   !
+  !   call Init_LocalFock_Sectors(1,1)
+  !   !
+  !   Hd = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
+  !   Cp = build_C_operator(1,1)
+  !   !== identical for Up and Dw as it acts in reduced Fock space of a given spin
+  !   !
+  !   call self%free()
+  !   self%Dim  = 4
+  !   call self%put("Hd",sparse(Hd)) !this is diagonal at the beginning
+  !   call self%put("Hup",sparse(dble(zeros(2,2))))
+  !   call self%put("Hdw",sparse(dble(zeros(2,2)))) 
+  !   call self%put("Cp",sparse(Cp))   !2x2 
+  !   call self%put("P",sparse(kSz(1))) !2x2
+  !   allocate(self%sectors(2))
+  !   self%sectors(1) = sectors_list( tbasis([0d0,1d0], qdim=1) )
+  !   self%sectors(2) = sectors_list( tbasis([0d0,1d0], qdim=1) )
+  ! end function hubbard_site_ud
 
 
 END MODULE SITES

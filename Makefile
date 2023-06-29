@@ -61,12 +61,14 @@ dmrg:  $(OBJS)
 	${FC} $(FFLAG) ${OBJS} ./test_iDMRGqn.f90 -o ./test/test_iDMRGqn ${SF_INC} ${SF_LIB}
 
 
+qn:  $(OBJS)
+	@echo "compiling testQN:"
+	${FC} $(FFLAG) ${OBJS} ./example/testQN.f90 -o ./test/testQN ${SF_INC} ${SF_LIB}
 
-test:  $(OBJS)
-	@echo "compiling testQN, EDnsites, EDkron:"
-	${FC} $(FFLAG) ${OBJS} example/testQN.f90 -o ./test/testQN ${SF_INC} ${SF_LIB}
-	${FC} $(FFLAG) ${OBJS} example/testEDnsites.f90 -o ./test/testEDnsites ${SF_INC} ${SF_LIB}
-	${FC} $(FFLAG) ${OBJS} example/testEDkron.f90 -o ./test/testEDkron ${SF_INC} ${SF_LIB}
+nsites:  $(OBJS)
+	@echo "compiling EDnsites:"
+	${FC} $(FFLAG) ${OBJS} ./example/testEDnsites.f90 -o ./test/testEDnsites ${SF_INC} ${SF_LIB}
+
 
 clean: 
 	@echo "Cleaning:"

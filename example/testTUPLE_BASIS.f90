@@ -98,10 +98,23 @@ program testTUPLE_BASIS
   call basis%show
   print*,int(basis%flat())
   print*,""
-  
+
   call basis%free()
   basis = tsum(a,b)
   call basis%show
+
+
+  call basis%free()
+  call basis%append([0d0,0d0])
+  call basis%show
+  call basis%append([1d0,0d0])
+  call basis%show
+  call basis%append([0d0,1d0])
+  call basis%show
+  call basis%append([1d0,1d0])
+  call basis%show
+
+  
 contains
 
 

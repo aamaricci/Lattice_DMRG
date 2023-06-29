@@ -3,12 +3,12 @@ MODULE Hsimple
   implicit none
   private
 
-  integer,save,public              :: Ns       !Number of levels per spin
-  integer,save                     :: Nspin,Norb
-  integer,save,public              :: Nfock    !Dim of the local Fock space
-  integer,save,public              :: Nsectors !Number of sectors
-  integer,allocatable,dimension(:) :: getDim             ! [Nsectors]
-
+  integer,save,public                :: Ns       !Number of levels per spin
+  integer,save                       :: Nspin,Norb
+  integer,save,public                :: Nfock    !Dim of the local Fock space
+  integer,save,public                :: Nsectors !Number of sectors
+  integer,allocatable,dimension(:)   :: getDim             ! [Nsectors]
+  integer,allocatable,dimension(:,:),public :: getSector             ! [Nup,Ndw]
   !---------------- SECTOR-TO-LOCAL-FOCK SPACE STRUCTURE -------------------!
   type sector_map
      integer,dimension(:),allocatable          :: map
@@ -99,7 +99,7 @@ contains
     type(local_fock_sector) :: self
     integer                 :: DimUp,DimDw
     integer                 :: DimUps(1),DimDws(1)
-    integer                 :: Nups(1),Ndws(1)
+    integer                 :: Nups(1),Ndws(1),Nup,Ndw
     integer                 :: isector,i
     !
     Nspin    = 1
@@ -116,14 +116,20 @@ contains
     !
     !Allocate some indexing arrays
     allocate(getDim(Nsectors))          ;getDim=0
+    allocate(getSector(0:Ns,0:Ns))      ;getSector=0
     !
     !
     do isector=1,Nsectors
        call get_DimUp(isector,DimUps)
        call get_DimDw(isector,DimDws)
+       call get_Nup(isector,Nups);
+       call get_Ndw(isector,Ndws);
        DimUp = product(DimUps)
-       DimDw = product(DimDws)  
+       DimDw = product(DimDws)
+       Nup=sum(Nups)
+       Ndw=sum(Ndws)
        getDim(isector)  = DimUp*DimDw
+       getSector(Nup,Ndw) = isector
     enddo
     !
     ! do i=1,Nfock
@@ -781,12 +787,13 @@ program testEDnsites
   real(8),dimension(:,:),allocatable :: Cup,Cdw,Cdgup,Cdgdw,Hp,Hp2,P,A,B,C,D,HH
   real(8),dimension(2,2) :: Cp!,Sz,Id
   real(8)                            :: ts
-  integer                            :: i,isector
+  integer                            :: i,nup,ndw,isector
 
 
 
   call parse_cmd_variable(nsites,"NSITES",default=4)
-  call parse_cmd_variable(isector,"ISECTOR",default=13)
+  call parse_cmd_variable(nup,"nup",default=2)
+  call parse_cmd_variable(ndw,"ndw",default=2)
   ts    = -1d0
 
   call Init_LocalFock(Nsites)
@@ -802,8 +809,8 @@ program testEDnsites
   endif
   ! call print_mat(Hij,"Hij",N=0)
 
-
-
+  isector=getSector(Nup,Ndw)
+  print*,"Nup,Ndw",Nup,Ndw
   print*,"Sector=",isector
   call Show_LocalFock_sector(isector)
   print*,""

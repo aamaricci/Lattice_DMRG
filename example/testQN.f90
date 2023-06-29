@@ -18,7 +18,7 @@ program testEDkron
   integer                            :: lanc_niter
   real(8)                            :: lanc_tolerance
   integer                            :: lanc_threshold
-  type(block)                        :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR,left,right,tetramer
+  type(block)                        :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR,left,right,tetramer,pmer5,pmer6
   type(sparse_matrix)                :: spHsb,spH
   type(site)                         :: dot
   real(8)                            :: gs_energy,target_Sz
@@ -130,6 +130,7 @@ program testEDkron
 
 
   print*,"o->o++o<-o"
+  print*,"Full"
   my_block=block(dot)
   left  = enlarge_block(my_block,dot,grow='left')
   right = enlarge_block(my_block,dot,grow='right')
@@ -147,7 +148,7 @@ program testEDkron
   deallocate(evals)
   print*,""
 
-
+  print*,"Restricted"
   sb_states = get_sb_states(left,right,[2,2])
   m_sb      = size(sb_states)
   Hmatrix = as_matrix(spHsb)
@@ -167,6 +168,59 @@ program testEDkron
 
 
 
+  print*,"o--o--o--o--o->o"
+  my_block = block(dot)
+  dimer    = enlarge_block(my_block,dot,grow='left')
+  trimer   = enlarge_block(dimer,dot,grow='left')
+  tetramer = enlarge_block(trimer,dot,grow='left')
+  pmer5    = enlarge_block(tetramer,dot,grow='left')
+  pmer6    = enlarge_block(pmer5,dot,grow='left')
+  Hmatrix  = as_matrix(pmer6%operators%op("H"))
+  allocate(Evals(4**6))
+  call eigh(Hmatrix,Evals)
+  do i=1,min(10,size(evals))
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals)
+  print*,""
+
+
+
+  print*,"o-o->o++o<-o-o"
+  print*,"Full"
+  my_block=block(dot)
+  dimerL = enlarge_block(my_block,dot,grow='left')
+  dimerR = enlarge_block(my_block,dot,grow='right')  
+  left  = enlarge_block(dimerL,dot,grow='left')
+  right = enlarge_block(dimerR,dot,grow='right')
+  !
+  spHsb  = (left%operators%op("H").x.id(right%dim))
+  spHsb  = spHsb + (id(left%dim).x.right%operators%op("H")) 
+  spHsb  = spHsb + H2model(left,right)
+  Hmatrix  = as_matrix(spHsb)
+  allocate(Evals(4**6))
+  call eigh(Hmatrix,Evals)
+  do i=1,min(10,size(evals))
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals)
+  print*,""
+
+  print*,"Restricted"
+  sb_states = get_sb_states(left,right,[3,3])
+  m_sb      = size(sb_states)
+  Hmatrix = as_matrix(spHsb)
+  call print_mat(Hmatrix(sb_states,sb_states),"tetramer_sectorHsb",n=0)
+  allocate(Evals(m_sb),Evecs(m_sb,m_sb))
+  Evecs = Hmatrix(sb_states,sb_states)
+  call eigh(Evecs,Evals)
+  do i=1,min(10,size(evals))
+     print*,i,Evals(i)
+  enddo
+  deallocate(evecs,evals)
+  print*,""
+
+
 
 
 
@@ -184,11 +238,11 @@ contains
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
-    allocate(enl_self%Dims(2))
+    ! allocate(enl_self%Dims(2))
     !
     enl_self%length = self%length + 1
     enl_self%Dim    = self%Dim*dot%Dim
-    enl_self%Dims   = self%Dims*dot%Dims
+    ! enl_self%Dims   = self%Dims*dot%Dims
     !
     allocate(enl_self%sectors(size(self%sectors)))
     !
@@ -250,19 +304,16 @@ contains
     type(block)                      :: left,right
     integer,dimension(2)             :: target_qn
     integer,dimension(:),allocatable :: sb_states
-
     integer :: ileft,iright
     real(8),dimension(:),allocatable :: left_qn,right_qn
     integer,dimension(:),allocatable :: left_map,right_map,sb_map,states
-
     integer,dimension(:),allocatable :: sb_states_up,sb_states_dw
     integer                          :: m_sb
-    integer                          :: m_left,m_right,Nleft,Nright
     integer                          :: iup,idw,jup,jdw
     integer                          :: i,j,istate,Ncv,im
-
+    !
     if(allocated(sb_states))deallocate(sb_states)
-    
+    !
     do ileft=1,size(left%sectors(1))
        left_qn  = left%sectors(1)%qn(index=ileft)
        right_qn = target_qn - left_qn
@@ -271,20 +322,20 @@ contains
        left_map = left%sectors(1)%map(qn=left_qn)
        right_map= right%sectors(1)%map(qn=right_qn)
        !
-       print*,left_qn,"|",right_qn
+       ! print*,left_qn,"|",right_qn
        do i=1,size(left_map)
           do j=1,size(right_map)
              istate=right_map(j) + (left_map(i)-1)*right%Dim
-             print*,left_map(i),":",right_map(j),"=",istate
+             ! print*,left_map(i),":",right_map(j),"=",istate
              call append(sb_states, istate)
              ! call sb_left_sector%append(qn=left_qn,istate=size(sb_states))
           enddo
-          print*,""
+          ! print*,""
        enddo
     enddo
     !
     m_sb = size(sb_states)
-    print*,sb_states
+    ! print*,sb_states
     !
   end function get_sb_states
 

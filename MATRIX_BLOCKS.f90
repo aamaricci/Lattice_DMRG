@@ -7,7 +7,7 @@ MODULE MATRIX_BLOCKS
   !BLOCK MATRIX COMPONENT
   type block_type
      integer                            :: index=0
-     real(8)                            :: qn=huge(1d0)
+     real(8),dimension(:),allocatable   :: qn
      real(8),dimension(:),allocatable   :: E
      integer,dimension(:),allocatable   :: map
      real(8),dimension(:,:),allocatable :: M
@@ -108,10 +108,10 @@ contains
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
   function construct_blocks_matrix(matrix,qn,map) result(self)
-    real(8),dimension(:,:),intent(in) :: matrix
-    real(8),intent(in)                :: qn
-    integer,dimension(:)              :: map
-    type(blocks_matrix)               :: self
+    real(8),dimension(:,:),intent(in)           :: matrix
+    real(8),dimension(:),allocatable,intent(in) :: qn
+    integer,dimension(:)                        :: map
+    type(blocks_matrix)                         :: self
     call self%free()
     allocate(self%root)
     call self%append(matrix,qn,map)
@@ -123,7 +123,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine load_blocks_matrix(self,matrix,qn,map)
     class(blocks_matrix),intent(inout) :: self
-    real(8)                            :: qn
+    real(8),dimension(:),allocatable    :: qn
     integer,dimension(:)               :: map
     real(8),dimension(:,:),intent(in)  :: matrix
     call self%free()
@@ -147,7 +147,7 @@ contains
        p%next => c%next
        c%next => null()
        c%index=  0
-       c%qn   = huge(1d0)
+       if(allocated(c%qn))deallocate(c%qn)
        if(allocated(c%M))deallocate(c%M)
        if(allocated(c%map))deallocate(c%map)
        deallocate(c)
@@ -176,12 +176,12 @@ contains
   !PURPOSE:  Append a block
   !+------------------------------------------------------------------+
   subroutine append_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:,:),intent(in)  :: matrix
-    real(8),intent(in)                 :: qn
-    integer,dimension(:)               :: map
-    integer                            :: Dim
-    type(block_type),pointer           :: p,c
+    class(blocks_matrix),intent(inout)          :: self
+    real(8),dimension(:,:),intent(in)           :: matrix
+    real(8),dimension(:),allocatable,intent(in) :: qn
+    integer,dimension(:)                        :: map
+    integer                                     :: Dim
+    type(block_type),pointer                    :: p,c
     !    
     if(.not.associated(self%root))allocate(self%root)
     !
@@ -196,11 +196,12 @@ contains
     end do
     !
     allocate(p%next)
-    allocate(p%next%M, mold=matrix)
-    p%next%M     = matrix
-    allocate(p%next%map, mold=map)
-    p%next%map   = map
-    p%next%qn    = qn
+    allocate(p%next%M, source=matrix)
+    ! p%next%M     = matrix
+    allocate(p%next%map, source=map)
+    ! p%next%map   = map
+    allocate(p%next%qn, source=qn)
+    ! p%next%qn    = qn
     p%next%index = p%index+1
     !
     if(.not.associated(c))then !end of the list special case (c=>c%next)
@@ -221,13 +222,13 @@ contains
   !PURPOSE:  PUSH a block
   !+------------------------------------------------------------------+
   subroutine push_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:,:),intent(in)  :: matrix
-    real(8),intent(in)                 :: qn
-    integer,dimension(:)               :: map
-    logical                            :: iupdate
-    type(block_type),pointer           :: p,c
-    integer                            :: Dim
+    class(blocks_matrix),intent(inout)          :: self
+    real(8),dimension(:,:),intent(in)           :: matrix
+    real(8),dimension(:),allocatable,intent(in) :: qn
+    integer,dimension(:)                        :: map
+    logical                                     :: iupdate
+    type(block_type),pointer                    :: p,c
+    integer                                     :: Dim
     !    
     if(.not.associated(self%root))allocate(self%root)
     !
@@ -242,7 +243,7 @@ contains
     c => p%next
     do
        if(.not.associated(c))exit
-       if(c%qn == qn)then
+       if(all(c%qn == qn))then
           exit
        endif
        p => c
@@ -251,12 +252,13 @@ contains
     !
     self%Ndim = self%Ndim-size(c%M,1)
     if(allocated(c%M))deallocate(c%M)
-    allocate(c%M, mold=Matrix)
-    c%M   = Matrix
+    allocate(c%M, source=Matrix)
+    ! c%M   = Matrix
     if(allocated(c%map))deallocate(c%map)
-    allocate(c%map, mold=map)
-    c%map = map
-    c%qn  = qn
+    allocate(c%map, source=map)
+    ! c%map = map
+    allocate(c%qn, source=qn)
+    ! c%qn  = qn
     self%Ndim = self%Ndim+size(Matrix,1)
     !
     p=>null()
@@ -308,8 +310,8 @@ contains
     if(.not.ifound)stop "get_blocks_matrix error: not found"
     !
     if(allocated(matrix))deallocate(matrix)
-    allocate(matrix, mold=c%M)
-    matrix = c%M
+    allocate(matrix, source=c%M)
+    ! matrix = c%M
     !
     c=>null()
   end function get_block_blocks_matrix
@@ -319,14 +321,16 @@ contains
   !PURPOSE: get 
   !+------------------------------------------------------------------+
   function get_qn_blocks_matrix(self,index,m) result(qn)
-    class(blocks_matrix)     :: self
-    integer,optional         :: index
-    integer,optional         :: m
-    integer                  :: index_,q,m_
-    real(8)                  :: qn
-    logical                  :: ifound
-    type(block_type),pointer :: c
-    !    
+    class(blocks_matrix)             :: self
+    integer,optional                 :: index
+    integer,optional                 :: m
+    integer                          :: index_,q,m_
+    real(8),dimension(:),allocatable :: qn
+    logical                          :: ifound
+    type(block_type),pointer         :: c
+    !
+    if(allocated(qn))deallocate(qn)
+    !
     index_=1
     if(present(index))then
        index_=index
@@ -350,7 +354,8 @@ contains
     end do
     if(.not.ifound)stop "get_qn_matrix error: not found"
     !
-    qn = c%qn
+    allocate(qn, source=c%qn)
+    ! qn = c%qn
     !
     c=>null()
   end function get_qn_blocks_matrix
@@ -403,11 +408,11 @@ contains
   !PURPOSE: get the element value at position (i,j) in the block matrix
   !+------------------------------------------------------------------+
   function get_index_blocks_matrix(self,qn) result(index)
-    class(blocks_matrix)                  :: self
-    real(8),intent(in)                    :: qn
-    integer                               :: index
-    logical                               :: ifound
-    type(block_type),pointer              :: c
+    class(blocks_matrix)                        :: self
+    real(8),dimension(:),allocatable,intent(in) :: qn
+    integer                                     :: index
+    logical                                     :: ifound
+    type(block_type),pointer                    :: c
     !
     !qn does not exist: return with index=0
     index=0
@@ -417,7 +422,7 @@ contains
     c => self%root%next
     do                            !traverse the list until QN is found
        if(.not.associated(c))exit
-       if(c%qn == qn) then
+       if(all(c%qn == qn)) then
           exit          
        endif
        c => c%next
@@ -747,15 +752,15 @@ contains
   !PURPOSE:  Returns True is qn exists, False otherwise
   !+------------------------------------------------------------------+
   function has_qn_blocks_matrix(self, qn) result(bool)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),intent(in)                 :: qn
-    type(block_type),pointer           :: c
-    logical                            :: bool
+    class(blocks_matrix),intent(inout)          :: self
+    real(8),dimension(:),allocatable,intent(in) :: qn
+    type(block_type),pointer                    :: c
+    logical                                     :: bool
     bool=.false.
     c => self%root%next
     do                            !traverse the list until index is found
        if(.not.associated(c))exit
-       if(c%qn == qn) then
+       if(all(c%qn == qn)) then
           bool=.true.
           exit
        endif
@@ -805,7 +810,7 @@ contains
        if(.not.associated(c))exit
        write(unit_,"(A6,I12)")"Index:",c%index
        write(unit_,"(A6,"//str(size(c%map))//"I6)")"map  :",c%map
-       write(unit_,"(A6,F12.4)")"QN   :",c%qn
+       write(unit_,"(A6,"//str(size(c%qn))//"F12.4)")"QN   :",c%qn
        if(allocated(c%E))&
             write(unit_,"(A6,"//str(size(c%E))//"F12.4)")"E    :",c%E
        write(unit_,"(A6)")"Block:"
