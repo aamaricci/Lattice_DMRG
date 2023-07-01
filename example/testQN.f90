@@ -223,6 +223,19 @@ program testEDkron
 
 
 
+  my_block = block(dot)
+  dimer    = enlarge_block(my_block,dot,grow='left')
+  trimer   = enlarge_block(dimer,dot,grow='left')
+  Hmatrix  = as_matrix(trimer%operators%op("H"))
+  allocate(Evals(4**3))
+  call eigh(Hmatrix,Evals)
+  do i=1,min(10,size(evals))
+     print*,i,Evals(i)
+  enddo
+  deallocate(evals)
+  print*,""
+
+
 
 contains
 

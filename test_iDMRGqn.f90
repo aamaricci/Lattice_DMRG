@@ -106,10 +106,8 @@ contains
        call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
        call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
        call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
-       do iqn=1,size(self%sectors)
-          enl_basis = self%sectors(iqn)%basis().o.dot%sectors(iqn)%basis()
-          call enl_self%set_basis( indx=iqn,  basis=enl_basis )       
-       enddo
+       enl_basis = self%sectors(1)%basis().o.dot%sectors(1)%basis()
+       call enl_self%set_basis( basis=enl_basis )       
        !
     case ("right","r")
        call enl_self%put("H", &
@@ -118,10 +116,8 @@ contains
        call enl_self%put("Cup", dot%operators%op("Cup").x.Id(self%dim))
        call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
        call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
-       do iqn=1,size(self%sectors)       
-          enl_basis = dot%sectors(iqn)%basis().o.self%sectors(iqn)%basis()
-          call enl_self%set_basis( indx=iqn,  basis=enl_basis )       
-       enddo
+       enl_basis = dot%sectors(1)%basis().o.self%sectors(1)%basis()
+       call enl_self%set_basis( basis=enl_basis )       
        !
     end select
     !
@@ -158,33 +154,32 @@ contains
 
 
 
-  subroutine get_sb_states(left,right,target_qn,sb_states,sb_sector)
-    type(block)                      :: left,right
-    real(8),dimension(2)             :: target_qn
+  subroutine get_sb_states(sys,env,sb_states,sb_sector)
+    type(block)                      :: sys,env
     integer,dimension(:),allocatable :: sb_states
     type(sectors_list)               :: sb_sector
-    integer                          :: ileft,iright
+    integer                          :: isys,ienv
     integer                          :: i,j,istate
-    real(8),dimension(:),allocatable :: left_qn,right_qn
-    integer,dimension(:),allocatable :: left_map,right_map
+    real(8),dimension(:),allocatable :: sys_qn,env_qn
+    integer,dimension(:),allocatable :: sys_map,env_map
     !
     if(allocated(sb_states))deallocate(sb_states)
     !
-    do ileft=1,size(left%sectors(1))
-       left_qn  = left%sectors(1)%qn(index=ileft)
-       right_qn = target_qn - left_qn
-       if(.not.right%sectors(1)%has_qn(right_qn))cycle
+    do isys=1,size(sys%sectors(1))
+       sys_qn  = sys%sectors(1)%qn(index=isys)
+       env_qn = current_target_qn - sys_qn
+       if(.not.env%sectors(1)%has_qn(env_qn))cycle
        !
-       left_map = left%sectors(1)%map(qn=left_qn)
-       right_map= right%sectors(1)%map(qn=right_qn)
+       sys_map = sys%sectors(1)%map(qn=sys_qn)
+       env_map= env%sectors(1)%map(qn=env_qn)
        !
-       ! print*,left_qn,"|",right_qn
-       do i=1,size(left_map)
-          do j=1,size(right_map)
-             istate=right_map(j) + (left_map(i)-1)*right%Dim
-             ! print*,left_map(i),":",right_map(j),"=",istate
+       ! print*,sys_qn,"|",env_qn
+       do i=1,size(sys_map)
+          do j=1,size(env_map)
+             istate=env_map(j) + (sys_map(i)-1)*env%Dim
+             ! print*,sys_map(i),":",env_map(j),"=",istate
              call append(sb_states, istate)
-             call sb_sector%append(qn=left_qn,istate=size(sb_states))
+             call sb_sector%append(qn=sys_qn,istate=size(sb_states))
           enddo
           ! print*,""
        enddo
@@ -199,35 +194,37 @@ contains
     type(block)                        :: sys,env
     type(block)                        :: esys,eenv
     type(sectors_list)                 :: sb_sector
+    !
+    type(blocks_matrix)                :: rho_sys,rho_env
+    type(tbasis)                       :: sys_basis,env_basis
+
+    integer                            :: m_sb,m_s,m_e
+    integer                            :: m_esys,m_eenv,Nsys,Nenv
+    integer                            :: isys,ienv,isb
+    integer                            :: i,j,iqn,Ncv,im
+
     integer,dimension(:),allocatable   :: sb_states
     integer,dimension(:),allocatable   :: esys_map,eenv_map,sb_map
     real(8),dimension(:),allocatable   :: sb_qn,qn
-    integer                            :: m_sb,m_s,m_e
-    integer                            :: m_esys,m_eenv,Nsys,Nenv
-    integer                            :: isys
-    integer                            :: ienv
-    integer                            :: i,j,iqn,Ncv,im
-    type(tbasis)                       :: sys_basisL,sys_basisR
+
     real(8),dimension(:),allocatable   :: eig_values
     real(8),dimension(:,:),allocatable :: eig_basis,Hmat
     real(8),dimension(:),allocatable   :: rho_vec
-    type(blocks_matrix)                :: rho_sectorL,rho_sectorR
+
     real(8),dimension(:),allocatable   :: evals,evalsL,evalsR
     real(8),dimension(:,:),allocatable :: Hsb,rhoL,rhoR,truncation_rhoL,truncation_rhoR
     real(8)                            :: truncation_errorL,truncation_errorR,energy
 
     !Check if blocks are valid ones
-    if(.not.sys%is_valid())stop "single_dmrg_step error: sys is not a valid block"
-    if(.not.env%is_valid())stop "single_dmrg_step error: env is not a valid block"
+    if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
+    if(.not.env%is_valid(.true.))stop "single_dmrg_step error: env is not a valid block"
     !
     !Enlarge blocks
-    print*,"Enlarge blocks:"
     call start_timer()
     esys = enlarge_block(sys,dot,grow='left')
-    if(.not.esys%is_valid())stop "single_dmrg_step error: enlarged_sys is not a valid block"
     eenv = enlarge_block(env,dot,grow='right')
-    if(.not.eenv%is_valid())stop "single_dmrg_step error: enlarged_env is not a valid block"
-    print*,"Done"
+    if(.not.esys%is_valid(.true.))stop "single_dmrg_step error: enlarged_sys is not a valid block"
+    if(.not.eenv%is_valid(.true.))stop "single_dmrg_step error: enlarged_env is not a valid block"
     call stop_timer("Enlarge blocks")
     !
     !Get Enlarged Sys/Env actual dimension
@@ -237,18 +234,34 @@ contains
     !
     !Build SuperBLock Sector
     call start_timer()
-    call get_sb_states(esys,eenv,current_target_qn,sb_states,sb_sector)
+    call get_sb_states(esys,eenv,sb_states,sb_sector)
     call stop_timer("Get SB states")
 
-    m_sb = size(sb_states)
     ! print*,sb_states
+    m_sb = size(sb_states)
+
 
     print*,"Super Block dimensions:", m_esys*m_eenv, m_sb
-    !BUild SuperBlock matrix:
+    call start_timer()
     spHsb = sp_kron(esys%operators%op("H"),id(m_eenv),sb_states) + &
          sp_kron(id(m_esys),eenv%operators%op("H"),sb_states)  + &
          H2model(esys,eenv,sb_states)
+    !
+    ! spHsb = (esys%operators%op("H").x.id(m_eenv)) + (id(m_esys).x.eenv%operators%op("H")) + H2model(esys,eenv)
+    ! Hsb   = as_matrix(spHsb)
+    ! allocate(evals(size(Hsb,1)))
+    ! call eigh(Hsb,evals)
+    ! print*,evals(1:10)
+    ! deallocate(evals,Hsb)
+    ! !
+    ! ! Hsb   = as_matrix(spHsb)
+    ! ! call spHsb%load(Hsb(sb_states,sb_states))
+    ! ! deallocate(Hsb)
+    ! spHsb = sp_kron(esys%operators%op("H"),id(m_eenv),sb_states) + &
+    !      sp_kron(id(m_esys),eenv%operators%op("H"),sb_states)  + &
+    !      H2model(esys,eenv,sb_states)
     call stop_timer("Build H_sb")
+
 
 
     !
@@ -277,92 +290,90 @@ contains
     end if
     energy = eig_values(1)
     call stop_timer("Diag H_sb")
-    print*,eig_values
 
 
-    !
+
+    !BUILD RHO:
     call start_timer()
-    do isys=1,size(sb_sector)
-       sb_qn  = sb_sector%qn(index=isys)
-       sb_map = sb_sector%map(index=isys)
+    do isb=1,size(sb_sector)
+       sb_qn  = sb_sector%qn(index=isb)
+       sb_map = sb_sector%map(index=isb)
        Nsys   = size(esys%sectors(1)%map(qn=sb_qn))
        Nenv   = size(eenv%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nsys*Nenv==0)cycle
        !LEFT :
        qn = sb_qn
-       call rho_sectorL%append(&
+       call rho_sys%append(&
             build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'left'),&
             qn=qn,map=esys%sectors(1)%map(qn=qn))
        !RIGHT:
        qn = current_target_qn-sb_qn
-       call rho_sectorR%append(&
+       call rho_env%append(&
             build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
             qn=qn,map=eenv%sectors(1)%map(qn=qn))
     enddo
     call stop_timer("Build Rho")
 
 
-
     call start_timer()
-    !LEFT:
+    !SYSTEM:
     m_s = min(m,m_esys)
-    allocate(truncation_rhoL(m_esys,m_s));truncation_rhoL=0d0
-    call rho_sectorL%eigh(sort=.true.,reverse=.true.)
-    do im=1,m_s
-       rho_vec  = rho_sectorL%evec(m=im)
-       esys_map = rho_sectorL%map(m=im)
-       truncation_rhoL(esys_map,im) = rho_vec
-       call sys_basisL%append( qn=rho_sectorL%qn(m=im) )
-    enddo
-    evalsL = rho_sectorL%evals()
-    truncation_errorL = 1d0 - sum(evalsL(1:m_s))
-    !
     m_e = min(m,m_eenv)
+    allocate(truncation_rhoL(m_esys,m_s));truncation_rhoL=0d0
     allocate(truncation_rhoR(m_eenv,m_e));truncation_rhoR=0d0
-    call rho_sectorR%eigh(sort=.true.,reverse=.true.)
-    do im=1,m_e
-       rho_vec  = rho_sectorR%evec(m=im)
-       eenv_map = rho_sectorR%map(m=im)
-       truncation_rhoR(eenv_map,im) = rho_vec
-       call sys_basisR%append( qn=rho_sectorR%qn(m=im) )
+    call rho_sys%eigh(sort=.true.,reverse=.true.)
+    call rho_env%eigh(sort=.true.,reverse=.true.)
+    do im=1,m_s
+       rho_vec  = rho_sys%evec(m=im)
+       esys_map = rho_sys%map(m=im)
+       truncation_rhoL(esys_map,im) = rho_vec
+       call sys_basis%append( qn=rho_sys%qn(m=im) )
     enddo
-    evalsR = rho_sectorR%evals()
+    do im=1,m_e
+       rho_vec  = rho_env%evec(m=im)
+       eenv_map = rho_env%map(m=im)
+       truncation_rhoR(eenv_map,im) = rho_vec
+       call env_basis%append( qn=rho_env%qn(m=im) )
+    enddo
+    evalsL = rho_sys%evals()
+    truncation_errorL = 1d0 - sum(evalsL(1:m_s))
+    evalsR = rho_env%evals()
     truncation_errorR = 1d0 - sum(evalsR(1:m_e))
+    write(*,"(A,L12,12X,L12)")"Truncating      :",m<=m_esys,m<=m_eenv
+    write(*,"(A,I12,12X,I12)")"Truncation dim  :",m_s,m_e
+    write(*,"(A,2ES24.15)")"Truncation error:",truncation_errorL,truncation_errorR
+    write(*,"(A,"//str(Neigen)//"F24.15)")"Energies        :",eig_values
+    write(*,*)""
     call stop_timer("Get Rho_Left-Dot / Rho_Dot-Right")
-    write(*,*)"Truncating      :",m<=m_esys,m<=m_eenv
-    write(*,*)"Truncation dim  :",m_s,m_e
-    write(*,*)"Truncation error:",truncation_errorL,truncation_errorR
 
 
     !find a clever way to iterate here:
     !Return updated Block:
     call start_timer()
-    sys%length = esys%length
-    sys%dim    = m_s
+    sys     = block(esys)
+    sys%dim = m_s
     call sys%put("H",rotate_and_truncate(esys%operators%op("H"),truncation_rhoL,m_esys,m_s))
     call sys%put("Cup",rotate_and_truncate(esys%operators%op("Cup"),truncation_rhoL,m_esys,m_s))
     call sys%put("Cdw",rotate_and_truncate(esys%operators%op("Cdw"),truncation_rhoL,m_esys,m_s))
     call sys%put("P",rotate_and_truncate(esys%operators%op("P"),truncation_rhoL,m_esys,m_s))
-    do i=1,size(sys%sectors)
-       call sys%set_basis(indx=i, basis=sys_basisL)
-    enddo
+    call sys%set_basis(basis=sys_basis)
 
-    env%length = eenv%length
-    env%dim    = m_e
+
+    env     = block(eenv)
+    env%dim = m_e
     call env%put("H",rotate_and_truncate(eenv%operators%op("H"),truncation_rhoR,m_eenv,m_e))
     call env%put("Cup",rotate_and_truncate(eenv%operators%op("Cup"),truncation_rhoR,m_eenv,m_e))
     call env%put("Cdw",rotate_and_truncate(eenv%operators%op("Cdw"),truncation_rhoR,m_eenv,m_e))
     call env%put("P",rotate_and_truncate(eenv%operators%op("P"),truncation_rhoR,m_eenv,m_e))
-    do i=1,size(env%sectors)
-       call env%set_basis(indx=i,basis=sys_basisR)
-    enddo
+    call env%set_basis(basis=env_basis)
     call stop_timer("Update+Truncate Block")
-    !
+
 
     !Clean memory:
     if(allocated(esys_map))deallocate(esys_map)
     if(allocated(eenv_map))deallocate(eenv_map)
     if(allocated(sb_map))deallocate(sb_map)
+    if(allocated(sb_states))deallocate(sb_states)
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
     if(allocated(evalsL))deallocate(evalsL)
@@ -374,37 +385,36 @@ contains
     call esys%free()
     call eenv%free()
     call spHsb%free()
-    call sys_basisL%free()
-    call sys_basisR%free()
+    call sys_basis%free()
+    call env_basis%free()
     call sb_sector%free()
-    call rho_sectorL%free()
-    call rho_sectorR%free()
+    call rho_sys%free()
+    call rho_env%free()
+
   end subroutine single_dmrg_step
 
 
 
   function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
-    ! type(block)                        :: sys,env
-    integer :: Nsys,Nenv
+    integer                            :: Nsys,Nenv
     real(8),dimension(:)               :: psi
     integer,dimension(nsys*nenv)       :: map
     character(len=*)                   :: direction
     real(8),dimension(:,:),allocatable :: rho
-    real(8),dimension(sys%Dim,env%Dim) :: rho_tmp
+    real(8),dimension(nsys,nenv)       :: psi_tmp
     !
     if(allocated(rho))deallocate(rho)
     !
-    rho_tmp = transpose(reshape(psi(map), [nenv,nsys]))
+    psi_tmp = transpose(reshape(psi(map), [nenv,nsys]))
     !
     select case(to_lower(str(direction)))
     case ('left','l')
        allocate(rho(nsys,nsys));rho=0d0
-       rho  = matmul(rho_tmp,  transpose(rho_tmp) )
+       rho  = matmul(psi_tmp,  transpose(psi_tmp) )
     case ('right','r')
        allocate(rho(nenv,nenv));rho=0d0
-       rho  = matmul(transpose(rho_tmp), rho_tmp  )
+       rho  = matmul(transpose(psi_tmp), psi_tmp  )
     end select
-    !
   end function build_density_matrix
 
 

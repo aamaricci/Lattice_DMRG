@@ -238,13 +238,13 @@ contains
     !
     if(iadd)then                !QN exists: create a new map
        call append(c%map,istate)
-       call sort_quicksort(c%map)
+       ! call sort_quicksort(c%map)
     else                        !QN does not exist: create a new element
        allocate(p%next)
        p%next%qn    = qn
        p%next%index = p%index+1
        call append(p%next%map,istate)
-       call sort_quicksort(p%next%map)
+       ! call sort_quicksort(p%next%map)
        if(.not.associated(c))then !end of the list special case (c=>c%next)
           p%next%next  => null()
        else
@@ -405,28 +405,6 @@ contains
     !
   end function basis_sectors_list
 
-  ! !+------------------------------------------------------------------+
-  ! !PURPOSE: Return all the keys in the sectors_list
-  ! !+------------------------------------------------------------------+  
-  ! function basis_sectors_list(self) result(basis)
-  !   class(sectors_list),intent(inout)  :: self
-  !   real(8),dimension(:,:),allocatable :: basis
-  !   real(8),dimension(:),allocatable   :: qn
-  !   integer,dimension(:),allocatable   :: map
-  !   integer                            :: i,j,io,Nbasis,Qdim
-  !   if(allocated(basis))deallocate(basis)
-  !   Nbasis=len(self)
-  !   Qdim   = self%qdim
-  !   allocate(basis(Nbasis,Qdim))
-  !   io = 0
-  !   do i=1,size(self)
-  !      qn  = self%qn(index=i)
-  !      map = self%map(index=i)
-  !      do j=1,size(map)
-  !         basis(map(j),:)=qn(:)
-  !      enddo
-  !   enddo
-  ! end function basis_sectors_list
 
 
 

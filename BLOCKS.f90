@@ -29,12 +29,14 @@ MODULE BLOCKS
   interface block
      module procedure :: constructor_from_scrath
      module procedure :: constructor_from_site
+     module procedure :: constructor_from_block
   end interface block
 
   !GENERIC CONSTRUCTOR
   interface as_block
      module procedure :: constructor_from_scrath
      module procedure :: constructor_from_site
+     module procedure :: constructor_from_block
   end interface as_block
 
 
@@ -99,6 +101,17 @@ contains
     enddo
   end function constructor_from_site
 
+  function constructor_from_block(b) result(self)
+    type(block),intent(in) :: b
+    type(block)           :: self
+    self%length    = b%length
+    self%Dim       = b%Dim
+    self%operators = b%operators
+    allocate(self%sectors(size(b%sectors)))
+    do i=1,size(self%sectors)
+       self%sectors(i)   = b%sectors(i)
+    enddo
+  end function constructor_from_block
 
 
 
@@ -141,7 +154,7 @@ contains
     integer              :: indx_
     indx_=1;if(present(indx))indx_=indx
     if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
-    self%sectors(indx) = sectors_list( basis )
+    self%sectors(indx_) = sectors_list( basis )
   end subroutine set_basis_block
 
 
@@ -168,14 +181,22 @@ contains
   end subroutine block_equal_block
 
 
-  function is_valid_block(self) result(bool)
-    class(block) :: self
-    logical      :: bool
+  function is_valid_block(self,nobasis) result(bool)
+    class(block)                          :: self
+    logical,optional                      :: nobasis    
+    logical                               :: bool
+    logical                               :: nobasis_
     integer,dimension(size(self%sectors)) :: Lvec
+    !
+    nobasis_=.false.;if(present(nobasis))nobasis_=nobasis
+    !
     bool = self%operators%is_valid(self%Dim)
+    if(nobasis_)return
     do i=1,size(self%sectors)
        Lvec(i) = len(self%sectors(i))
+       write(900,*)Lvec(i)
     enddo
+    write(900,*)self%dim,product(Lvec)
     bool=bool.AND.(self%dim==product(Lvec))
   end function is_valid_block
 

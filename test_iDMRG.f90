@@ -99,6 +99,11 @@ contains
     enl_self%length = len + 1
     enl_self%dim    = mblock*model_d
     !
+    ! enl_self%length = self%length + 1
+    ! enl_self%Dim    = self%Dim*dot%Dim
+    !
+    allocate(enl_self%sectors(size(self%sectors)))
+    !
     select case(str(grow_))
     case ("left","l")
        call enl_self%put("H", (self%operators%op("H").x.id(model_d)) + (id(mblock).x.dot%operators%op("H")) + &
@@ -106,20 +111,20 @@ contains
        call enl_self%put("Cup", Id(mblock).x.dot%operators%op("Cup"))
        call enl_self%put("Cdw", Id(mblock).x.dot%operators%op("Cdw"))
        call enl_self%put("P"  , Id(mblock).x.dot%operators%op("P"))
-       do iqn=1,size(self%sectors)
-          enl_basis  = self%sectors(iqn)%basis().o.dot%sectors(iqn)%basis()
-          call enl_self%set_basis( indx=iqn, basis=enl_basis )       
-       enddo
+       ! do iqn=1,size(self%sectors)
+       !    enl_basis  = self%sectors(iqn)%basis().o.dot%sectors(iqn)%basis()
+       !    call enl_self%set_basis( indx=iqn, basis=enl_basis )       
+       ! enddo
     case ("right","r")
        call enl_self%put("H", (id(model_d).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(mblock)) + &
             H2model(as_block(dot),self))
        call enl_self%put("Cup", dot%operators%op("Cup").x.Id(mblock))
        call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(mblock))
        call enl_self%put("P"  , dot%operators%op("P").x.Id(mblock))
-       do iqn=1,size(self%sectors)
-          enl_basis  = dot%sectors(iqn)%basis().o.self%sectors(iqn)%basis()
-          call enl_self%set_basis( indx=iqn, basis=enl_basis )       
-       enddo
+       ! do iqn=1,size(self%sectors)
+       !    enl_basis  = dot%sectors(iqn)%basis().o.self%sectors(iqn)%basis()
+       !    call enl_self%set_basis( indx=iqn, basis=enl_basis )       
+       ! enddo
     end select
     !
 
@@ -162,14 +167,15 @@ contains
     real(8)                            :: truncation_errorL,truncation_errorR,energy
     !
     !Check if blocks are valid ones
-    if(.not.sys%is_valid())stop "single_dmrg_step error: sys is not a valid block"
+    if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
+    if(.not.env%is_valid(.true.))stop "single_dmrg_step error: env is not a valid block"
     !
     !Enlarge blocks
     print*,"Enlarge blocks:"
     esys = enlarge_block(sys,dot,grow='left')
     eenv = enlarge_block(env,dot,grow='right')
-    if(.not.esys%is_valid())stop "single_dmrg_step error: enlarged_sys is not a valid block"
-    if(.not.eenv%is_valid())stop "single_dmrg_step error: enlarged_env is not a valid block"
+    if(.not.esys%is_valid(.true.))stop "single_dmrg_step error: enlarged_sys is not a valid block"
+    if(.not.eenv%is_valid(.true.))stop "single_dmrg_step error: enlarged_env is not a valid block"
     print*,"Done"
     !
     !Get Enlarged Sys/Env actual dimension
@@ -222,9 +228,9 @@ contains
     call eigh(rhoL,evalsL)
     call eigh(rhoR,evalsR)
     evalsL    = evalsL(m_esys:1:-1)
-    evalsR    = evalsR(m_esys:1:-1)
+    evalsR    = evalsR(m_eenv:1:-1)
     rhoL(:,:) = rhoL(:,m_esys:1:-1)
-    rhoR(:,:) = rhoR(:,m_esys:1:-1)
+    rhoR(:,:) = rhoR(:,m_eenv:1:-1)
     call stop_timer("Get Rho_Left-dot / Rho_dot-Right")
     !
     !
@@ -244,21 +250,22 @@ contains
     !find a clever way to iterate here:
     !Return updated Block:
     call start_timer()
-    sys%length = esys%length
-    sys%dim    = m_
+    sys     = block(esys)
+    sys%dim = m_
     call sys%put("H",rotate_and_truncate(esys%operators%op("H"),truncation_rhoL,m_esys,m_))
     call sys%put("Cup",rotate_and_truncate(esys%operators%op("Cup"),truncation_rhoL,m_esys,m_))
     call sys%put("Cdw",rotate_and_truncate(esys%operators%op("Cdw"),truncation_rhoL,m_esys,m_))
     call sys%put("P",rotate_and_truncate(esys%operators%op("P"),truncation_rhoL,m_esys,m_))
 
-
-    env%length = eenv%length
-    env%dim    = m_
+    env     = block(eenv)
+    env%dim = m_
     call env%put("H",rotate_and_truncate(eenv%operators%op("H"),truncation_rhoR,m_eenv,m_))
     call env%put("Cup",rotate_and_truncate(eenv%operators%op("Cup"),truncation_rhoR,m_eenv,m_))
     call env%put("Cdw",rotate_and_truncate(eenv%operators%op("Cdw"),truncation_rhoR,m_eenv,m_))
     call env%put("P",rotate_and_truncate(eenv%operators%op("P"),truncation_rhoR,m_eenv,m_))
 
+
+    print*,m_,sys%dim,env%dim
     call stop_timer("Update+Truncate Block")
     !
     if(allocated(eig_values))deallocate(eig_values)
@@ -277,18 +284,25 @@ contains
 
 
   function build_density_matrix(nsys,nenv,psi,direction) result(rho)
-    integer                      :: nsys
-    integer                      :: nenv
-    real(8),dimension(nsys*nenv) :: psi
-    character(len=*)             :: direction
-    real(8),dimension(nsys,nenv) :: rho_restricted
-    real(8),dimension(nsys,nsys) :: rho
-    rho_restricted = transpose(reshape(psi, [nenv,nsys]))
+    integer                            :: nsys
+    integer                            :: nenv
+    real(8),dimension(nsys*nenv)       :: psi
+    character(len=*)                   :: direction
+    real(8),dimension(nsys,nenv)       :: psi_tmp
+    real(8),dimension(:,:),allocatable :: rho
+    !
+    if(allocated(rho))deallocate(rho)
+    !
+    ! psi_tmp = transpose(reshape(psi, [nenv,nsys]))
+    psi_tmp = reshape(psi, [nsys,nenv])
+    !
     select case(to_lower(str(direction)))
     case ('left','l')
-       rho  = matmul(rho_restricted,  transpose(rho_restricted) )
+       allocate(rho(nsys,nsys));rho=0d0
+       rho  = matmul(psi_tmp,  transpose(psi_tmp) )
     case ('right','r')
-       rho  = matmul(transpose(rho_restricted), rho_restricted  )
+       allocate(rho(nenv,nenv));rho=0d0
+       rho  = matmul(transpose(psi_tmp), psi_tmp  )
     end select
   end function build_density_matrix
 
@@ -307,7 +321,7 @@ contains
     OpMat= Op%as_matrix()
     Umat = matmul( transpose(trRho), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
     call RotOp%load( Umat )
-    !
+    ! !
     ! RotOp = Op
   end function rotate_and_truncate
 
