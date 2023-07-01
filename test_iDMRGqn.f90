@@ -11,7 +11,7 @@ program test_iDMRG
   implicit none
 
   character(len=64)                  :: finput
-  real(8)                            :: ts,uloc
+  real(8)                            :: ts,uloc,xmu
   integer                            :: Lmax,i,m,Neigen,current_L
   integer                            :: lanc_ncv_factor
   integer                            :: lanc_ncv_add
@@ -26,6 +26,7 @@ program test_iDMRG
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"ts",finput,default=-1d0,comment="Hopping amplitude")
+  call parse_input_variable(xmu,"xmu",finput,default=0d0,comment="Chemical potential")
   call parse_input_variable(uloc,"uloc",finput,default=0d0,comment="Hubbard U")
   call parse_input_variable(Lmax,"LMAX",finput,default=1,comment="Final chain length ")
   call parse_input_variable(m,"M",finput,default=20,&
@@ -44,20 +45,19 @@ program test_iDMRG
        comment="Lapack threshold for Arpack ")
 
 
-
-
+  write(*,*)-2d0/pi*sqrt((2*abs(ts))**2 - xmu**2)
 
   !
   !Init the single dot structure:
-  dot = hubbard_site(xmu=0d0,Uloc=uloc)
+  dot = hubbard_site(xmu=xmu,Uloc=uloc)
   !
   !Init block from single dot
   sys=block(dot)
-  env=sys
+  env=block(dot)
 
   target_qn=[1d0,1d0]
   !Run DMRG algorithm
-  open(free_unit(unit),file="energyVSlength_L"//str(Lmax)//"_m"//str(m)//".dmrg")
+  open(free_unit(unit),file="iDMRGqn_energyVSlength_L"//str(Lmax)//"_m"//str(m)//".dmrg")
   do i=1,Lmax
      current_L = 2*sys%length + 2
      write(*,*)"SuperBlock Length  =",current_L
@@ -173,15 +173,12 @@ contains
        sys_map = sys%sectors(1)%map(qn=sys_qn)
        env_map= env%sectors(1)%map(qn=env_qn)
        !
-       ! print*,sys_qn,"|",env_qn
        do i=1,size(sys_map)
           do j=1,size(env_map)
              istate=env_map(j) + (sys_map(i)-1)*env%Dim
-             ! print*,sys_map(i),":",env_map(j),"=",istate
              call append(sb_states, istate)
              call sb_sector%append(qn=sys_qn,istate=size(sb_states))
           enddo
-          ! print*,""
        enddo
     enddo
     !
@@ -223,8 +220,8 @@ contains
     call start_timer()
     esys = enlarge_block(sys,dot,grow='left')
     eenv = enlarge_block(env,dot,grow='right')
-    if(.not.esys%is_valid(.true.))stop "single_dmrg_step error: enlarged_sys is not a valid block"
-    if(.not.eenv%is_valid(.true.))stop "single_dmrg_step error: enlarged_env is not a valid block"
+    if(.not.esys%is_valid())stop "single_dmrg_step error: enlarged_sys is not a valid block"
+    if(.not.eenv%is_valid())stop "single_dmrg_step error: enlarged_env is not a valid block"
     call stop_timer("Enlarge blocks")
     !
     !Get Enlarged Sys/Env actual dimension
@@ -236,8 +233,6 @@ contains
     call start_timer()
     call get_sb_states(esys,eenv,sb_states,sb_sector)
     call stop_timer("Get SB states")
-
-    ! print*,sb_states
     m_sb = size(sb_states)
 
 
@@ -246,20 +241,6 @@ contains
     spHsb = sp_kron(esys%operators%op("H"),id(m_eenv),sb_states) + &
          sp_kron(id(m_esys),eenv%operators%op("H"),sb_states)  + &
          H2model(esys,eenv,sb_states)
-    !
-    ! spHsb = (esys%operators%op("H").x.id(m_eenv)) + (id(m_esys).x.eenv%operators%op("H")) + H2model(esys,eenv)
-    ! Hsb   = as_matrix(spHsb)
-    ! allocate(evals(size(Hsb,1)))
-    ! call eigh(Hsb,evals)
-    ! print*,evals(1:10)
-    ! deallocate(evals,Hsb)
-    ! !
-    ! ! Hsb   = as_matrix(spHsb)
-    ! ! call spHsb%load(Hsb(sb_states,sb_states))
-    ! ! deallocate(Hsb)
-    ! spHsb = sp_kron(esys%operators%op("H"),id(m_eenv),sb_states) + &
-    !      sp_kron(id(m_esys),eenv%operators%op("H"),sb_states)  + &
-    !      H2model(esys,eenv,sb_states)
     call stop_timer("Build H_sb")
 
 
@@ -312,10 +293,7 @@ contains
             build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
             qn=qn,map=eenv%sectors(1)%map(qn=qn))
     enddo
-    call stop_timer("Build Rho")
-
-
-    call start_timer()
+    !
     !SYSTEM:
     m_s = min(m,m_esys)
     m_e = min(m,m_eenv)
@@ -339,12 +317,13 @@ contains
     truncation_errorL = 1d0 - sum(evalsL(1:m_s))
     evalsR = rho_env%evals()
     truncation_errorR = 1d0 - sum(evalsR(1:m_e))
+    call stop_timer("Get Rho + U")
     write(*,"(A,L12,12X,L12)")"Truncating      :",m<=m_esys,m<=m_eenv
     write(*,"(A,I12,12X,I12)")"Truncation dim  :",m_s,m_e
     write(*,"(A,2ES24.15)")"Truncation error:",truncation_errorL,truncation_errorR
     write(*,"(A,"//str(Neigen)//"F24.15)")"Energies        :",eig_values
     write(*,*)""
-    call stop_timer("Get Rho_Left-Dot / Rho_Dot-Right")
+
 
 
     !find a clever way to iterate here:
@@ -436,11 +415,11 @@ contains
 
 
   subroutine sb_HxV(Nloc,v,Hv)
-    integer                    :: Nloc
+    integer                 :: Nloc
     real(8),dimension(Nloc) :: v
     real(8),dimension(Nloc) :: Hv
     real(8)                 :: val
-    integer                    :: i,j,jcol
+    integer                 :: i,j,jcol
     Hv=0d0
     do i=1,Nloc
        matmul: do jcol=1, spHsb%row(i)%Size
@@ -469,4 +448,4 @@ contains
     write(unit,*)""
   end subroutine print_mat
 
-end program
+end program test_iDMRG

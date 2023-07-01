@@ -11,7 +11,7 @@ program test_iDMRG
   implicit none
 
   character(len=64)                  :: finput
-  real(8)                            :: ts,uloc
+  real(8)                            :: ts,uloc,xmu
   integer                            :: Lmax,i,m,Neigen,current_L
   integer                            :: lanc_ncv_factor
   integer                            :: lanc_ncv_add
@@ -27,6 +27,7 @@ program test_iDMRG
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"ts",finput,default=-1d0,comment="Hopping amplitude")
+  call parse_input_variable(xmu,"xmu",finput,default=0d0,comment="Chemical potential")
   call parse_input_variable(uloc,"uloc",finput,default=0d0,comment="Hubbard U")
   call parse_input_variable(Lmax,"LMAX",finput,default=1,comment="Final chain length ")
   call parse_input_variable(m,"M",finput,default=20,&
@@ -43,9 +44,8 @@ program test_iDMRG
        comment="Lanczos tolerance ")
   call parse_input_variable(lanc_threshold,"LANC_THRESHOLD",finput,default=2,&
        comment="Lapack threshold for Arpack ")
-  target_Sz=0d0
 
-
+  write(*,*)-2d0/pi*sqrt((2*abs(ts))**2 - xmu**2)
 
 
   !
@@ -54,11 +54,11 @@ program test_iDMRG
   !
   !Init block from single dot
   sys=block(dot)
-  env=sys
+  env=block(dot)
 
 
   !Run DMRG algorithm
-  open(free_unit(unit),file="energyVSlength_L"//str(Lmax)//"_m"//str(m)//".dmrg")
+  open(free_unit(unit),file="iDMRG_energyVSlength_L"//str(Lmax)//"_m"//str(m)//".dmrg")
   do i=1,Lmax
      current_L = 2*sys%length + 2
      write(*,*)"SuperBlock Length  =",current_L
@@ -93,38 +93,26 @@ contains
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
-    mblock =  self%dim
-    len    =  self%length
-    !
-    enl_self%length = len + 1
-    enl_self%dim    = mblock*model_d
-    !
-    ! enl_self%length = self%length + 1
-    ! enl_self%Dim    = self%Dim*dot%Dim
+    enl_self%length = self%length + 1
+    enl_self%Dim    = self%Dim*dot%Dim
     !
     allocate(enl_self%sectors(size(self%sectors)))
     !
     select case(str(grow_))
     case ("left","l")
-       call enl_self%put("H", (self%operators%op("H").x.id(model_d)) + (id(mblock).x.dot%operators%op("H")) + &
+       call enl_self%put("H", &
+            (self%operators%op("H").x.id(dot%dim)) +  (id(self%dim).x.dot%operators%op("H")) + &
             H2model(self,as_block(dot)))
-       call enl_self%put("Cup", Id(mblock).x.dot%operators%op("Cup"))
-       call enl_self%put("Cdw", Id(mblock).x.dot%operators%op("Cdw"))
-       call enl_self%put("P"  , Id(mblock).x.dot%operators%op("P"))
-       ! do iqn=1,size(self%sectors)
-       !    enl_basis  = self%sectors(iqn)%basis().o.dot%sectors(iqn)%basis()
-       !    call enl_self%set_basis( indx=iqn, basis=enl_basis )       
-       ! enddo
+       call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
+       call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
+       call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
     case ("right","r")
-       call enl_self%put("H", (id(model_d).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(mblock)) + &
+       call enl_self%put("H", &
+            (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
             H2model(as_block(dot),self))
-       call enl_self%put("Cup", dot%operators%op("Cup").x.Id(mblock))
-       call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(mblock))
-       call enl_self%put("P"  , dot%operators%op("P").x.Id(mblock))
-       ! do iqn=1,size(self%sectors)
-       !    enl_basis  = dot%sectors(iqn)%basis().o.self%sectors(iqn)%basis()
-       !    call enl_self%set_basis( indx=iqn, basis=enl_basis )       
-       ! enddo
+       call enl_self%put("Cup", dot%operators%op("Cup").x.Id(self%dim))
+       call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
+       call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
     end select
     !
 
@@ -159,7 +147,7 @@ contains
     integer                            :: m
     type(block)                        :: sys,env
     type(block)                        :: esys,eenv
-    integer                            :: m_esys,m_eenv,m_sb,m_,i,j,Ncv,isys,Nsys,Nenv,im
+    integer                            :: m_esys,m_eenv,m_sb,m_s,m_e,i,j,Ncv,isys,Nsys,Nenv,im
     real(8),dimension(:),allocatable   :: eig_values
     real(8),dimension(:,:),allocatable :: eig_basis
     real(8),dimension(:),allocatable   :: evals,evalsL,evalsR
@@ -171,12 +159,13 @@ contains
     if(.not.env%is_valid(.true.))stop "single_dmrg_step error: env is not a valid block"
     !
     !Enlarge blocks
-    print*,"Enlarge blocks:"
+    call start_timer()
     esys = enlarge_block(sys,dot,grow='left')
     eenv = enlarge_block(env,dot,grow='right')
     if(.not.esys%is_valid(.true.))stop "single_dmrg_step error: enlarged_sys is not a valid block"
     if(.not.eenv%is_valid(.true.))stop "single_dmrg_step error: enlarged_env is not a valid block"
-    print*,"Done"
+    call stop_timer("Enlarge blocks")
+
     !
     !Get Enlarged Sys/Env actual dimension
     print*,"Enlarged Blocks dimensions:",esys%dim,eenv%dim    
@@ -184,10 +173,10 @@ contains
     m_eenv = eenv%dim
     !
     !Build SuperBLock Sector
-    call start_timer()
     m_sb = m_esys*m_eenv
     print*,"Super Block dimensions:", m_sb
     !BUild SuperBlock matrix:
+    call start_timer()
     spHsb =  (esys%operators%op("H").x.id(m_eenv)) + (id(m_esys).x.eenv%operators%op("H")) + H2model(esys,eenv)
     call stop_timer("Build H_sb")
     !
@@ -231,42 +220,42 @@ contains
     evalsR    = evalsR(m_eenv:1:-1)
     rhoL(:,:) = rhoL(:,m_esys:1:-1)
     rhoR(:,:) = rhoR(:,m_eenv:1:-1)
-    call stop_timer("Get Rho_Left-dot / Rho_dot-Right")
     !
-    !
-    call start_timer()
-    m_ = min(m,m_esys);
-    allocate(truncation_rhoL(m_esys,m_))
-    allocate(truncation_rhoR(m_eenv,m_))
-    truncation_rhoL(:,1:m_) = rhoL(:,1:m_)
-    truncation_rhoR(:,1:m_) = rhoR(:,1:m_)
-    truncation_errorL = 1d0 - sum(evalsL(1:m_))
-    truncation_errorR = 1d0 - sum(evalsR(1:m_))
-    call stop_timer("Build U")
-    write(*,*)"Truncating      :",m<=m_esys
-    write(*,*)"Truncation dim  :",m_
-    write(*,*)"Truncation error:",truncation_errorL,truncation_errorR
+
+    m_s = min(m,m_esys)
+    m_e = min(m,m_eenv)
+    allocate(truncation_rhoL(m_esys,m_s))
+    allocate(truncation_rhoR(m_eenv,m_e))
+    truncation_rhoL(:,1:m_s) = rhoL(:,1:m_s)
+    truncation_rhoR(:,1:m_e) = rhoR(:,1:m_e)
+    truncation_errorL = 1d0 - sum(evalsL(1:m_s))
+    truncation_errorR = 1d0 - sum(evalsR(1:m_e))
+    call stop_timer("Get Rho + U")
+    write(*,"(A,L12,12X,L12)")"Truncating      :",m<=m_esys,m<=m_eenv
+    write(*,"(A,I12,12X,I12)")"Truncation dim  :",m_s,m_e
+    write(*,"(A,2ES24.15)")"Truncation error:",truncation_errorL,truncation_errorR
+    write(*,"(A,"//str(Neigen)//"F24.15)")"Energies        :",eig_values
+    write(*,*)""
     !
     !find a clever way to iterate here:
     !Return updated Block:
     call start_timer()
     sys     = block(esys)
-    sys%dim = m_
-    call sys%put("H",rotate_and_truncate(esys%operators%op("H"),truncation_rhoL,m_esys,m_))
-    call sys%put("Cup",rotate_and_truncate(esys%operators%op("Cup"),truncation_rhoL,m_esys,m_))
-    call sys%put("Cdw",rotate_and_truncate(esys%operators%op("Cdw"),truncation_rhoL,m_esys,m_))
-    call sys%put("P",rotate_and_truncate(esys%operators%op("P"),truncation_rhoL,m_esys,m_))
-
+    sys%dim = m_s
+    call sys%put("H",rotate_and_truncate(esys%operators%op("H"),truncation_rhoL,m_esys,m_s))
+    call sys%put("Cup",rotate_and_truncate(esys%operators%op("Cup"),truncation_rhoL,m_esys,m_s))
+    call sys%put("Cdw",rotate_and_truncate(esys%operators%op("Cdw"),truncation_rhoL,m_esys,m_s))
+    call sys%put("P",rotate_and_truncate(esys%operators%op("P"),truncation_rhoL,m_esys,m_s))
+    !
     env     = block(eenv)
-    env%dim = m_
-    call env%put("H",rotate_and_truncate(eenv%operators%op("H"),truncation_rhoR,m_eenv,m_))
-    call env%put("Cup",rotate_and_truncate(eenv%operators%op("Cup"),truncation_rhoR,m_eenv,m_))
-    call env%put("Cdw",rotate_and_truncate(eenv%operators%op("Cdw"),truncation_rhoR,m_eenv,m_))
-    call env%put("P",rotate_and_truncate(eenv%operators%op("P"),truncation_rhoR,m_eenv,m_))
-
-
-    print*,m_,sys%dim,env%dim
+    env%dim = m_e
+    call env%put("H",rotate_and_truncate(eenv%operators%op("H"),truncation_rhoR,m_eenv,m_e))
+    call env%put("Cup",rotate_and_truncate(eenv%operators%op("Cup"),truncation_rhoR,m_eenv,m_e))
+    call env%put("Cdw",rotate_and_truncate(eenv%operators%op("Cdw"),truncation_rhoR,m_eenv,m_e))
+    call env%put("P",rotate_and_truncate(eenv%operators%op("P"),truncation_rhoR,m_eenv,m_e))
     call stop_timer("Update+Truncate Block")
+
+
     !
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
@@ -293,8 +282,8 @@ contains
     !
     if(allocated(rho))deallocate(rho)
     !
-    ! psi_tmp = transpose(reshape(psi, [nenv,nsys]))
-    psi_tmp = reshape(psi, [nsys,nenv])
+    psi_tmp = transpose(reshape(psi, [nenv,nsys]))
+    !psi_tmp = reshape(psi, [nsys,nenv])
     !
     select case(to_lower(str(direction)))
     case ('left','l')
@@ -321,8 +310,6 @@ contains
     OpMat= Op%as_matrix()
     Umat = matmul( transpose(trRho), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
     call RotOp%load( Umat )
-    ! !
-    ! RotOp = Op
   end function rotate_and_truncate
 
 
@@ -360,4 +347,4 @@ contains
     write(unit,*)""
   end subroutine print_mat
 
-end program test_iDMRG
+end program
