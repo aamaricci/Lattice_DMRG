@@ -10,6 +10,7 @@ MODULE BLOCKS
   private
 
 
+  
   type block
      integer                                     :: length=0
      integer                                     :: Dim=1
@@ -19,9 +20,11 @@ MODULE BLOCKS
      procedure,pass     :: free      => free_block
      procedure,pass     :: put       => put_op_block
      procedure,pass     :: load      => load_op_block
+     procedure,pass     :: get_basis => get_basis_block
      procedure,pass     :: set_basis => set_basis_block
      procedure,pass     :: show      => show_block
      procedure,pass     :: is_valid  => is_valid_block
+     procedure,pass     :: renormalize => rotate_operators_block
   end type block
 
 
@@ -109,7 +112,7 @@ contains
     self%operators = b%operators
     allocate(self%sectors(size(b%sectors)))
     do i=1,size(self%sectors)
-       self%sectors(i)   = b%sectors(i)
+       self%sectors(i) = b%sectors(i)
     enddo
   end function constructor_from_block
 
@@ -145,13 +148,28 @@ contains
 
 
   !+------------------------------------------------------------------+
+  !PURPOSE:  Get Basis of the sector
+  !+------------------------------------------------------------------+
+  subroutine get_basis_block(self,basis,indx)
+    class(block)     :: self
+    type(tbasis)     :: basis
+    integer,optional :: indx
+    integer          :: indx_
+    indx_=1;if(present(indx))indx_=indx
+    if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
+    call basis%free()
+    basis  = self%sectors(indx_)%basis()
+  end subroutine get_basis_block
+
+
+  !+------------------------------------------------------------------+
   !PURPOSE:  Put a QN array in the site
   !+------------------------------------------------------------------+
   subroutine set_basis_block(self,basis,indx)
-    class(block)         :: self
-    type(tbasis)         :: basis
-    integer,optional     :: indx
-    integer              :: indx_
+    class(block)     :: self
+    type(tbasis)     :: basis
+    integer,optional :: indx
+    integer          :: indx_
     indx_=1;if(present(indx))indx_=indx
     if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
     self%sectors(indx_) = sectors_list( basis )
@@ -159,26 +177,69 @@ contains
 
 
 
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE:  
+  !+------------------------------------------------------------------+
+  subroutine rotate_operators_block(self,Umat)
+    class(block)                 :: self
+    real(8),dimension(:,:)       :: Umat   ![N,M]
+    integer                      :: i,N,M  !N=self%dim,M=truncated dimension
+    type(sparse_matrix)          :: Op
+    character(len=:),allocatable :: key
+    !
+    N = size(Umat,1)
+    M = size(Umat,2)
+    if(N/=self%dim) stop "rotate_operators_block error: size(Umat,1) != self.dim"
+    do i=1,size(self%operators)
+       key = self%operators%key(index=i)
+       Op  = self%operators%op(index=i)
+       call self%put(str(key),rotate_and_truncate(Op,Umat,N,M))
+    enddo
+    self%dim = M
+    !
+    call Op%free()
+    !
+  end subroutine rotate_operators_block
+  !
+  function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
+    type(sparse_matrix),intent(in) :: Op
+    real(8),dimension(N,M)         :: trRho  ![Nesys,M]
+    integer                        :: N,M
+    type(sparse_matrix)            :: RotOp
+    real(8),dimension(M,M)         :: Umat
+    real(8),dimension(N,N)         :: OpMat
+    N = size(trRho,1)
+    M = size(trRho,2)
+    if( any( shape(Op) /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
+    OpMat= Op%as_matrix()
+    Umat = matmul( transpose(trRho), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
+    call RotOp%load( Umat )
+  end function rotate_and_truncate
+
+
   !##################################################################
   !##################################################################
   !              OPERATIONS / ASSIGNEMENTS
   !##################################################################
   !##################################################################
-  !+------------------------------------------------------------------+
-  !PURPOSE:  Equality between two blocks
-  !+------------------------------------------------------------------+
-  subroutine block_equal_block(A,B)
-    type(block),intent(inout) :: A
-    type(block),intent(in)    :: B
-    call A%free
-    A%length    = B%length
-    A%Dim       = B%Dim
-    A%operators = B%operators
-    allocate(A%sectors(size(B%sectors)))
-    do i=1,size(A%sectors)
-       A%sectors(i)   = B%sectors(i)
-    enddo
-  end subroutine block_equal_block
+  ! !+------------------------------------------------------------------+
+  ! !PURPOSE:  Equality between two blocks
+  ! !+------------------------------------------------------------------+
+  ! subroutine block_equal_block(A,B)
+  !   type(block),intent(inout) :: A
+  !   type(block),intent(in)    :: B
+  !   call A%free
+  !   A%length    = B%length
+  !   A%Dim       = B%Dim
+  !   A%operators = B%operators
+  !   allocate(A%sectors(size(B%sectors)))
+  !   do i=1,size(A%sectors)
+  !      A%sectors(i)   = B%sectors(i)
+  !   enddo
+  ! end subroutine block_equal_block
 
 
   function is_valid_block(self,nobasis) result(bool)

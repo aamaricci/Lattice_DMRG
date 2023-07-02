@@ -83,7 +83,7 @@ contains
 
 
   function enlarge_block(self,dot,grow) result(enl_self)
-    type(block),intent(inout) :: self
+    type(block)               :: self
     type(site)                :: dot
     character(len=*),optional :: grow
     character(len=16)         :: grow_
@@ -98,6 +98,9 @@ contains
     !
     allocate(enl_self%sectors(size(self%sectors)))
     !
+    call self%get_basis(self_basis)
+    call dot%get_basis(dot_basis)
+    !
     select case(str(grow_))
     case ("left","l")
        call enl_self%put("H", &
@@ -106,8 +109,8 @@ contains
        call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
        call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
        call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
-       enl_basis = self%sectors(1)%basis().o.dot%sectors(1)%basis()
-       call enl_self%set_basis( basis=enl_basis )       
+       enl_basis = (self_basis.o.dot_basis)
+       call enl_self%set_basis( basis=enl_basis )
        !
     case ("right","r")
        call enl_self%put("H", &
@@ -116,10 +119,14 @@ contains
        call enl_self%put("Cup", dot%operators%op("Cup").x.Id(self%dim))
        call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
        call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
-       enl_basis = dot%sectors(1)%basis().o.self%sectors(1)%basis()
+       enl_basis = (dot_basis.o.self_basis)
        call enl_self%set_basis( basis=enl_basis )       
        !
     end select
+    !
+    call self_basis%free()
+    call dot_basis%free()
+    call enl_basis%free()
     !
   end function enlarge_block
 
@@ -325,28 +332,19 @@ contains
     write(*,*)""
 
 
-
-    !find a clever way to iterate here:
-    !Return updated Block:
+    !Renormalize Blocks:
+    call start_timer()
+    call esys%renormalize(truncation_rhoL)
+    call eenv%renormalize(truncation_rhoR)
+    call stop_timer("Renormalize Blocks")
+    !
+    !Prepare output and update basis state
     call start_timer()
     sys     = block(esys)
-    sys%dim = m_s
-    call sys%put("H",rotate_and_truncate(esys%operators%op("H"),truncation_rhoL,m_esys,m_s))
-    call sys%put("Cup",rotate_and_truncate(esys%operators%op("Cup"),truncation_rhoL,m_esys,m_s))
-    call sys%put("Cdw",rotate_and_truncate(esys%operators%op("Cdw"),truncation_rhoL,m_esys,m_s))
-    call sys%put("P",rotate_and_truncate(esys%operators%op("P"),truncation_rhoL,m_esys,m_s))
-    call sys%set_basis(basis=sys_basis)
-
-
     env     = block(eenv)
-    env%dim = m_e
-    call env%put("H",rotate_and_truncate(eenv%operators%op("H"),truncation_rhoR,m_eenv,m_e))
-    call env%put("Cup",rotate_and_truncate(eenv%operators%op("Cup"),truncation_rhoR,m_eenv,m_e))
-    call env%put("Cdw",rotate_and_truncate(eenv%operators%op("Cdw"),truncation_rhoR,m_eenv,m_e))
-    call env%put("P",rotate_and_truncate(eenv%operators%op("P"),truncation_rhoR,m_eenv,m_e))
+    call sys%set_basis(basis=sys_basis)
     call env%set_basis(basis=env_basis)
-    call stop_timer("Update+Truncate Block")
-
+    call stop_timer("Set Basis Output")
 
     !Clean memory:
     if(allocated(esys_map))deallocate(esys_map)
@@ -369,7 +367,7 @@ contains
     call sb_sector%free()
     call rho_sys%free()
     call rho_env%free()
-
+    !
   end subroutine single_dmrg_step
 
 
@@ -398,21 +396,6 @@ contains
 
 
 
-  function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
-    type(sparse_matrix),intent(in) :: Op
-    real(8),dimension(N,M)         :: trRho  ![Nesys,M]
-    integer                        :: N,M
-    type(sparse_matrix)            :: RotOp
-    real(8),dimension(M,M)         :: Umat
-    real(8),dimension(N,N)         :: OpMat
-    N = size(trRho,1)
-    M = size(trRho,2)
-    if( any( shape(Op) /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
-    OpMat= Op%as_matrix()
-    Umat = matmul( transpose(trRho), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
-    call RotOp%load( Umat )
-  end function rotate_and_truncate
-
 
   subroutine sb_HxV(Nloc,v,Hv)
     integer                 :: Nloc
@@ -429,23 +412,5 @@ contains
        end do matmul
     end do
   end subroutine sb_HxV
-
-
-
-  subroutine print_mat(M,unit)
-    real(8),dimension(:,:) :: M
-    integer :: i,j,stride,unit,n
-    stride=1
-    write(unit,*)"Matrix: "
-    do i=1,size(M,1)
-       do j=1,size(M,2)
-          write(unit,"(("//str(stride)//"I2))",advance="no")int(M(i,j))
-          if(mod(j,stride)==0)write(unit,"(A1)",advance="no")""
-       enddo
-       write(unit,*)
-       if(mod(i,stride)==0)write(unit,*)
-    enddo
-    write(unit,*)""
-  end subroutine print_mat
 
 end program test_iDMRG

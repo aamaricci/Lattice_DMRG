@@ -18,6 +18,7 @@ MODULE SITES
      procedure,pass     :: free        => free_site
      procedure,pass     :: put         => put_op_site
      procedure,pass     :: load        => load_op_site
+     procedure,pass     :: get_basis   => get_basis_site
      procedure,pass     :: set_basis   => set_basis_site
      procedure,pass     :: show        => show_site
      procedure,pass     :: is_valid    => is_valid_site
@@ -118,15 +119,29 @@ contains
   end subroutine load_op_site
 
 
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Get Basis of the sector
+  !+------------------------------------------------------------------+
+  subroutine get_basis_site(self,basis,indx)
+    class(site)      :: self
+    type(tbasis)     :: basis
+    integer,optional :: indx
+    integer          :: indx_
+    indx_=1;if(present(indx))indx_=indx
+    if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
+    call basis%free()
+    basis  = self%sectors(indx_)%basis()
+  end subroutine get_basis_site
+
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Put a QN array in the site
   !+------------------------------------------------------------------+
   subroutine set_basis_site(self,basis,indx)
-    class(site)          :: self
-    type(tbasis)         :: basis
-    integer,optional     :: indx
-    integer              :: indx_
+    class(site)      :: self
+    type(tbasis)     :: basis
+    integer,optional :: indx
+    integer          :: indx_
     indx_=1;if(present(indx))indx_=indx
     if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_SITE ERROR: indx out of range"
     self%sectors(indx) = sectors_list( basis )

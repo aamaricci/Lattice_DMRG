@@ -105,7 +105,7 @@ contains
     c=>null()
   end subroutine free_sectors_list
 
-  
+
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor: 
@@ -211,7 +211,7 @@ contains
 
 
 
-  
+
   !+------------------------------------------------------------------+
   !PURPOSE:  Append a state in the map of a given QN if existing.
   ! If not, create it and append there.
