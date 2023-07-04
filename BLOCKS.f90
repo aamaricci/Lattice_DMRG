@@ -255,9 +255,7 @@ contains
     if(nobasis_)return
     do i=1,size(self%sectors)
        Lvec(i) = len(self%sectors(i))
-       write(900,*)Lvec(i)
     enddo
-    write(900,*)self%dim,product(Lvec)
     bool=bool.AND.(self%dim==product(Lvec))
   end function is_valid_block
 
