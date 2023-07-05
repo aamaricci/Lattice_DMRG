@@ -1,5 +1,6 @@
 program test_iDMRG
   USE SCIFOR
+  USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE, id=>sp_eye
   USE MATRIX_BLOCKS
@@ -11,54 +12,31 @@ program test_iDMRG
   implicit none
 
   character(len=64)                  :: finput
-  real(8)                            :: ts,uloc,xmu
-  integer                            :: Lmax,i,m,Neigen,current_L
-  integer                            :: lanc_ncv_factor
-  integer                            :: lanc_ncv_add
-  integer                            :: lanc_niter
-  real(8)                            :: lanc_tolerance
-  integer                            :: lanc_threshold
-  type(block)                        :: my_block,dimer,trimer,sys,env
-  type(sparse_matrix)                :: spHsb,spH
+  real(8)                            :: ts
+  integer                            :: i,m,current_L
+  type(block)                        :: sys,env
+  type(sparse_matrix)                :: spHsb
   type(site)                         :: dot
   real(8)                            :: gs_energy,target_Qn(2),current_target_QN(2)
   integer                            :: unit
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"ts",finput,default=-1d0,comment="Hopping amplitude")
-  call parse_input_variable(xmu,"xmu",finput,default=0d0,comment="Chemical potential")
-  call parse_input_variable(uloc,"uloc",finput,default=0d0,comment="Hubbard U")
-  call parse_input_variable(Lmax,"LMAX",finput,default=1,comment="Final chain length ")
-  call parse_input_variable(m,"M",finput,default=20,&
-       comment="Number of states retained at truncation of \rho")
-  call parse_input_variable(Neigen,"NEIGEN",finput,default=2,&
-       comment="Number of eigenpairs required to SB Hamiltonian")
-  call parse_input_variable(lanc_ncv_factor,"LANC_NCV_FACTOR",finput,default=10,&
-       comment="Arpack Block size parameters")
-  call parse_input_variable(lanc_ncv_add,"LANC_NCV_ADD",finput,default=0,&
-       comment="Arpack Block size parameters")
-  call parse_input_variable(lanc_niter,"LANC_NITER",finput,default=512,&
-       comment="Number of Lanczos iteration in spectrum determination.")
-  call parse_input_variable(lanc_tolerance,"LANC_TOLERANCE",finput,default=1d-12,&
-       comment="Lanczos tolerance ")
-  call parse_input_variable(lanc_threshold,"LANC_THRESHOLD",finput,default=512,&
-       comment="Lapack threshold for Arpack ")
-
-
-  write(*,*)-2d0/pi*sqrt((2*abs(ts))**2 - xmu**2)
+  call read_input(finput)
 
   !
   !Init the single dot structure:
-  dot = hubbard_site(xmu=xmu,Uloc=uloc)
+  dot = hubbard_site(xmu=xmu,Uloc=uloc(1))
   !
   !Init block from single dot
   sys=block(dot)
   env=block(dot)
 
   target_qn=[1d0,1d0]
+
   !Run DMRG algorithm
-  open(free_unit(unit),file="iDMRGqn_energyVSlength_L"//str(Lmax)//"_m"//str(m)//".dmrg")
-  do i=1,Lmax
+  open(free_unit(unit),file="iDMRGqn_energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg")
+  do i=1,Ldmrg
      current_L = 2*sys%length + 2
      write(*,*)"SuperBlock Length  =",current_L
      current_target_QN = int(target_qn*current_L/2d0)
@@ -89,7 +67,6 @@ contains
     character(len=16)         :: grow_
     type(block)               :: enl_self
     type(tbasis)              :: self_basis,dot_basis,enl_basis
-    integer                   :: iqn
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
@@ -255,21 +232,21 @@ contains
     !
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
-    allocate(eig_values(Neigen))    ;eig_values=0d0
-    allocate(eig_basis(m_sb,Neigen));eig_basis =0d0
+    allocate(eig_values(Lanc_Neigen))    ;eig_values=0d0
+    allocate(eig_basis(m_sb,Lanc_Neigen));eig_basis =0d0
     call start_timer()
-    if(m_sb < lanc_threshold)then
+    if(m_sb < lanc_dim_threshold)then
        print*,"diag SB w/ Lapack"
        allocate(Hsb(m_sb,m_sb));Hsb=0d0
        allocate(evals(m_sb))
        call spHsb%dump(Hsb)
        call eigh(Hsb,evals)
-       eig_basis(:,1:Neigen) = Hsb(:,1:Neigen)
-       eig_values(1:Neigen)  = evals(1:Neigen)
+       eig_basis(:,1:Lanc_Neigen) = Hsb(:,1:Lanc_Neigen)
+       eig_values(1:Lanc_Neigen)  = evals(1:Lanc_Neigen)
        deallocate(Hsb,evals)
     else
        print*,"diag SB w/ Arpack"
-       Ncv = min(lanc_ncv_factor*Neigen+lanc_ncv_add,m_sb)
+       Ncv = min(lanc_ncv_factor*Lanc_Neigen+lanc_ncv_add,m_sb)
        call sp_eigh(sb_HxV,eig_values,eig_basis,&
             Ncv,&
             lanc_niter,&
@@ -302,8 +279,8 @@ contains
     enddo
     !
     !SYSTEM:
-    m_s = min(m,m_esys)
-    m_e = min(m,m_eenv)
+    m_s = min(Mdmrg,m_esys)
+    m_e = min(Mdmrg,m_eenv)
     allocate(truncation_rhoL(m_esys,m_s));truncation_rhoL=0d0
     allocate(truncation_rhoR(m_eenv,m_e));truncation_rhoR=0d0
     call rho_sys%eigh(sort=.true.,reverse=.true.)
@@ -328,7 +305,7 @@ contains
     write(*,"(A,L12,12X,L12)")"Truncating      :",m<=m_esys,m<=m_eenv
     write(*,"(A,I12,12X,I12)")"Truncation dim  :",m_s,m_e
     write(*,"(A,2ES24.15)")"Truncation error:",truncation_errorL,truncation_errorR
-    write(*,"(A,"//str(Neigen)//"F24.15)")"Energies        :",eig_values
+    write(*,"(A,"//str(Lanc_Neigen)//"F24.15)")"Energies        :",eig_values
     write(*,*)""
 
 
