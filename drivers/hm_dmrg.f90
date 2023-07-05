@@ -12,7 +12,6 @@ program test_iDMRG
   implicit none
 
   character(len=64)                  :: finput
-  real(8)                            :: ts
   integer                            :: i,m,current_L
   type(block)                        :: sys,env
   type(sparse_matrix)                :: spHsb
@@ -21,7 +20,6 @@ program test_iDMRG
   integer                            :: unit
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
-  call parse_input_variable(ts,"ts",finput,default=-1d0,comment="Hopping amplitude")
   call read_input(finput)
 
   !
@@ -57,6 +55,32 @@ program test_iDMRG
 contains
 
 
+  !H_lr = -t \sum_sigma[ (C^+_{l,sigma}@P_l) x C_{r,sigma}]  + H.c.
+  function H2model(left,right,states) result(H2)
+    type(block)                   :: left
+    type(block)                   :: right
+    integer,dimension(:),optional :: states
+    type(sparse_matrix)           :: CupL,CdwL
+    type(sparse_matrix)           :: CupR,CdwR
+    type(sparse_matrix)           :: H2,P
+    P    = left%operators%op("P")
+    CupL = left%operators%op("Cup")
+    CdwL = left%operators%op("Cdw")
+    CupR = right%operators%op("Cup")
+    CdwR = right%operators%op("Cdw")
+    if(present(states))then
+       H2   = ts(1)*sp_kron(matmul(CupL%t(),P),CupR,states)  + ts(1)*sp_kron(matmul(CdwL%t(),P),CdwR,states)
+       H2   = H2 + H2%dgr()
+    else
+       H2   = ts(1)*(matmul(CupL%t(),P).x.CupR)  + ts(1)*(matmul(CdwL%t(),P).x.CdwR)
+       H2   = H2 + H2%dgr()
+    endif
+    call P%free
+    call CupL%free
+    call CdwL%free
+    call CupR%free
+    call CdwR%free
+  end function H2model
 
 
 
@@ -107,66 +131,6 @@ contains
     !
   end function enlarge_block
 
-
-
-  !H_lr = -t \sum_sigma[ (C^+_{l,sigma}@P_l) x C_{r,sigma}]  + H.c.
-  function H2model(left,right,states) result(H2)
-    type(block)                   :: left
-    type(block)                   :: right
-    integer,dimension(:),optional :: states
-    type(sparse_matrix)           :: CupL,CdwL
-    type(sparse_matrix)           :: CupR,CdwR
-    type(sparse_matrix)           :: H2,P
-    P    = left%operators%op("P")
-    CupL = left%operators%op("Cup")
-    CdwL = left%operators%op("Cdw")
-    CupR = right%operators%op("Cup")
-    CdwR = right%operators%op("Cdw")
-    if(present(states))then
-       H2   = ts*sp_kron(matmul(CupL%t(),P),CupR,states)  + ts*sp_kron(matmul(CdwL%t(),P),CdwR,states)
-       H2   = H2 + H2%dgr()
-    else
-       H2   = ts*(matmul(CupL%t(),P).x.CupR)  + ts*(matmul(CdwL%t(),P).x.CdwR)
-       H2   = H2 + H2%dgr()
-    endif
-    call P%free
-    call CupL%free
-    call CdwL%free
-    call CupR%free
-    call CdwR%free
-  end function H2model
-
-
-
-  subroutine get_sb_states(sys,env,sb_states,sb_sector)
-    type(block)                      :: sys,env
-    integer,dimension(:),allocatable :: sb_states
-    type(sectors_list)               :: sb_sector
-    integer                          :: isys,ienv
-    integer                          :: i,j,istate
-    real(8),dimension(:),allocatable :: sys_qn,env_qn
-    integer,dimension(:),allocatable :: sys_map,env_map
-    !
-    if(allocated(sb_states))deallocate(sb_states)
-    !
-    do isys=1,size(sys%sectors(1))
-       sys_qn  = sys%sectors(1)%qn(index=isys)
-       env_qn = current_target_qn - sys_qn
-       if(.not.env%sectors(1)%has_qn(env_qn))cycle
-       !
-       sys_map = sys%sectors(1)%map(qn=sys_qn)
-       env_map= env%sectors(1)%map(qn=env_qn)
-       !
-       do i=1,size(sys_map)
-          do j=1,size(env_map)
-             istate=env_map(j) + (sys_map(i)-1)*env%Dim
-             call append(sb_states, istate)
-             call sb_sector%append(qn=sys_qn,istate=size(sb_states))
-          enddo
-       enddo
-    enddo
-    !
-  end subroutine get_sb_states
 
 
 
@@ -346,6 +310,39 @@ contains
     call rho_env%free()
     !
   end subroutine single_dmrg_step
+
+
+
+
+  subroutine get_sb_states(sys,env,sb_states,sb_sector)
+    type(block)                      :: sys,env
+    integer,dimension(:),allocatable :: sb_states
+    type(sectors_list)               :: sb_sector
+    integer                          :: isys,ienv
+    integer                          :: i,j,istate
+    real(8),dimension(:),allocatable :: sys_qn,env_qn
+    integer,dimension(:),allocatable :: sys_map,env_map
+    !
+    if(allocated(sb_states))deallocate(sb_states)
+    !
+    do isys=1,size(sys%sectors(1))
+       sys_qn  = sys%sectors(1)%qn(index=isys)
+       env_qn = current_target_qn - sys_qn
+       if(.not.env%sectors(1)%has_qn(env_qn))cycle
+       !
+       sys_map = sys%sectors(1)%map(qn=sys_qn)
+       env_map= env%sectors(1)%map(qn=env_qn)
+       !
+       do i=1,size(sys_map)
+          do j=1,size(env_map)
+             istate=env_map(j) + (sys_map(i)-1)*env%Dim
+             call append(sb_states, istate)
+             call sb_sector%append(qn=sys_qn,istate=size(sb_states))
+          enddo
+       enddo
+    enddo
+    !
+  end subroutine get_sb_states
 
 
 
