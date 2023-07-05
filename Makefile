@@ -1,5 +1,5 @@
 FC=mpif90
-
+EXE=Hubbard1d_iDMRG
 
 SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
@@ -27,7 +27,7 @@ ddebug: code
 
 code: version $(OBJS)
 	@echo "compiling test_iDMRG"
-	${FC} $(FLAG) ${OBJS} drivers/hm_dmrg.f90 -o $(HOME)/.bin/hm_dmrg ${SF_INC} ${SF_LIB}
+	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE) ${SF_INC} ${SF_LIB}
 
 
 test: hlocal matrix_sparse matrix_blocks tuples sectors operators sites blocks

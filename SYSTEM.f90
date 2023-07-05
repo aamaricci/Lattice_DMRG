@@ -26,7 +26,7 @@ MODULE SYSTEM
   procedure(Hconnect),pointer,public :: H2model=>null()
   type(sparse_matrix)                :: spHsb
   type(site)                         :: dot
-  real(8),dimension(2)               :: target_Qn,current_target_QN
+  real(8),dimension(:),allocatable   :: target_Qn,current_target_QN
   type(block)                        :: sys,env
 
   public :: init_dmrg
@@ -38,10 +38,10 @@ contains
 
   subroutine init_dmrg(h2,QN,ModelDot)
     procedure(Hconnect)  :: h2
-    real(8),dimension(2) :: QN
+    real(8),dimension(:) :: QN
     type(site)           :: ModelDot
     if(associated(H2model))nullify(H2model); H2model => h2
-    target_QN = QN
+    allocate(target_qn, source=qn)
     dot       = ModelDot
     !Init block from single dot
     sys=block(dot)
@@ -110,7 +110,7 @@ contains
     call stop_timer("Get SB states")
     m_sb = size(sb_states)
     !
-    write(LOGfile,"(A,I12,I12))")"Enlarged Blocks dimensions           :", esys%dim,eenv%dim    
+    write(LOGfile,"(A,I12,I12))")"Enlarged Blocks dimensions           :", esys%dim,eenv%dim  
     write(LOGfile,"(A,I12)")"SuperBlock Total Dimension           :", m_esys*m_eenv
     write(LOGfile,"(A,I12)")"SuperBlock Sector Dimension          :", m_sb
     if(m_sb < lanc_dim_threshold)then
@@ -256,12 +256,14 @@ contains
 
 
   function enlarge_block(self,dot,grow) result(enl_self)
-    type(block)               :: self
-    type(site)                :: dot
-    character(len=*),optional :: grow
-    character(len=16)         :: grow_
-    type(block)               :: enl_self
-    type(tbasis)              :: self_basis,dot_basis,enl_basis
+    type(block)                  :: self
+    type(site)                   :: dot
+    character(len=*),optional    :: grow
+    character(len=16)            :: grow_
+    character(len=:),allocatable :: key
+    type(block)                  :: enl_self
+    type(tbasis)                 :: self_basis,dot_basis,enl_basis
+    integer :: i
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
@@ -273,14 +275,19 @@ contains
     call self%get_basis(self_basis)
     call dot%get_basis(dot_basis)
     !
+    if(.not.self%operators%has_key("H"))stop "Enlarge_Block ERROR: Missing self.H operator in the list"
+    if(.not.dot%operators%has_key("H"))stop "Enlarge_Block ERROR: Missing dot.H operator in the list"
+    !
     select case(str(grow_))
     case ("left","l")
        call enl_self%put("H", &
             (self%operators%op("H").x.id(dot%dim)) +  (id(self%dim).x.dot%operators%op("H")) + &
             H2model(self,as_block(dot)))
-       call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
-       call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
-       call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
+       do i=1,size(self%operators)          
+          key = self%operators%key(index=i)
+          if(str(key)=="H")cycle
+          call enl_self%put(str(key), Id(self%dim).x.dot%operators%op(str(key)))
+       enddo
        enl_basis = (self_basis.o.dot_basis)
        call enl_self%set_basis( basis=enl_basis )
        !
@@ -288,9 +295,11 @@ contains
        call enl_self%put("H", &
             (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
             H2model(as_block(dot),self))
-       call enl_self%put("Cup", dot%operators%op("Cup").x.Id(self%dim))
-       call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
-       call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
+       do i=1,size(self%operators)          
+          key = self%operators%key(index=i)
+          if(str(key)=="H")cycle
+          call enl_self%put(str(key), dot%operators%op(str(key)).x.Id(self%dim))
+       enddo
        enl_basis = (dot_basis.o.self_basis)
        call enl_self%set_basis( basis=enl_basis )       
        !
@@ -302,6 +311,53 @@ contains
     !
   end function enlarge_block
 
+
+  ! function enlarge_block(self,dot,grow) result(enl_self)
+  !   type(block)               :: self
+  !   type(site)                :: dot
+  !   character(len=*),optional :: grow
+  !   character(len=16)         :: grow_
+  !   type(block)               :: enl_self
+  !   type(tbasis)              :: self_basis,dot_basis,enl_basis
+  !   !
+  !   grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
+  !   !
+  !   enl_self%length = self%length + 1
+  !   enl_self%Dim    = self%Dim*dot%Dim
+  !   !
+  !   allocate(enl_self%sectors(size(self%sectors)))
+  !   !
+  !   call self%get_basis(self_basis)
+  !   call dot%get_basis(dot_basis)
+  !   !
+  !   select case(str(grow_))
+  !   case ("left","l")
+  !      call enl_self%put("H", &
+  !           (self%operators%op("H").x.id(dot%dim)) +  (id(self%dim).x.dot%operators%op("H")) + &
+  !           H2model(self,as_block(dot)))
+  !      call enl_self%put("Cup", Id(self%dim).x.dot%operators%op("Cup"))
+  !      call enl_self%put("Cdw", Id(self%dim).x.dot%operators%op("Cdw"))
+  !      call enl_self%put("P"  , Id(self%dim).x.dot%operators%op("P"))
+  !      enl_basis = (self_basis.o.dot_basis)
+  !      call enl_self%set_basis( basis=enl_basis )
+  !      !
+  !   case ("right","r")
+  !      call enl_self%put("H", &
+  !           (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
+  !           H2model(as_block(dot),self))
+  !      call enl_self%put("Cup", dot%operators%op("Cup").x.Id(self%dim))
+  !      call enl_self%put("Cdw", dot%operators%op("Cdw").x.Id(self%dim))
+  !      call enl_self%put("P"  , dot%operators%op("P").x.Id(self%dim))
+  !      enl_basis = (dot_basis.o.self_basis)
+  !      call enl_self%set_basis( basis=enl_basis )       
+  !      !
+  !   end select
+  !   !
+  !   call self_basis%free()
+  !   call dot_basis%free()
+  !   call enl_basis%free()
+  !   !
+  ! end function enlarge_block
 
 
 

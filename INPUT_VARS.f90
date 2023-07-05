@@ -102,8 +102,8 @@ contains
     call parse_input_variable(uloc,"ULOC",INPUTunit,default=(/( 2d0,i=1,size(Uloc) )/),comment="Values of the local interaction per orbital")
     ! call parse_input_variable(ust,"UST",INPUTunit,default=0.d0,comment="Value of the inter-orbital interaction term")
     ! call parse_input_variable(Jh,"JH",INPUTunit,default=0.d0,comment="Hunds coupling")
-    ! call parse_input_variable(Jx,"JX",INPUTunit,default=0.d0,comment="S-E coupling")
-    ! call parse_input_variable(Jp,"JP",INPUTunit,default=0.d0,comment="P-H coupling")
+    call parse_input_variable(Jx,"JX",INPUTunit,default=0.d0,comment="S-E coupling, Jxy Heisenberg")
+    call parse_input_variable(Jp,"JP",INPUTunit,default=0.d0,comment="P-H coupling, Jz  Heisenberg")
     !
     ! call parse_input_variable(temp,"TEMP",INPUTunit,default=0d0,comment="temperature")
     !

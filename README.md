@@ -1,17 +1,16 @@
-# Hubbard DMRG
+# Lattice DMRG
 
 *beta version*  
 *This code mostly serves as development platform for a Quantum Impurity Solver algorithm.*
 
 
-A simple DMRG code to solve the Hubbard model in 1d.  
-The software exploits consevation of the Quantum Numbers tuple ($N_\uparrow$, $N_\downarrow$) and perform *infinite* DMRG algorithm.  
+A simple DMRG code to solve Heisenberg (spin-S) and Hubbard models in 1d.  
+The software exploits consevation of the Quantum Numbers tuple ($S_z$ or $[N_\uparrow,N_\downarrow]$) and perform *infinite* DMRG algorithm.  
 Finite DMRG algorithm is under development. 
 
 
  
-The structure of this code extends to the interacting electrons case the simple [Spin_DMRG](https://github.com/QcmPlab/Spin_DMRG) code.   
-Both softwares are largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
+The structure of this code is largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
 
 ### Dependencies
 
@@ -66,15 +65,21 @@ create an issue in this repo.
 - [x] Test code against iDMRG without QN and ED.
 
 #### Milestone 3
+- [x] Wrap the SuperBlock construction into a dedicated module. Encapsulate and generalize the code structure. 
+- [x] Merge with Spin DMRG code. 
+
+
+#### Milestone 4
 - [ ] Add layer to save rotation/truncation matrices
 - [ ] Evaluates observables and entanglement
-- [x] Wrap the SuperBlock construction into a dedicated module. 
 - [ ] Develop *finite* DMRG algorithm
 - [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of  H_sb. 
+
+#### Milestone 5
 - [ ] Implement parallel tensor product. 
 
 #### Future developemnts
-- [ ] Development of a iDMRG algorithm exploiting the $\up$,$\dw$ separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
+- [ ] Development of a iDMRG algorithm for fermions exploiting the $\uparrow$,$\downarrow$ separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
 
 
 --
