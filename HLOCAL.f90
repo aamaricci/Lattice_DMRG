@@ -1,17 +1,16 @@
 MODULE HLOCAL
   USE SCIFOR
+  USE INPUT_VARS
   implicit none
   private
 
   integer,save                          :: Ns       !Number of levels per spin
   integer,save                          :: Ns_Ud
   integer,save                          :: Ns_Orb
-  integer,save                          :: Nspin,Norb
   integer,dimension(:),allocatable,save :: Nfocks    !Dim of the local Fock space per channel
   integer,save                          :: Nfock    !Dim of the local Fock space
   integer,save                          :: Nsectors !Number of sectors
   integer,allocatable,dimension(:)      :: getDim             ! [Nsectors]
-  logical                               :: hfmode=.true.
 
   !---------------- SECTOR-TO-LOCAL-FOCK SPACE STRUCTURE -------------------!
   type sector_map
@@ -62,15 +61,12 @@ contains
   !               CREATE THE LOCAL FOCK SPACE
   !##################################################################
   !##################################################################
-  subroutine Init_LocalFock_Sectors(Norb_,Nspin_)
-    integer :: Nspin_,Norb_
+  subroutine Init_LocalFock_Sectors()
     integer :: DimUp,DimDw
     integer :: DimUps(1),DimDws(1)
     integer :: Nups(1),Ndws(1)
     integer :: isector
     !
-    Norb     = Norb_
-    Nspin    = Nspin_
     Ns       = Norb
     Ns_Orb   = Ns
     Ns_Ud    = 1
@@ -202,9 +198,8 @@ contains
   !+-------------------------------------------------------------------+
   !PURPOSE: 
   !+-------------------------------------------------------------------+
-  function build_Hlocal_operator(hloc,xmu,uloc) result(Hmat)
+  function build_Hlocal_operator(hloc) result(Hmat)
     real(8),dimension(:,:,:)           :: hloc ![Nspin,Ns,Ns]
-    real(8)                            :: xmu,uloc
     type(local_fock_sector)            :: sectorI
     real(8),dimension(:,:),allocatable :: Hmat
     real(8)                            :: htmp
@@ -249,7 +244,7 @@ contains
           !Euloc=\sum=i U_i*(n_u*n_d)_i
           htmp = 0d0
           do io=1,Ns
-             htmp = htmp + Uloc*nup(io)*ndw(io)
+             htmp = htmp + Uloc(io)*nup(io)*ndw(io)
           enddo
           !
           if(Norb>1)then
@@ -257,14 +252,14 @@ contains
              ! =   U'   *     sum_{i/=j} [ n_{i,up}*n_{j,dw} + n_{j,up}*n_{i,dw} ]
              do io=1,Ns
                 do jo=io+1,Ns
-                   htmp = htmp + (Uloc-2*0d0)*(nup(io)*ndw(jo) + nup(jo)*ndw(io))
+                   htmp = htmp + Ust*(nup(io)*ndw(jo) + nup(jo)*ndw(io))
                 enddo
              enddo
              !density-density interaction: different orbitals, parallel spins
              ! = \sum_{i<j}    U''     *[ n_{i,up}*n_{j,up} + n_{i,dw}*n_{j,dw} ]
              do io=1,Ns
                 do jo=io+1,Ns
-                   htmp = htmp + (Uloc-3*0d0)*(nup(io)*nup(jo) + ndw(io)*ndw(jo))
+                   htmp = htmp + (Ust-Jh)*(nup(io)*nup(jo) + ndw(io)*ndw(jo))
                 enddo
              enddo
           endif
@@ -272,13 +267,13 @@ contains
           !sum up the contributions of hartree terms:
           if(hfmode)then
              do io=1,Ns
-                htmp = htmp - 0.5d0*Uloc*(nup(io)+ndw(io))
+                htmp = htmp - 0.5d0*Uloc(io)*(nup(io)+ndw(io))
              enddo
              if(Norb>1)then
                 do io=1,Ns
                    do jo=io+1,Ns
-                      htmp=htmp-0.5d0*(Uloc-2*0d0)*(nup(io)+ndw(io)+nup(jo)+ndw(jo))
-                      htmp=htmp-0.5d0*(Uloc-3*0d0)*(nup(io)+ndw(io)+nup(jo)+ndw(jo))
+                      htmp=htmp-0.5d0*Ust*(nup(io)+ndw(io)+nup(jo)+ndw(jo))
+                      htmp=htmp-0.5d0*(Ust-Jh)*(nup(io)+ndw(io)+nup(jo)+ndw(jo))
                    enddo
                 enddo
              endif

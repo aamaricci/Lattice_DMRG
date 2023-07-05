@@ -8,11 +8,13 @@ OFLAG= -O2 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argument-mism
 DFLAG= -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
 DDFLAG=-O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check -fsanitize=address -fdebug-aux-vars -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999
 
-OBJS = INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o TUPLE_BASIS.o LIST_SECTORS.o LIST_OPERATORS.o  SITES.o BLOCKS.o
+OBJS = VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o TUPLE_BASIS.o LIST_SECTORS.o LIST_OPERATORS.o  SITES.o BLOCKS.o SYSTEM.o HUBBARD_DMRG.o
 
 ##$ Extends the implicit support of the Makefile to .f90 files
 .SUFFIXES: .f90
 
+REV=$(shell git rev-parse HEAD)
+VER = 'character(len=41),parameter :: git_code_version = "$(REV)"' > git_version.inc
 
 all: FLAG=$(OFLAG)
 all: code
@@ -23,7 +25,7 @@ debug: code
 ddebug: FLAG=$(DDFLAG)
 ddebug: code
 
-code: $(OBJS)
+code: version $(OBJS)
 	@echo "compiling test_iDMRG"
 	${FC} $(FLAG) ${OBJS} drivers/hm_dmrg.f90 -o $(HOME)/.bin/hm_dmrg ${SF_INC} ${SF_LIB}
 
@@ -75,8 +77,12 @@ blocks: $(OBJS)
 
 clean: 
 	@echo "Cleaning:"
-	@rm -fv *.mod *.o *~ 
+	@rm -fv *.mod *.o *~ git_version.inc
 	@echo ""
+
+version:
+	@echo "git_version: $(REV)"
+	@echo $(VER)
 
 .f90.o:	
 	$(FC) $(FLAG) $(SF_INC) -c $< 

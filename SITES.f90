@@ -1,5 +1,6 @@
 MODULE SITES
   USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,xi,operator(.kx.)
+  USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -269,22 +270,26 @@ contains
 
 
   !Fock = [|0,0>,|1,0>,|0,1>,|1,1>] <- |up,dw> <- cycle UP first 1_dw x 1_up
-  function hubbard_site(uloc,xmu) result(self)
-    type(site)                         :: self
-    real(8)                            :: uloc
-    real(8)                            :: xmu
-    real(8),dimension(:,:),allocatable :: Hloc
-    real(8),dimension(:,:),allocatable :: Cup,Cdw,Cp
+  function hubbard_site(hloc) result(self)
+    real(8),dimension(Nspin,Norb,Norb),optional :: hloc  
+    real(8),dimension(Nspin,Norb,Norb)          :: hloc_
+    type(site)                                  :: self
+    real(8)                                     :: uloc
+    real(8)                                     :: xmu
+    real(8),dimension(:,:),allocatable          :: H
+    real(8),dimension(:,:),allocatable          :: Cup,Cdw,Cp
     !
-    call Init_LocalFock_Sectors(1,1)
+    hloc_ = zeros(Nspin,Norb,Norb);if(present(hloc))hloc_=hloc
     !
-    Hloc = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
+    call Init_LocalFock_Sectors()
+    !
+    H   = build_Hlocal_operator(hloc_)
     Cp  = build_C_operator(1,1);Cup=KId(1).kx.Cp
     Cp  = build_C_operator(1,2);Cdw=Cp.kx.KSz(1)
     !
     call self%free()
     self%Dim = 4
-    call self%put("H",sparse(Hloc))
+    call self%put("H",sparse(H))
     call self%put("Cup",sparse(Cup))
     call self%put("Cdw",sparse(Cdw))
     call self%put("P",sparse(kSz(2)))
@@ -292,33 +297,6 @@ contains
     self%sectors(1) = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )    
   end function hubbard_site
 
-
-
-  ! !Fock =  [|0>,|1>]_dw x [|0>,|1>]_up reproduces the same as above
-  ! function hubbard_site_ud(uloc,xmu) result(self)
-  !   type(site)                         :: self
-  !   real(8)                            :: uloc
-  !   real(8)                            :: xmu
-  !   real(8),dimension(:,:),allocatable :: Hd
-  !   real(8),dimension(:,:),allocatable :: Cup,Cdw,Cp
-  !   !
-  !   call Init_LocalFock_Sectors(1,1)
-  !   !
-  !   Hd = build_Hlocal_operator(hloc=dreal(zeros(1,1,1)),xmu=xmu,uloc=uloc)
-  !   Cp = build_C_operator(1,1)
-  !   !== identical for Up and Dw as it acts in reduced Fock space of a given spin
-  !   !
-  !   call self%free()
-  !   self%Dim  = 4
-  !   call self%put("Hd",sparse(Hd)) !this is diagonal at the beginning
-  !   call self%put("Hup",sparse(dble(zeros(2,2))))
-  !   call self%put("Hdw",sparse(dble(zeros(2,2)))) 
-  !   call self%put("Cp",sparse(Cp))   !2x2 
-  !   call self%put("P",sparse(kSz(1))) !2x2
-  !   allocate(self%sectors(2))
-  !   self%sectors(1) = sectors_list( tbasis([0d0,1d0], qdim=1) )
-  !   self%sectors(2) = sectors_list( tbasis([0d0,1d0], qdim=1) )
-  ! end function hubbard_site_ud
 
 
 END MODULE SITES

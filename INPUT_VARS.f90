@@ -2,7 +2,7 @@ MODULE INPUT_VARS
   USE SF_VERSION
   USE SF_PARSE_INPUT
   USE SF_IOTOOLS, only:str
-  ! USE VERSION
+  USE VERSION
   implicit none
 
   !input variables
@@ -158,7 +158,7 @@ contains
        call print_input()
        call save_input(INPUTunit)
        call scifor_version()
-       ! call code_version(version)
+       call code_version(git_code_version)
     endif
   end subroutine read_input
 

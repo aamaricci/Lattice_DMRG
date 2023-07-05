@@ -1,13 +1,15 @@
 # Hubbard DMRG
 
-*beta version*
+*beta version*  
+*This code mostly serves as development platform for a Quantum Impurity Solver algorithm.*
+
 
 A simple DMRG code to solve the Hubbard model in 1d.  
-*This code mostly serves as a milestone in the development of a Quantum Impurity solver for Dynamical Mean-Field Theory.*
+The software exploits consevation of the Quantum Numbers tuple ($N_\uparrow$, $N_\downarrow$) and perform *infinite* DMRG algorithm.  
+Finite DMRG algorithm is under development. 
 
-The software exploit consevation of Quantum Numbers tuple ($N_\uparrow$, $N_\downarrow$) and perform *infinite* DMRG algorithm.  *Finite* DMRG is under  development. 
+
  
-
 The structure of this code extends to the interacting electrons case the simple [Spin_DMRG](https://github.com/QcmPlab/Spin_DMRG) code.   
 Both softwares are largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
 
@@ -66,7 +68,7 @@ create an issue in this repo.
 #### Milestone 3
 - [ ] Add layer to save rotation/truncation matrices
 - [ ] Evaluates observables and entanglement
-- [ ] Wrap the SuperBlock construction into a dedicated module. 
+- [x] Wrap the SuperBlock construction into a dedicated module. 
 - [ ] Develop *finite* DMRG algorithm
 - [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of  H_sb. 
 - [ ] Implement parallel tensor product. 
