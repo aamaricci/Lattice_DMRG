@@ -1,41 +1,46 @@
-# Lattice DMRG
+# Hubbard DMRG
 
 *beta version*
 
-This is a simple DMRG code to solve interacting electrons problem on a lattice (1d so far). It mostly serve as a milestone in the development of a Quantum Impurity solver for Dynamical Mean-Field Theory. 
+A simple DMRG code to solve the Hubbard model in 1d.  
+*This code mostly serves as a milestone in the development of a Quantum Impurity solver for Dynamical Mean-Field Theory.*
 
-The algorithm includes consevation of Quantum Number $N_\up$, $N_\dw$.  
+The algorithm includes consevation of Quantum Number $N_\uparrow$, $N_\downarrow$ and perform *infinite* DMRG algorithm, although   
  
 
-The structure of this code is largely based on the simple Spin_DMRG and extend it to the case of interacting electrons. It is possible in the future the two codes will merge.  
+The structure of this code is based on the simple Spin_DMRG and extends that to the case of interacting electrons.   
+Both are largely inspired by simple DMRG code: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
 
 ### Dependencies
 
 The code is based on:  
 
-* SciFortran [https://github.com/aamaricci/SciFortran](https://github.com/aamaricci/SciFortran)  
+- [X] SciFortran [https://github.com/aamaricci/SciFortran](https://github.com/aamaricci/SciFortran)  
 
-* MPI [ in a future release ]
+* [ ] MPI 
 
   
 ### Installation
 
-Installation is not fully supported so far. In a future release a CMake installation will be made available.    
+Clone the repo  
+Setup the Makefile  
+Compile
 
-For the time being Clone the repo and DIY
 
+### Info
+For any information or suggestion contact the authors: adriano DOT amaricci AT gmail DOT com
+and/or
+cmejutoz AT sissa DOT it 
 
-For any information or suggestion contact the author as:  
-adriano DOT amaricci @ gmail DOT com
-
-or 
+OR 
 
 create an issue in this repo.
+
 
 ### DEVELOPMENT
 
 #### Milestone 1
-- [x] Extend Spin iDMRG code to Electronic case. Solve the fermion sign problem.
+- [x] Extend Spin iDMRG code to Electronic case from the Spin problem. Solve the fermion sign problem.
 - [x] Develop test code with recursive block construction and digonalization.
 - [x] Develop code without Quantum Number (QN) conservationn. 
 - [x] Test code against ED solution and exact behavior for the non-interacting regime.
@@ -48,14 +53,15 @@ create an issue in this repo.
 - [x] Test code against iDMRG without QN and ED.
 
 #### Milestone 3
+- [ ] Add layer to save rotation/truncation matrices
+- [ ] Evaluates observables and entanglement
 - [ ] Wrap the SuperBlock construction into a dedicated module. 
+- [ ] Develop *finite* DMRG algorithm
 - [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of  H_sb. 
 - [ ] Implement parallel tensor product. 
 
-#### Milestone 4
+#### Future developemnts
 - [ ] Development of a iDMRG algorithm exploiting the $\up$,$\dw$ separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
-- [ ] Include QN conservation following the results of **Milestone 2**
-- [ ] Develop massively parallel scaling.
 
 
 --
