@@ -78,6 +78,7 @@ contains
     integer                            :: Eunit
     character(len=128)                 :: Efile
     logical                            :: exist
+    type(sparse_matrix) :: trRhoL,trRhoR
     !
     call system('clear')
     !
@@ -167,44 +168,54 @@ contains
             qn=qn,map=eenv%sectors(1)%map(qn=qn))
     enddo
     !
-    !SYSTEM:
+    !Build Truncated Density Matrices:
     m_s = min(Mdmrg,m_esys)
     m_e = min(Mdmrg,m_eenv)
-    allocate(truncation_rhoL(m_esys,m_s));truncation_rhoL=0d0
-    allocate(truncation_rhoR(m_eenv,m_e));truncation_rhoR=0d0
     call rho_sys%eigh(sort=.true.,reverse=.true.)
     call rho_env%eigh(sort=.true.,reverse=.true.)
+    !>truncation errors
+    evalsL = rho_sys%evals()
+    evalsR = rho_env%evals()
+    truncation_errorL = 1d0 - sum(evalsL(1:m_s))
+    truncation_errorR = 1d0 - sum(evalsR(1:m_e))
+    !>truncation-rotation matrices 
+    call trRhoL%init(m_esys,m_s)
+    call trRhoR%init(m_eenv,m_e)
     do im=1,m_s
        rho_vec  = rho_sys%evec(m=im)
        esys_map = rho_sys%map(m=im)
-       truncation_rhoL(esys_map,im) = rho_vec
-       call sys_basis%append( qn=rho_sys%qn(m=im) )
+       do i=1,size(rho_vec)
+          call trRhoL%fast_insert(rho_vec(i),esys_map(i),im)
+       enddo
     enddo
     do im=1,m_e
        rho_vec  = rho_env%evec(m=im)
        eenv_map = rho_env%map(m=im)
-       truncation_rhoR(eenv_map,im) = rho_vec
-       call env_basis%append( qn=rho_env%qn(m=im) )
+       do i=1,size(rho_vec)
+          call trRhoR%fast_insert(rho_vec(i),eenv_map(i),im)
+       enddo
     enddo
-    evalsL = rho_sys%evals()
-    truncation_errorL = 1d0 - sum(evalsL(1:m_s))
-    evalsR = rho_env%evals()
-    truncation_errorR = 1d0 - sum(evalsR(1:m_e))
     call stop_timer("Get Rho + U")
     !
     !Renormalize Blocks:
     call start_timer()
-    call esys%renormalize(truncation_rhoL)
-    call eenv%renormalize(truncation_rhoR)
+    call esys%renormalize(as_matrix(trRhoL))
+    call eenv%renormalize(as_matrix(trRhoR))
     call stop_timer("Renormalize Blocks")
     !
     !Prepare output and update basis state
     call start_timer()
-    sys     = block(esys)
-    env     = block(eenv)
+    do im=1,m_s
+       call sys_basis%append( qn=rho_sys%qn(m=im) )
+    enddo
+    do im=1,m_e
+       call env_basis%append( qn=rho_env%qn(m=im) )
+    enddo
+    sys = block(esys)
+    env = block(eenv)
     call sys%set_basis(basis=sys_basis)
     call env%set_basis(basis=env_basis)
-    call stop_timer("Set Basis Output")
+    call stop_timer("SetUp New Basis")
     !
     call start_timer()
     Efile = "energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"

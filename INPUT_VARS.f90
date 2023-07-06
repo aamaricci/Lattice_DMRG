@@ -91,9 +91,9 @@ contains
     !
     !DEFAULT VALUES OF THE PARAMETERS:
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,default=5,comment="iDMRG steps to take=max length of the SB.")
-    call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,comment="# of states to retain at truncation. If 0 use Edmrg as threshold.  ")
-    call parse_input_variable(Edmrg,"Rdmrg",INPUTunit,default=0d0,comment="Threshold energy used to evaluate the number of states to keep. If 0d0 use fixed Mdmrg.")
-    call parse_input_variable(Lsweep,"Lsweep",INPUTunit,default=1,comment="# of DMRG sweep to take for finite DMRG algorithm.")
+    call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,comment="Number of states for truncation. If 0 use Edmrg as threshold.  ")
+    call parse_input_variable(Edmrg,"Rdmrg",INPUTunit,default=0d0,comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
+    call parse_input_variable(Lsweep,"Lsweep",INPUTunit,default=1,comment="Number of DMRG sweep to take for finite DMRG algorithm.")
     call parse_input_variable(Norb,"NORB",INPUTunit,default=1,comment="Number of impurity orbitals.")
     ! call parse_input_variable(Nspin,"NSPIN",INPUTunit,default=1,comment="Number of spin degeneracy (max 2)")
     ! call parse_input_variable(filling,"FILLING",INPUTunit,default=0,comment="Total number of allowed electrons")
@@ -129,14 +129,14 @@ contains
     ! call parse_input_variable(sparse_H,"SPARSE_H",INPUTunit,default=.true.,comment="flag to select  storage of sparse matrix H (mem--, cpu++) if TRUE, or direct on-the-fly H*v product (mem++, cpu--) if FALSE ")   
     ! call parse_input_variable(verbose,"VERBOSE",INPUTunit,default=3,comment="Verbosity level: 0=almost nothing --> 5:all. Really: all")
     !
-    call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",comment="select the lanczos method to be used in the determination of the spectrum. ARPACK (default), LANCZOS (T=0 only)")
+    call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",comment="select the lanczos method: ARPACK (default), LANCZOS (T=0 only)")
     call parse_input_variable(lanc_neigen,"LANC_NEIGEN",INPUTunit,default=2,comment="Number of states per SB sector to be determined.")
-    call parse_input_variable(lanc_ncv_factor,"LANC_NCV_FACTOR",INPUTunit,default=10,comment="Set the size of the block used in Lanczos-Arpack by multiplying the required Neigen (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
-    call parse_input_variable(lanc_ncv_add,"LANC_NCV_ADD",INPUTunit,default=0,comment="Adds up to the size of the block to prevent it to become too small (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
+    call parse_input_variable(lanc_ncv_factor,"LANC_NCV_FACTOR",INPUTunit,default=10,comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
+    call parse_input_variable(lanc_ncv_add,"LANC_NCV_ADD",INPUTunit,default=0,comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
     call parse_input_variable(lanc_niter,"LANC_NITER",INPUTunit,default=512,comment="Number of Lanczos iteration in spectrum determination.")
     call parse_input_variable(lanc_ngfiter,"LANC_NGFITER",INPUTunit,default=200,comment="Number of Lanczos iteration in GF determination. Number of momenta.")
     call parse_input_variable(lanc_tolerance,"LANC_TOLERANCE",INPUTunit,default=1d-18,comment="Tolerance for the Lanczos iterations as used in Arpack and plain lanczos.")
-    call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,default=1024,comment="Min dimension threshold to use Lanczos determination of the spectrum rather than Lapack based exact diagonalization.")
+    call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,default=1024,comment="Dimension threshold for Lapack use.")
     !
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")
 
