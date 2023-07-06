@@ -56,12 +56,12 @@ contains
     call env%free()
   end subroutine finalize_dmrg
 
+  
   subroutine idmrg_step()
-    ! type(block)                        :: sys,env
+    ! type(block)                      :: sys,env
     type(block)                        :: esys,eenv
     type(sectors_list)                 :: sb_sector
-    type(blocks_matrix)                :: rho_sys,rho_env
-    type(tbasis)                       :: sys_basis,env_basis
+
     integer                            :: m_sb,m_s,m_e
     integer                            :: m_esys,m_eenv,Nsys,Nenv
     integer                            :: isys,ienv,isb
@@ -70,15 +70,17 @@ contains
     integer,dimension(:),allocatable   :: esys_map,eenv_map,sb_map
     real(8),dimension(:),allocatable   :: sb_qn,qn
     real(8),dimension(:),allocatable   :: eig_values
-    real(8),dimension(:,:),allocatable :: eig_basis,Hmat
+    real(8),dimension(:,:),allocatable :: eig_basis,Hsb
     real(8),dimension(:),allocatable   :: rho_vec
     real(8),dimension(:),allocatable   :: evals,evalsL,evalsR
-    real(8),dimension(:,:),allocatable :: Hsb,rhoL,rhoR,truncation_rhoL,truncation_rhoR
+    type(blocks_matrix)                :: rho_sys,rho_env
+    type(tbasis)                       :: sys_basis,env_basis
+    type(sparse_matrix)                :: trRhoL,trRhoR
     real(8)                            :: truncation_errorL,truncation_errorR
     integer                            :: Eunit
     character(len=128)                 :: Efile
     logical                            :: exist
-    type(sparse_matrix) :: trRhoL,trRhoR
+
     !
     call system('clear')
     !
@@ -185,14 +187,14 @@ contains
        rho_vec  = rho_sys%evec(m=im)
        esys_map = rho_sys%map(m=im)
        do i=1,size(rho_vec)
-          call trRhoL%fast_insert(rho_vec(i),esys_map(i),im)
+          call trRhoL%insert(rho_vec(i),esys_map(i),im)
        enddo
     enddo
     do im=1,m_e
        rho_vec  = rho_env%evec(m=im)
        eenv_map = rho_env%map(m=im)
        do i=1,size(rho_vec)
-          call trRhoR%fast_insert(rho_vec(i),eenv_map(i),im)
+          call trRhoR%insert(rho_vec(i),eenv_map(i),im)
        enddo
     enddo
     call stop_timer("Get Rho + U")
@@ -219,26 +221,27 @@ contains
     !
     call start_timer()
     Efile = "energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"
-    inquire(file=str(Efile), exist=exist)
-    if (exist) then
-       open(free_unit(Eunit),file=str(Efile),status="old",position="append",action="write")
-    else
-       open(free_unit(Eunit),file=str(Efile),status="new",action="write")
-    end if
+    Eunit = fopen(str(Efile),append=.true.)
     write(Eunit,*)current_L,eig_values/current_L
     close(Eunit)
     call stop_timer("Write files")
     !
     !
     call stop_timer("dmrg_step")
-    write(LOGfile,"(A,L12,12X,L12)")"Truncating                           :",Mdmrg<=m_esys,Mdmrg<=m_eenv
-    write(LOGfile,"(A,I12,12X,I12)")"Truncation Dim                       :",m_s,m_e
-    write(LOGfile,"(A,2ES24.15)")"Truncation Errors                    :",truncation_errorL,truncation_errorR
-    ! write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")"Energies                             :",eig_values
-    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")"Energies/L                           :",eig_values/current_L
+    write(LOGfile,"(A,L12,12X,L12)")&
+         "Truncating                           :",Mdmrg<=m_esys,Mdmrg<=m_eenv
+    write(LOGfile,"(A,I12,12X,I12)")&
+         "Truncation Dim                       :",m_s,m_e
+    write(LOGfile,"(A,2ES24.15)")&
+         "Truncation Errors                    :",truncation_errorL,truncation_errorR
+    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+         "Energies/L                           :",eig_values/current_L
     write(LOGfile,*)""
     write(LOGfile,*)""
     call wait(500)
+    !
+    ! call sys%put_omat(str(esys%length),trRhoL)
+    ! call sys%show(wOP=.false.,wOMAT=.true.)
     !
     !Clean memory:
     if(allocated(esys_map))deallocate(esys_map)
@@ -249,10 +252,6 @@ contains
     if(allocated(eig_basis))deallocate(eig_basis)
     if(allocated(evalsL))deallocate(evalsL)
     if(allocated(evalsR))deallocate(evalsR)
-    if(allocated(rhoL))deallocate(rhoL)
-    if(allocated(rhoR))deallocate(rhoR)
-    if(allocated(truncation_rhoL))deallocate(truncation_rhoL)
-    if(allocated(truncation_rhoR))deallocate(truncation_rhoR)
     call esys%free()
     call eenv%free()
     call spHsb%free()
@@ -261,6 +260,8 @@ contains
     call sb_sector%free()
     call rho_sys%free()
     call rho_env%free()
+    call trRhoL%free()
+    call trRhoR%free()
     !
     return
   end subroutine idmrg_step
@@ -291,25 +292,25 @@ contains
     !
     select case(str(grow_))
     case ("left","l")
-       call enl_self%put("H", &
+       call enl_self%put_op("H", &
             (self%operators%op("H").x.id(dot%dim)) +  (id(self%dim).x.dot%operators%op("H")) + &
             H2model(self,as_block(dot)))
        do i=1,size(self%operators)          
           key = self%operators%key(index=i)
           if(str(key)=="H")cycle
-          call enl_self%put(str(key), Id(self%dim).x.dot%operators%op(str(key)))
+          call enl_self%put_op(str(key), Id(self%dim).x.dot%operators%op(str(key)))
        enddo
        enl_basis = (self_basis.o.dot_basis)
        call enl_self%set_basis( basis=enl_basis )
        !
     case ("right","r")
-       call enl_self%put("H", &
+       call enl_self%put_op("H", &
             (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
             H2model(as_block(dot),self))
-       do i=1,size(self%operators)          
+       do i=1,size(self%operators)
           key = self%operators%key(index=i)
           if(str(key)=="H")cycle
-          call enl_self%put(str(key), dot%operators%op(str(key)).x.Id(self%dim))
+          call enl_self%put_op(str(key), dot%operators%op(str(key)).x.Id(self%dim))
        enddo
        enl_basis = (dot_basis.o.self_basis)
        call enl_self%set_basis( basis=enl_basis )       

@@ -1,5 +1,5 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape
+  USE SCIFOR, only: str,assert_shape,eye
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -10,21 +10,22 @@ MODULE BLOCKS
   private
 
 
-  
+
   type block
      integer                                     :: length=0
      integer                                     :: Dim=1
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
+     type(operators_list)                        :: omatrices
    contains
-     procedure,pass     :: free      => free_block
-     procedure,pass     :: put       => put_op_block
-     procedure,pass     :: load      => load_op_block
-     procedure,pass     :: get_basis => get_basis_block
-     procedure,pass     :: set_basis => set_basis_block
-     procedure,pass     :: show      => show_block
-     procedure,pass     :: is_valid  => is_valid_block
-     procedure,pass     :: renormalize => rotate_operators_block
+     procedure,pass :: free        => free_block
+     procedure,pass :: put_op      => put_op_block
+     procedure,pass :: put_omat    => put_omat_block
+     procedure,pass :: get_basis   => get_basis_block
+     procedure,pass :: set_basis   => set_basis_block
+     procedure,pass :: show        => show_block
+     procedure,pass :: is_valid    => is_valid_block
+     procedure,pass :: renormalize => rotate_operators_block
   end type block
 
 
@@ -76,15 +77,17 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_from_scrath(length,Dim,sectors,operators) result(self)
+  function constructor_from_scrath(length,Dim,sectors,operators,omatrices) result(self)
     integer,intent(in)              :: length
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
+    type(operators_list),intent(in) :: omatrices
     type(block)                     :: self
     self%length    = length
     self%Dim       = Dim
     self%operators = operators
+    self%omatrices = omatrices
     allocate(self%sectors(size(sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = sectors(i)
@@ -98,6 +101,7 @@ contains
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
+    call self%omatrices%put("1",sparse(eye(self%Dim)))
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
@@ -110,6 +114,7 @@ contains
     self%length    = b%length
     self%Dim       = b%Dim
     self%operators = b%operators
+    self%omatrices = b%omatrices
     allocate(self%sectors(size(b%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i) = b%sectors(i)
@@ -121,7 +126,7 @@ contains
 
   !##################################################################
   !##################################################################
-  !       PUT/LOAD  - GET/DUMP OPERATORS IN/FROM A LIST
+  !       PUT  - GET/DUMP OPERATORS IN/FROM A LIST
   !##################################################################
   !##################################################################
   !+------------------------------------------------------------------+
@@ -136,17 +141,16 @@ contains
 
 
   !+------------------------------------------------------------------+
-  !PURPOSE:  Load a dense operator in the block dictionary
+  !PURPOSE:  Load a sparse matrix in the block dictionary
   !+------------------------------------------------------------------+
-  subroutine load_op_block(self,key,op)
-    class(block)                      :: self
-    character(len=*),intent(in)       :: key
-    real(8),dimension(:,:),intent(in) :: op
-    call self%operators%load(str(key),op)
-  end subroutine load_op_block
+  subroutine put_omat_block(self,key,op)
+    class(block)                   :: self
+    character(len=*),intent(in)    :: key
+    type(sparse_matrix),intent(in) :: op
+    call self%omatrices%put(str(key),op)
+  end subroutine put_omat_block
 
-
-
+  
   !+------------------------------------------------------------------+
   !PURPOSE:  Get Basis of the sector
   !+------------------------------------------------------------------+
@@ -196,7 +200,7 @@ contains
     do i=1,size(self%operators)
        key = self%operators%key(index=i)
        Op  = self%operators%op(index=i)
-       call self%put(str(key),rotate_and_truncate(Op,Umat,N,M))
+       call self%put_op(str(key),rotate_and_truncate(Op,Umat,N,M))
     enddo
     self%dim = M
     !
@@ -267,14 +271,15 @@ contains
   !              SHOW 
   !##################################################################
   !##################################################################
-  subroutine show_block(self,fmt,wOP)
+  subroutine show_block(self,fmt,wOP,wOMAT)
     class(block)              :: self
     character(len=*),optional :: fmt
-    logical,optional          :: wOP
+    logical,optional          :: wOP,wOMAT
     character(len=32)         :: fmt_
-    logical :: wOP_
+    logical :: wOP_,wOMAT_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
-    wOP_=.true.;if(present(wOP))wOP_=wOP
+    wOP_  =.false.;if(present(wOP))  wOP_  =wOP
+    wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
     write(*,"(A15,I6)")"Block Length  =",self%length
     write(*,"(A15,I6)")"Block Dim     =",self%Dim
     write(*,"(A15,I6)")"Block Sectors =",size(self%sectors)
@@ -286,9 +291,11 @@ contains
        write(*,"(A14)")"Block Ops     ="
        call self%operators%show(fmt=fmt_)
     endif
+    if(wOMAT_)then
+       write(*,"(A14)")"Block Omats   ="
+       call self%omatrices%show(fmt=fmt_)
+    endif
   end subroutine show_block
-
-
 
 
 

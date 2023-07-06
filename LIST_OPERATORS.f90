@@ -20,8 +20,8 @@ MODULE LIST_OPERATORS
    contains
      procedure,pass :: free     => free_operators_list     !destructor
      procedure,pass :: put      => put_operators_list      !put sparse operator
+     procedure,pass :: append   => append_operators_list   !put sparse operator
      procedure,pass :: show     => show_operators_list     !show operators_list to screen
-     procedure,pass :: append   => append_operators_list     !load dense matrix operator
      procedure,pass :: load     => load_operators_list     !load dense matrix operator
      procedure,pass :: get      => get_all_operators_list      !get sparse operator
      procedure,pass :: op       => get_op_operators_list       !return operator given:key,indx,current
@@ -537,7 +537,7 @@ contains
        write(*,"(A6,I12)")  "Index:",c%index
        write(*,"(A6,A)")"Key  :",str(c%ckey)
        write(*,*)"Op  :"
-       call c%ope%show(fmt=fmt_)
+       call c%ope%display()!(fmt=fmt_)
        write(*,*)""
        c => c%next
     end do

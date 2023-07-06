@@ -1,4 +1,5 @@
 MODULE AUX_FUNCS
+  USE SCIFOR, only: free_unit
   implicit none
   private
 
@@ -22,7 +23,8 @@ MODULE AUX_FUNCS
   public :: binary_search
   public :: KId
   public :: KSz
-
+  public :: fopen
+  
   logical,parameter,public           :: show_dble=.true.
   character(len=12),parameter,public :: show_fmt='F9.3'
 
@@ -80,7 +82,7 @@ contains
   end function outsum
 
 
-  subroutine append_I(vec,val)
+  pure subroutine append_I(vec,val)
     integer,dimension(:),allocatable,intent(inout) :: vec
     integer,intent(in)                             :: val  
     integer,dimension(:),allocatable               :: tmp
@@ -103,7 +105,7 @@ contains
     if(allocated(tmp))deallocate(tmp)
   end subroutine append_I
 
-  subroutine append_D(vec,val)
+  pure subroutine append_D(vec,val)
     real(8),dimension(:),allocatable,intent(inout) :: vec
     real(8),intent(in)                             :: val  
     real(8),dimension(:),allocatable               :: tmp
@@ -126,7 +128,7 @@ contains
     if(allocated(tmp))deallocate(tmp)
   end subroutine append_D
 
-  subroutine append_C(vec,val)
+  pure subroutine append_C(vec,val)
     complex(8),dimension(:),allocatable,intent(inout) :: vec
     complex(8),intent(in)                             :: val  
     complex(8),dimension(:),allocatable               :: tmp
@@ -251,5 +253,28 @@ contains
     end function compare
   end subroutine sort_array
 
+
+
+
+
+  function fopen(fname,append) result(unit)
+    character(len=*) :: fname
+    logical,optional :: append
+    integer          :: unit
+    logical          :: append_,bool
+    append_=.true.;if(present(append))append_=append
+    select case(append_)
+    case (.true.)    
+       inquire(file=trim(fname), exist=bool)
+       unit = free_unit()
+       if (bool) then
+          open(unit,file=trim(fname),status="old",position="append",action="write")
+       else
+          open(unit,file=trim(fname),status="new",action="write")
+       end if
+    case(.false.)
+       open(unit,file=trim(fname),status="new",action="write")
+    end select
+  end function fopen
 
 END MODULE AUX_FUNCS
