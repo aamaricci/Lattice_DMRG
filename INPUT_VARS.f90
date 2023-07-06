@@ -13,7 +13,7 @@ MODULE INPUT_VARS
   integer              :: Lsweep              !# of DMRG sweep to take for finite DMRG algorithm.
   !
   integer              :: Norb                !# of orbitals
-  integer              :: Nspin               !Nspin=# spin degeneracy (max 2)
+  integer              :: Nspin=1               !Nspin=# spin degeneracy (max 2)
   !
   real(8),allocatable  :: ts(:)               !local interactions
   real(8),allocatable  :: Uloc(:)             !local interactions

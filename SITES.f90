@@ -107,8 +107,8 @@ contains
     call self%operators%put(str(key),op)
   end subroutine put_op_site
 
-
-
+  
+  
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a dense operator in the site dictionary
   !+------------------------------------------------------------------+
@@ -279,6 +279,7 @@ contains
     real(8),dimension(:,:),allocatable          :: H
     real(8),dimension(:,:),allocatable          :: Cup,Cdw,Cp
     !
+    print*,Nspin,Norb,size(hloc_)
     hloc_ = zeros(Nspin,Norb,Norb);if(present(hloc))hloc_=hloc
     !
     call Init_LocalFock_Sectors()
