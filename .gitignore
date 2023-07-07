@@ -3,3 +3,4 @@ test
 *.o
 *.mod
 git_version.inc
+.DS_Store

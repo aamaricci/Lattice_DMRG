@@ -58,7 +58,6 @@ contains
 
 
   subroutine idmrg_step()
-
     integer                            :: m_sb,m_s,m_e
     integer                            :: m_sys,m_env,Nsys,Nenv
     integer                            :: isys,ienv,isb
@@ -69,18 +68,20 @@ contains
     real(8),dimension(:),allocatable   :: eig_values
     real(8),dimension(:),allocatable   :: rho_vec
     real(8),dimension(:),allocatable   :: evals,evals_sys,evals_env
-    real(8),dimension(:,:),allocatable :: eig_basis,Hsb
+    real(8),dimension(:,:),allocatable :: eig_basis,Hsb,PsiSys,PsiEnv
     type(blocks_matrix)                :: rho_sys,rho_env
     type(tbasis)                       :: sys_basis,env_basis
     type(sparse_matrix)                :: trRho_sys,trRho_env
     type(sectors_list)                 :: sb_sector
     real(8)                            :: truncation_error_sys,truncation_error_env
     integer                            :: Eunit
-    character(len=128)                 :: Efile
     logical                            :: exist
+    type(operators_list) :: osys
     !
+    !Clean screen
     call system('clear')
     !
+    !Start DMRG step timer
     call start_timer()
     !
     current_L         = 2*sys%length + 2
@@ -92,7 +93,9 @@ contains
     if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
     if(.not.env%is_valid(.true.))stop "single_dmrg_step error: env is not a valid block"
     !
-    !Enlarge blocks (rewrite on the block)
+    osys = sys%operators
+    !
+    !Enlarge the Blocks:
     call start_timer()
     call enlarge_block(sys,dot,grow='left')
     call enlarge_block(env,dot,grow='right')
@@ -110,12 +113,12 @@ contains
     call stop_timer("Get SB states")
     m_sb = size(sb_states)
     !
-    write(LOGfile,"(A,I12,I12))")"Enlarged Blocks dimensions           :", sys%dim,env%dim  
-    write(LOGfile,"(A,I12)")"SuperBlock Total Dimension           :", m_sys*m_env
-    write(LOGfile,"(A,I12)")"SuperBlock Sector Dimension          :", m_sb
-    if(m_sb < lanc_dim_threshold)then
-       write(LOGfile,"(A,A)")"Using                                :"," Lapack"
-    endif
+    write(LOGfile,"(A,I12,I12))")&
+         "Enlarged Blocks dimensions           :", sys%dim,env%dim  
+    write(LOGfile,"(A,I12)")&
+         "SuperBlock Total Dimension           :", m_sys*m_env
+    write(LOGfile,"(A,I12)")&
+         "SuperBlock Sector Dimension          :", m_sb
     call start_timer()
     write(LOGfile,"(A)")"Building H_sb"
     spHsb = sp_kron(sys%operators%op("H"),id(m_env),sb_states) + &
@@ -167,6 +170,9 @@ contains
             qn=qn,map=env%sectors(1)%map(qn=qn))
     enddo
     !
+    PsiSys = rho_sys%dump()
+    PsiEnv = rho_env%dump()
+    !
     !Build Truncated Density Matrices:
     m_s = min(Mdmrg,m_sys)
     m_e = min(Mdmrg,m_env)
@@ -194,7 +200,9 @@ contains
           call trRho_env%insert(rho_vec(i),env_map(i),im)
        enddo
     enddo
-    call stop_timer("Get Rho + U")
+    call sys%put_omat(str(sys%length),trRho_sys)
+    call env%put_omat(str(env%length),trRho_env)
+    call stop_timer("Get Rho + O")
     !
     !Renormalize Blocks:
     call start_timer()
@@ -210,18 +218,15 @@ contains
     do im=1,m_e
        call env_basis%append( qn=rho_env%qn(m=im) )
     enddo
-    ! sys = block(esys)
-    ! env = block(eenv)
     call sys%set_basis(basis=sys_basis)
     call env%set_basis(basis=env_basis)
     call stop_timer("SetUp New Basis")
     !
     call start_timer()
-    Efile = "energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"
-    Eunit = fopen(str(Efile),append=.true.)
+    Eunit = fopen(str("energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"),append=.true.)
     write(Eunit,*)current_L,eig_values/current_L
     close(Eunit)
-    call stop_timer("Write files")
+    call stop_timer("Get Observables")
     !
     !
     call stop_timer("dmrg_step")
@@ -237,8 +242,6 @@ contains
     write(LOGfile,*)""
     call wait(500)
     !
-    ! call sys%put_omat(str(sys%length),trRhoL)
-    ! call sys%show(wOP=.false.,wOMAT=.true.)
     !
     !Clean memory:
     if(allocated(sb_states))deallocate(sb_states)
@@ -252,6 +255,7 @@ contains
     if(allocated(eig_basis))deallocate(eig_basis)
     if(allocated(evals_sys))deallocate(evals_sys)
     if(allocated(evals_env))deallocate(evals_env)
+    call osys%free()
     call rho_sys%free()
     call rho_env%free()
     call sys_basis%free()
@@ -265,7 +269,7 @@ contains
   end subroutine idmrg_step
 
 
-  
+
   subroutine enlarge_block(self,dot,grow)
     type(block)                  :: self
     type(site)                   :: dot
@@ -343,9 +347,6 @@ contains
 
 
 
-
-
-
   subroutine get_sb_states(sys,env,sb_states,sb_sector)
     type(block)                      :: sys,env
     integer,dimension(:),allocatable :: sb_states
@@ -377,7 +378,17 @@ contains
   end subroutine get_sb_states
 
 
+  function build_psimat(nsys,nenv,psi,map) result(psi_mat)
+    integer                            :: Nsys,Nenv
+    real(8),dimension(:)               :: psi
+    integer,dimension(nsys*nenv)       :: map
+    real(8),dimension(:,:),allocatable :: psi_mat
+    if(allocated(psi_mat))deallocate(psi_mat)
+    allocate(psi_mat(nsys,nenv));psi_mat=0d0
+    psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
+  end function build_psimat
 
+  
   function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
     integer                            :: Nsys,Nenv
     real(8),dimension(:)               :: psi
@@ -425,264 +436,3 @@ END MODULE SYSTEM
 
 
 
-
-! subroutine idmrg_step()
-!   type(sectors_list)                 :: sb_sector
-!   integer                            :: m_sb,m_s,m_e
-!   integer                            :: m_esys,m_eenv,Nsys,Nenv
-!   integer                            :: isys,ienv,isb
-!   integer                            :: i,j,iqn,Ncv,im,unit,current_L    
-!   integer,dimension(:),allocatable   :: sb_states
-!   integer,dimension(:),allocatable   :: esys_map,eenv_map,sb_map
-!   real(8),dimension(:),allocatable   :: sb_qn,qn
-!   real(8),dimension(:),allocatable   :: eig_values
-!   real(8),dimension(:,:),allocatable :: eig_basis,Hsb
-!   real(8),dimension(:),allocatable   :: rho_vec
-!   real(8),dimension(:),allocatable   :: evals,evalsL,evalsR
-!   type(blocks_matrix)                :: rho_sys,rho_env
-!   type(tbasis)                       :: sys_basis,env_basis
-!   type(sparse_matrix)                :: trRhoL,trRhoR
-!   real(8)                            :: truncation_errorL,truncation_errorR
-!   integer                            :: Eunit
-!   character(len=128)                 :: Efile
-!   logical                            :: exist
-!   !
-!   call system('clear')
-!   !
-!   call start_timer()
-!   !
-!   current_L         = 2*sys%length + 2
-!   current_target_QN = int(target_qn*current_L/2d0)
-!   write(LOGfile,*)"SuperBlock Length  =",current_L
-!   write(LOGfile,*)"Target_QN=",current_target_QN,"filling=",sum(current_target_QN)
-!   !
-!   !Check if blocks are valid ones
-!   if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
-!   if(.not.env%is_valid(.true.))stop "single_dmrg_step error: env is not a valid block"
-!   !
-!   !Enlarge blocks
-!   call start_timer()
-!   esys = enlarge_block(sys,dot,grow='left')
-!   eenv = enlarge_block(env,dot,grow='right')
-!   if(.not.esys%is_valid())stop "single_dmrg_step error: enlarged_sys is not a valid block"
-!   if(.not.eenv%is_valid())stop "single_dmrg_step error: enlarged_env is not a valid block"
-!   call stop_timer("Enlarge blocks")
-!   !
-!   !Get Enlarged Sys/Env actual dimension
-!   m_esys = esys%dim
-!   m_eenv = eenv%dim
-!   !
-!   !Build SuperBLock Sector
-!   call start_timer()
-!   call get_sb_states(esys,eenv,sb_states,sb_sector)
-!   call stop_timer("Get SB states")
-!   m_sb = size(sb_states)
-!   !
-!   write(LOGfile,"(A,I12,I12))")"Enlarged Blocks dimensions           :", esys%dim,eenv%dim  
-!   write(LOGfile,"(A,I12)")"SuperBlock Total Dimension           :", m_esys*m_eenv
-!   write(LOGfile,"(A,I12)")"SuperBlock Sector Dimension          :", m_sb
-!   if(m_sb < lanc_dim_threshold)then
-!      write(LOGfile,"(A,A)")"Using                                :"," Lapack"
-!   endif
-!   call start_timer()
-!   write(LOGfile,"(A)")"Building H_sb"
-!   spHsb = sp_kron(esys%operators%op("H"),id(m_eenv),sb_states) + &
-!        sp_kron(id(m_esys),eenv%operators%op("H"),sb_states)  + &
-!        H2model(esys,eenv,sb_states)
-!   call stop_timer("Done H_sb")
-!   !
-!   !
-!   if(allocated(eig_values))deallocate(eig_values)
-!   if(allocated(eig_basis))deallocate(eig_basis)
-!   allocate(eig_values(Lanc_Neigen))    ;eig_values=0d0
-!   allocate(eig_basis(m_sb,Lanc_Neigen));eig_basis =0d0
-!   call start_timer()
-!   if(m_sb < lanc_dim_threshold)then
-!      allocate(Hsb(m_sb,m_sb));Hsb=0d0
-!      allocate(evals(m_sb))
-!      call spHsb%dump(Hsb)
-!      call eigh(Hsb,evals)
-!      eig_basis(:,1:Lanc_Neigen) = Hsb(:,1:Lanc_Neigen)
-!      eig_values(1:Lanc_Neigen)  = evals(1:Lanc_Neigen)
-!      deallocate(Hsb,evals)
-!   else
-!      Ncv = min(lanc_ncv_factor*Lanc_Neigen+lanc_ncv_add,m_sb)
-!      call sp_eigh(sb_HxV,eig_values,eig_basis,&
-!           Ncv,&
-!           lanc_niter,&
-!           tol=lanc_tolerance,&
-!           iverbose=.false.)
-!   end if
-!   call stop_timer("Diag H_sb")
-!   !
-!   !BUILD RHO:
-!   call start_timer()
-!   do isb=1,size(sb_sector)
-!      sb_qn  = sb_sector%qn(index=isb)
-!      sb_map = sb_sector%map(index=isb)
-!      Nsys   = size(esys%sectors(1)%map(qn=sb_qn))
-!      Nenv   = size(eenv%sectors(1)%map(qn=(current_target_qn - sb_qn)))
-!      if(Nsys*Nenv==0)cycle
-!      !LEFT :
-!      qn = sb_qn
-!      call rho_sys%append(&
-!           build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'left'),&
-!           qn=qn,map=esys%sectors(1)%map(qn=qn))
-!      !RIGHT:
-!      qn = current_target_qn-sb_qn
-!      call rho_env%append(&
-!           build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
-!           qn=qn,map=eenv%sectors(1)%map(qn=qn))
-!   enddo
-!   !
-!   !Build Truncated Density Matrices:
-!   m_s = min(Mdmrg,m_esys)
-!   m_e = min(Mdmrg,m_eenv)
-!   call rho_sys%eigh(sort=.true.,reverse=.true.)
-!   call rho_env%eigh(sort=.true.,reverse=.true.)
-!   !>truncation errors
-!   evalsL = rho_sys%evals()
-!   evalsR = rho_env%evals()
-!   truncation_errorL = 1d0 - sum(evalsL(1:m_s))
-!   truncation_errorR = 1d0 - sum(evalsR(1:m_e))
-!   !>truncation-rotation matrices 
-!   call trRhoL%init(m_esys,m_s)
-!   call trRhoR%init(m_eenv,m_e)
-!   do im=1,m_s
-!      rho_vec  = rho_sys%evec(m=im)
-!      esys_map = rho_sys%map(m=im)
-!      do i=1,size(rho_vec)
-!         call trRhoL%insert(rho_vec(i),esys_map(i),im)
-!      enddo
-!   enddo
-!   do im=1,m_e
-!      rho_vec  = rho_env%evec(m=im)
-!      eenv_map = rho_env%map(m=im)
-!      do i=1,size(rho_vec)
-!         call trRhoR%insert(rho_vec(i),eenv_map(i),im)
-!      enddo
-!   enddo
-!   call stop_timer("Get Rho + U")
-!   !
-!   !Renormalize Blocks:
-!   call start_timer()
-!   call esys%renormalize(as_matrix(trRhoL))
-!   call eenv%renormalize(as_matrix(trRhoR))
-!   call stop_timer("Renormalize Blocks")
-!   !
-!   !Prepare output and update basis state
-!   call start_timer()
-!   do im=1,m_s
-!      call sys_basis%append( qn=rho_sys%qn(m=im) )
-!   enddo
-!   do im=1,m_e
-!      call env_basis%append( qn=rho_env%qn(m=im) )
-!   enddo
-!   sys = block(esys)
-!   env = block(eenv)
-!   call sys%set_basis(basis=sys_basis)
-!   call env%set_basis(basis=env_basis)
-!   call stop_timer("SetUp New Basis")
-!   !
-!   call start_timer()
-!   Efile = "energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"
-!   Eunit = fopen(str(Efile),append=.true.)
-!   write(Eunit,*)current_L,eig_values/current_L
-!   close(Eunit)
-!   call stop_timer("Write files")
-!   !
-!   !
-!   call stop_timer("dmrg_step")
-!   write(LOGfile,"(A,L12,12X,L12)")&
-!        "Truncating                           :",Mdmrg<=m_esys,Mdmrg<=m_eenv
-!   write(LOGfile,"(A,I12,12X,I12)")&
-!        "Truncation Dim                       :",m_s,m_e
-!   write(LOGfile,"(A,2ES24.15)")&
-!        "Truncation Errors                    :",truncation_errorL,truncation_errorR
-!   write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-!        "Energies/L                           :",eig_values/current_L
-!   write(LOGfile,*)""
-!   write(LOGfile,*)""
-!   call wait(500)
-!   !
-!   ! call sys%put_omat(str(esys%length),trRhoL)
-!   ! call sys%show(wOP=.false.,wOMAT=.true.)
-!   !
-!   !Clean memory:
-!   if(allocated(esys_map))deallocate(esys_map)
-!   if(allocated(eenv_map))deallocate(eenv_map)
-!   if(allocated(sb_map))deallocate(sb_map)
-!   if(allocated(sb_states))deallocate(sb_states)
-!   if(allocated(eig_values))deallocate(eig_values)
-!   if(allocated(eig_basis))deallocate(eig_basis)
-!   if(allocated(evalsL))deallocate(evalsL)
-!   if(allocated(evalsR))deallocate(evalsR)
-!   call esys%free()
-!   call eenv%free()
-!   call spHsb%free()
-!   call sys_basis%free()
-!   call env_basis%free()
-!   call sb_sector%free()
-!   call rho_sys%free()
-!   call rho_env%free()
-!   call trRhoL%free()
-!   call trRhoR%free()
-!   !
-!   return
-! end subroutine idmrg_step
-
-! function enlarge_block(self,dot,grow) result(enl_self)
-!   type(block)                  :: self
-!   type(site)                   :: dot
-!   character(len=*),optional    :: grow
-!   character(len=16)            :: grow_
-!   character(len=:),allocatable :: key
-!   type(block)                  :: enl_self
-!   type(tbasis)                 :: self_basis,dot_basis,enl_basis
-!   integer :: i
-!   !
-!   grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
-!   !
-!   enl_self%length = self%length + 1
-!   enl_self%Dim    = self%Dim*dot%Dim
-!   !
-!   allocate(enl_self%sectors(size(self%sectors)))
-!   !
-!   call self%get_basis(self_basis)
-!   call dot%get_basis(dot_basis)
-!   !
-!   if(.not.self%operators%has_key("H"))stop "Enlarge_Block ERROR: Missing self.H operator in the list"
-!   if(.not.dot%operators%has_key("H"))stop "Enlarge_Block ERROR: Missing dot.H operator in the list"
-!   !
-!   select case(str(grow_))
-!   case ("left","l")
-!      call enl_self%put_op("H", &
-!           (self%operators%op("H").x.id(dot%dim)) +  (id(self%dim).x.dot%operators%op("H")) + &
-!           H2model(self,as_block(dot)))
-!      do i=1,size(self%operators)          
-!         key = self%operators%key(index=i)
-!         if(str(key)=="H")cycle
-!         call enl_self%put_op(str(key), Id(self%dim).x.dot%operators%op(str(key)))
-!      enddo
-!      enl_basis = (self_basis.o.dot_basis)
-!      call enl_self%set_basis( basis=enl_basis )
-!      !
-!   case ("right","r")
-!      call enl_self%put_op("H", &
-!           (id(dot%dim).x.self%operators%op("H")) +  (dot%operators%op("H").x.id(self%dim)) + &
-!           H2model(as_block(dot),self))
-!      do i=1,size(self%operators)
-!         key = self%operators%key(index=i)
-!         if(str(key)=="H")cycle
-!         call enl_self%put_op(str(key), dot%operators%op(str(key)).x.Id(self%dim))
-!      enddo
-!      enl_basis = (dot_basis.o.self_basis)
-!      call enl_self%set_basis( basis=enl_basis )       
-!      !
-!   end select
-!   !
-!   call self_basis%free()
-!   call dot_basis%free()
-!   call enl_basis%free()
-!   !
-! end function enlarge_block
