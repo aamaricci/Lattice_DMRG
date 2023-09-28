@@ -28,12 +28,94 @@ MODULE SYSTEM
   type(site)                         :: dot
   real(8),dimension(:),allocatable   :: target_Qn,current_target_QN
   type(block)                        :: sys,env
+  logical                            :: init_called=.false.
 
   public :: init_dmrg
   public :: finalize_dmrg
-  public :: idmrg_step
+  public :: step_dmrg
+  !
+  public :: infinite_DMRG
+  public :: finite_DMRG
 
 contains
+
+
+  subroutine infinite_DMRG(Lblock)
+    integer,intent(in) :: Lblock
+    integer            :: i
+    if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
+    do i=1,Lblock
+       call step_dmrg()
+    enddo
+  end subroutine infinite_DMRG
+
+
+  !I assume that block=My_block works as a deep copy. Have to check this.
+  subroutine finite_DMRG(Lblock,Msweep)
+    integer,intent(in)              :: Lblock
+    integer,dimension(:),intent(in) :: Msweep
+    integer                         :: i,im,env_label,sys_label
+    type(block),dimension(2,Lblock) :: blocks_list !1:2,Lblock
+    type(block)                     :: tmp
+    !
+    if(mod(Lblock,2)/=0)stop "finite_DMRG ERROR: Lblock%2 != 0. Lblock input must be an even number."
+    !
+    if(.not.init_called)stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
+    !
+    sys_label=1
+    env_label=2
+    !Infinite DMRG: grow the chain up to the required Lblock
+    !Using global input Mdmrg here
+    blocks_list(sys_label,sys%length)=sys
+    blocks_list(env_label,env%length)=env
+    do i=1,Lblock
+       call step_dmrg()
+       blocks_list(sys_label,sys%length)=sys
+       blocks_list(env_label,env%length)=env
+    enddo
+    !
+    !Finite DMRG: start sweep forth&back:
+    do im=1,size(Msweep)
+       sweep: do while(.true.)
+          env = blocks_list(env_label,2*Lblock - sys%length - 2)
+          !end of the chain for env, switch roles sys<-->env
+          if(env%length==1)then
+             env_label= 3-env_label
+             sys_label= 3-sys_label
+             tmp      = sys
+             sys      = env
+             env      = tmp
+             call tmp%free()
+          endif
+          !
+          print*,sys%length,env%length
+          call dmrg_graphic(sys_label)
+          call step_dmrg(Msweep(im))
+          !
+          blocks_list(sys_label,sys%length) = sys
+          if(sys_label==1.AND.sys%length==Lblock)exit sweep
+       enddo sweep
+    enddo
+    !
+  contains
+    !
+    subroutine dmrg_graphic(label)
+      integer     :: label
+      integer     :: i
+      select case(label)
+      case default; stop "dmrg_graphic error: label != 1(L),2(R)"
+      case(1)
+         write(*,"("//str(sys%length)//"A1)",advance="no")("=",i=1,sys%length)
+         write(*,"(A2)",advance="no")"**"
+         write(*,"("//str(env%length)//"A1)",advance="yes")("-",i=1,env%length)
+      case(2)
+         write(*,"("//str(env%length)//"A1)",advance="no")("=",i=1,env%length)
+         write(*,"(A2)",advance="no")"**"
+         write(*,"("//str(sys%length)//"A1)",advance="yes")("-",i=1,sys%length)
+      end select
+    end subroutine dmrg_graphic
+    !
+  end subroutine finite_DMRG
 
 
   subroutine init_dmrg(h2,QN,ModelDot)
@@ -57,7 +139,9 @@ contains
   end subroutine finalize_dmrg
 
 
-  subroutine idmrg_step()
+  subroutine step_dmrg(Mstep)
+    integer,optional                   :: Mstep
+    integer                            :: Mstates
     integer                            :: m_sb,m_s,m_e
     integer                            :: m_sys,m_env,Nsys,Nenv
     integer                            :: isys,ienv,isb
@@ -77,6 +161,8 @@ contains
     real(8)                            :: truncation_error_sys,truncation_error_env,corr
     integer                            :: Eunit
     logical                            :: exist
+    !
+    Mstates=Mdmrg;if(present(Mstep))Mstates=Mstep
     !
     !Clean screen
     call system('clear')
@@ -174,11 +260,9 @@ contains
             qn=qn,map=env%sectors(1)%map(qn=qn))
     enddo
     !
-    psiM = as_sparse(rho_sys%dump())
-    !
     !Build Truncated Density Matrices:
-    m_s = min(Mdmrg,m_sys)
-    m_e = min(Mdmrg,m_env)
+    m_s = min(Mstates,m_sys)
+    m_e = min(Mstates,m_env)
     call rho_sys%eigh(sort=.true.,reverse=.true.)
     call rho_env%eigh(sort=.true.,reverse=.true.)
     !>truncation errors
@@ -227,20 +311,15 @@ contains
     call stop_timer("SetUp New Basis")
     !
     call start_timer()
-    Eunit = fopen(str("energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"),append=.true.)
+    Eunit = fopen(str("energyVSlength_L"//str(Ldmrg)//"_m"//str(Mstates)//".dmrg"),append=.true.)
     write(Eunit,*)current_L,eig_values/current_L
     close(Eunit)
-    !
-    ! print*,shape(SiSj),shape(psiM),shape(eig_basis(:,1))
-    ! corr = trace( as_matrix(psiM.m.SiSj) )
-    ! print*, corr
-    ! write(250,*)current_L,corr
     call stop_timer("Get Observables")
     !
     !
     call stop_timer("dmrg_step")
     write(LOGfile,"(A,L12,12X,L12)")&
-         "Truncating                           :",Mdmrg<=m_sys,Mdmrg<=m_env
+         "Truncating                           :",Mstates<=m_sys,Mstates<=m_env
     write(LOGfile,"(A,I12,12X,I12)")&
          "Truncation Dim                       :",m_s,m_e
     write(LOGfile,"(A,2ES24.15)")&
@@ -274,7 +353,7 @@ contains
     call spHsb%free()
     !
     return
-  end subroutine idmrg_step
+  end subroutine step_dmrg
 
 
 
@@ -445,7 +524,7 @@ contains
   ! end function get_SziSzj
 
 
-  
+
   subroutine sb_HxV(Nloc,v,Hv)
     integer                 :: Nloc
     real(8),dimension(Nloc) :: v

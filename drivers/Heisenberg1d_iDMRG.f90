@@ -1,6 +1,6 @@
 program heisenberg_1d
   USE SCIFOR
-  USE HUBBARD_DMRG
+  USE DMRG
   implicit none
 
   character(len=64) :: finput
@@ -16,9 +16,7 @@ program heisenberg_1d
   !Init DMRG
   call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site())
   !Run DMRG algorithm
-  do i=1,Ldmrg
-     call idmrg_step()
-  enddo
+  call infinite_DMRG(Ldmrg)
   !Finalize DMRG
   call finalize_dmrg()
 
