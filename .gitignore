@@ -1,5 +1,4 @@
 repo
-test
 *.o
 *.mod
 git_version.inc

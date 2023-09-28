@@ -86,6 +86,10 @@ MODULE MATRIX_BLOCKS
      module procedure :: transpose_blocks_matrix
   end interface hconjg
 
+  interface as_matrix
+     module procedure :: as_matrix_blocks_matrix
+  end interface as_matrix
+
   public :: blocks_matrix
   public :: as_blocks
   public :: size
@@ -459,6 +463,15 @@ contains
   end function dump_blocks_matrix
 
 
+  !+------------------------------------------------------------------+
+  !PURPOSE: dump a sparse matrix into a regular 2dim array
+  !+------------------------------------------------------------------+
+  function as_matrix_blocks_matrix(self) result(matrix)
+    class(blocks_matrix),intent(inout) :: self
+    real(8),dimension(:,:),allocatable :: matrix
+    if(allocated(matrix))deallocate(matrix)
+    matrix = self%dump()
+  end function as_matrix_blocks_matrix
 
 
 

@@ -68,15 +68,15 @@ contains
     real(8),dimension(:),allocatable   :: eig_values
     real(8),dimension(:),allocatable   :: rho_vec
     real(8),dimension(:),allocatable   :: evals,evals_sys,evals_env
-    real(8),dimension(:,:),allocatable :: eig_basis,Hsb,PsiSys,PsiEnv
+    real(8),dimension(:,:),allocatable :: eig_basis,Hsb
     type(blocks_matrix)                :: rho_sys,rho_env
+    type(blocks_matrix)                :: Mpsi
     type(tbasis)                       :: sys_basis,env_basis
-    type(sparse_matrix)                :: trRho_sys,trRho_env
+    type(sparse_matrix)                :: trRho_sys,trRho_env,psiM
     type(sectors_list)                 :: sb_sector
-    real(8)                            :: truncation_error_sys,truncation_error_env
+    real(8)                            :: truncation_error_sys,truncation_error_env,corr
     integer                            :: Eunit
     logical                            :: exist
-    type(operators_list) :: osys
     !
     !Clean screen
     call system('clear')
@@ -92,8 +92,6 @@ contains
     !Check if blocks are valid ones
     if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
     if(.not.env%is_valid(.true.))stop "single_dmrg_step error: env is not a valid block"
-    !
-    osys = sys%operators
     !
     !Enlarge the Blocks:
     call start_timer()
@@ -150,6 +148,7 @@ contains
     end if
     call stop_timer("Diag H_sb")
     !
+    !
     !BUILD RHO:
     call start_timer()
     do isb=1,size(sb_sector)
@@ -158,6 +157,11 @@ contains
        Nsys   = size(sys%sectors(1)%map(qn=sb_qn))
        Nenv   = size(env%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nsys*Nenv==0)cycle
+       !build PsiMat
+       qn = sb_qn
+       call Mpsi%append(&
+            build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map),&
+            qn=qn,map=sys%sectors(1)%map(qn=qn))
        !SYSTEM
        qn = sb_qn
        call rho_sys%append(&
@@ -170,8 +174,7 @@ contains
             qn=qn,map=env%sectors(1)%map(qn=qn))
     enddo
     !
-    PsiSys = rho_sys%dump()
-    PsiEnv = rho_env%dump()
+    psiM = as_sparse(rho_sys%dump())
     !
     !Build Truncated Density Matrices:
     m_s = min(Mdmrg,m_sys)
@@ -200,6 +203,7 @@ contains
           call trRho_env%insert(rho_vec(i),env_map(i),im)
        enddo
     enddo
+    !Store all the rotation/truncation matrices:
     call sys%put_omat(str(sys%length),trRho_sys)
     call env%put_omat(str(env%length),trRho_env)
     call stop_timer("Get Rho + O")
@@ -226,6 +230,11 @@ contains
     Eunit = fopen(str("energyVSlength_L"//str(Ldmrg)//"_m"//str(Mdmrg)//".dmrg"),append=.true.)
     write(Eunit,*)current_L,eig_values/current_L
     close(Eunit)
+    !
+    ! print*,shape(SiSj),shape(psiM),shape(eig_basis(:,1))
+    ! corr = trace( as_matrix(psiM.m.SiSj) )
+    ! print*, corr
+    ! write(250,*)current_L,corr
     call stop_timer("Get Observables")
     !
     !
@@ -255,7 +264,6 @@ contains
     if(allocated(eig_basis))deallocate(eig_basis)
     if(allocated(evals_sys))deallocate(evals_sys)
     if(allocated(evals_env))deallocate(evals_env)
-    call osys%free()
     call rho_sys%free()
     call rho_env%free()
     call sys_basis%free()
@@ -267,6 +275,7 @@ contains
     !
     return
   end subroutine idmrg_step
+
 
 
 
@@ -378,7 +387,7 @@ contains
   end subroutine get_sb_states
 
 
-  function build_psimat(nsys,nenv,psi,map) result(psi_mat)
+  function build_PsiMat(Nsys,Nenv,psi,map) result(psi_mat)
     integer                            :: Nsys,Nenv
     real(8),dimension(:)               :: psi
     integer,dimension(nsys*nenv)       :: map
@@ -388,7 +397,7 @@ contains
     psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
   end function build_psimat
 
-  
+
   function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
     integer                            :: Nsys,Nenv
     real(8),dimension(:)               :: psi
@@ -413,7 +422,30 @@ contains
 
 
 
+  ! function get_SziSzj(left,right) result(SiSj)
+  !   type(operators_list) :: left
+  !   type(operators_list) :: right
+  !   type(sparse_matrix)  :: Sz1,Sp1
+  !   type(sparse_matrix)  :: Sz2,Sp2
+  !   type(sparse_matrix)  :: SiSj
+  !   Sz1 = left%op("Sz")
+  !   Sp1 = left%op("Sp")
+  !   Sz2 = right%op("Sz")
+  !   Sp2 = right%op("Sp")
+  !   print*,shape(Sz1),shape(Sz2)
+  !   ! if(present(states))then
+  !   !    SiSj = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states) +  Jx/2d0*sp_kron(Sp1%dgr(),Sp2,states)  + Jp*sp_kron(Sz1,Sz2,states)
+  !   ! else
+  !   SiSj = Jx/2d0*(Sp1.x.Sp2%dgr()) +  Jx/2d0*(Sp1%dgr().x.Sp2)  + Jp*(Sz1.x.Sz2)
+  !   ! endif
+  !   call Sz1%free()
+  !   call Sp1%free()
+  !   call Sz2%free()
+  !   call Sp2%free()
+  ! end function get_SziSzj
 
+
+  
   subroutine sb_HxV(Nloc,v,Hv)
     integer                 :: Nloc
     real(8),dimension(Nloc) :: v
