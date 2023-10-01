@@ -36,13 +36,13 @@ MODULE LIST_OPERATORS
 
   !GENERIC CONSTRUCTOR
   interface operators_list
-     module procedure :: construct_operators_list_scalar
-     module procedure :: construct_operators_list_arrays
+     module procedure :: construct_from_single_operator
+     module procedure :: construct_from_array_operator
   end interface operators_list
 
   !EQUALITY 
   interface assignment(=)
-     module procedure :: operators_list_equal_operators_list
+     module procedure :: equality_operators_list
   end interface assignment(=)
 
   !INTRINSIC FUNCTION SIZE(OPERATORS_LIST)
@@ -67,21 +67,21 @@ contains
   !##################################################################
   !##################################################################
   !+------------------------------------------------------------------+
-  !PURPOSE:  Intrinsic constructor
+  !PURPOSE:  Intrinsic constructor: given a key+operator
   !+------------------------------------------------------------------+
-  function construct_operators_list_scalar(keys,ops) result(self)
+  function construct_from_single_operator(keys,op) result(self)
     type(operators_list) :: self
     character(len=*)     :: keys
-    type(sparse_matrix)  :: ops
+    type(sparse_matrix)  :: op
     call self%free()
     allocate(self%root)
-    call self%put(keys,ops)
-  end function construct_operators_list_scalar
+    call self%put(keys,op)
+  end function construct_from_single_operator
 
   !+------------------------------------------------------------------+
-  !PURPOSE:  Intrinsic constructor
+  !PURPOSE:  Intrinsic constructor: given a list of keys+operators
   !+------------------------------------------------------------------+
-  function construct_operators_list_arrays(keys,ops) result(self)
+  function construct_from_array_operator(keys,ops) result(self)
     type(operators_list)                      :: self
     character(len=*),dimension(:)             :: keys
     type(sparse_matrix),dimension(size(keys)) :: ops
@@ -91,7 +91,7 @@ contains
     do i=1,size(keys)
        call self%put(keys(i),ops(i))
     enddo
-  end function construct_operators_list_arrays
+  end function construct_from_array_operator
 
 
 
@@ -549,7 +549,6 @@ contains
 
 
 
-
   !##################################################################
   !##################################################################
   !              OPERATIONS / ASSIGNEMENTS
@@ -558,7 +557,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Equality between two operators_lists
   !+------------------------------------------------------------------+
-  subroutine operators_list_equal_operators_list(A,B)
+  subroutine equality_operators_list(A,B)
     type(operators_list),intent(inout) :: A
     type(operators_list),intent(in)    :: B
     integer                            :: i
@@ -566,9 +565,194 @@ contains
     do i=1,size(B)
        call A%put(B%key(index=i),B%op(index=i))
     enddo
-  end subroutine operators_list_equal_operators_list
+  end subroutine equality_operators_list
 
 
 
 
 END MODULE LIST_OPERATORS
+
+
+
+
+
+
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+!                          /_  __/ ____/ ___/_  __/
+!                           / / / __/  \__ \ / /   
+!                          / / / /___ ___/ // /    
+!                         /_/ /_____//____//_/     
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+#ifdef _TEST
+program testOPERATORS_TUPLE
+  USE SCIFOR
+  USE MATRIX_SPARSE
+  USE LIST_OPERATORS
+  implicit none
+
+  type(operators_list)               :: my_list,a_list
+  type(operators_list)               :: copy_list,clist(2)
+  type(sparse_matrix)                :: spSz,spSp,spH,spK,a,b,c
+  real(8),dimension(:,:),allocatable :: mat
+  integer                            :: i,j,n
+  logical                            :: bool
+  real(8),dimension(2,2),parameter   :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
+  real(8),dimension(2,2),parameter   :: Sz=dble(pauli_z)
+  real(8),dimension(2,2),parameter   :: Sx=dble(pauli_x)
+  real(8),dimension(2,2),parameter   :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
+  real(8),dimension(4,4)             :: Gamma13,Gamma03
+  character(len=10) :: key
+  character(len=10),allocatable :: keys(:)
+
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(eye(2),Sz)
+
+
+  print*,"TEST CONSTRUCTOR, PUT, SHOW, FREE"
+  my_list = operators_list(&
+       ['H0','Sz','Sp'],&
+       [sparse(Hzero),sparse(Sz),sparse(Splus)])
+  call my_list%show()
+  call my_list%free()
+
+
+  print*,"TEST LOAD matrices"
+  call my_list%load("H0",Hzero)
+  call my_list%load("Sz",Sz)
+  call my_list%load("Sp",Splus)
+  print*,"TEST SHOW"
+  call my_list%show()
+  call my_list%free()
+
+  print*,"TEST APPEND + LOAD matrices"
+  call my_list%append("H0",as_sparse(Hzero))
+  call my_list%append("Sz",as_sparse(Sz))
+  call my_list%load("Sp",Splus)  
+  print*,"TEST SHOW"
+  call my_list%show()
+
+
+
+
+
+
+
+  print*,"TEST RETRIEVE FUNCTIONALITIES"
+  print*,"TEST .DUMP"
+  print*,"Mat.allocated:",allocated(mat)
+  print*,"dump Sp -> Mat"
+  mat = my_list%dump("Sp")
+  print*,"Mat.allocated:",allocated(mat)
+  do i=1,size(mat,1)
+     write(*,*)(mat(i,j),j=1,size(mat,2))
+  enddo
+  deallocate(mat)
+
+  print*,"TEST .GET"
+  do i=1,size(my_list)
+     call my_list%get(index=i,key=key,op=a)
+     print*,i
+     print*,key
+     call a%show()
+  enddo
+
+  print*,"TEST .KEY + .OP + ITERATION over index"
+  do i=1,size(my_list)
+     a = my_list%op(index=i)
+     print*,i
+     call a%show()
+  enddo
+  print*,""
+
+  do i=1,size(my_list)
+     key = my_list%key(index=i)
+     a = my_list%op(key=key)
+     print*,i,key
+     call a%show
+  enddo
+
+
+  print*,"TEST HAS_KEY"
+  print*,"list has key Sz",my_list%has_key("Sz")
+  print*,"list has key SZ",my_list%has_key("SZ")
+  print*,""
+
+
+
+  print*,"TEST IS_VALID "
+  print*,my_list%is_valid()
+  print*,"is valid with dim=2"
+  print*,my_list%is_valid(dim=2)
+  print*,"is not valid with dim=3"
+  print*,my_list%is_valid(dim=3)
+  print*,"is not valid once appended s_0.x.s_3"
+  call my_list%append("W",as_sparse(Gamma03))
+  print*,my_list%is_valid()
+  call my_list%free
+  print*,""
+
+
+
+  call my_list%append("H0",as_sparse(Hzero))
+  call my_list%append("Sz",as_sparse(Sz))
+  call my_list%load("Sp",Splus)
+
+
+
+  print*,"TEST DEEP COPY ="
+  copy_list = my_list
+  call copy_list%show()
+  print*,copy_list%is_valid()
+
+
+
+  print*,"TEST my_list.o('key')"
+  print*,"before a=empty"
+  call a%free
+  call a%show
+  print*,"a = my_list%op('Sz')"
+  a = my_list%op("Sz")
+  print*,"a.print"
+  call a%show
+
+  print*,""
+
+  print*,"TEST ITERATION SIZE:"
+  do i=1,size(my_list)
+     a = my_list%op(index=i)
+     print*,i,my_list%key(i)
+     call a%show()
+  enddo
+
+
+  print*,"TEST ITERATION KEYS:"
+  keys = my_list%keys(len(keys))
+  do i=1,size(keys)
+     a = my_list%op(key=str(keys(i)))
+     print*,i,str(keys(i))
+     call a%show()
+  enddo
+
+  print*,""
+  print*,""
+  print*,"TEST DEEP COPY '='"
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(eye(2),Sz)
+  call a_list%append("gamma13",as_sparse(Gamma13))
+  call a_list%append("gamma03",as_sparse(Gamma03))
+  call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)))
+
+  clist(1) = my_list
+  clist(2) = a_list
+
+  call clist(1)%show()
+  call clist(2)%show()
+
+end program testOPERATORS_TUPLE
+#endif

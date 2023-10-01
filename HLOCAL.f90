@@ -649,97 +649,99 @@ contains
     endif
   end subroutine print_conf
 
-
-
 END MODULE HLOCAL
 
 
 
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+!                          /_  __/ ____/ ___/_  __/
+!                           / / / __/  \__ \ / /   
+!                          / / / /___ ___/ // /    
+!                         /_/ /_____//____//_/     
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+#ifdef _TEST
+program testHLOCAL
+  USE SCIFOR
+  USE INPUT_VARS
+  USE HLOCAL
+  implicit none
+  character(len=64) :: finput
+  real(8),dimension(:,:),allocatable   :: Docc,Cop,CDGop,Dens,Hlocal
+  real(8),dimension(:,:,:),allocatable :: h0
+  real(8),dimension(:,:),allocatable :: CdgC
+
+
+  call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')  
+  call read_input(finput)
+
+
+  call Init_LocalFock_Sectors()
+
+  allocate(h0(nspin,norb,norb));h0=0d0
+  print*,""
+  print*,"H:"
+  Hlocal = build_Hlocal_operator(h0)
+  call print_mat(Hlocal)
+
+
+  print*,""
+  print*,"C_up:"
+  Cop = build_C_operator(iorb=1,ispin=1)
+  call print_mat(Cop)
+  call print_mat(kron(eye(2),Cop))
+
+  print*,""
+  print*,"C_dw:"
+  Cop = build_C_operator(iorb=1,ispin=2)
+  call print_mat(Cop)
+  call print_mat(kron(Cop,dble(pauli_z)))
+
+  print*,""
+  print*,"CDG_up:"
+  CDGop = build_CDG_operator(iorb=1,ispin=1)
+  call print_mat(transpose(kron(eye(2),Cop)))
+
+  print*,""
+  print*,"CDG_dw:"
+  CDGop = build_CDG_operator(iorb=1,ispin=2)
+  call print_mat(transpose(kron(Cop,dble(pauli_z))))
+
+
+  print*,""
+  print*,"Dens_up:"
+  Dens = build_Dens_operator(iorb=1,ispin=1)
+  call print_mat(dens)
+  call print_mat(kron(eye(2),Dens))
+
+  print*,""
+  print*,"Dens_dw:"  
+  Dens = build_Dens_operator(iorb=1,ispin=2)
+  call print_mat(dens)
+  call print_mat(kron(Dens,eye(2)))
+
+
+contains
+
+
+  subroutine print_mat(M)
+    real(8),dimension(:,:) :: M
+    integer :: i,j
+    do i=1,size(M,1)
+       write(*,"("//str(size(M,2))//"(F4.1,1x))")(M(i,j),j=1,size(M,2))
+    enddo
+  end subroutine print_mat
+
+end program testHLOCAL
+#endif
 
 
 
 
-! function build_C_operator(isite,ispin) result(Cmat)
-!   integer                            :: ispin,isite
-!   type(local_fock_sector)            :: sectorI
-!   real(8),dimension(:,:),allocatable :: Cmat
-!   real(8)                            :: c_
-!   integer                            :: imp,isector,i,min,mout
-!   integer                            :: nvec(2*Ns)
-!   !
-!   if(allocated(Cmat))deallocate(Cmat)
-!   allocate(Cmat(Nfock,Nfock))
-!   if(isite<1.OR.isite>Ns)stop "build_C_operator error: isite<1 OR isite>Ns. check."
-!   !
-!   imp = isite+(ispin-1)*Ns
-!   !
-!   Cmat=0d0
-!   do isector=1,Nsectors
-!      call Build_LocalFock_Sector(isector,SectorI)
-!      do i=1,sectorI%Dim
-!         min  = sectorI%H(1)%map(i)
-!         nvec = bdecomp(min,2*Ns)
-!         if(nvec(imp) == 0) cycle
-!         call c(imp,min,mout,c_)          
-!         Cmat(mout+1,min+1) = c_
-!      enddo
-!      call Delete_LocalFock_Sector(sectorI)
-!   enddo
-! end function build_c_operator
 
 
-! function build_Cdg_operator(isite,ispin) result(CDGmat)
-!   integer                            :: ispin,isite
-!   type(local_fock_sector)            :: sectorI
-!   real(8),dimension(:,:),allocatable :: CDGmat
-!   real(8)                            :: cdg_
-!   integer                            :: imp,isector,i,min,mout
-!   integer                            :: nvec(2*Ns)
-!   !
-!   if(allocated(CDGmat))deallocate(CDGmat)
-!   allocate(CDGmat(Nfock,Nfock))
-!   if(isite<1.OR.isite>Ns)stop "build_CDG_operator error: isite<1 OR isite>Ns. check."
-!   !
-!   imp = isite+(ispin-1)*Ns
-!   !
-!   CDGmat=0d0
-!   do isector=1,Nsectors
-!      call Build_LocalFock_Sector(isector,SectorI)
-!      do i=1,sectorI%Dim
-!         min  = sectorI%H(1)%map(i)
-!         nvec = bdecomp(min,2*Ns)
-!         if(nvec(imp) == 1) cycle
-!         call cdg(imp,min,mout,cdg_)          
-!         CDGmat(mout+1,min+1) = cdg_
-!      enddo
-!      call Delete_LocalFock_Sector(sectorI)
-!   enddo
-! end function build_cdg_operator
-
-
-! function build_Dens_operator(isite,ispin) result(Dmat)
-!   integer                            :: ispin,isite
-!   type(local_fock_sector)            :: sectorI
-!   real(8),dimension(:,:),allocatable :: Dmat
-!   real(8)                            :: dens
-!   integer                            :: imp,isector,i,m
-!   integer                            :: nvec(2*Ns)
-!   !
-!   if(allocated(Dmat))deallocate(Dmat)
-!   allocate(Dmat(Nfock,Nfock))
-!   if(isite<1.OR.isite>Ns)stop "build_Dens_operator error: isite<1 OR isite>Ns. check."
-!   !
-!   imp = isite+(ispin-1)*Ns
-!   !
-!   Dmat=0d0
-!   do isector=1,Nsectors
-!      call Build_LocalFock_Sector(isector,SectorI)
-!      do i=1,sectorI%Dim
-!         m    = sectorI%H(1)%map(i)
-!         nvec = bdecomp(m,2*Ns)
-!         dens = dble(nvec(imp))
-!         Dmat(m+1,m+1) = dens
-!      enddo
-!      call Delete_LocalFock_Sector(sectorI)
-!   enddo
-! end function build_dens_operator

@@ -50,25 +50,29 @@ MODULE LIST_SECTORS
   end interface sectors
 
 
+  !EQUALITY operator A=B  [deep copy]
+  interface assignment(=)
+     module procedure :: equality_sector_list
+  end interface assignment(=)
 
 
-  !intrinsic FUNCTION SIZE(OTUPLE)
+  !INTRINSIC FUNCTION SIZE(OTUPLE)
   intrinsic :: size
   interface size
      module procedure :: size_sectors_list
   end interface size
 
-
-  intrinsic :: len
-  interface len
+  !INTRINSIC FUNCTION LEN(OTUPLE)
+  intrinsic :: dim
+  interface dim
      module procedure :: len_sectors_list
-  end interface len
+  end interface dim
 
   public :: sectors_list
   public :: sectors
   public :: size
-  public :: len
-
+  public :: dim
+  public :: assignment(=)
 
 contains
 
@@ -128,6 +132,22 @@ contains
   end function construct_sectors_tbasis
 
 
+  !+------------------------------------------------------------------+
+  ! !PURPOSE:  Intrinsic constructor: 
+  ! !+------------------------------------------------------------------+
+  ! function construct_from_sectors(b) result(self)
+  !   type(sectors_list),intent(in)    :: b
+  !   type(sectors_list)               :: self
+  !   type(tbasis)                     :: basis ![Nqn,Qdim]
+  !   real(8),dimension(:),allocatable :: qn   ![Qdim]
+  !   integer                          :: i,Nbasis
+  !   !
+  !   call self%free()
+  !   do i=1,Nbasis
+  !      qn = basis%qn(i)
+  !      call self%put(qn,basis)
+  !   enddo
+  ! end function construct_from_sectors
 
 
 
@@ -348,12 +368,12 @@ contains
   !PURPOSE: Return key of the sectors_list  corresponding to a given index
   !+------------------------------------------------------------------+  
   function get_qn_sectors_list(self,index) result(qn)
-    class(sectors_list),intent(inout) :: self
-    integer                           :: index
-    integer                           :: index_
-    real(8),dimension(:),allocatable  :: qn
-    type(qtype),pointer               :: c
-    logical                           :: ifound
+    class(sectors_list),intent(in)   :: self
+    integer                          :: index
+    integer                          :: index_
+    real(8),dimension(:),allocatable :: qn
+    type(qtype),pointer              :: c
+    logical                          :: ifound
     !
     index_=index
     if(index_>self%size.OR.index_<=0)stop "get_qn_sectors_list: index !in [1,self.size]"
@@ -380,7 +400,7 @@ contains
   !PURPOSE: Return the basis as a Tuple_basis
   !+------------------------------------------------------------------+  
   function basis_sectors_list(self) result(basis)
-    class(sectors_list),intent(inout)  :: self
+    class(sectors_list),intent(in)     :: self
     type(tbasis)                       :: basis
     real(8),dimension(:,:),allocatable :: tvec
     real(8),dimension(:),allocatable   :: qn
@@ -389,7 +409,7 @@ contains
     !
     call basis%free()
     !
-    Nbasis=len(self)
+    Nbasis=dim(self)
     Qdim  =self%qdim
     !
     allocate(tvec(Nbasis,Qdim))
@@ -406,6 +426,25 @@ contains
   end function basis_sectors_list
 
 
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Tbasis equality A = B. Deep copy
+  !+------------------------------------------------------------------+
+  subroutine equality_sector_list(a,b)
+    type(sectors_list),intent(inout) :: a
+    type(sectors_list),intent(in)    :: b
+    type(tbasis)                     :: basis ![Nqn,Qdim]
+    real(8),dimension(:),allocatable :: qn    ![Qdim]
+    integer                          :: i,Nbasis
+    call a%free()
+    basis = b%basis()
+    do i=1,basis%size
+       qn = basis%qn(i)
+       call a%put(qn,basis)
+    enddo
+  end subroutine equality_sector_list
 
 
 
@@ -438,7 +477,7 @@ contains
     enddo
   end function len_sectors_list
 
-  
+
   !+------------------------------------------------------------------+
   !PURPOSE:  Returns True is qn exists, False otherwise
   !+------------------------------------------------------------------+
@@ -481,7 +520,7 @@ contains
     type(qtype),pointer               :: c
     !
     write(*,"(A6,I12)")"Size :",self%size
-    write(*,"(A6,I12)")"Len  :",len(self)
+    write(*,"(A6,I12)")"Dim  :",dim(self)
     write(*,"(A18)")"------------------"
     c => self%root%next
     do
@@ -528,3 +567,137 @@ contains
 
 
 END MODULE LIST_SECTORS
+
+
+
+
+
+
+
+
+
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+!                          /_  __/ ____/ ___/_  __/
+!                           / / / __/  \__ \ / /   
+!                          / / / /___ ___/ // /    
+!                         /_/ /_____//____//_/     
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+#ifdef _TEST
+program testLIST_SECTORS
+  USE SCIFOR
+  USE AUX_FUNCS
+  USE TUPLE_BASIS
+  USE LIST_SECTORS
+  implicit none
+
+  type(sectors_list)               :: a,dot,c
+  type(sectors_list)               :: b(2)
+  integer,dimension(:),allocatable :: map,qn
+  type(tbasis)                     :: vec1,vec2,vec3,basis,a_basis,dot_basis
+  logical,dimension(:),allocatable :: mask
+  integer                          :: i,j
+
+  vec1 = tbasis([0,0, 1,0, 0,1, 1,1, 0,0, 0,1],Qdim=2)
+  vec3 = tbasis([0,0, 5,1, 5,1, 7,2, 0,0, 3,2],2)
+  vec2 = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
+  print*,shape(vec1)
+  print*,shape(vec2)
+  print*,shape(vec3)
+
+  print*,"TEST CONSTRUCTOR 1: vec2"
+  call vec2%show
+  a = sectors_list( vec2 )
+  call a%show()
+  print*,"size(a)=",size(a)
+  call a%free()
+  print*,""
+
+  print*,"TEST CONSTRUCTOR 2: vec1"
+  call vec1%show
+  call a%load( vec1)
+  call a%show()
+  call a%free()
+  print*,""
+
+
+  print*,size(b)
+  b(1) = sectors_list(vec1)
+  b(2) = sectors_list(vec2)
+  print*,size(b)
+  print*,size(b(1)),size(b(2))
+  call b%free()
+
+  print*,"TEST APPEND:"
+  call vec1%show()
+  call a%load( vec1 )
+  call a%show()
+  print*,"append qn=[0d0,0d0] at state=10"
+  call a%append(qn=[0d0,0d0],istate=10)
+  print*,"append qn=[2d0,0d0] at state=8"
+  call a%append(qn=[2d0,0d0],istate=8)
+  call a%show()
+  call a%free()
+
+  print*,"TEST GET MAP"
+  a = sectors( vec1 )
+  call a%show
+  map= a%map(qn=[0d0,0d0])
+  print*,"QN: [",[0d0,0d0],"]",allocated(map),map
+  print*,""
+  map= a%map(qn=[1d0,0d0])
+  print*,"QN: [",[1d0,0d0],"]",allocated(map),map
+  print*,""
+  map= a%map(index=3)
+  print*,"Indx:",3,allocated(map),map
+  print*,""
+
+
+
+  print*,"TEST SIZE/LEN"
+  print*,size(a)
+  print*,dim(a)
+
+
+  print*,"TEST RETURN BASIS INTO A TUPLE_BASIS"  
+  basis = a%basis()
+  call basis%show()
+
+
+
+  print*,"HAS_QN [1,0]:T"
+  print*,a%has_qn([1d0,0d0])
+
+  print*,"HAS_QN [5,23]:F"
+  print*,a%has_qn([5d0,23d0])
+
+
+  print*,"TEST RETURN BASIS INTO A TUPLE_BASIS"    
+  a   = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )
+  dot = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )
+
+  basis = a%basis().o.dot%basis()
+  call basis%show()
+  c = sectors_list( basis)
+  call c%show()
+
+
+  print*,"Check DEEP COPY ="
+  a   = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )
+  dot = sectors_list( tbasis([0,1, 0,0, 0,1, 1,1],Qdim=2) )  
+
+  b(1) = a
+  b(2) = dot
+  call a%show()
+  call dot%show()
+
+  call b(1)%show()
+  call b(2)%show()
+
+end program testLIST_SECTORS
+#endif

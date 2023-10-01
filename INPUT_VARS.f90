@@ -7,12 +7,13 @@ MODULE INPUT_VARS
 
   !input variables
   !=========================================================
-  integer              :: Ldmrg               !# of iDMRG steps to take, Ldmrg=max length of the SB.
-  integer              :: Mdmrg               !# of states to retain at truncation. If 0 use Edmrg as threshold.  
-  real(8)              :: Edmrg               !Threshold energy used to evaluate the number of states to keep. If 0d0 use fixed Mdmrg.
-  integer              :: Lsweep              !# of DMRG sweep to take for finite DMRG algorithm.
+  integer              :: Ldmrg=10               !# of iDMRG steps to take, Ldmrg=max length of the SB.
+  integer              :: Mdmrg=10               !# of states to retain at truncation. If 0 use Edmrg as threshold.  
+  real(8)              :: Edmrg=0               !Threshold energy used to evaluate the number of states to keep. If 0d0 use fixed Mdmrg.
+  integer              :: Nsweep=1              !# of DMRG sweep to take for finite DMRG algorithm.
+  integer,allocatable  :: Msweep(:)           !list of states to optimize at each sweep in the finite DMRG algorithm.
   !
-  integer              :: Norb                !# of orbitals
+  integer              :: Norb=1                !# of orbitals
   integer              :: Nspin=1               !Nspin=# spin degeneracy (max 2)
   !
   real(8),allocatable  :: ts(:)               !local interactions
@@ -22,7 +23,7 @@ MODULE INPUT_VARS
   real(8)              :: Jx                  !J_X: coupling constant for the spin-eXchange interaction term
   real(8)              :: Jp                  !J_P: coupling constant for the Pair-hopping interaction term
   !
-  real(8)              :: xmu                 !chemical potential
+  real(8)              :: xmu=0d0                 !chemical potential
   real(8)              :: temp                !temperature
   !
   real(8)              :: eps                 !broadening
@@ -90,16 +91,25 @@ contains
     input_file=str(INPUTunit)
     !
     !DEFAULT VALUES OF THE PARAMETERS:
-    call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,default=5,comment="iDMRG steps to take=max length of the SB.")
-    call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,comment="Number of states for truncation. If 0 use Edmrg as threshold.  ")
-    call parse_input_variable(Edmrg,"Rdmrg",INPUTunit,default=0d0,comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
-    call parse_input_variable(Lsweep,"Lsweep",INPUTunit,default=1,comment="Number of DMRG sweep to take for finite DMRG algorithm.")
+    call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,default=5,&
+         comment="iDMRG steps to take=max length of the SB.")
+    call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,&
+         comment="Number of states for truncation. If 0 use Edmrg as threshold.  ")
+    call parse_input_variable(Edmrg,"Rdmrg",INPUTunit,default=0d0,&
+         comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
+    call parse_input_variable(Nsweep,"Nsweep",INPUTunit,default=1,&
+         comment="Number of DMRG sweep to take for finite DMRG algorithm.")
+    allocate(Msweep(Nsweep))
+    call parse_input_variable(Msweep,"Msweep",INPUTunit,default=(/(Mdmrg,i=1,size(Msweep) )/),&
+         comment="!list of states to optimize at each sweep in the finite DMRG algorithm..")
     call parse_input_variable(Norb,"NORB",INPUTunit,default=1,comment="Number of impurity orbitals.")
     ! call parse_input_variable(Nspin,"NSPIN",INPUTunit,default=1,comment="Number of spin degeneracy (max 2)")
     ! call parse_input_variable(filling,"FILLING",INPUTunit,default=0,comment="Total number of allowed electrons")
     allocate(Uloc(Norb),ts(Norb))
-    call parse_input_variable(ts,"TS",INPUTunit,default=(/( -1d0,i=1,size(ts) )/),comment="Hopping amplitudes per orbital")
-    call parse_input_variable(uloc,"ULOC",INPUTunit,default=(/( 2d0,i=1,size(Uloc) )/),comment="Values of the local interaction per orbital")
+    call parse_input_variable(ts,"TS",INPUTunit,default=(/( -1d0,i=1,size(ts) )/),&
+         comment="Hopping amplitudes per orbital")
+    call parse_input_variable(uloc,"ULOC",INPUTunit,default=(/( 2d0,i=1,size(Uloc) )/),&
+         comment="Values of the local interaction per orbital")
     ! call parse_input_variable(ust,"UST",INPUTunit,default=0.d0,comment="Value of the inter-orbital interaction term")
     ! call parse_input_variable(Jh,"JH",INPUTunit,default=0.d0,comment="Hunds coupling")
     call parse_input_variable(Jx,"JX",INPUTunit,default=0.d0,comment="S-E coupling, Jxy Heisenberg")
@@ -107,7 +117,8 @@ contains
     !
     ! call parse_input_variable(temp,"TEMP",INPUTunit,default=0d0,comment="temperature")
     !
-    call parse_input_variable(xmu,"XMU",INPUTunit,default=0.d0,comment="Chemical potential. If HFMODE=T, xmu=0 indicates half-filling condition.")
+    call parse_input_variable(xmu,"XMU",INPUTunit,default=0.d0,&
+         comment="Chemical potential. If HFMODE=T, xmu=0 indicates half-filling condition.")
     !
     ! call parse_input_variable(wini,"WINI",INPUTunit,default=-5.d0,comment="Smallest real-axis frequency")
     ! call parse_input_variable(wfin,"WFIN",INPUTunit,default=5.d0,comment="Largest real-axis frequency")
@@ -118,10 +129,11 @@ contains
     !
     ! allocate(gf_flag(Norb))
     ! allocate(chispin_flag(Norb))
-    ! call parse_input_variable(gf_flag,"GF_FLAG",INPUTunit,default=(/( .false.,i=1,size(gf_flag) )/),comment="Flag to activate Greens functions calculation")
+    ! call parse_input_variable(gf_flag,"GF_FLAG",INPUTunit,&default=(/( .false.,i=1,size(gf_flag) )/),comment="Flag to activate Greens functions calculation")
     ! call parse_input_variable(chispin_flag,"CHISPIN_FLAG",INPUTunit,default=(/( .false.,i=1,size(chispin_flag) )/),comment="Flag to activate spin susceptibility calculation.")
     ! !
-    call parse_input_variable(hfmode,"HFMODE",INPUTunit,default=.true.,comment="Flag to set the Hartree form of the interaction (n-1/2). see xmu.")
+    call parse_input_variable(hfmode,"HFMODE",INPUTunit,default=.true.,&
+         comment="Flag to set the Hartree form of the interaction (n-1/2). see xmu.")
     ! call parse_input_variable(eps,"EPS",INPUTunit,default=0.01d0,comment="Broadening on the real-axis.")
     ! call parse_input_variable(cutoff,"CUTOFF",INPUTunit,default=1.d-9,comment="Spectrum cut-off, used to determine the number states to be retained.")
     ! call parse_input_variable(gs_threshold,"GS_THRESHOLD",INPUTunit,default=1.d-9,comment="Energy threshold for ground state degeneracy loop up")
@@ -129,14 +141,22 @@ contains
     ! call parse_input_variable(sparse_H,"SPARSE_H",INPUTunit,default=.true.,comment="flag to select  storage of sparse matrix H (mem--, cpu++) if TRUE, or direct on-the-fly H*v product (mem++, cpu--) if FALSE ")   
     ! call parse_input_variable(verbose,"VERBOSE",INPUTunit,default=3,comment="Verbosity level: 0=almost nothing --> 5:all. Really: all")
     !
-    call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",comment="select the lanczos method: ARPACK (default), LANCZOS (T=0 only)")
-    call parse_input_variable(lanc_neigen,"LANC_NEIGEN",INPUTunit,default=2,comment="Number of states per SB sector to be determined.")
-    call parse_input_variable(lanc_ncv_factor,"LANC_NCV_FACTOR",INPUTunit,default=10,comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
-    call parse_input_variable(lanc_ncv_add,"LANC_NCV_ADD",INPUTunit,default=0,comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
-    call parse_input_variable(lanc_niter,"LANC_NITER",INPUTunit,default=512,comment="Number of Lanczos iteration in spectrum determination.")
-    call parse_input_variable(lanc_ngfiter,"LANC_NGFITER",INPUTunit,default=200,comment="Number of Lanczos iteration in GF determination. Number of momenta.")
-    call parse_input_variable(lanc_tolerance,"LANC_TOLERANCE",INPUTunit,default=1d-18,comment="Tolerance for the Lanczos iterations as used in Arpack and plain lanczos.")
-    call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,default=1024,comment="Dimension threshold for Lapack use.")
+    call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",&
+         comment="select the lanczos method: ARPACK (default), LANCZOS (T=0 only)")
+    call parse_input_variable(lanc_neigen,"LANC_NEIGEN",INPUTunit,default=2,&
+         comment="Number of states per SB sector to be determined.")
+    call parse_input_variable(lanc_ncv_factor,"LANC_NCV_FACTOR",INPUTunit,default=10,&
+         comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
+    call parse_input_variable(lanc_ncv_add,"LANC_NCV_ADD",INPUTunit,default=0,&
+         comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
+    call parse_input_variable(lanc_niter,"LANC_NITER",INPUTunit,default=512,&
+         comment="Number of Lanczos iteration in spectrum determination.")
+    call parse_input_variable(lanc_ngfiter,"LANC_NGFITER",INPUTunit,default=200,&
+         comment="Number of Lanczos iteration in GF determination. Number of momenta.")
+    call parse_input_variable(lanc_tolerance,"LANC_TOLERANCE",INPUTunit,default=1d-18,&
+         comment="Tolerance for the Lanczos iterations as used in Arpack and plain lanczos.")
+    call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,&
+         default=1024,comment="Dimension threshold for Lapack use.")
     !
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")
 

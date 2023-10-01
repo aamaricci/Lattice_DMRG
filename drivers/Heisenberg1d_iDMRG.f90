@@ -4,19 +4,28 @@ program heisenberg_1d
   implicit none
 
   character(len=64) :: finput
+  character(len=1)  :: DMRGtype
   integer           :: i
   real(8)           :: target_Sz(1)
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(target_Sz,"target_Sz",finput,default=[0d0],&
        comment="Target Sector Magnetizatio Sz in units [-1:1]")
+  call parse_input_variable(DMRGtype,"DMRGtype",finput,default="infinite",&
+       comment="DMRG algorithm: Infinite, Finite")
   call read_input(finput)
 
 
   !Init DMRG
   call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site())
   !Run DMRG algorithm
-  call infinite_DMRG(Ldmrg)
+  select case(DMRGtype)
+  case default;stop "DMRGtype != [Infinite,Finite]"
+  case("i","I")
+     call infinite_DMRG()
+  case("f","F")
+     call finite_DMRG()
+  end select
   !Finalize DMRG
   call finalize_dmrg()
 

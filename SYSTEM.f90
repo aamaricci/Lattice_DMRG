@@ -27,7 +27,7 @@ MODULE SYSTEM
   type(sparse_matrix)                :: spHsb
   type(site)                         :: dot
   real(8),dimension(:),allocatable   :: target_Qn,current_target_QN
-  type(block)                        :: sys,env
+  type(block)                        :: init_sys,init_env
   logical                            :: init_called=.false.
 
   public :: init_dmrg
@@ -40,44 +40,77 @@ MODULE SYSTEM
 contains
 
 
-  subroutine infinite_DMRG(Lblock)
-    integer,intent(in) :: Lblock
-    integer            :: i
+
+  subroutine infinite_DMRG()
+    type(block) :: sys,env
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
-    do i=1,Lblock
-       call step_dmrg()
-    enddo
+    sys=init_sys
+    env=init_env
+    do while (2*sys%length < Ldmrg)
+       call step_dmrg(sys,env)
+    enddo    
   end subroutine infinite_DMRG
 
 
   !I assume that block=My_block works as a deep copy. Have to check this.
-  subroutine finite_DMRG(Lblock,Msweep)
-    integer,intent(in)              :: Lblock
-    integer,dimension(:),intent(in) :: Msweep
-    integer                         :: i,im,env_label,sys_label
-    type(block),dimension(2,Lblock) :: blocks_list !1:2,Lblock
-    type(block)                     :: tmp
+  subroutine finite_DMRG()
+    type(block)                            :: sys,env
+    integer                                :: i,im,env_label,sys_label
+    type(block),dimension(:,:),allocatable :: blocks_list
+    type(block)                            :: tmp
     !
-    if(mod(Lblock,2)/=0)stop "finite_DMRG ERROR: Lblock%2 != 0. Lblock input must be an even number."
+    if(mod(Ldmrg,2)/=0)stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
     !
     if(.not.init_called)stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     !
+    sys=init_sys
+    env=init_env
+    !
     sys_label=1
     env_label=2
-    !Infinite DMRG: grow the chain up to the required Lblock
+    !Infinite DMRG: grow the chain up to the required Ldmrg
     !Using global input Mdmrg here
-    blocks_list(sys_label,sys%length)=sys
-    blocks_list(env_label,env%length)=env
-    do i=1,Lblock
-       call step_dmrg()
+    allocate(blocks_list(2,Ldmrg))
+    blocks_list(sys_label,1)=sys
+    blocks_list(env_label,2)=env
+    print*,"Before iDMRG",sys%length
+    do while (2*sys%length < Ldmrg)
+       call step_dmrg(sys,env)
        blocks_list(sys_label,sys%length)=sys
        blocks_list(env_label,env%length)=env
+       tmp = blocks_list(sys_label,sys%length)
+       print*,tmp%length,tmp%is_valid()
+       call tmp%show()
+       tmp = blocks_list(sys_label,sys%length-1)
+       print*,tmp%length,tmp%is_valid()
+       call tmp%show()
+       print*,"Copying sys,env -> block_list"
     enddo
     !
+
+
+    do i=1,Ldmrg/2
+       tmp=blocks_list(1,i)
+       print*,i,tmp%is_valid()
+    enddo
+
+
+    stop "ERROR"
+    
+    call wait(1000)
+    print*,""
+    print*,"Start Finite DMRG:"
+    print*,""
+    call wait(1000)
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
+       print*,"im",im
        sweep: do while(.true.)
-          env = blocks_list(env_label,2*Lblock - sys%length - 2)
+          env = blocks_list(env_label,Ldmrg - sys%length)
+          print*,"Check L after env copyd",sys%length,env%length,Ldmrg
+          if(.not.env%is_valid())stop "fDMRG stop: env not valid"
+
+
           !end of the chain for env, switch roles sys<-->env
           if(env%length==1)then
              env_label= 3-env_label
@@ -88,12 +121,14 @@ contains
              call tmp%free()
           endif
           !
-          print*,sys%length,env%length
+          call step_dmrg(sys,env,Msweep(im))
           call dmrg_graphic(sys_label)
-          call step_dmrg(Msweep(im))
+          call wait(500)
+
+          print*,"Check sys L after DMRG step",sys%length
           !
           blocks_list(sys_label,sys%length) = sys
-          if(sys_label==1.AND.sys%length==Lblock)exit sweep
+          if(sys_label==1.AND.sys%length==Ldmrg)exit sweep
        enddo sweep
     enddo
     !
@@ -124,22 +159,24 @@ contains
     type(site)           :: ModelDot
     if(associated(H2model))nullify(H2model); H2model => h2
     allocate(target_qn, source=qn)
-    dot       = ModelDot
-    !Init block from single dot
-    sys=block(dot)
-    env=block(dot)
+    dot        = ModelDot
+    init_sys   = block(dot)
+    init_env   = block(dot)
+    init_called=.true.
   end subroutine init_dmrg
 
 
   subroutine finalize_dmrg()
     if(associated(H2model))nullify(H2model)
     call dot%free()
-    call sys%free()
-    call env%free()
+    call init_sys%free()
+    call init_env%free()
+    init_called=.false.
   end subroutine finalize_dmrg
 
 
-  subroutine step_dmrg(Mstep)
+  subroutine step_dmrg(sys,env,Mstep)
+    type(block),intent(inout)          :: sys,env
     integer,optional                   :: Mstep
     integer                            :: Mstates
     integer                            :: m_sb,m_s,m_e
@@ -154,7 +191,6 @@ contains
     real(8),dimension(:),allocatable   :: evals,evals_sys,evals_env
     real(8),dimension(:,:),allocatable :: eig_basis,Hsb
     type(blocks_matrix)                :: rho_sys,rho_env
-    type(blocks_matrix)                :: Mpsi
     type(tbasis)                       :: sys_basis,env_basis
     type(sparse_matrix)                :: trRho_sys,trRho_env,psiM
     type(sectors_list)                 :: sb_sector
@@ -243,11 +279,6 @@ contains
        Nsys   = size(sys%sectors(1)%map(qn=sb_qn))
        Nenv   = size(env%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nsys*Nenv==0)cycle
-       !build PsiMat
-       qn = sb_qn
-       call Mpsi%append(&
-            build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map),&
-            qn=qn,map=sys%sectors(1)%map(qn=qn))
        !SYSTEM
        qn = sb_qn
        call rho_sys%append(&
@@ -287,9 +318,9 @@ contains
           call trRho_env%insert(rho_vec(i),env_map(i),im)
        enddo
     enddo
-    !Store all the rotation/truncation matrices:
-    call sys%put_omat(str(sys%length),trRho_sys)
-    call env%put_omat(str(env%length),trRho_env)
+    ! !Store all the rotation/truncation matrices:
+    ! call sys%put_omat(str(sys%length),trRho_sys)
+    ! call env%put_omat(str(env%length),trRho_env)
     call stop_timer("Get Rho + O")
     !
     !Renormalize Blocks:
@@ -328,7 +359,7 @@ contains
          "Energies/L                           :",eig_values/current_L
     write(LOGfile,*)""
     write(LOGfile,*)""
-    call wait(500)
+    call wait(50)
     !
     !
     !Clean memory:

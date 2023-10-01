@@ -33,7 +33,7 @@ MODULE SITES
 
   !EQUALITY 
   interface assignment(=)
-     module procedure :: site_equal_site
+     module procedure :: equality_site
   end interface assignment(=)
 
 
@@ -107,8 +107,8 @@ contains
     call self%operators%put(str(key),op)
   end subroutine put_op_site
 
-  
-  
+
+
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a dense operator in the site dictionary
   !+------------------------------------------------------------------+
@@ -158,7 +158,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Equality between two sites
   !+------------------------------------------------------------------+
-  subroutine site_equal_site(A,B)
+  subroutine equality_site(A,B)
     type(site),intent(inout) :: A
     type(site),intent(in)    :: B
     call A%free
@@ -168,18 +168,18 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i)   = B%sectors(i)
     enddo
-  end subroutine site_equal_site
+  end subroutine equality_site
 
 
   function is_valid_site(self) result(bool)
     class(site)                           :: self
     logical                               :: bool
-    integer,dimension(size(self%sectors)) :: Lvec
+    integer,dimension(size(self%sectors)) :: Dims
     bool = self%operators%is_valid(self%Dim)
     do i=1,size(self%sectors)
-       Lvec = len(self%sectors(i))
+       Dims = dim(self%sectors(i))
     enddo
-    bool=bool.AND.(self%dim==product(Lvec))
+    bool=bool.AND.(self%dim==product(Dims))
   end function is_valid_site
 
 
@@ -301,3 +301,82 @@ contains
 
 
 END MODULE SITES
+
+
+
+
+
+
+
+
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+!                          /_  __/ ____/ ___/_  __/
+!                           / / / __/  \__ \ / /   
+!                          / / / /___ ___/ // /    
+!                         /_/ /_____//____//_/     
+!##################################################################
+!##################################################################
+!##################################################################
+!##################################################################
+#ifdef _TEST
+program testSITES
+  USE SCIFOR,  id => zeye
+  USE INPUT_VARS
+  USE MATRIX_SPARSE
+  USE LIST_OPERATORS
+  USE TUPLE_BASIS
+  USE LIST_SECTORS
+  USE SITES
+  implicit none
+
+
+  type(site)                       :: my_site,a,b
+  type(tbasis)                     :: sz_basis
+  real(8),dimension(2,2),parameter :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
+  real(8),dimension(2,2),parameter :: Sz=dble(pauli_z)
+  real(8),dimension(2,2),parameter :: Sx=dble(pauli_x)
+  real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
+  real(8),dimension(4,4)           :: Gamma13,Gamma03
+
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(eye(2),Sz)
+
+  sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)
+
+  my_site = site(&
+       dim      = 2, &
+       sectors  = [sectors_list(sz_basis)],&
+       operators= operators_list(['H0','Sz','Sp'],&
+       [sparse(Hzero),sparse(Sz),sparse(Splus)]))
+  print*,"Is site valid:",my_site%is_valid()
+  call my_site%show()
+
+
+
+  a = my_site
+
+  print*,"Test =: a=my_site"
+  call a%show()
+  print*,a%is_valid()
+  print*,"modify a, check a and my_site"
+  call a%put("G5",sparse(Gamma03))
+  print*,"Is A site valid:",a%is_valid()
+  print*,"Is My_site site valid:",my_site%is_valid()
+
+
+  print*,"Test PAULI SITE"
+  b = pauli_site()
+  call b%show()
+  call b%free()
+
+
+  call read_input("DMRG.conf")
+  b = hubbard_site()
+  call b%show()
+  print*,"Is site valid:",b%is_valid()
+  call b%free()
+end program testSITES
+#endif
