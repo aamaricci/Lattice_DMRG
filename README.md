@@ -5,9 +5,7 @@
 
 
 A simple DMRG code to solve Heisenberg (spin-S) and Hubbard models in 1d.  
-The software exploits consevation of the Quantum Numbers tuple ($S_z$ or $[N_\uparrow,N_\downarrow]$) and perform *infinite* DMRG algorithm.  
-Finite DMRG algorithm is under development. 
-
+The software exploits consevation of the Quantum Numbers tuple ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
 
  
 The structure of this code is largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
@@ -28,10 +26,10 @@ Open and setup the Makefile with your favorite editor (hint: `emacs`)
 Compile  
 
 ```
-git clone https://github.com/aamaricci/Hubbard_DMRG 
+git clone https://github.com/aamaricci/Lattice_DMRG 
 ```
 ```
-cd Hubbard_DMRG
+cd Lattice_DMRG
 emacs Makefile
 ```
 ```
@@ -40,8 +38,9 @@ make
 
 
 ### Info
-For any information or suggestion contact the authors: adriano DOT amaricci AT gmail DOT com
-and/or
+For any information or suggestion contact the authors:   
+adriano DOT amaricci AT gmail DOT com  
+and/or  
 cmejutoz AT sissa DOT it 
 
 OR 
@@ -70,10 +69,10 @@ create an issue in this repo.
 
 
 #### Milestone 4
-- [ ] Add layer to save rotation/truncation matrices
+- [x] Add layer to save rotation/truncation matrices
+- [x] Develop *finite* DMRG algorithm
 - [ ] Evaluates observables and entanglement
-- [ ] Develop *finite* DMRG algorithm
-- [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of  H_sb. 
+- [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of H_sb. 
 
 #### Milestone 5
 - [ ] Implement parallel tensor product. 

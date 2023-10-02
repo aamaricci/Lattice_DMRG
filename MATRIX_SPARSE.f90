@@ -511,18 +511,6 @@ contains
   end function sp_restricted_kron_matrix
 
 
-  ! function sp_matmul_matrix(A,B) result(AxB)
-  !   type(sparse_matrix), intent(in)    :: A,B
-  !   type(sparse_matrix)                :: AxB
-  !   real(8),dimension(:,:),allocatable :: aA,bB
-  !   call AxB%free()
-  !   call AxB%init(a%Nrow,b%Ncol)
-  !   aA = as_matrix(A)
-  !   bB = as_matrix(B)
-  !   AxB = as_sparse(matmul(aA,bB))
-  !   deallocate(aA,bB)
-  ! end function sp_matmul_matrix
-
 
   function sp_matmul_matrix(A,B) result(AxB)
     type(sparse_matrix), intent(in) :: A,B
