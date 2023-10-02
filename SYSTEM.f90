@@ -48,6 +48,7 @@ contains
     env=init_env
     do while (2*sys%length < Ldmrg)
        call step_dmrg(sys,env)
+       call wait(100)
     enddo    
   end subroutine infinite_DMRG
 
@@ -55,7 +56,7 @@ contains
   !I assume that block=My_block works as a deep copy. Have to check this.
   subroutine finite_DMRG()
     type(block)                            :: sys,env
-    integer                                :: i,im,env_label,sys_label
+    integer                                :: i,im,env_label,sys_label,current_L
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
     !
@@ -68,51 +69,26 @@ contains
     !
     sys_label=1
     env_label=2
-    !Infinite DMRG: grow the chain up to the required Ldmrg
-    !Using global input Mdmrg here
+    !Infinite DMRG
     allocate(blocks_list(2,Ldmrg))
     blocks_list(sys_label,1)=sys
-    blocks_list(env_label,2)=env
-    print*,"Before iDMRG",sys%length
+    blocks_list(env_label,1)=env
     do while (2*sys%length < Ldmrg)
        call step_dmrg(sys,env)
        blocks_list(sys_label,sys%length)=sys
        blocks_list(env_label,env%length)=env
-       tmp = blocks_list(sys_label,sys%length)
-       print*,tmp%length,tmp%is_valid()
-       call tmp%show()
-       tmp = blocks_list(sys_label,sys%length-1)
-       print*,tmp%length,tmp%is_valid()
-       call tmp%show()
-       print*,"Copying sys,env -> block_list"
     enddo
-    !
-
-
-    do i=1,Ldmrg/2
-       tmp=blocks_list(1,i)
-       print*,i,tmp%is_valid()
-    enddo
-
-
-    stop "ERROR"
-    
-    call wait(1000)
     print*,""
-    print*,"Start Finite DMRG:"
     print*,""
-    call wait(1000)
+    print*,"START FINITE DMRG:"
+    print*,""
+    print*,""
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
-       print*,"im",im
+       write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
        sweep: do while(.true.)
           env = blocks_list(env_label,Ldmrg - sys%length)
-          print*,"Check L after env copyd",sys%length,env%length,Ldmrg
-          if(.not.env%is_valid())stop "fDMRG stop: env not valid"
-
-
-          !end of the chain for env, switch roles sys<-->env
-          if(env%length==1)then
+          if(env%length==1)then          !end of the chain for env, switch roles sys<-->env
              env_label= 3-env_label
              sys_label= 3-sys_label
              tmp      = sys
@@ -121,33 +97,36 @@ contains
              call tmp%free()
           endif
           !
+          call dmrg_graphic(sys,env,sys_label,Msweep(im))          
           call step_dmrg(sys,env,Msweep(im))
-          call dmrg_graphic(sys_label)
-          call wait(500)
-
-          print*,"Check sys L after DMRG step",sys%length
           !
           blocks_list(sys_label,sys%length) = sys
-          if(sys_label==1.AND.sys%length==Ldmrg)exit sweep
+          print*,""
+          print*,""
+          if(sys_label==1.AND.sys%length==Ldmrg/2)exit sweep
        enddo sweep
     enddo
     !
   contains
     !
-    subroutine dmrg_graphic(label)
-      integer     :: label
+    subroutine dmrg_graphic(sys,env,label,M)
+      type(block) :: sys,env
+      integer     :: label,M
       integer     :: i
       select case(label)
       case default; stop "dmrg_graphic error: label != 1(L),2(R)"
       case(1)
+         write(*,"(A14,2I4,A6,1x)",advance="no")"sys.L + env.L:",sys%length,env%length,"|"
          write(*,"("//str(sys%length)//"A1)",advance="no")("=",i=1,sys%length)
          write(*,"(A2)",advance="no")"**"
-         write(*,"("//str(env%length)//"A1)",advance="yes")("-",i=1,env%length)
+         write(*,"("//str(env%length)//"A1)",advance="no")("-",i=1,env%length)
       case(2)
+         write(*,"(A14,2I4,A6,1x)",advance="no")"sys.L + env.L:",env%length,sys%length,"|"
          write(*,"("//str(env%length)//"A1)",advance="no")("=",i=1,env%length)
          write(*,"(A2)",advance="no")"**"
-         write(*,"("//str(sys%length)//"A1)",advance="yes")("-",i=1,sys%length)
+         write(*,"("//str(sys%length)//"A1)",advance="no")("-",i=1,sys%length)
       end select
+      write(*,"(1x,A1,2I6)",advance='yes')"|",Ldmrg,M
     end subroutine dmrg_graphic
     !
   end subroutine finite_DMRG
@@ -200,13 +179,13 @@ contains
     !
     Mstates=Mdmrg;if(present(Mstep))Mstates=Mstep
     !
-    !Clean screen
-    call system('clear')
+    ! !Clean screen
+    ! call system('clear')
     !
     !Start DMRG step timer
     call start_timer()
     !
-    current_L         = 2*sys%length + 2
+    current_L         = sys%length + env%length + 2
     current_target_QN = int(target_qn*current_L/2d0)
     write(LOGfile,*)"SuperBlock Length  =",current_L
     write(LOGfile,*)"Target_QN=",current_target_QN,"filling=",sum(current_target_QN)
@@ -343,7 +322,7 @@ contains
     !
     call start_timer()
     Eunit = fopen(str("energyVSlength_L"//str(Ldmrg)//"_m"//str(Mstates)//".dmrg"),append=.true.)
-    write(Eunit,*)current_L,eig_values/current_L
+    write(Eunit,*)sys%length,eig_values/current_L
     close(Eunit)
     call stop_timer("Get Observables")
     !
@@ -359,7 +338,6 @@ contains
          "Energies/L                           :",eig_values/current_L
     write(LOGfile,*)""
     write(LOGfile,*)""
-    call wait(50)
     !
     !
     !Clean memory:

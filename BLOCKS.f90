@@ -112,21 +112,6 @@ contains
   end function constructor_from_site
 
 
-  ! function constructor_from_block(b) result(self)
-  !   type(block),intent(in) :: b
-  !   type(block)           :: self
-  !   call self%free()
-  !   self%length    = b%length
-  !   self%Dim       = b%Dim
-  !   self%operators = b%operators
-  !   self%omatrices = b%omatrices
-  !   allocate(self%sectors(size(b%sectors)))
-  !   do i=1,size(self%sectors)
-  !      self%sectors(i) = b%sectors(i)
-  !   enddo
-  ! end function constructor_from_block
-
-
 
 
   !##################################################################
@@ -266,18 +251,14 @@ contains
     nobasis_=.false.;if(present(nobasis))nobasis_=nobasis
     !
     bool = self%operators%is_valid(self%Dim)
-    write(100,*)"OP.is_valid",bool,self%Dim
     op = self%operators
     do i=1,size(op)
        ope = op%op(index=i)
-       write(100,*)"Op.shape:",i,shape(ope)
     enddo
-
     if(nobasis_)return
     do i=1,size(self%sectors)
        Dims(i) = dim(self%sectors(i))
     enddo
-    write(100,*)self%dim,product(Dims)
     bool=bool.AND.(self%dim==product(Dims))
   end function is_valid_block
 
