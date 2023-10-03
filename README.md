@@ -78,7 +78,7 @@ create an issue in this repo.
 - [ ] Implement parallel tensor product. 
 
 #### Future developemnts
-- [ ] Development of a iDMRG algorithm for fermions exploiting the $\uparrow$,$\downarrow$ separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
+- [ ] Development of a iDMRG algorithm for fermions exploiting the spin separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
 
 
 --
