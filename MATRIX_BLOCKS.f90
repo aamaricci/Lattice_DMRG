@@ -641,7 +641,7 @@ contains
     type(block_type),pointer              :: c
     !
     if(.not.present(index))then
-       Bshape = shape(self)
+       Bshape = [self%Ndim,self%Ndim]
        return
     endif
     !
@@ -690,7 +690,7 @@ contains
     if(index_>self%Nblock.OR.index_<=0)stop "shape_block_blocks_matrix error: block_index !in [1,self.size]"
     !
     if(.not.present(index))then !return the dimension of the whole self.
-       Mshape= shape(self)
+       Mshape= [self%Ndim,self%Ndim]
        Bsize = Mshape(dim_)
        return
     endif

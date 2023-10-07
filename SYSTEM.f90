@@ -53,7 +53,7 @@ contains
   end subroutine infinite_DMRG
 
 
-  !I assume that block=My_block works as a deep copy. Have to check this.
+  
   subroutine finite_DMRG()
     type(block)                            :: sys,env
     integer                                :: i,im,env_label,sys_label,current_L
@@ -297,9 +297,9 @@ contains
           call trRho_env%insert(rho_vec(i),env_map(i),im)
        enddo
     enddo
-    ! !Store all the rotation/truncation matrices:
-    ! call sys%put_omat(str(sys%length),trRho_sys)
-    ! call env%put_omat(str(env%length),trRho_env)
+    !Store all the rotation/truncation matrices:
+    call sys%put_omat(str(sys%length),trRho_sys)
+    call env%put_omat(str(env%length),trRho_env)
     call stop_timer("Get Rho + O")
     !
     !Renormalize Blocks:

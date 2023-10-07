@@ -56,14 +56,13 @@ MODULE LIST_SECTORS
   end interface assignment(=)
 
 
-  !INTRINSIC FUNCTION SIZE(OTUPLE)
+  !INTRINSIC FUNCTION SIZE:
   intrinsic :: size
   interface size
      module procedure :: size_sectors_list
   end interface size
 
-  !INTRINSIC FUNCTION LEN(OTUPLE)
-  intrinsic :: dim
+  !FUNCTION DIM:
   interface dim
      module procedure :: len_sectors_list
   end interface dim
