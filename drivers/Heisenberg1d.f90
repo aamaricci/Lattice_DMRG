@@ -5,11 +5,15 @@ program heisenberg_1d
 
   character(len=64) :: finput
   character(len=1)  :: DMRGtype
-  integer           :: i
-  real(8)           :: target_Sz(1)
+  integer           :: i,SUN
+  real(8)           :: target_Sz(1),Hvec(3)
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
+  call parse_input_variable(SUN,"SUN",finput,default=2,&
+       comment="Spin SU(N) value. 2=> spin 1/2, 3=> spin 1")
   call parse_input_variable(target_Sz,"target_Sz",finput,default=[0d0],&
+       comment="Target Sector Magnetizatio Sz in units [-1:1]")
+  call parse_input_variable(Hvec,"Hvec",finput,default=[0d0,0d0,0d0],&
        comment="Target Sector Magnetizatio Sz in units [-1:1]")
   call parse_input_variable(DMRGtype,"DMRGtype",finput,default="infinite",&
        comment="DMRG algorithm: Infinite, Finite")
@@ -17,7 +21,14 @@ program heisenberg_1d
 
 
   !Init DMRG
-  call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site())
+  select case(SUN)
+  case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
+  case(2)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site(Hvec))
+  case(3)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site())
+  end select
+
   !Run DMRG algorithm
   select case(DMRGtype)
   case default;stop "DMRGtype != [Infinite,Finite]"

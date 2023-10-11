@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,xi,operator(.kx.)
+  USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.)
   USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
@@ -217,44 +217,58 @@ contains
   !              PRESET
   !##################################################################
   !##################################################################
-  function pauli_site() result(self)
-    type(site)                       :: self
-    real(8),dimension(2,2),parameter :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-    real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
-    real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
+  function pauli_site(hvec) result(self)
+    real(8),dimension(3),optional :: hvec
+    type(site)                    :: self
+    real(8),dimension(2,2)        :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
+    real(8),dimension(2,2)        :: Szeta=reshape([0.5d0,0d0,0d0,0.5d0],[2,2])
+    real(8),dimension(2,2)        :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
     self%Dim = 2
+    if(present(hvec))then
+       Hzero = Hzero+hvec(1)*pauli_x+hvec(2)*pauli_z
+    endif
     call self%put("H",sparse(Hzero))
-    call self%put("Sz",sparse(0.5d0*Szeta))
+    call self%put("Sz",sparse(Szeta))
     call self%put("Sp",sparse(Splus))
     allocate(self%sectors(1))
     self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
   end function pauli_site
 
 
-  function spin_onehalf_site() result(self)
-    type(site)                       :: self
-    real(8),dimension(2,2),parameter :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-    real(8),dimension(2,2),parameter :: Szeta=reshape([1d0,0d0,0d0,-1d0],[2,2])
-    real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
+  function spin_onehalf_site(hvec) result(self)
+    real(8),dimension(3),optional :: hvec
+    type(site)                    :: self
+    real(8),dimension(2,2)        :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
+    real(8),dimension(2,2)        :: Szeta=reshape([0.5d0,0d0,0d0,0.5d0],[2,2])
+    real(8),dimension(2,2)        :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
     self%Dim = 2
+    if(present(hvec))then
+       Hzero = Hzero+hvec(1)*pauli_x+hvec(2)*pauli_z
+    endif
     call self%put("H",sparse(Hzero))
-    call self%put("Sz",sparse(0.5d0*Szeta))
+    call self%put("Sz",sparse(Szeta))
     call self%put("Sp",sparse(Splus))
     allocate(self%sectors(1))
     self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
   end function spin_onehalf_site
 
 
-  function spin_one_site() result(self)
-    type(site) :: self
-    real(8),dimension(3,3) :: Hzero
-    real(8),dimension(3,3) :: Szeta
-    real(8),dimension(3,3) :: Splus
-    !
+  function spin_one_site(hvec) result(self)
+    real(8),dimension(3),optional :: hvec
+    type(site)                        :: self
+    real(8),dimension(3,3)            :: Hzero
+    real(8),dimension(3,3)            :: Szeta
+    real(8),dimension(3,3)            :: Splus
+    real(8),dimension(3,3)            :: Sx=&
+         reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
     Hzero = 0d0
-    Szeta = diag([-1d0,0d0,1d0])
+    Szeta = diag([1d0,0d0,-1d0])
+    if(present(hvec))then
+       Hzero = Hzero+hvec(1)*Sx+hvec(2)*Szeta
+    endif
+    !
     Splus = 0d0
     Splus(1,2) = sqrt(2d0)
     Splus(2,3) = sqrt(2d0)
@@ -265,7 +279,7 @@ contains
     call self%put("Sz",sparse(Szeta))
     call self%put("Sp",sparse(Splus))
     allocate(self%sectors(1))
-    self%sectors(1) = sectors_list( tbasis([-1d0,0d0,1d0],qdim=1) )
+    self%sectors(1) = sectors_list( tbasis([1d0,0d0,-1d0],qdim=1) )
   end function spin_one_site
 
 

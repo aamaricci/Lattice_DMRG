@@ -11,6 +11,7 @@ MODULE INPUT_VARS
   integer              :: Mdmrg=10               !# of states to retain at truncation. If 0 use Edmrg as threshold.  
   real(8)              :: Edmrg=0               !Threshold energy used to evaluate the number of states to keep. If 0d0 use fixed Mdmrg.
   integer              :: Nsweep=1              !# of DMRG sweep to take for finite DMRG algorithm.
+  real(8),allocatable  :: Esweep(:)           !list of threshold energies at each sweep in the finite DMRG algorithm.
   integer,allocatable  :: Msweep(:)           !list of states to optimize at each sweep in the finite DMRG algorithm.
   !
   integer              :: Norb=1                !# of orbitals
@@ -95,13 +96,15 @@ contains
          comment="iDMRG steps to take=max length of the SB.")
     call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,&
          comment="Number of states for truncation. If 0 use Edmrg as threshold.  ")
-    call parse_input_variable(Edmrg,"Rdmrg",INPUTunit,default=0d0,&
+    call parse_input_variable(Edmrg,"Edmrg",INPUTunit,default=1d-8,&
          comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
     call parse_input_variable(Nsweep,"Nsweep",INPUTunit,default=1,&
          comment="Number of DMRG sweep to take for finite DMRG algorithm.")
-    allocate(Msweep(Nsweep))
-    call parse_input_variable(Msweep,"Msweep",INPUTunit,default=(/(Mdmrg,i=1,size(Msweep) )/),&
-         comment="!list of states to optimize at each sweep in the finite DMRG algorithm..")
+    allocate(Msweep(Nsweep),Esweep(Nsweep))
+    call parse_input_variable(Msweep,"Msweep",INPUTunit,default=(/(Mdmrg,i=1,Nsweep )/),&
+         comment="!list of states for each sweep in a finite DMRG algorithm.")
+    call parse_input_variable(Esweep,"Esweep",INPUTunit,default=(/(Edmrg,i=1,Nsweep )/),&
+         comment="!list of error threshold for each sweep in a finite DMRG algorithm.")
     call parse_input_variable(Norb,"NORB",INPUTunit,default=1,comment="Number of impurity orbitals.")
     ! call parse_input_variable(Nspin,"NSPIN",INPUTunit,default=1,comment="Number of spin degeneracy (max 2)")
     ! call parse_input_variable(filling,"FILLING",INPUTunit,default=0,comment="Total number of allowed electrons")

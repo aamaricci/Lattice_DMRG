@@ -24,6 +24,7 @@ MODULE AUX_FUNCS
   public :: KId
   public :: KSz
   public :: fopen
+  public :: cumulate
   
   logical,parameter,public           :: show_dble=.true.
   character(len=12),parameter,public :: show_fmt='F9.3'
@@ -31,6 +32,18 @@ MODULE AUX_FUNCS
 contains
 
 
+
+  function cumulate(A) result(B)
+    real(8),dimension(:)             :: A
+    real(8),dimension(:),allocatable :: B
+    integer                          :: i
+    if(allocated(B))deallocate(B)
+    allocate(B(size(A)))
+    B=0d0
+    do i=1,size(A)
+       B(i) = sum(A(1:i))
+    enddo
+  end function cumulate
 
   function KId(n) result(A)
     integer, intent(in) :: n

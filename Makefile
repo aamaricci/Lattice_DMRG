@@ -1,5 +1,5 @@
 FC=mpif90
-EXE=Hubbard1d
+EXE=Heisenberg1d
 
 SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
