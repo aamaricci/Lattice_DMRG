@@ -32,6 +32,7 @@ MODULE MATRIX_SPARSE
      procedure,pass :: dgr       => sp_dgr_matrix
      procedure,pass :: t         => sp_transpose_matrix
      procedure,pass :: nnz       => sp_nnz_matrix
+     procedure,pass :: dot       => sp_matmul_vector
   end type sparse_matrix
 
 
@@ -114,6 +115,7 @@ MODULE MATRIX_SPARSE
   intrinsic :: matmul
   interface matmul
      module procedure :: sp_matmul_matrix
+     module procedure :: sp_matmul_vector
   end interface matmul
 
 
@@ -541,6 +543,29 @@ contains
     enddo
     call Bt%free
   end function sp_matmul_matrix
+
+
+  function sp_matmul_vector(H,v) result(Hv)
+    class(sparse_matrix), intent(in) :: H
+    real(8),dimension(:)             :: v
+    real(8),dimension(:),allocatable :: Hv
+    integer                          :: Nloc
+    real(8)                          :: val
+    integer                          :: i,j,jcol
+    if(allocated(Hv))deallocate(Hv)
+    allocate(Hv(size(v)))
+    Hv=0d0
+    Nloc=size(v)
+    do i=1,Nloc
+       matmul: do jcol=1, H%row(i)%Size
+          val = H%row(i)%vals(jcol)
+          j   = H%row(i)%cols(jcol)
+          Hv(i) = Hv(i) + val*v(j)
+       end do matmul
+    end do
+  end function sp_matmul_vector
+
+
 
 
   !##################################################################

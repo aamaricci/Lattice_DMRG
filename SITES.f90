@@ -226,7 +226,7 @@ contains
     call self%free()
     self%Dim = 2
     if(present(hvec))then
-       Hzero = Hzero+hvec(1)*pauli_x+hvec(2)*pauli_z
+       Hzero = Hzero+hvec(1)*pauli_x+hvec(3)*pauli_z
     endif
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(Szeta))
@@ -245,7 +245,7 @@ contains
     call self%free()
     self%Dim = 2
     if(present(hvec))then
-       Hzero = Hzero+hvec(1)*pauli_x+hvec(2)*pauli_z
+       Hzero = Hzero+hvec(1)*pauli_x+hvec(3)*pauli_z
     endif
     call self%put("H",sparse(Hzero))
     call self%put("Sz",sparse(Szeta))
@@ -266,7 +266,7 @@ contains
     Hzero = 0d0
     Szeta = diag([1d0,0d0,-1d0])
     if(present(hvec))then
-       Hzero = Hzero+hvec(1)*Sx+hvec(2)*Szeta
+       Hzero = Hzero+hvec(1)*Sx+hvec(3)*Szeta
     endif
     !
     Splus = 0d0

@@ -582,10 +582,11 @@ contains
     integer                          :: m_,i,q,pos
     type(block_type),pointer         :: c
     !
-    if(.not.self%diag)stop "Evec_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
+    ! if(.not.self%diag)stop "Evec_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
     !
     if(m>self%Ndim.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
-    m_=self%eorder(m)
+    m_=m
+    if(self%diag)m_=self%eorder(m)
     call self%find(m_,q,pos)
     !
     c => self%root
