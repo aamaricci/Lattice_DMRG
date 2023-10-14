@@ -54,8 +54,9 @@ contains
     real(8)                            :: avOp
     type(sparse_matrix)                :: Oj,Otmp
     type(sparse_matrix)                :: U,IR,IL
-    integer                            :: it,dims(2),dim,L,R
+    integer                            :: it,dims(2),dim,L,R,Nsys,Nenv
     real(8),dimension(:),allocatable   :: Vpsi
+    real(8),dimension(:,:),allocatable   :: VMat
     !
     L = left%length
     R = right%length
@@ -104,6 +105,7 @@ contains
     end select
     !
     !Step 3 evaluate the average:
+    Otmp = Oj
     select case(label)
     case ("l","L")
        U  = right%omatrices%op(index=R)
@@ -115,10 +117,24 @@ contains
        Oj = IL.x.Oj
     end select
     !
+    print*,shape(Oj)
+
+
     allocate(Vpsi(Oj%Ncol));Vpsi=0d0
     Vpsi(sb_states) = eig_basis(:,1)
     AvOp = dot_product(Vpsi,Oj%dot(Vpsi))
-    deallocate(Vpsi)
+
+
+    print*,shape(Otmp);dims=shape(Otmp)
+    Nsys=dims(1)
+    Nenv=dims(2)
+    allocate(Vmat(Nsys,Nenv));Vmat=0d0
+    Vmat= transpose(reshape(Vpsi, [Nenv,Nsys]))
+    print*,shape(Vmat)
+    print*,trace(matmul(transpose(Vmat),matmul(as_matrix(Otmp),Vmat)))
+
+
+    deallocate(Vpsi,Vmat)
     !
   end function measure_dmrg
 
@@ -570,11 +586,11 @@ contains
     !
     do isys=1,size(sys%sectors(1))
        sys_qn  = sys%sectors(1)%qn(index=isys)
-       env_qn = current_target_qn - sys_qn
+       env_qn  = current_target_qn - sys_qn
        if(.not.env%sectors(1)%has_qn(env_qn))cycle
        !
        sys_map = sys%sectors(1)%map(qn=sys_qn)
-       env_map= env%sectors(1)%map(qn=env_qn)
+       env_map = env%sectors(1)%map(qn=env_qn)
        !
        do i=1,size(sys_map)
           do j=1,size(env_map)
