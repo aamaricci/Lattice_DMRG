@@ -33,7 +33,8 @@ MODULE SYSTEM
   logical                            :: init_called=.false.
   integer,dimension(:),allocatable   :: sb_states
   type(blocks_matrix)                :: psi_sys
-  
+  type(blocks_matrix)                :: psi_env
+
   public :: init_dmrg
   public :: finalize_dmrg
   public :: step_dmrg
@@ -42,7 +43,6 @@ MODULE SYSTEM
   public :: finite_DMRG
 
 contains
-
 
 
   subroutine infinite_DMRG()
@@ -153,120 +153,6 @@ contains
 
 
 
-  !j  = L+1,.....L+R
-  !j-L= 1,...,R
-  !R+1-(j-L)= R+1-(1),....R+1-(R)
-  function measure_dmrg(left,right,op,pos) result(avOp)
-    type(block),intent(in)             :: left,right
-    type(sparse_matrix)                :: op
-    integer                            :: pos,j
-    !
-    character(len=1)                   :: label
-    real(8)                            :: avOp
-    type(sparse_matrix)                :: Oj,Otmp
-    type(sparse_matrix)                :: U,IR,IL,Rpsi
-    integer                            :: i,it,dims(2),dim,L,R,Nsys,Nenv
-    real(8),dimension(:),allocatable   :: Vpsi
-    real(8),dimension(:,:),allocatable   :: VMat
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
-    !
-    L = left%length
-    R = right%length
-    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
-    !
-    label='l';if(pos>L)label='r'
-    !
-    j=pos
-    if(pos>L)j=R+1-(pos-L)            !R,...,1
-    !
-    !Retrieve the dimensions of the initial Dot
-    select case(label)
-    case ("l","L");dims = shape(left%omatrices%op(index=1)) ;dim=dims(1)
-    case ("r","R");dims = shape(right%omatrices%op(index=1));dim=dims(1)
-    end select
-    !
-    !Step 1: build the operator at the site j
-    Oj  = Op                    !.x.Id(dim)
-    if(j>1)then
-       select case(label)
-       case ("l","L")
-          U    = left%omatrices%op(index=j-1)
-          Otmp = matmul(U%t(),U)
-          Oj   = Otmp.x.Op
-       case ("r","R")
-          U    = right%omatrices%op(index=j-1)
-          Otmp = matmul(U%t(),U)
-          Oj   = Op.x.Otmp
-       end select
-    end if
-    !
-    !Step 2: bring the operator to the actual basis
-    select case(label)
-    case ("l","L")
-       do it=j,L
-          U  = left%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Oj.x.Id(dim)
-       enddo
-    case ("r","R")
-       do it=j,R
-          U  = right%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Id(dim).x.Oj
-       enddo
-    end select
-    !
-    !Step 3 evaluate the average:
-    Otmp = Oj
-    select case(label)
-    case ("l","L")
-       U  = right%omatrices%op(index=R)
-       IR = Id(dim).x.matmul(U%t(),U)
-       Oj = Oj.x.IR
-    case ("r","R")
-       U  = left%omatrices%op(index=L)
-       IL = matmul(U%t(),U).x.Id(dim)
-       Oj = IL.x.Oj
-    end select
-    !
-    print*,shape(Oj)
-
-
-    allocate(Vpsi(Oj%Ncol));Vpsi=0d0
-    Vpsi(sb_states) = eig_basis(:,1)
-    AvOp = dot_product(Vpsi,Oj%dot(Vpsi))
-
-
-    print*,shape(Otmp);dims=shape(Otmp)
-    Nsys=dims(1)
-    Nenv=dims(2)
-    allocate(Vmat(Nsys,Nenv));Vmat=0d0
-    Vmat= transpose(reshape(Vpsi, [Nenv,Nsys]))
-    print*,shape(Vmat)
-
-    Rpsi = as_sparse(Vmat)
-    print*,Rpsi%nnz()
-    
-    print*,trace(matmul(transpose(Vmat),matmul(as_matrix(Otmp),Vmat)))
-
-    call Rpsi%init(Nsys,Nenv)
-    do it=1,Nenv
-       psi_vec = psi_sys%evec(m=it)
-       psi_map = psi_sys%map(m=it)
-       do i=1,size(psi_vec)
-          call Rpsi%insert(psi_vec(i),psi_map(i),it)
-       enddo
-    enddo
-    
-    print*,trace(as_matrix(matmul(Rpsi%t(),matmul(Otmp,Rpsi))))
-
-    
-
-    deallocate(Vpsi,Vmat)
-    !
-  end function measure_dmrg
-
 
 
 
@@ -280,7 +166,6 @@ contains
     integer                            :: m_sys,m_env,Nsys,Nenv
     integer                            :: isys,ienv,isb,m_err(1),m_threshold
     integer                            :: i,j,iqn,Ncv,im,unit,current_L    
-
     integer,dimension(:),allocatable   :: sys_map,env_map,sb_map
     real(8),dimension(:),allocatable   :: sb_qn,qn
     real(8),dimension(:),allocatable   :: rho_vec
@@ -288,7 +173,7 @@ contains
     real(8),dimension(:,:),allocatable :: Hsb
     type(blocks_matrix)                :: rho_sys,rho_env
     type(tbasis)                       :: sys_basis,env_basis
-    type(sparse_matrix)                :: trRho_sys,trRho_env,psiM
+    type(sparse_matrix)                :: trRho_sys,trRho_env
     type(sectors_list)                 :: sb_sector
     real(8)                            :: truncation_error_sys,truncation_error_env
     logical                            :: exist
@@ -370,9 +255,10 @@ contains
     end if
     call stop_timer("Diag H_sb")
     !
-    !BUILD RHO:
+    !BUILD RHO and PSI:
     call start_timer()
     call psi_sys%free()
+    call psi_env%free()
     do isb=1,size(sb_sector)
        sb_qn  = sb_sector%qn(index=isb)
        sb_map = sb_sector%map(index=isb)
@@ -384,16 +270,17 @@ contains
        call rho_sys%append(&
             build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'left'),&
             qn=qn,map=sys%sectors(1)%map(qn=qn))
+       call psi_sys%append(&
+            build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map,'left'),&
+            qn=qn,map=sys%sectors(1)%map(qn=qn))
        !ENVIRONMENT
        qn = current_target_qn-sb_qn
        call rho_env%append(&
             build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
             qn=qn,map=env%sectors(1)%map(qn=qn))
-       !SAVE PSI
-       qn = sb_qn
-       call psi_sys%append(&
-            build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map),&
-            qn=qn,map=sys%sectors(1)%map(qn=qn))
+       call psi_env%append(&
+            build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
+            qn=qn,map=env%sectors(1)%map(qn=qn))
     enddo
     !
     !Build Truncated Density Matrices:
@@ -485,6 +372,93 @@ contains
     !
     return
   end subroutine step_dmrg
+
+
+
+
+  function measure_dmrg(left,right,op,pos) result(avOp)
+    type(block),intent(in)           :: left,right
+    type(sparse_matrix)              :: op
+    integer                          :: pos,j
+    !
+    character(len=1)                 :: label
+    real(8)                          :: avOp
+    type(sparse_matrix)              :: Oj
+    type(sparse_matrix)              :: U,Psi
+    integer                          :: i,it,dims(2),dim,L,R,Nsys,Nenv
+    real(8),dimension(:),allocatable :: psi_vec
+    integer,dimension(:),allocatable :: psi_map
+    !
+    L = left%length
+    R = right%length
+    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
+    !
+    label='l';if(pos>L)label='r'
+    !
+    j=pos
+    if(pos>L)j=R+1-(pos-L)            !R,...,1
+    !
+    !Retrieve the dimensions of the initial Dot
+    select case(label)
+    case ("l","L");dims = shape(left%omatrices%op(index=1)) ;dim=dims(1)
+    case ("r","R");dims = shape(right%omatrices%op(index=1));dim=dims(1)
+    end select
+    !
+    !Step 1: build the operator at the site j
+    Oj  = Op                    !.x.Id(dim)
+    if(j>1)then
+       select case(label)
+       case ("l","L")
+          U    = left%omatrices%op(index=j-1)
+          Oj   = matmul(U%t(),U).x.Op
+       case ("r","R")
+          U    = right%omatrices%op(index=j-1)
+          Oj   = Op.x.matmul(U%t(),U)
+       end select
+    end if
+    !
+    !Step 2: bring the operator to the actual basis
+    select case(label)
+    case ("l","L")
+       do it=j,L
+          U  = left%omatrices%op(index=it)
+          Oj = matmul(U%t(),matmul(Oj,U))
+          Oj = Oj.x.Id(dim)
+       enddo
+    case ("r","R")
+       do it=j,R
+          U  = right%omatrices%op(index=it)
+          Oj = matmul(U%t(),matmul(Oj,U))
+          Oj = Id(dim).x.Oj
+       enddo
+    end select
+    !
+    !Step 3 measure using PSI matrix:
+    dims=shape(Oj)
+    select case(label)
+    case ("l","L")
+       call Psi%init(dims(1),dims(2))
+       do it=1,dims(2)
+          psi_vec = psi_sys%evec(m=it)
+          psi_map = psi_sys%map(m=it)
+          do i=1,size(psi_vec)
+             call Psi%insert(psi_vec(i),psi_map(i),it)
+          enddo
+       enddo
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+    case ("r","R")
+       call Psi%init(dims(1),dims(2))
+       do it=1,dims(2)
+          psi_vec = psi_env%evec(m=it)
+          psi_map = psi_env%map(m=it)
+          do i=1,size(psi_vec)
+             call Psi%insert(psi_vec(i),psi_map(i),it)
+          enddo
+       enddo
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+    end select
+    call Psi%free()
+  end function measure_dmrg
 
 
 
@@ -636,14 +610,21 @@ contains
   end subroutine get_sb_states
 
 
-  function build_PsiMat(Nsys,Nenv,psi,map) result(psi_mat)
+  function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)
     integer                            :: Nsys,Nenv
     real(8),dimension(:)               :: psi
     integer,dimension(nsys*nenv)       :: map
+    character(len=*)                   :: direction
     real(8),dimension(:,:),allocatable :: psi_mat
     if(allocated(psi_mat))deallocate(psi_mat)
-    allocate(psi_mat(nsys,nenv));psi_mat=0d0
-    psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
+    select case(to_lower(str(direction)))
+    case ('left','l')
+       allocate(psi_mat(nsys,nenv));psi_mat=0d0
+       psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
+    case ('right','r')
+       allocate(psi_mat(nenv,nsys));psi_mat=0d0
+       psi_mat = reshape(psi(map), [nenv,nsys])
+    end select
   end function build_psimat
 
 
