@@ -32,7 +32,8 @@ MODULE SYSTEM
   type(block)                        :: init_sys,init_env
   logical                            :: init_called=.false.
   integer,dimension(:),allocatable   :: sb_states
-
+  type(blocks_matrix)                :: psi_sys
+  
   public :: init_dmrg
   public :: finalize_dmrg
   public :: step_dmrg
@@ -42,109 +43,13 @@ MODULE SYSTEM
 
 contains
 
-  !j  = L+1,.....L+R
-  !j-L= 1,...,R
-  !R+1-(j-L)= R+1-(1),....R+1-(R)
-  function measure_dmrg(left,right,op,pos) result(avOp)
-    type(block),intent(in)             :: left,right
-    type(sparse_matrix)                :: op
-    integer                            :: pos,j
-    !
-    character(len=1)                   :: label
-    real(8)                            :: avOp
-    type(sparse_matrix)                :: Oj,Otmp
-    type(sparse_matrix)                :: U,IR,IL
-    integer                            :: it,dims(2),dim,L,R,Nsys,Nenv
-    real(8),dimension(:),allocatable   :: Vpsi
-    real(8),dimension(:,:),allocatable   :: VMat
-    !
-    L = left%length
-    R = right%length
-    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
-    !
-    label='l';if(pos>L)label='r'
-    !
-    j=pos
-    if(pos>L)j=R+1-(pos-L)            !R,...,1
-    !
-    !Retrieve the dimensions of the initial Dot
-    select case(label)
-    case ("l","L");dims = shape(left%omatrices%op(index=1)) ;dim=dims(1)
-    case ("r","R");dims = shape(right%omatrices%op(index=1));dim=dims(1)
-    end select
-    !
-    !Step 1: build the operator at the site j
-    Oj  = Op                    !.x.Id(dim)
-    if(j>1)then
-       select case(label)
-       case ("l","L")
-          U    = left%omatrices%op(index=j-1)
-          Otmp = matmul(U%t(),U)
-          Oj   = Otmp.x.Op
-       case ("r","R")
-          U    = right%omatrices%op(index=j-1)
-          Otmp = matmul(U%t(),U)
-          Oj   = Op.x.Otmp
-       end select
-    end if
-    !
-    !Step 2: bring the operator to the actual basis
-    select case(label)
-    case ("l","L")
-       do it=j,L
-          U  = left%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Oj.x.Id(dim)
-       enddo
-    case ("r","R")
-       do it=j,R
-          U  = right%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Id(dim).x.Oj
-       enddo
-    end select
-    !
-    !Step 3 evaluate the average:
-    Otmp = Oj
-    select case(label)
-    case ("l","L")
-       U  = right%omatrices%op(index=R)
-       IR = Id(dim).x.matmul(U%t(),U)
-       Oj = Oj.x.IR
-    case ("r","R")
-       U  = left%omatrices%op(index=L)
-       IL = matmul(U%t(),U).x.Id(dim)
-       Oj = IL.x.Oj
-    end select
-    !
-    print*,shape(Oj)
-
-
-    allocate(Vpsi(Oj%Ncol));Vpsi=0d0
-    Vpsi(sb_states) = eig_basis(:,1)
-    AvOp = dot_product(Vpsi,Oj%dot(Vpsi))
-
-
-    print*,shape(Otmp);dims=shape(Otmp)
-    Nsys=dims(1)
-    Nenv=dims(2)
-    allocate(Vmat(Nsys,Nenv));Vmat=0d0
-    Vmat= transpose(reshape(Vpsi, [Nenv,Nsys]))
-    print*,shape(Vmat)
-    print*,trace(matmul(transpose(Vmat),matmul(as_matrix(Otmp),Vmat)))
-
-
-    deallocate(Vpsi,Vmat)
-    !
-  end function measure_dmrg
-
 
 
   subroutine infinite_DMRG()
-    type(block) :: sys,env
+    type(block)         :: sys,env
     type(sparse_matrix) :: Op
-    real(8) :: val
-    integer :: i
+    real(8)             :: val
+    integer             :: i
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
     env=init_env
@@ -242,6 +147,127 @@ contains
     call init_env%free()
     init_called=.false.
   end subroutine finalize_dmrg
+
+
+
+
+
+
+  !j  = L+1,.....L+R
+  !j-L= 1,...,R
+  !R+1-(j-L)= R+1-(1),....R+1-(R)
+  function measure_dmrg(left,right,op,pos) result(avOp)
+    type(block),intent(in)             :: left,right
+    type(sparse_matrix)                :: op
+    integer                            :: pos,j
+    !
+    character(len=1)                   :: label
+    real(8)                            :: avOp
+    type(sparse_matrix)                :: Oj,Otmp
+    type(sparse_matrix)                :: U,IR,IL,Rpsi
+    integer                            :: i,it,dims(2),dim,L,R,Nsys,Nenv
+    real(8),dimension(:),allocatable   :: Vpsi
+    real(8),dimension(:,:),allocatable   :: VMat
+    real(8),dimension(:),allocatable :: psi_vec
+    integer,dimension(:),allocatable :: psi_map
+    !
+    L = left%length
+    R = right%length
+    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
+    !
+    label='l';if(pos>L)label='r'
+    !
+    j=pos
+    if(pos>L)j=R+1-(pos-L)            !R,...,1
+    !
+    !Retrieve the dimensions of the initial Dot
+    select case(label)
+    case ("l","L");dims = shape(left%omatrices%op(index=1)) ;dim=dims(1)
+    case ("r","R");dims = shape(right%omatrices%op(index=1));dim=dims(1)
+    end select
+    !
+    !Step 1: build the operator at the site j
+    Oj  = Op                    !.x.Id(dim)
+    if(j>1)then
+       select case(label)
+       case ("l","L")
+          U    = left%omatrices%op(index=j-1)
+          Otmp = matmul(U%t(),U)
+          Oj   = Otmp.x.Op
+       case ("r","R")
+          U    = right%omatrices%op(index=j-1)
+          Otmp = matmul(U%t(),U)
+          Oj   = Op.x.Otmp
+       end select
+    end if
+    !
+    !Step 2: bring the operator to the actual basis
+    select case(label)
+    case ("l","L")
+       do it=j,L
+          U  = left%omatrices%op(index=it)
+          Oj = matmul(U%t(),matmul(Oj,U))
+          Oj = Oj.x.Id(dim)
+       enddo
+    case ("r","R")
+       do it=j,R
+          U  = right%omatrices%op(index=it)
+          Oj = matmul(U%t(),matmul(Oj,U))
+          Oj = Id(dim).x.Oj
+       enddo
+    end select
+    !
+    !Step 3 evaluate the average:
+    Otmp = Oj
+    select case(label)
+    case ("l","L")
+       U  = right%omatrices%op(index=R)
+       IR = Id(dim).x.matmul(U%t(),U)
+       Oj = Oj.x.IR
+    case ("r","R")
+       U  = left%omatrices%op(index=L)
+       IL = matmul(U%t(),U).x.Id(dim)
+       Oj = IL.x.Oj
+    end select
+    !
+    print*,shape(Oj)
+
+
+    allocate(Vpsi(Oj%Ncol));Vpsi=0d0
+    Vpsi(sb_states) = eig_basis(:,1)
+    AvOp = dot_product(Vpsi,Oj%dot(Vpsi))
+
+
+    print*,shape(Otmp);dims=shape(Otmp)
+    Nsys=dims(1)
+    Nenv=dims(2)
+    allocate(Vmat(Nsys,Nenv));Vmat=0d0
+    Vmat= transpose(reshape(Vpsi, [Nenv,Nsys]))
+    print*,shape(Vmat)
+
+    Rpsi = as_sparse(Vmat)
+    print*,Rpsi%nnz()
+    
+    print*,trace(matmul(transpose(Vmat),matmul(as_matrix(Otmp),Vmat)))
+
+    call Rpsi%init(Nsys,Nenv)
+    do it=1,Nenv
+       psi_vec = psi_sys%evec(m=it)
+       psi_map = psi_sys%map(m=it)
+       do i=1,size(psi_vec)
+          call Rpsi%insert(psi_vec(i),psi_map(i),it)
+       enddo
+    enddo
+    
+    print*,trace(as_matrix(matmul(Rpsi%t(),matmul(Otmp,Rpsi))))
+
+    
+
+    deallocate(Vpsi,Vmat)
+    !
+  end function measure_dmrg
+
+
 
 
   subroutine step_dmrg(sys,env,label,isweep)
@@ -346,6 +372,7 @@ contains
     !
     !BUILD RHO:
     call start_timer()
+    call psi_sys%free()
     do isb=1,size(sb_sector)
        sb_qn  = sb_sector%qn(index=isb)
        sb_map = sb_sector%map(index=isb)
@@ -362,6 +389,11 @@ contains
        call rho_env%append(&
             build_density_matrix(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
             qn=qn,map=env%sectors(1)%map(qn=qn))
+       !SAVE PSI
+       qn = sb_qn
+       call psi_sys%append(&
+            build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map),&
+            qn=qn,map=sys%sectors(1)%map(qn=qn))
     enddo
     !
     !Build Truncated Density Matrices:

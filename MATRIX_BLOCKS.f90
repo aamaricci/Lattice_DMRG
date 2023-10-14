@@ -18,7 +18,8 @@ MODULE MATRIX_BLOCKS
   !BLOCK MATRIX STRUCTURE
   type blocks_matrix
      integer                          :: Nblock=0
-     integer                          :: Ndim=0
+     integer                          :: Nrow=0
+     integer                          :: Ncol=0
      real(8),dimension(:),allocatable :: evalues
      integer,dimension(:),allocatable :: eorder
      logical                          :: diag=.false.
@@ -71,7 +72,7 @@ MODULE MATRIX_BLOCKS
   end interface size
 
 
-  !RETURN SHAPE OF THE WHOLE BLOCK MATRIX [Ndim,Ndim]
+  !RETURN SHAPE OF THE WHOLE BLOCK MATRIX [Nrow,Ncol]
   intrinsic :: shape
   interface shape
      module procedure :: shape_blocks_matrix
@@ -159,7 +160,8 @@ contains
     if(allocated(self%evalues))deallocate(self%evalues)
     if(allocated(self%eorder))deallocate(self%eorder)
     self%Nblock=0
-    self%Ndim=0
+    self%Nrow=0
+    self%Ncol=0
     self%diag=.false.
     self%root=>null()
     p=>null()
@@ -180,16 +182,16 @@ contains
   !PURPOSE:  Append a block
   !+------------------------------------------------------------------+
   subroutine append_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout)          :: self
-    real(8),dimension(:,:),intent(in)           :: matrix
-    real(8),dimension(:),intent(in) :: qn
-    integer,dimension(:)                        :: map
-    integer                                     :: Dim
-    type(block_type),pointer                    :: p,c
+    class(blocks_matrix),intent(inout) :: self
+    real(8),dimension(:,:),intent(in)  :: matrix
+    real(8),dimension(:),intent(in)    :: qn
+    integer,dimension(:)               :: map
+    integer                            :: Dim
+    type(block_type),pointer           :: p,c
     !    
     if(.not.associated(self%root))allocate(self%root)
     !
-    Dim = size(matrix,1);call assert_shape(matrix,[Dim,Dim],"append_block","matrix")
+    ! Dim = size(matrix,1);call assert_shape(matrix,[Dim,Dim],"append_block","matrix")
     !
     p => self%root
     c => p%next
@@ -201,11 +203,8 @@ contains
     !
     allocate(p%next)
     allocate(p%next%M, source=matrix)
-    ! p%next%M     = matrix
     allocate(p%next%map, source=map)
-    ! p%next%map   = map
     allocate(p%next%qn, source=qn)
-    ! p%next%qn    = qn
     p%next%index = p%index+1
     !
     if(.not.associated(c))then !end of the list special case (c=>c%next)
@@ -215,7 +214,8 @@ contains
     end if
     self%Nblock = self%Nblock+1
     !
-    self%Ndim = self%Ndim+size(Matrix,1)
+    self%Nrow = self%Nrow+size(Matrix,1)
+    self%Ncol = self%Ncol+size(Matrix,2)
     !
     p=>null()
     c=>null()
@@ -226,13 +226,13 @@ contains
   !PURPOSE:  PUSH a block
   !+------------------------------------------------------------------+
   subroutine push_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout)          :: self
-    real(8),dimension(:,:),intent(in)           :: matrix
-    real(8),dimension(:),intent(in) :: qn
-    integer,dimension(:)                        :: map
-    logical                                     :: iupdate
-    type(block_type),pointer                    :: p,c
-    integer                                     :: Dim
+    class(blocks_matrix),intent(inout) :: self
+    real(8),dimension(:,:),intent(in)  :: matrix
+    real(8),dimension(:),intent(in)    :: qn
+    integer,dimension(:)               :: map
+    logical                            :: iupdate
+    type(block_type),pointer           :: p,c
+    integer                            :: Dim
     !    
     if(.not.associated(self%root))allocate(self%root)
     !
@@ -254,17 +254,16 @@ contains
        c => c%next
     end do
     !
-    self%Ndim = self%Ndim-size(c%M,1)
+    self%Nrow = self%Nrow-size(c%M,1)
+    self%Ncol = self%Ncol-size(c%M,2)
     if(allocated(c%M))deallocate(c%M)
     allocate(c%M, source=Matrix)
-    ! c%M   = Matrix
     if(allocated(c%map))deallocate(c%map)
     allocate(c%map, source=map)
-    ! c%map = map
     if(allocated(c%qn))deallocate(c%qn)
     allocate(c%qn, source=qn)
-    ! c%qn  = qn
-    self%Ndim = self%Ndim+size(Matrix,1)
+    self%Nrow = self%Nrow+size(Matrix,1)
+    self%Ncol = self%Ncol+size(Matrix,2)
     !
     p=>null()
     c=>null()
@@ -445,18 +444,21 @@ contains
   function dump_blocks_matrix(self) result(matrix)
     class(blocks_matrix),intent(inout) :: self
     real(8),dimension(:,:),allocatable :: matrix,mtmp
-    integer                            :: Offset
-    integer                            :: N,M
+    integer                            :: Offset1,Offset2
+    integer                            :: N1,N2
     type(block_type),pointer           :: c
     if(allocated(matrix))deallocate(matrix)
-    allocate(matrix(self%Ndim,self%Ndim));matrix=0d0
-    Offset=0
+    allocate(matrix(self%Nrow,self%Ncol));matrix=0d0
+    Offset1=0
+    Offset2=0
     c => self%root%next
     do
        if(.not.associated(c))exit
-       N = size(c%M,1)
-       Matrix(Offset+1:Offset+N,Offset+1:Offset+N) = c%M
-       Offset = Offset + N
+       N1 = size(c%M,1)
+       N2 = size(c%M,2)
+       Matrix(Offset1+1:Offset1+N1,Offset2+1:Offset2+N2) = c%M
+       Offset1 = Offset1 + N1
+       Offset2 = Offset2 + N2
        c => c%next
     end do
     c=>null()
@@ -498,7 +500,8 @@ contains
     sort_   =.true.;if(present(sort))sort_=sort
     reverse_=.true.;if(present(reverse))reverse_=reverse
     !
-    N = self%Ndim
+    N = self%Nrow
+    if(N/=self%Ncol)print*,"WARNING eigh blocks matrix: self is not square"
     if(allocated(self%evalues))deallocate(self%evalues)
     if(allocated(self%eorder))deallocate(self%eorder)
     allocate(self%evalues(N));self%evalues=0d0
@@ -509,6 +512,7 @@ contains
     do                          !loop over all blocks
        if(.not.associated(c))exit
        Nloc = size(c%M,1)
+       if(any(shape(c%M)/=[Nloc,Nloc]))stop "eigh block matrix ERROR: local block is not square"
        if(allocated(c%E))deallocate(c%E)
        allocate(c%E(Nloc))
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
@@ -567,7 +571,7 @@ contains
     integer                          :: m
     real(8)                          :: eval
     if(.not.self%diag)stop "Evals_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
-    if(m>self%Ndim.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
+    if(m>self%Nrow.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
     eval = self%evalues(m)
   end function eval_blocks_matrix
 
@@ -584,7 +588,7 @@ contains
     !
     ! if(.not.self%diag)stop "Evec_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
     !
-    if(m>self%Ndim.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
+    if(m>self%Nrow.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
     m_=m
     if(self%diag)m_=self%eorder(m)
     call self%find(m_,q,pos)
@@ -626,7 +630,7 @@ contains
   function shape_blocks_matrix(self) result(shape)
     class(blocks_matrix),intent(in) :: self
     integer,dimension(2)           :: shape
-    shape = [self%Ndim,self%Ndim]
+    shape = [self%Nrow,self%Ncol]
   end function shape_blocks_matrix
 
 
@@ -642,7 +646,7 @@ contains
     type(block_type),pointer              :: c
     !
     if(.not.present(index))then
-       Bshape = [self%Ndim,self%Ndim]
+       Bshape = [self%Nrow,self%Ncol]
        return
     endif
     !
@@ -691,7 +695,7 @@ contains
     if(index_>self%Nblock.OR.index_<=0)stop "shape_block_blocks_matrix error: block_index !in [1,self.size]"
     !
     if(.not.present(index))then !return the dimension of the whole self.
-       Mshape= [self%Ndim,self%Ndim]
+       Mshape= [self%Nrow,self%Ncol]
        Bsize = Mshape(dim_)
        return
     endif
@@ -738,7 +742,7 @@ contains
 
 
   !+------------------------------------------------------------------+
-  !PURPOSE:  Given an integer index m=1,self.Ndim,
+  !PURPOSE:  Given an integer index m=1,self.Nrow,
   ! returns the corresponding BLock index containing it and the relative
   ! position pos inside the block.
   ! [1...D_1][D_1+1...D_2]...[D_{q-1}...D_q] = D=self.Ndim
@@ -752,7 +756,7 @@ contains
     integer                          :: pos_
     integer,dimension(:),allocatable :: Dq
     Dq = self%dims(dim=2)
-    if(m>sum(Dq).OR.m<=0)stop "find_indices_blocks_matrix error: m !in [1,D==self.Ndim]"
+    if(m>sum(Dq).OR.m<=0)stop "find_indices_blocks_matrix error: m !in [1,D==self.Ncol]"
     do q=1,size(Dq)
        if(m <= sum(Dq(1:q)))then
           index = q
@@ -832,12 +836,7 @@ contains
        do i=1,size(c%M,1)
           do j=1,size(c%M,2)
              val = c%M(i,j)
-             ! if(dble_)then
-             write(unit_,"("//str(self%Ndim)//str(format)//")",advance='no')val
-             ! else       
-             !    write(unit_,"("//str(self%Ndim)//str(format)//")",advance='no')&
-             !         "(",dreal(val),",",dimag(val),")"
-             ! endif
+             write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')val
           enddo
           write(unit_,*)
        enddo
