@@ -1,6 +1,7 @@
 MODULE MATRIX_BLOCKS
   USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eigh,sort_quicksort
   USE AUX_FUNCS
+  USE MATRIX_SPARSE, only:sparse_matrix,as_matrix
   implicit none
   private
 
@@ -33,9 +34,12 @@ MODULE MATRIX_BLOCKS
      procedure,pass :: qn     => get_qn_blocks_matrix
      procedure,pass :: map    => get_map_blocks_matrix
      procedure,pass :: index  => get_index_blocks_matrix
+     !
+     procedure,pass :: eigh   => eigh_blocks_matrix
      procedure,pass :: evals  => evals_blocks_matrix
      procedure,pass :: eval   => eval_blocks_matrix
      procedure,pass :: evec   => evec_blocks_matrix
+     !
      procedure,pass :: has_qn => has_qn_blocks_matrix
      procedure,pass :: dump   => dump_blocks_matrix
      procedure,pass :: dgr    => dgr_blocks_matrix
@@ -43,8 +47,8 @@ MODULE MATRIX_BLOCKS
      procedure,pass :: shape  => shape_block_blocks_matrix
      procedure,pass :: size   => size_block_blocks_matrix
      procedure,pass :: dims   => dimensions_blocks_matrix
-     procedure,pass :: eigh   => eigh_blocks_matrix
      procedure,pass :: find   => find_indices_blocks_matrix
+     procedure,pass :: sparse => sparse_blocks_matrix
   end type blocks_matrix
 
 
@@ -87,9 +91,14 @@ MODULE MATRIX_BLOCKS
      module procedure :: transpose_blocks_matrix
   end interface hconjg
 
-  interface as_matrix
-     module procedure :: as_matrix_blocks_matrix
-  end interface as_matrix
+  interface as_sparse
+     module procedure :: as_sparse_blocks_matrix
+  end interface as_sparse
+
+  ! interface as_matrix
+  !    module procedure :: as_matrix_blocks_matrix
+  ! end interface as_matrix
+
 
   public :: blocks_matrix
   public :: as_blocks
@@ -97,6 +106,7 @@ MODULE MATRIX_BLOCKS
   public :: shape
   public :: transpose
   public :: hconjg
+  public :: as_sparse
   public :: assignment(=)
 
 
@@ -466,17 +476,77 @@ contains
   end function dump_blocks_matrix
 
 
+
+  ! !+------------------------------------------------------------------+
+  ! !PURPOSE: dump a sparse matrix into a regular 2dim array
+  ! !+------------------------------------------------------------------+
+  ! function as_matrix_blocks_matrix(self) result(matrix)
+  !   class(blocks_matrix),intent(inout) :: self
+  !   real(8),dimension(:,:),allocatable :: matrix
+  !   if(allocated(matrix))deallocate(matrix)
+  !   matrix = self%dump()
+  ! end function as_matrix_blocks_matrix
+
+
   !+------------------------------------------------------------------+
   !PURPOSE: dump a sparse matrix into a regular 2dim array
   !+------------------------------------------------------------------+
-  function as_matrix_blocks_matrix(self) result(matrix)
+  function as_sparse_blocks_matrix(self) result(sparse)
     class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:,:),allocatable :: matrix
-    if(allocated(matrix))deallocate(matrix)
-    matrix = self%dump()
-  end function as_matrix_blocks_matrix
+    type(sparse_matrix)                :: sparse
+    integer,dimension(2)               :: dims
+    integer                            :: i,it
+    real(8),dimension(:),allocatable   :: self_vec
+    integer,dimension(:),allocatable   :: self_map
+    dims = shape(self)
+    call sparse%init(dims(1),dims(2))
+    do it=1,dims(2)
+       self_vec = self%evec(m=it)
+       self_map = self%map(m=it)
+       do i=1,size(self_vec)
+          call sparse%insert(self_vec(i),self_map(i),it)
+       enddo
+    enddo
+  end function as_sparse_blocks_matrix
 
 
+
+  ! !+------------------------------------------------------------------+
+  ! !PURPOSE: dump a sparse matrix into a regular 2dim array
+  ! !+------------------------------------------------------------------+
+  ! function as_matrix_blocks_matrix(self) result(matrix)
+  !   class(blocks_matrix),intent(inout) :: self
+  !   type(sparse_matrix)                :: sparse
+  !   real(8),dimension(:,:),allocatable :: matrix
+  !   if(allocated(matrix))deallocate(matrix)
+  !   matrix = as_matrix(as_sparse(self))
+  ! end function as_matrix_blocks_matrix
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE: dump a sparse matrix into a regular 2dim array
+  !+------------------------------------------------------------------+
+  function sparse_blocks_matrix(self,m) result(sparse)
+    class(blocks_matrix),intent(inout) :: self
+    integer,optional                   :: m
+    type(sparse_matrix)                :: sparse
+    integer,dimension(2)               :: dims
+    integer                            :: i,it,m_
+    real(8),dimension(:),allocatable   :: self_vec
+    integer,dimension(:),allocatable   :: self_map
+    dims = shape(self)
+    m_=dims(2);if(present(m))m_=m
+    if(m_<1.OR.m_>dims(2))stop "as_sparse_truncate_blocks_matrix ERROR: m<1 OR m>size(self,2)"
+    call sparse%init(dims(1),m_)
+    do it=1,m_
+       self_vec = self%evec(m=it)
+       self_map = self%map(m=it)
+       do i=1,size(self_vec)
+          call sparse%insert(self_vec(i),self_map(i),it)
+       enddo
+    enddo
+  end function sparse_blocks_matrix
 
 
   !##################################################################

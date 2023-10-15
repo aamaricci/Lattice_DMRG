@@ -3,10 +3,15 @@ program heisenberg_1d
   USE DMRG
   implicit none
 
-  character(len=64) :: finput
-  character(len=1)  :: DMRGtype
-  integer           :: i,SUN
-  real(8)           :: target_Sz(1),Hvec(3)
+  character(len=64)   :: finput
+  character(len=1)    :: DMRGtype
+  integer             :: i,SUN
+  real(8)             :: target_Sz(1),Hvec(3)
+  !
+  type(site)          :: Dot
+  type(sparse_matrix) :: Op
+  real(8)             :: val
+
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(SUN,"SUN",finput,default=2,&
@@ -24,9 +29,11 @@ program heisenberg_1d
   select case(SUN)
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
+     dot = spin_onehalf_site(Hvec)
      call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site(Hvec))
   case(3)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site())
+     dot = spin_one_site(Hvec)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site(Hvec))
   end select
 
   !Run DMRG algorithm
@@ -37,6 +44,15 @@ program heisenberg_1d
   case("f","F")
      call finite_DMRG()
   end select
+
+  !Measure Sz
+  Op = dot%operators%op(key='Sz')
+  do i=1,Ldmrg
+     val= measure_dmrg(Op,i)
+     print*,i,val
+     write(100,*)i,val
+  enddo
+
   !Finalize DMRG
   call finalize_dmrg()
 

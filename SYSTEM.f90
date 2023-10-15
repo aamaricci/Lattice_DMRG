@@ -24,16 +24,20 @@ MODULE SYSTEM
      end function Hconnect
   end interface
   procedure(Hconnect),pointer,public :: H2model=>null()
+  !
   type(sparse_matrix)                :: spHsb
+  !
   type(site)                         :: dot
   real(8),dimension(:),allocatable   :: target_Qn,current_target_QN
-  real(8),dimension(:),allocatable   :: eig_values
-  real(8),dimension(:,:),allocatable :: eig_basis
   type(block)                        :: init_sys,init_env
   logical                            :: init_called=.false.
-  integer,dimension(:),allocatable   :: sb_states
+  real(8),dimension(:),allocatable   :: eig_values
   type(blocks_matrix)                :: psi_sys
   type(blocks_matrix)                :: psi_env
+  !
+  !GLOBAL SYS & ENV 
+  type(block)                        :: sys,env
+  !
 
   public :: init_dmrg
   public :: finalize_dmrg
@@ -41,12 +45,12 @@ MODULE SYSTEM
   !
   public :: infinite_DMRG
   public :: finite_DMRG
+  public :: measure_DMRG
 
 contains
 
 
   subroutine infinite_DMRG()
-    type(block)         :: sys,env
     type(sparse_matrix) :: Op
     real(8)             :: val
     integer             :: i
@@ -54,21 +58,14 @@ contains
     sys=init_sys
     env=init_env
     do while (2*sys%length < Ldmrg)
-       call step_dmrg(sys,env)
-       call get_observables(sys,env,suffix="L"//str(Ldmrg)//"_iDMRG")
-    enddo
-    Op = dot%operators%op(key='Sz')
-    do i=1,Ldmrg/2
-       val= measure_dmrg(sys,env,Op,i)
-       print*,i,val
-       write(100,*)i,val
+       call step_dmrg()
+       call write_energy(suffix="L"//str(Ldmrg)//"_iDMRG")
     enddo
   end subroutine infinite_DMRG
 
 
 
   subroutine finite_DMRG()
-    type(block)                            :: sys,env
     integer                                :: i,im,env_label,sys_label,current_L
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
@@ -87,8 +84,8 @@ contains
     blocks_list(sys_label,1)=sys
     blocks_list(env_label,1)=env
     do while (2*sys%length < Ldmrg)
-       call step_dmrg(sys,env)
-       call get_observables(sys,env,suffix="L"//str(Ldmrg)//"_iDMRG")
+       call step_dmrg()
+       call write_energy(suffix="L"//str(Ldmrg)//"_iDMRG")
        blocks_list(sys_label,sys%length)=sys
        blocks_list(env_label,env%length)=env
     enddo
@@ -111,8 +108,8 @@ contains
              call tmp%free()
           endif
           !
-          call step_dmrg(sys,env,sys_label,im)
-          call get_observables(sys,env,suffix="L"//str(Ldmrg)//"_sweep"//str(im))
+          call step_dmrg(sys_label,im)
+          call write_energy(suffix="L"//str(Ldmrg)//"_sweep"//str(im))
           !
           blocks_list(sys_label,sys%length) = sys
           print*,""
@@ -156,8 +153,8 @@ contains
 
 
 
-  subroutine step_dmrg(sys,env,label,isweep)
-    type(block),intent(inout)          :: sys,env
+  subroutine step_dmrg(label,isweep)
+    ! type(block),intent(inout)          :: sys,env
     integer,optional                   :: label,isweep
     integer                            :: iLabel
     integer                            :: Mstates
@@ -171,6 +168,8 @@ contains
     real(8),dimension(:),allocatable   :: rho_vec
     real(8),dimension(:),allocatable   :: evals,evals_sys,evals_env
     real(8),dimension(:,:),allocatable :: Hsb
+    real(8),dimension(:,:),allocatable :: eig_basis
+    integer,dimension(:),allocatable   :: sb_states
     type(blocks_matrix)                :: rho_sys,rho_env
     type(tbasis)                       :: sys_basis,env_basis
     type(sparse_matrix)                :: trRho_sys,trRho_env
@@ -188,7 +187,7 @@ contains
        Estates = Esweep(isweep)
     endif
     !
-    call dmrg_graphic(sys,env,iLabel)
+    call dmrg_graphic(iLabel)
     !
     !Start DMRG step timer
     call start_timer()
@@ -217,7 +216,7 @@ contains
     !
     !Build SuperBLock Sector
     call start_timer()
-    call get_sb_states(sys,env,sb_states,sb_sector)
+    call get_sb_states(sb_states,sb_sector)
     call stop_timer("Get SB states")
     m_sb = size(sb_states)
     !
@@ -225,13 +224,16 @@ contains
          "Enlarged Blocks dimensions           :", sys%dim,env%dim  
     write(LOGfile,"(A,I12,A1,I12,A1,F10.5,A1)")&
          "SuperBlock Dimension  (tot)          :", m_sb,"(",m_sys*m_env,")",dble(m_sb)/m_sys/m_env,"%"
+
+
+    !Build SuperBLock Hamiltonian
     call start_timer()
     spHsb = sp_kron(sys%operators%op("H"),id(m_env),sb_states) + &
          sp_kron(id(m_sys),env%operators%op("H"),sb_states)  + &
          H2model(sys,env,sb_states)
     call stop_timer("Done H_sb")
     !
-    !
+    !Diagonalize SuperBLock Hamiltonian
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
     allocate(eig_values(Lanc_Neigen))    ;eig_values=0d0
@@ -254,6 +256,7 @@ contains
             iverbose=.false.)
     end if
     call stop_timer("Diag H_sb")
+    !
     !
     !BUILD RHO and PSI:
     call start_timer()
@@ -291,7 +294,8 @@ contains
     evals_env = rho_env%evals()
     m_s = min(Mstates,m_sys,size(evals_sys))
     m_e = min(Mstates,m_env,size(evals_env))
-    if(Estates/=0d0)then!< ACTHUNG: treatment of degenerate rho-eigenvalues is recommended 
+    !< ACTHUNG: treatment of degenerate rho-eigenvalues is recommended
+    if(Estates/=0d0)then
        !find the value of m such that 1-sum_i lambda_i < Edmrg
        m_err = minloc(abs(1d0-cumulate(evals_sys)-Estates))
        m_s   = m_err(1)
@@ -300,32 +304,20 @@ contains
     endif
     truncation_error_sys = 1d0 - sum(evals_sys(1:m_s))
     truncation_error_env = 1d0 - sum(evals_env(1:m_e))
-    !>truncation-rotation matrices 
-    call trRho_sys%init(m_sys,m_s)
-    call trRho_env%init(m_env,m_e)
-    do im=1,m_s
-       rho_vec = rho_sys%evec(m=im)
-       sys_map = rho_sys%map(m=im)
-       do i=1,size(rho_vec)
-          call trRho_sys%insert(rho_vec(i),sys_map(i),im)
-       enddo
-    enddo
-    do im=1,m_e
-       rho_vec = rho_env%evec(m=im)
-       env_map = rho_env%map(m=im)
-       do i=1,size(rho_vec)
-          call trRho_env%insert(rho_vec(i),env_map(i),im)
-       enddo
-    enddo
-    !Store all the rotation/truncation matrices:
+    !
+    !>truncation-rotation matrices:
+    trRho_sys = rho_sys%sparse(m=m_s)
+    trRho_env = rho_env%sparse(m=m_e)
+    !
+    !>Store all the rotation/truncation matrices:
     call sys%put_omat(str(sys%length),trRho_sys)
     call env%put_omat(str(env%length),trRho_env)
     !
-    !Renormalize Blocks:
+    !>Renormalize Blocks:
     call sys%renormalize(as_matrix(trRho_sys))
     call env%renormalize(as_matrix(trRho_env))
     !
-    !Prepare output and update basis state
+    !>Prepare output and update basis state
     do im=1,m_s
        call sys_basis%append( qn=rho_sys%qn(m=im) )
     enddo
@@ -350,7 +342,7 @@ contains
     !
     !
     !Clean memory:
-    ! if(allocated(sb_states))deallocate(sb_states)
+    if(allocated(sb_states))deallocate(sb_states)
     if(allocated(sys_map))deallocate(sys_map)
     if(allocated(env_map))deallocate(env_map)
     if(allocated(sb_map))deallocate(sb_map)
@@ -358,7 +350,7 @@ contains
     if(allocated(qn))deallocate(qn)
     if(allocated(rho_vec))deallocate(rho_vec)
     ! if(allocated(eig_values))deallocate(eig_values)
-    ! if(allocated(eig_basis))deallocate(eig_basis)
+    if(allocated(eig_basis))deallocate(eig_basis)
     if(allocated(evals_sys))deallocate(evals_sys)
     if(allocated(evals_env))deallocate(evals_env)
     call rho_sys%free()
@@ -376,130 +368,11 @@ contains
 
 
 
-  function measure_dmrg(left,right,op,pos) result(avOp)
-    type(block),intent(in)           :: left,right
-    type(sparse_matrix)              :: op
-    integer                          :: pos,j
-    !
-    character(len=1)                 :: label
-    real(8)                          :: avOp
-    type(sparse_matrix)              :: Oj
-    type(sparse_matrix)              :: U,Psi
-    integer                          :: i,it,dims(2),dim,L,R,Nsys,Nenv
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
-    !
-    L = left%length
-    R = right%length
-    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
-    !
-    label='l';if(pos>L)label='r'
-    !
-    j=pos
-    if(pos>L)j=R+1-(pos-L)            !R,...,1
-    !
-    !Retrieve the dimensions of the initial Dot
-    select case(label)
-    case ("l","L");dims = shape(left%omatrices%op(index=1)) ;dim=dims(1)
-    case ("r","R");dims = shape(right%omatrices%op(index=1));dim=dims(1)
-    end select
-    !
-    !Step 1: build the operator at the site j
-    Oj  = Op                    !.x.Id(dim)
-    if(j>1)then
-       select case(label)
-       case ("l","L")
-          U    = left%omatrices%op(index=j-1)
-          Oj   = matmul(U%t(),U).x.Op
-       case ("r","R")
-          U    = right%omatrices%op(index=j-1)
-          Oj   = Op.x.matmul(U%t(),U)
-       end select
-    end if
-    !
-    !Step 2: bring the operator to the actual basis
-    select case(label)
-    case ("l","L")
-       do it=j,L
-          U  = left%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Oj.x.Id(dim)
-       enddo
-    case ("r","R")
-       do it=j,R
-          U  = right%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Id(dim).x.Oj
-       enddo
-    end select
-    !
-    !Step 3 measure using PSI matrix:
-    dims=shape(Oj)
-    select case(label)
-    case ("l","L")
-       call Psi%init(dims(1),dims(2))
-       do it=1,dims(2)
-          psi_vec = psi_sys%evec(m=it)
-          psi_map = psi_sys%map(m=it)
-          do i=1,size(psi_vec)
-             call Psi%insert(psi_vec(i),psi_map(i),it)
-          enddo
-       enddo
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
-    case ("r","R")
-       call Psi%init(dims(1),dims(2))
-       do it=1,dims(2)
-          psi_vec = psi_env%evec(m=it)
-          psi_map = psi_env%map(m=it)
-          do i=1,size(psi_vec)
-             call Psi%insert(psi_vec(i),psi_map(i),it)
-          enddo
-       enddo
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
-    end select
-    call Psi%free()
-  end function measure_dmrg
 
 
 
-  subroutine dmrg_graphic(sys,env,label)
-    type(block) :: sys,env
-    integer     :: label,M
-    integer     :: i
-    write(LOGfile,*)""
-    write(LOGfile,*)""
-    select case(label)
-    case default; stop "dmrg_graphic error: label != 1(L),2(R)"
-    case(1)
-       write(LOGfile,"(A,2I4,A6,1x)",advance="no")"sys.L + env.L:",sys%length,env%length,"|"
-       write(LOGfile,"("//str(sys%length)//"A1)",advance="no")("=",i=1,sys%length)
-       write(LOGfile,"(A2)",advance="no")"**"
-       write(LOGfile,"("//str(env%length)//"A1)",advance="no")("-",i=1,env%length)
-    case(2)
-       write(LOGfile,"(A,2I4,A6,1x)",advance="no")"sys.L + env.L:",env%length,sys%length,"|"
-       write(LOGfile,"("//str(env%length)//"A1)",advance="no")("=",i=1,env%length)
-       write(LOGfile,"(A2)",advance="no")"**"
-       write(LOGfile,"("//str(sys%length)//"A1)",advance="no")("-",i=1,sys%length)
-    end select
-    write(LOGfile,"(1x,A1,2I6)",advance='yes')"|",Ldmrg
-  end subroutine dmrg_graphic
 
 
-
-  subroutine get_observables(sys,env,suffix)
-    type(block),intent(inout) :: sys,env
-    character(len=*)          :: suffix
-    integer                   :: current_L
-    integer                   :: Eunit
-    !
-    current_L         = sys%length + env%length
-    !
-    call start_timer()
-    Eunit = fopen("energyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
-    write(Eunit,*)sys%length,eig_values/current_L
-    close(Eunit)
-    call stop_timer("Get Observables")
-  end subroutine get_observables
 
 
   subroutine enlarge_block(self,dot,grow)
@@ -579,8 +452,8 @@ contains
 
 
 
-  subroutine get_sb_states(sys,env,sb_states,sb_sector)
-    type(block)                      :: sys,env
+  subroutine get_sb_states(sb_states,sb_sector)
+    ! type(block)                      :: sys,env
     integer,dimension(:),allocatable :: sb_states
     type(sectors_list)               :: sb_sector
     integer                          :: isys,ienv
@@ -608,6 +481,91 @@ contains
     enddo
     !
   end subroutine get_sb_states
+
+
+  subroutine write_energy(suffix)
+    character(len=*)          :: suffix
+    integer                   :: current_L
+    integer                   :: Eunit
+    !
+    current_L         = sys%length + env%length
+    !
+    Eunit = fopen("energyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
+    write(Eunit,*)sys%length,eig_values/current_L
+    close(Eunit)
+  end subroutine write_energy
+
+
+  function measure_dmrg(op,pos) result(avOp)
+    type(sparse_matrix)              :: op
+    integer                          :: pos,j
+    !
+    character(len=1)                 :: label
+    real(8)                          :: avOp
+    type(sparse_matrix)              :: Oj
+    type(sparse_matrix)              :: U,Psi
+    integer                          :: i,it,dims(2),dim,L,R,Nsys,Nenv
+    real(8),dimension(:),allocatable :: psi_vec
+    integer,dimension(:),allocatable :: psi_map
+    !
+    L = sys%length
+    R = env%length
+    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
+    !
+    label='l';if(pos>L)label='r'
+    !
+    j=pos
+    if(pos>L)j=R+1-(pos-L)
+    !
+    !Retrieve the dimensions of the initial Dot
+    select case(label)
+    case ("l","L");dims = shape(sys%omatrices%op(index=1)) ;dim=dims(1)
+    case ("r","R");dims = shape(env%omatrices%op(index=1));dim=dims(1)
+    end select
+    !
+    !Step 1: build the operator at the site j
+    Oj  = Op                    !.x.Id(dim)
+    if(j>1)then
+       select case(label)
+       case ("l","L")
+          U    = sys%omatrices%op(index=j-1)
+          Oj   = matmul(U%t(),U).x.Op
+       case ("r","R")
+          U    = env%omatrices%op(index=j-1)
+          Oj   = Op.x.matmul(U%t(),U)
+       end select
+    end if
+    !
+    !Step 2: bring the operator to the actual basis
+    select case(label)
+    case ("l","L")
+       do it=j,L
+          U  = sys%omatrices%op(index=it)
+          Oj = matmul(U%t(),matmul(Oj,U))
+          Oj = Oj.x.Id(dim)
+       enddo
+    case ("r","R")
+       do it=j,R
+          U  = env%omatrices%op(index=it)
+          Oj = matmul(U%t(),matmul(Oj,U))
+          Oj = Id(dim).x.Oj
+       enddo
+    end select
+    !
+    !Step 3 measure using PSI matrix:
+    dims=shape(Oj)
+    select case(label)
+    case ("l","L")
+       if(any(shape(psi_sys)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
+       Psi  = psi_sys%sparse()
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+    case ("r","R")
+       if(any(shape(psi_env)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
+       Psi = psi_env%sparse()
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+    end select
+    call Psi%free()
+  end function measure_dmrg
 
 
   function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)
@@ -649,6 +607,31 @@ contains
        rho  = matmul(transpose(psi_tmp), psi_tmp  )
     end select
   end function build_density_matrix
+
+
+
+
+  subroutine dmrg_graphic(label)
+    ! type(block) :: sys,env
+    integer     :: label,M
+    integer     :: i
+    write(LOGfile,*)""
+    write(LOGfile,*)""
+    select case(label)
+    case default; stop "dmrg_graphic error: label != 1(L),2(R)"
+    case(1)
+       write(LOGfile,"(A,2I4,A6,1x)",advance="no")"sys.L + env.L:",sys%length,env%length,"|"
+       write(LOGfile,"("//str(sys%length)//"A1)",advance="no")("=",i=1,sys%length)
+       write(LOGfile,"(A2)",advance="no")"**"
+       write(LOGfile,"("//str(env%length)//"A1)",advance="no")("-",i=1,env%length)
+    case(2)
+       write(LOGfile,"(A,2I4,A6,1x)",advance="no")"sys.L + env.L:",env%length,sys%length,"|"
+       write(LOGfile,"("//str(env%length)//"A1)",advance="no")("=",i=1,env%length)
+       write(LOGfile,"(A2)",advance="no")"**"
+       write(LOGfile,"("//str(sys%length)//"A1)",advance="no")("-",i=1,sys%length)
+    end select
+    write(LOGfile,"(1x,A1,2I6)",advance='yes')"|",Ldmrg
+  end subroutine dmrg_graphic
 
 
 

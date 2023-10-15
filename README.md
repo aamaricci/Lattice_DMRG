@@ -71,7 +71,8 @@ create an issue in this repo.
 #### Milestone 4
 - [x] Add layer to save rotation/truncation matrices
 - [x] Develop *finite* DMRG algorithm
-- [ ] Evaluates observables and entanglement
+- [x] Measure local observables 
+- [ ] Measure entanglement
 - [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of H_sb. 
 
 #### Milestone 5
@@ -84,7 +85,7 @@ create an issue in this repo.
 --
 
 ***LICENSE***  
-Copyright 2023- (C) Adriano Amaricci, Carlos Mejuto Zaera
+Copyright 2023- (C) Adriano Amaricci, Carlos Mejuto Zaera, Ricardo Lopes
 
 The software is provided with no license, as such it is protected by copyright.
 The software is provided as it is and can be read and copied, in agreement with 
