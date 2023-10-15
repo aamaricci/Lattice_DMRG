@@ -31,10 +31,11 @@ MODULE SYSTEM
   real(8),dimension(:),allocatable   :: target_Qn,current_target_QN
   type(block)                        :: init_sys,init_env
   logical                            :: init_called=.false.
-  real(8),dimension(:),allocatable   :: eig_values
-  type(blocks_matrix)                :: psi_sys
-  type(blocks_matrix)                :: psi_env
-  !
+  real(8),dimension(:),allocatable   :: energies
+  real(8),dimension(:),allocatable   :: rho_sys_evals
+  real(8),dimension(:),allocatable   :: rho_env_evals
+  type(blocks_matrix)                :: psi_sys,rho_sys
+  type(blocks_matrix)                :: psi_env,rho_env
   !GLOBAL SYS & ENV 
   type(block)                        :: sys,env
   !
@@ -54,12 +55,16 @@ contains
     type(sparse_matrix) :: Op
     real(8)             :: val
     integer             :: i
+    character(len=128)  :: label
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
     env=init_env
+    label="L"//str(Ldmrg)//"_M"//str(Mdmrg)
+    if(Edmrg/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Edmrg)
     do while (2*sys%length < Ldmrg)
        call step_dmrg()
-       call write_energy(suffix="L"//str(Ldmrg)//"_iDMRG")
+       call write_energy(suffix=str(label)//"_iDMRG")
+       call write_entanglement(suffix=str(label)//"_iDMRG")
     enddo
   end subroutine infinite_DMRG
 
@@ -142,6 +147,10 @@ contains
     call dot%free()
     call init_sys%free()
     call init_env%free()
+    call sys%free()
+    call env%free()
+    call psi_sys%free()
+    call psi_env%free()
     init_called=.false.
   end subroutine finalize_dmrg
 
@@ -154,7 +163,6 @@ contains
 
 
   subroutine step_dmrg(label,isweep)
-    ! type(block),intent(inout)          :: sys,env
     integer,optional                   :: label,isweep
     integer                            :: iLabel
     integer                            :: Mstates
@@ -166,11 +174,11 @@ contains
     integer,dimension(:),allocatable   :: sys_map,env_map,sb_map
     real(8),dimension(:),allocatable   :: sb_qn,qn
     real(8),dimension(:),allocatable   :: rho_vec
-    real(8),dimension(:),allocatable   :: evals,evals_sys,evals_env
+    real(8),dimension(:),allocatable   :: evals
     real(8),dimension(:,:),allocatable :: Hsb
+    real(8),dimension(:),allocatable   :: eig_values
     real(8),dimension(:,:),allocatable :: eig_basis
     integer,dimension(:),allocatable   :: sb_states
-    type(blocks_matrix)                :: rho_sys,rho_env
     type(tbasis)                       :: sys_basis,env_basis
     type(sparse_matrix)                :: trRho_sys,trRho_env
     type(sectors_list)                 :: sb_sector
@@ -257,9 +265,13 @@ contains
     end if
     call stop_timer("Diag H_sb")
     !
+    if(allocated(energies))deallocate(energies)
+    allocate(energies, source=eig_values)
     !
     !BUILD RHO and PSI:
     call start_timer()
+    call rho_sys%free()
+    call rho_env%free()
     call psi_sys%free()
     call psi_env%free()
     do isb=1,size(sb_sector)
@@ -290,20 +302,20 @@ contains
     call rho_sys%eigh(sort=.true.,reverse=.true.)
     call rho_env%eigh(sort=.true.,reverse=.true.)
     !>truncation errors
-    evals_sys = rho_sys%evals()
-    evals_env = rho_env%evals()
-    m_s = min(Mstates,m_sys,size(evals_sys))
-    m_e = min(Mstates,m_env,size(evals_env))
+    rho_sys_evals = rho_sys%evals()
+    rho_env_evals = rho_env%evals()
+    m_s = min(Mstates,m_sys,size(rho_sys_evals))
+    m_e = min(Mstates,m_env,size(rho_env_evals))
     !< ACTHUNG: treatment of degenerate rho-eigenvalues is recommended
     if(Estates/=0d0)then
        !find the value of m such that 1-sum_i lambda_i < Edmrg
-       m_err = minloc(abs(1d0-cumulate(evals_sys)-Estates))
+       m_err = minloc(abs(1d0-cumulate(rho_sys_evals)-Estates))
        m_s   = m_err(1)
-       m_err = minloc(abs(1d0-cumulate(evals_env)-Estates))
+       m_err = minloc(abs(1d0-cumulate(rho_env_evals)-Estates))
        m_e   = m_err(1)
     endif
-    truncation_error_sys = 1d0 - sum(evals_sys(1:m_s))
-    truncation_error_env = 1d0 - sum(evals_env(1:m_e))
+    truncation_error_sys = 1d0 - sum(rho_sys_evals(1:m_s))
+    truncation_error_env = 1d0 - sum(rho_env_evals(1:m_e))
     !
     !>truncation-rotation matrices:
     trRho_sys = rho_sys%sparse(m=m_s)
@@ -337,7 +349,7 @@ contains
     write(LOGfile,"(A,2ES24.15)")&
          "Truncation Errors                    :",truncation_error_sys,truncation_error_env
     write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-         "Energies/L                           :",eig_values/current_L
+         "Energies/L                           :",energies/current_L
     call stop_timer("dmrg_step")
     !
     !
@@ -349,10 +361,10 @@ contains
     if(allocated(sb_qn))deallocate(sb_qn)
     if(allocated(qn))deallocate(qn)
     if(allocated(rho_vec))deallocate(rho_vec)
-    ! if(allocated(eig_values))deallocate(eig_values)
+    if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
-    if(allocated(evals_sys))deallocate(evals_sys)
-    if(allocated(evals_env))deallocate(evals_env)
+    ! if(allocated(evals_sys))deallocate(evals_sys)
+    ! if(allocated(evals_env))deallocate(evals_env)
     call rho_sys%free()
     call rho_env%free()
     call sys_basis%free()
@@ -487,35 +499,51 @@ contains
     character(len=*)          :: suffix
     integer                   :: current_L
     integer                   :: Eunit
-    !
-    current_L         = sys%length + env%length
-    !
-    Eunit = fopen("energyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
-    write(Eunit,*)sys%length,eig_values/current_L
+    current_L = sys%length + env%length
+    Eunit     = fopen("energyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
+    write(Eunit,*)sys%length,energies/current_L
     close(Eunit)
   end subroutine write_energy
 
 
-  function measure_dmrg(op,pos) result(avOp)
-    type(sparse_matrix)              :: op
-    integer                          :: pos,j
+  subroutine write_entanglement(suffix)
+    character(len=*)          :: suffix
+    integer                   :: current_L
+    integer                   :: Eunit,i
+    real(8) :: entropy
+    !
+    current_L = sys%length + env%length
+    entropy=0d0
+    do i=1,size(rho_sys_evals)
+       if(rho_sys_evals(i)<0d0)cycle       
+       entropy = entropy-rho_sys_evals(i)*log(rho_sys_evals(i))
+    enddo
+    Eunit     = fopen("SentropyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
+    write(Eunit,*)sys%length,entropy
+    close(Eunit)
+  end subroutine write_entanglement
+
+
+  function measure_dmrg(Op,i) result(avOp)
+    type(sparse_matrix)              :: Op
+    integer                          :: i
     !
     character(len=1)                 :: label
     real(8)                          :: avOp
     type(sparse_matrix)              :: Oj
     type(sparse_matrix)              :: U,Psi
-    integer                          :: i,it,dims(2),dim,L,R,Nsys,Nenv
+    integer                          :: pos,it,dims(2),dim,L,R,Nsys,Nenv
     real(8),dimension(:),allocatable :: psi_vec
     integer,dimension(:),allocatable :: psi_map
     !
     L = sys%length
     R = env%length
-    if(pos<1.OR.pos>L+R)stop "measure_dmrg error: Pos not in [1,Lchain]"
+    if(i<1.OR.i>L+R)stop "measure_dmrg error: I not in [1,Lchain]"
     !
-    label='l';if(pos>L)label='r'
+    label='l';if(i>L)label='r'
     !
-    j=pos
-    if(pos>L)j=R+1-(pos-L)
+    pos=i
+    if(i>L)pos=R+1-(i-L)
     !
     !Retrieve the dimensions of the initial Dot
     select case(label)
@@ -523,29 +551,29 @@ contains
     case ("r","R");dims = shape(env%omatrices%op(index=1));dim=dims(1)
     end select
     !
-    !Step 1: build the operator at the site j
+    !Step 1: build the operator at the site pos
     Oj  = Op                    !.x.Id(dim)
-    if(j>1)then
-       select case(label)
-       case ("l","L")
-          U    = sys%omatrices%op(index=j-1)
+    if(pos>1)then
+       select case(to_lower(str(label)))
+       case ("l")
+          U    = sys%omatrices%op(index=pos-1)
           Oj   = matmul(U%t(),U).x.Op
-       case ("r","R")
-          U    = env%omatrices%op(index=j-1)
+       case ("r")
+          U    = env%omatrices%op(index=pos-1)
           Oj   = Op.x.matmul(U%t(),U)
        end select
     end if
     !
     !Step 2: bring the operator to the actual basis
-    select case(label)
-    case ("l","L")
-       do it=j,L
+    select case(to_lower(str(label)))
+    case ("l")
+       do it=pos,L
           U  = sys%omatrices%op(index=it)
           Oj = matmul(U%t(),matmul(Oj,U))
           Oj = Oj.x.Id(dim)
        enddo
-    case ("r","R")
-       do it=j,R
+    case ("r")
+       do it=pos,R
           U  = env%omatrices%op(index=it)
           Oj = matmul(U%t(),matmul(Oj,U))
           Oj = Id(dim).x.Oj
@@ -554,18 +582,19 @@ contains
     !
     !Step 3 measure using PSI matrix:
     dims=shape(Oj)
-    select case(label)
-    case ("l","L")
+    select case(to_lower(str(label)))
+    case ("l")
        if(any(shape(psi_sys)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
        Psi  = psi_sys%sparse()
        AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
-    case ("r","R")
+    case ("r")
        if(any(shape(psi_env)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
-       Psi = psi_env%sparse()
+       Psi  = psi_env%sparse()
        AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
     end select
     call Psi%free()
   end function measure_dmrg
+
 
 
   function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)

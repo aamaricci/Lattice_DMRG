@@ -221,7 +221,7 @@ contains
     real(8),dimension(3),optional :: hvec
     type(site)                    :: self
     real(8),dimension(2,2)        :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-    real(8),dimension(2,2)        :: Szeta=reshape([0.5d0,0d0,0d0,0.5d0],[2,2])
+    real(8),dimension(2,2)        :: Szeta=reshape([1d0,0d0,0d0,-1d0]/2,[2,2])
     real(8),dimension(2,2)        :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
     self%Dim = 2
@@ -240,7 +240,7 @@ contains
     real(8),dimension(3),optional :: hvec
     type(site)                    :: self
     real(8),dimension(2,2)        :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-    real(8),dimension(2,2)        :: Szeta=reshape([0.5d0,0d0,0d0,0.5d0],[2,2])
+    real(8),dimension(2,2)        :: Szeta=reshape([1d0,0d0,0d0,-1d0]/2,[2,2])
     real(8),dimension(2,2)        :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
     call self%free()
     self%Dim = 2

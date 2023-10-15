@@ -5,7 +5,7 @@ program heisenberg_1d
 
   character(len=64)   :: finput
   character(len=1)    :: DMRGtype
-  integer             :: i,SUN
+  integer             :: i,SUN,Unit
   real(8)             :: target_Sz(1),Hvec(3)
   !
   type(site)          :: Dot
@@ -29,8 +29,8 @@ program heisenberg_1d
   select case(SUN)
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
-     dot = spin_onehalf_site(Hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site(Hvec))
+     dot = spin_onehalf_site()
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site())
   case(3)
      dot = spin_one_site(Hvec)
      call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site(Hvec))
@@ -47,11 +47,12 @@ program heisenberg_1d
 
   !Measure Sz
   Op = dot%operators%op(key='Sz')
-  do i=1,Ldmrg
-     val= measure_dmrg(Op,i)
-     print*,i,val
-     write(100,*)i,val
+  unit=fopen("SzVSj.dmrg")
+  do i=1,Ldmrg/2
+     val = measure_dmrg(Op,i)
+     write(unit,*)i,val
   enddo
+  close(unit)
 
   !Finalize DMRG
   call finalize_dmrg()
@@ -89,21 +90,3 @@ end program heisenberg_1d
 
 
 
-
-!
-!Here we need to construct two things:
-!1. the indices of the reduced SB hamiltonian, ie the indices of the row/col
-!   corresponding to the sectors contributing to target_Sz. How?
-!   One loops over the enlarged blocksys  QNs. For each get the enlarged env QNs such
-!   that the sum is the target QN: esys.qn + eenv.qn = targetQN. {This can probably be
-!   simplified building a double list [esys.qn, eenv.qn].}
-!   For any couple of QNs use the sector map to get the list of states corresponding to
-!   each QN of the esys and eenv, say istate and jstate.
-!   For any couple of istate, jstate form the index "jstate + (istate-1)*eenv.dim"
-!   corresponding to the state in the SB hamiltonian.
-!2. the map of the states for the new updated block. How?
-!   Labelling the states found at 1. in terms of the QNs of the system. This map
-!   will be used later on to block decompose the density matrix, the rotation matrix
-!   and so on.
-!Store here the states in 1.
-! allocate(sb_states(0))
