@@ -22,17 +22,8 @@ MODULE SYSTEM
        integer,dimension(:),optional :: states
        type(sparse_matrix)           :: Hconnect
      end function Hconnect
-
-     function UserMeasure(left,right,states)
-       USE BLOCKS
-       USE MATRIX_SPARSE
-       type(block)                   :: left
-       type(block)                   :: right
-       type(sparse_matrix)           :: Hconnect
-     end function UserMeasure
   end interface
   procedure(Hconnect),pointer,public    :: H2model=>null()
-  procedure(UserMeasure),pointer,public :: DmrgMeasure=>null()
   !
   type(sparse_matrix)                   :: spHsb
   !
@@ -59,24 +50,17 @@ MODULE SYSTEM
   public :: finite_DMRG
 
 
-  interface measure_dmrg
-     module procedure :: 
-     module procedure :: measure_Osite_dmrg
-     module procedure :: measure_Ocurrent_dmrg
-  end interface measure_dmrg
-
-
   !Measuring:
-  public :: op_measure_DMRG
-  public :: op_build_DMRG
-  public :: measure_DMRG
-
+  public :: MeasurePsi_DMRG
+  public :: Measure_Operators_dmrg
+  public :: Build_Olocal_dmrg
+  public :: Measure_Olocal_dmrg
 contains
 
 
   subroutine infinite_DMRG()
     character(len=128)  :: prefix
-    real(8)             :: val(Ldmrg),nval
+    real(8)             :: val,nval
     integer             :: i,j
     type(sparse_matrix) :: Op,bSz,bSp,Sij(Ldmrg)
 
@@ -89,24 +73,23 @@ contains
     !
     do while (2*sys%length < Ldmrg)
        SiSj=heisenberg_1d_SiSj(sys%operators%op("Sz"),sys%operators%op("Sp"),dot%operators%op("Sz"),dot%operators%op("Sp"))
-       Sij(sys%length)=SiSj
        call step_dmrg()
-       call write_energy(suffix=str(label)//"_iDMRG")
-       call write_entanglement(suffix=str(label)//"_iDMRG")
-       val(sys%length)= measure_DMRG(SiSj,'l')
-       write(300,*)sys%length-1,val(sys%length)
+       call write_energy(suffix=str(prefix)//"_iDMRG")
+       call write_entanglement(suffix=str(prefix)//"_iDMRG")
+       val= MeasurePsi_DMRG(SiSj,'l')
+       write(300,*)sys%length-1,val
     enddo
 
-    do i=2,Ldmrg/2
-       ! bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
-       ! bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
-       ! !Build SiSj
-       ! Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
-       Op = Sij(i-1)
-       nval= measure_DMRG(Op,i)
-       write(*,*)i-1,nval,val(i)
-       write(200,*)i-1,nval
-    enddo
+    ! do i=2,Ldmrg/2
+    !    ! bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
+    !    ! bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
+    !    ! !Build SiSj
+    !    ! Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
+    !    Op = Sij(i-1)
+    !    nval= measure_DMRG(Op,i)
+    !    write(*,*)i-1,nval,val(i)
+    !    write(200,*)i-1,nval
+    ! enddo
   end subroutine infinite_DMRG
 
 
@@ -569,8 +552,55 @@ contains
   end subroutine write_entanglement
 
 
+
+
+  function MeasurePsi_dmrg(Op,label) result(avOp)
+    type(sparse_matrix),intent(in)   :: Op
+    character(len=1)                 :: label
+    real(8)                          :: avOp
+    type(sparse_matrix)              :: Psi
+    integer                          :: L,R
+    real(8),dimension(:),allocatable :: psi_vec
+    integer,dimension(:),allocatable :: psi_map
+    !
+    L = sys%length
+    R = env%length
+    !
+    !Measure using PSI matrix:
+    select case(label)
+    case ("l")
+       if(any(shape(psi_sys)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
+       Psi  = psi_sys%sparse()
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
+    case ("r")
+       if(any(shape(psi_env)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
+       Psi  = psi_env%sparse()
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
+    end select
+    call Psi%free()
+  end function MeasurePsi_dmrg
+
+
+
+  function Measure_Operators_dmrg(Op,i) result(avOp)
+    integer,intent(in)             :: i(:)
+    type(sparse_matrix),intent(in) :: Op(size(i))
+    real(8),allocatable            :: avOp(:)
+    type(sparse_matrix)            :: Oi
+    integer                        :: io
+    !
+    if(allocated(avOp))deallocate(avOp)
+    allocate(avOp(size(i)))
+    do io=1,size(i)
+       Oi      = Build_Olocal_dmrg(Op(io),i(io))
+       avOp(io)= Measure_Olocal_dmrg(Oi,i(io))
+    enddo
+    call Oi%free()
+  end function Measure_Operators_dmrg
+
+
   !Return the Operator Oi at a site I of the chain given the operator O in the dot basis:
-  function Op_build_dmrg(Op,i) result(Oi)
+  function Build_Olocal_dmrg(Op,i) result(Oi)
     integer                        :: i
     type(sparse_matrix),intent(in) :: Op
     type(sparse_matrix)            :: Oi
@@ -600,29 +630,10 @@ contains
           Oi   = Op.x.matmul(U%t(),U)
        end select
     end if
-  end function Op_build_dmrg
+  end function Build_Olocal_dmrg
 
 
-  function Op_measure_dmrg(Op,i) result(avOp)
-    integer,intent(in)             :: i(:)
-    type(sparse_matrix),intent(in) :: Op(size(i))
-    real(8),allocatable            :: avOp(:)
-    type(sparse_matrix)            :: Oi
-    integer                        :: io
-    !
-    if(allocated(avOp))deallocate(avOp)
-    allocate(avOp(size(i)))
-    do io=1,size(i)
-       Oi      = construct_op_DMRG(Op(io),i(io))
-       avOp(io)= measure_DMRG(Oi,i(io))
-    enddo
-    call Oi%free()
-  end function Op_measure_dmrg
-
-
-
-
-  function measure_Osite_dmrg(Op,i) result(avOp)
+  function Measure_Olocal_dmrg(Op,i) result(avOp)
     type(sparse_matrix),intent(in)   :: Op
     integer                          :: i
     real(8)                          :: avOp
@@ -675,33 +686,9 @@ contains
     call Oi%free()
     call U%free()
     call Psi%free()
-  end function measure_Osite_dmrg
+  end function Measure_Olocal_dmrg
 
-  function measure_Ocurrent_dmrg(Op,label) result(avOp)
-    type(sparse_matrix),intent(in)   :: Op
-    character(len=1)                 :: label
-    real(8)                          :: avOp
-    type(sparse_matrix)              :: Psi
-    integer                          :: L,R
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
-    !
-    L = sys%length
-    R = env%length
-    !
-    !Measure using PSI matrix:
-    select case(label)
-    case ("l")
-       if(any(shape(psi_sys)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = psi_sys%sparse()
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
-    case ("r")
-       if(any(shape(psi_env)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = psi_env%sparse()
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
-    end select
-    call Psi%free()
-  end function measure_Ocurrent_dmrg
+
 
 
 
