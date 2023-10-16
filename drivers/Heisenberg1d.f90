@@ -49,7 +49,7 @@ program heisenberg_1d
   !Measure Sz
   unit=fopen("SzVSj.dmrg")
   do i=1,Ldmrg/2
-     vals = Measure_Operators_dmrg([dot%operators%op(key='Sz')],[i])
+     vals = Measure_dmrg([dot%operators%op(key='Sz')],[i])
      write(unit,*)i,vals
   enddo
   close(unit)
@@ -67,7 +67,7 @@ program heisenberg_1d
   !    write(200,*)i,val
   ! enddo
 
-  
+
   !Finalize DMRG
   call finalize_dmrg()
 

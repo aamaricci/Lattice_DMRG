@@ -51,11 +51,58 @@ MODULE SYSTEM
 
 
   !Measuring:
-  public :: MeasurePsi_DMRG
-  public :: Measure_Operators_dmrg
-  public :: Build_Olocal_dmrg
-  public :: Measure_Olocal_dmrg
+  public :: PsiAverage_DMRG
+  public :: Measure_dmrg
+
 contains
+
+
+  function PsiAverage_dmrg(Op,label) result(avOp)
+    type(sparse_matrix),intent(in)   :: Op
+    character(len=1)                 :: label
+    real(8)                          :: avOp
+    type(sparse_matrix)              :: Psi
+    integer                          :: L,R
+    real(8),dimension(:),allocatable :: psi_vec
+    integer,dimension(:),allocatable :: psi_map
+    !
+    L = sys%length
+    R = env%length
+    !
+    !Measure using PSI matrix:
+    select case(label)
+    case ("l")
+       if(any(shape(psi_sys)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
+       Psi  = psi_sys%sparse()
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
+    case ("r")
+       if(any(shape(psi_env)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
+       Psi  = psi_env%sparse()
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
+    end select
+    call Psi%free()
+  end function PsiAverage_dmrg
+
+
+  function Measure_dmrg(Op,i) result(avOp)
+    integer,intent(in)             :: i(:)
+    type(sparse_matrix),intent(in) :: Op(size(i))
+    real(8),allocatable            :: avOp(:)
+    type(sparse_matrix)            :: Oi
+    integer                        :: io
+    !
+    if(allocated(avOp))deallocate(avOp)
+    allocate(avOp(size(i)))
+    do io=1,size(i)
+       Oi      = Build_Olocal_dmrg(Op(io),i(io))
+       avOp(io)= Measure_Olocal_dmrg(Oi,i(io))
+    enddo
+    call Oi%free()
+  end function Measure_dmrg
+
+
+
+
 
 
   subroutine infinite_DMRG()
@@ -76,7 +123,7 @@ contains
        call step_dmrg()
        call write_energy(suffix=str(prefix)//"_iDMRG")
        call write_entanglement(suffix=str(prefix)//"_iDMRG")
-       val= MeasurePsi_DMRG(SiSj,'l')
+       val= PsiAverage_DMRG(SiSj,'l')
        write(300,*)sys%length-1,val
     enddo
 
@@ -552,53 +599,6 @@ contains
   end subroutine write_entanglement
 
 
-
-
-  function MeasurePsi_dmrg(Op,label) result(avOp)
-    type(sparse_matrix),intent(in)   :: Op
-    character(len=1)                 :: label
-    real(8)                          :: avOp
-    type(sparse_matrix)              :: Psi
-    integer                          :: L,R
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
-    !
-    L = sys%length
-    R = env%length
-    !
-    !Measure using PSI matrix:
-    select case(label)
-    case ("l")
-       if(any(shape(psi_sys)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = psi_sys%sparse()
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
-    case ("r")
-       if(any(shape(psi_env)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = psi_env%sparse()
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
-    end select
-    call Psi%free()
-  end function MeasurePsi_dmrg
-
-
-
-  function Measure_Operators_dmrg(Op,i) result(avOp)
-    integer,intent(in)             :: i(:)
-    type(sparse_matrix),intent(in) :: Op(size(i))
-    real(8),allocatable            :: avOp(:)
-    type(sparse_matrix)            :: Oi
-    integer                        :: io
-    !
-    if(allocated(avOp))deallocate(avOp)
-    allocate(avOp(size(i)))
-    do io=1,size(i)
-       Oi      = Build_Olocal_dmrg(Op(io),i(io))
-       avOp(io)= Measure_Olocal_dmrg(Oi,i(io))
-    enddo
-    call Oi%free()
-  end function Measure_Operators_dmrg
-
-
   !Return the Operator Oi at a site I of the chain given the operator O in the dot basis:
   function Build_Olocal_dmrg(Op,i) result(Oi)
     integer                        :: i
@@ -687,6 +687,8 @@ contains
     call U%free()
     call Psi%free()
   end function Measure_Olocal_dmrg
+
+
 
 
 
