@@ -72,10 +72,11 @@ create an issue in this repo.
 - [x] Add layer to save rotation/truncation matrices
 - [x] Develop *finite* DMRG algorithm
 - [x] Measure local observables 
-- [ ] Measure entanglement
-- [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of H_sb. 
+- [x] Measure entanglement
+- [x] Measure nearest neighbor correlations
 
 #### Milestone 5
+- [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of H_sb. 
 - [ ] Implement parallel tensor product. 
 
 #### Future developemnts

@@ -10,7 +10,6 @@ program heisenberg_1d
   !
   type(site)          :: Dot
   type(sparse_matrix) :: Op,bSz,bSp
-  real(8),allocatable :: vals(:)
   real(8)             :: val
 
 
@@ -31,10 +30,10 @@ program heisenberg_1d
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
      dot = spin_onehalf_site(hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site(hvec))
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,Corr=get_SiSj)
   case(3)
      dot = spin_one_site(Hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site(Hvec))
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,Corr=get_SiSj)
   end select
 
   !Run DMRG algorithm
@@ -49,8 +48,8 @@ program heisenberg_1d
   !Measure Sz
   unit=fopen("SzVSj.dmrg")
   do i=1,Ldmrg/2
-     vals = Measure_dmrg([dot%operators%op(key='Sz')],[i])
-     write(unit,*)i,vals
+     val = Measure_dmrg(dot%operators%op(key='Sz'),i)
+     write(unit,*)i,val
   enddo
   close(unit)
 
@@ -97,18 +96,22 @@ contains
   end function Heisenberg_1d_Model
 
 
-
-  function heisenberg_1d_SiSj(lSz,lSp,rSz,rSp) result(SiSj)
-    type(sparse_matrix)           :: lSz,lSp
-    type(sparse_matrix)           :: rSz,rSp
-    type(sparse_matrix)           :: SiSj
-    ! if(present(states))then
-    !    H2 = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states) +  Jx/2d0*sp_kron(Sp1%dgr(),Sp2,states)  + Jp*sp_kron(Sz1,Sz2,states)
-    ! else
-    SiSj = 0.5d0*(lSp.x.rSp%dgr()) + 0.5d0*(lSp%dgr().x.rSp)  + (lSz.x.rSz)
-    ! endif
-  end function heisenberg_1d_SiSj
-
+  subroutine get_SiSj(sys,sisj)
+    type(block)                   :: sys
+    type(sparse_matrix)           :: sisj
+    type(sparse_matrix)           :: Sz1,Sp1
+    type(sparse_matrix)           :: Sz2,Sp2
+    Sz1  = sys%operators%op("Sz")
+    Sp1  = sys%operators%op("Sp")
+    Sz2  = dot%operators%op("Sz")
+    Sp2  = dot%operators%op("Sp")
+    SiSj = 0.5d0*(Sp1.x.Sp2%dgr()) +  0.5d0*(Sp1%dgr().x.Sp2)  + (Sz1.x.Sz2)
+    call Sz1%free()
+    call Sp1%free()
+    call Sz2%free()
+    call Sp2%free()
+  end subroutine get_SiSj
+  
 end program heisenberg_1d
 
 
