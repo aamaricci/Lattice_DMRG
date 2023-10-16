@@ -46,7 +46,12 @@ MODULE SYSTEM
   !
   public :: infinite_DMRG
   public :: finite_DMRG
-  public :: measure_DMRG
+
+  !Measuring:
+  public :: measure_local_DMRG
+  public :: construct_op_DMRG
+  public :: actualize_op_DMRG
+  public :: measure_op_DMRG
 
 contains
 
@@ -54,7 +59,7 @@ contains
   subroutine infinite_DMRG()
     type(sparse_matrix) :: Op
     real(8)             :: val
-    integer             :: i
+    integer             :: i,j
     character(len=128)  :: label
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
@@ -66,7 +71,19 @@ contains
        call write_energy(suffix=str(label)//"_iDMRG")
        call write_entanglement(suffix=str(label)//"_iDMRG")
     enddo
+
+    ! !Measure Sz
+    ! Op = H2model(as_block(dot),as_block(dot))
+    ! ! unit=fopen("SziSzjVSsite.dmrg")
+    ! do i=1,Ldmrg/2-1
+    !    j=i+1
+    !    val = measure_dmrg_ij(Op,i,j)
+    !    write(*,*)i,val
+    !    write(150,*)i,val
+    ! enddo
   end subroutine infinite_DMRG
+
+
 
 
 
@@ -524,21 +541,74 @@ contains
   end subroutine write_entanglement
 
 
-  function measure_dmrg(Op,i) result(avOp)
-    type(sparse_matrix)              :: Op
-    integer                          :: i
+
+
+  function measure_local_dmrg(Op,i) result(avOp)
+    type(sparse_matrix),intent(in) :: Op
+    integer                        :: i
+    real(8)                        :: avOp
+    type(sparse_matrix)            :: Oi
     !
-    character(len=1)                 :: label
-    real(8)                          :: avOp
-    type(sparse_matrix)              :: Oj
-    type(sparse_matrix)              :: U,Psi
-    integer                          :: pos,it,dims(2),dim,L,R,Nsys,Nenv
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
+    Oi  = Op                     !preserve input
+    Oi  = construct_op_DMRG(Oi,i)
+    Oi  = actualize_op_DMRG(Oi,i)
+    avOp= measure_op_DMRG(Oi,i)
+    call Oi%free()
+  end function measure_local_dmrg
+
+
+
+
+  function construct_Op_dmrg(Op,i) result(Oi)
+    type(sparse_matrix) :: Op
+    integer             :: i
+    type(sparse_matrix) :: Oi
+    !
+    character(len=1)    :: label
+    type(sparse_matrix) :: U
+    integer             :: L,R
+    integer             :: pos
     !
     L = sys%length
     R = env%length
-    if(i<1.OR.i>L+R)stop "measure_dmrg error: I not in [1,Lchain]"
+    if(i<1.OR.i>L+R)stop "construct_op_dmrg error: I not in [1,Lchain]"
+    !
+    label='l';if(i>L)label='r'
+    !
+    pos=i
+    if(i>L)pos=R+1-(i-L)
+    !
+    !Step 1: build the operator at the site pos
+    Oi  = Op
+    if(pos>1)then
+       select case(to_lower(str(label)))
+       case ("l")
+          U    = sys%omatrices%op(index=pos-1)
+          Oi   = matmul(U%t(),U).x.Op
+       case ("r")
+          U    = env%omatrices%op(index=pos-1)
+          Oi   = Op.x.matmul(U%t(),U)
+       end select
+    end if
+  end function construct_Op_dmrg
+
+
+
+
+  function actualize_Op_dmrg(Op,i) result(Oi)
+    type(sparse_matrix)              :: Op
+    integer                          :: i
+    type(sparse_matrix)              :: Oi
+    !
+    character(len=1)                 :: label
+    type(sparse_matrix)              :: U
+    integer                          :: L,R
+    integer                          :: dims(2),dim
+    integer                          :: pos,it
+    !
+    L = sys%length
+    R = env%length
+    if(i<1.OR.i>L+R)stop "actualize_Op_dmrg error: I not in [1,Lchain]"
     !
     label='l';if(i>L)label='r'
     !
@@ -547,53 +617,58 @@ contains
     !
     !Retrieve the dimensions of the initial Dot
     select case(label)
-    case ("l","L");dims = shape(sys%omatrices%op(index=1)) ;dim=dims(1)
+    case ("l","L");dims = shape(sys%omatrices%op(index=1));dim=dims(1)
     case ("r","R");dims = shape(env%omatrices%op(index=1));dim=dims(1)
     end select
     !
-    !Step 1: build the operator at the site pos
-    Oj  = Op                    !.x.Id(dim)
-    if(pos>1)then
-       select case(to_lower(str(label)))
-       case ("l")
-          U    = sys%omatrices%op(index=pos-1)
-          Oj   = matmul(U%t(),U).x.Op
-       case ("r")
-          U    = env%omatrices%op(index=pos-1)
-          Oj   = Op.x.matmul(U%t(),U)
-       end select
-    end if
-    !
-    !Step 2: bring the operator to the actual basis
+    !Bring the operator to the actual basis
+    Oi = Op
     select case(to_lower(str(label)))
     case ("l")
        do it=pos,L
           U  = sys%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Oj.x.Id(dim)
+          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = Oi.x.Id(dim)
        enddo
     case ("r")
        do it=pos,R
           U  = env%omatrices%op(index=it)
-          Oj = matmul(U%t(),matmul(Oj,U))
-          Oj = Id(dim).x.Oj
+          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = Id(dim).x.Oi
        enddo
     end select
+  end function actualize_op_dmrg
+
+
+  function measure_op_dmrg(Op,i) result(avOp)
+    type(sparse_matrix)              :: Op
+    integer                          :: i
+    real(8)                          :: avOp
+    character(len=1)                 :: label
+    type(sparse_matrix)              :: Psi
+    integer                          :: L,R
+    real(8),dimension(:),allocatable :: psi_vec
+    integer,dimension(:),allocatable :: psi_map
     !
-    !Step 3 measure using PSI matrix:
-    dims=shape(Oj)
+    L = sys%length
+    R = env%length
+    if(i<1.OR.i>L+R)stop "measure_op_dmrg error: I not in [1,Lchain]"
+    !
+    label='l';if(i>L)label='r'
+    !
+    !Measure using PSI matrix:
     select case(to_lower(str(label)))
     case ("l")
-       if(any(shape(psi_sys)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
+       if(any(shape(psi_sys)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
        Psi  = psi_sys%sparse()
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
     case ("r")
-       if(any(shape(psi_env)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
+       if(any(shape(psi_env)/=shape(Op)))stop "measure_dmrg ERROR: shape(psi) != shape(Op)"
        Psi  = psi_env%sparse()
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
     end select
     call Psi%free()
-  end function measure_dmrg
+  end function measure_op_dmrg
 
 
 
@@ -694,3 +769,78 @@ END MODULE SYSTEM
 
 
 
+
+
+
+
+
+! function measure_dmrg(Op,i) result(avOp)
+!   type(sparse_matrix)              :: Op
+!   integer                          :: i
+!   real(8)                          :: avOp
+!   !
+!   character(len=1)                 :: label
+!   type(sparse_matrix)              :: Oj
+!   type(sparse_matrix)              :: U,Psi
+!   integer                          :: pos,it,dims(2),dim,L,R,Nsys,Nenv
+!   real(8),dimension(:),allocatable :: psi_vec
+!   integer,dimension(:),allocatable :: psi_map
+!   !
+!   L = sys%length
+!   R = env%length
+!   if(i<1.OR.i>L+R)stop "measure_dmrg error: I not in [1,Lchain]"
+!   !
+!   label='l';if(i>L)label='r'
+!   !
+!   pos=i
+!   if(i>L)pos=R+1-(i-L)
+!   !
+!   !Retrieve the dimensions of the initial Dot
+!   select case(label)
+!   case ("l","L");dims = shape(sys%omatrices%op(index=1));dim=dims(1)
+!   case ("r","R");dims = shape(env%omatrices%op(index=1));dim=dims(1)
+!   end select
+!   !
+!   !Step 1: build the operator at the site pos
+!   Oj  = Op                    !.x.Id(dim)
+!   if(pos>1)then
+!      select case(to_lower(str(label)))
+!      case ("l")
+!         U    = sys%omatrices%op(index=pos-1)
+!         Oj   = matmul(U%t(),U).x.Op
+!      case ("r")
+!         U    = env%omatrices%op(index=pos-1)
+!         Oj   = Op.x.matmul(U%t(),U)
+!      end select
+!   end if
+!   !
+!   !Step 2: bring the operator to the actual basis
+!   select case(to_lower(str(label)))
+!   case ("l")
+!      do it=pos,L
+!         U  = sys%omatrices%op(index=it)
+!         Oj = matmul(U%t(),matmul(Oj,U))
+!         Oj = Oj.x.Id(dim)
+!      enddo
+!   case ("r")
+!      do it=pos,R
+!         U  = env%omatrices%op(index=it)
+!         Oj = matmul(U%t(),matmul(Oj,U))
+!         Oj = Id(dim).x.Oj
+!      enddo
+!   end select
+!   !
+!   !Step 3 measure using PSI matrix:
+!   dims=shape(Oj)
+!   select case(to_lower(str(label)))
+!   case ("l")
+!      if(any(shape(psi_sys)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
+!      Psi  = psi_sys%sparse()
+!      AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+!   case ("r")
+!      if(any(shape(psi_env)/=shape(Oj)))stop "measure_dmrg ERROR: shape(psi) != shape(Oj)"
+!      Psi  = psi_env%sparse()
+!      AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Oj,Psi))))
+!   end select
+!   call Psi%free()
+! end function measure_dmrg

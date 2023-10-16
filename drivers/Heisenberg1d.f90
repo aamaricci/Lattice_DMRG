@@ -29,8 +29,8 @@ program heisenberg_1d
   select case(SUN)
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
-     dot = spin_onehalf_site()
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site())
+     dot = spin_onehalf_site(hvec)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site(hvec))
   case(3)
      dot = spin_one_site(Hvec)
      call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site(Hvec))
@@ -46,14 +46,20 @@ program heisenberg_1d
   end select
 
   !Measure Sz
-  Op = dot%operators%op(key='Sz')
   unit=fopen("SzVSj.dmrg")
   do i=1,Ldmrg/2
-     val = measure_dmrg(Op,i)
+     val = measure_local_dmrg(dot%operators%op(key='Sz'),i)
      write(unit,*)i,val
   enddo
   close(unit)
 
+
+  do i=1,Ldmrg/2
+     Op = construct_op_DMRG(dot%operators%op(key='Sz'),i)
+     Op = actualize_op_DMRG(Op,i)     
+     val= measure_op_DMRG(Op,i)
+     write(100,*)i,val
+  enddo
   !Finalize DMRG
   call finalize_dmrg()
 
