@@ -9,7 +9,8 @@ program heisenberg_1d
   real(8)             :: target_Sz(1),Hvec(3)
   !
   type(site)          :: Dot
-  type(sparse_matrix) :: Op
+  type(sparse_matrix) :: Op,bSz,bSp
+  real(8),allocatable :: vals(:)
   real(8)             :: val
 
 
@@ -48,18 +49,25 @@ program heisenberg_1d
   !Measure Sz
   unit=fopen("SzVSj.dmrg")
   do i=1,Ldmrg/2
-     val = measure_local_dmrg(dot%operators%op(key='Sz'),i)
-     write(unit,*)i,val
+     vals = measure_local_dmrg([dot%operators%op(key='Sz')],[i])
+     write(unit,*)i,vals
   enddo
   close(unit)
 
 
-  do i=1,Ldmrg/2
-     Op = construct_op_DMRG(dot%operators%op(key='Sz'),i)
-     Op = actualize_op_DMRG(Op,i)     
-     val= measure_op_DMRG(Op,i)
-     write(100,*)i,val
-  enddo
+
+  ! do i=1,2
+  !    bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
+  !    bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
+  !    !Build SiSj
+  !    Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
+  !    Op = actualize_op_DMRG(Op,i+1)
+  !    val= measure_op_DMRG(Op,i+1)
+  !    write(*,*)i,val
+  !    write(200,*)i,val
+  ! enddo
+
+  
   !Finalize DMRG
   call finalize_dmrg()
 
@@ -89,6 +97,17 @@ contains
   end function Heisenberg_1d_Model
 
 
+
+  function heisenberg_1d_SiSj(lSz,lSp,rSz,rSp) result(SiSj)
+    type(sparse_matrix)           :: lSz,lSp
+    type(sparse_matrix)           :: rSz,rSp
+    type(sparse_matrix)           :: SiSj
+    ! if(present(states))then
+    !    H2 = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states) +  Jx/2d0*sp_kron(Sp1%dgr(),Sp2,states)  + Jp*sp_kron(Sz1,Sz2,states)
+    ! else
+    SiSj = 0.5d0*(lSp.x.rSp%dgr()) + 0.5d0*(lSp%dgr().x.rSp)  + (lSz.x.rSz)
+    ! endif
+  end function heisenberg_1d_SiSj
 
 end program heisenberg_1d
 

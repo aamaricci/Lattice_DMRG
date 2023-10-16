@@ -39,7 +39,9 @@ MODULE SYSTEM
   !GLOBAL SYS & ENV 
   type(block)                        :: sys,env
   !
+  type(sparse_matrix) :: SiSj
 
+  
   public :: init_dmrg
   public :: finalize_dmrg
   public :: step_dmrg
@@ -57,34 +59,48 @@ contains
 
 
   subroutine infinite_DMRG()
-    type(sparse_matrix) :: Op
+    character(len=128)  :: label
     real(8)             :: val
     integer             :: i,j
-    character(len=128)  :: label
+    type(sparse_matrix) :: Op,bSz,bSp
+
+
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
     env=init_env
     label="L"//str(Ldmrg)//"_M"//str(Mdmrg)
     if(Edmrg/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Edmrg)
     do while (2*sys%length < Ldmrg)
+       SiSj=heisenberg_1d_SiSj(sys%operators%op("Sz"),sys%operators%op("Sp"),dot%operators%op("Sz"),dot%operators%op("Sp"))
        call step_dmrg()
        call write_energy(suffix=str(label)//"_iDMRG")
        call write_entanglement(suffix=str(label)//"_iDMRG")
+       val= measure_op_DMRG(SiSj,sys%length)
+       write(300,*)sys%length-1,val
     enddo
 
-    ! !Measure Sz
-    ! Op = H2model(as_block(dot),as_block(dot))
-    ! ! unit=fopen("SziSzjVSsite.dmrg")
-    ! do i=1,Ldmrg/2-1
-    !    j=i+1
-    !    val = measure_dmrg_ij(Op,i,j)
-    !    write(*,*)i,val
-    !    write(150,*)i,val
-    ! enddo
+
+    
+    
+    do i=1,2
+       bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
+       bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
+       !Build SiSj
+       Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
+       Op = actualize_op_DMRG(Op,i+1)
+       val= measure_op_DMRG(Op,i+1)
+       write(*,*)i,val
+       write(200,*)i,val
+    enddo
   end subroutine infinite_DMRG
 
 
-
+  function heisenberg_1d_SiSj(lSz,lSp,rSz,rSp) result(SiSj)
+    type(sparse_matrix)           :: lSz,lSp
+    type(sparse_matrix)           :: rSz,rSp
+    type(sparse_matrix)           :: SiSj
+    SiSj = 0.5d0*(lSp.x.rSp%dgr()) + 0.5d0*(lSp%dgr().x.rSp)  + (lSz.x.rSz)
+  end function heisenberg_1d_SiSj
 
 
   subroutine finite_DMRG()
@@ -426,7 +442,7 @@ contains
     case ("left","l")
        Hb = self%operators%op("H").x.id(dot%dim)
        Hd = id(self%dim).x.dot%operators%op("H")
-       H2 = H2model(self,as_block(dot))
+       H2 = H2model(self,as_block(dot))       
     case ("right","r")
        Hb = id(dot%dim).x.self%operators%op("H")
        Hd = dot%operators%op("H").x.id(self%dim)
@@ -544,15 +560,19 @@ contains
 
 
   function measure_local_dmrg(Op,i) result(avOp)
-    type(sparse_matrix),intent(in) :: Op
-    integer                        :: i
-    real(8)                        :: avOp
+    integer,intent(in)             :: i(:)
+    type(sparse_matrix),intent(in) :: Op(size(i))
+    real(8),allocatable            :: avOp(:)
     type(sparse_matrix)            :: Oi
+    integer                        :: io
     !
-    Oi  = Op                     !preserve input
-    Oi  = construct_op_DMRG(Oi,i)
-    Oi  = actualize_op_DMRG(Oi,i)
-    avOp= measure_op_DMRG(Oi,i)
+    if(allocated(avOp))deallocate(avOp)
+    allocate(avOp(size(i)))
+    do io=1,size(i)
+       Oi      = construct_op_DMRG(Op(io),i(io))
+       Oi      = actualize_op_DMRG(Oi,i(io))
+       avOp(io)= measure_op_DMRG(Oi,i(io))
+    enddo
     call Oi%free()
   end function measure_local_dmrg
 
@@ -560,14 +580,14 @@ contains
 
 
   function construct_Op_dmrg(Op,i) result(Oi)
-    type(sparse_matrix) :: Op
-    integer             :: i
-    type(sparse_matrix) :: Oi
+    integer                        :: i
+    type(sparse_matrix),intent(in) :: Op
+    type(sparse_matrix)            :: Oi
     !
-    character(len=1)    :: label
-    type(sparse_matrix) :: U
-    integer             :: L,R
-    integer             :: pos
+    character(len=1)               :: label
+    type(sparse_matrix)            :: U
+    integer                        :: L,R
+    integer                        :: pos
     !
     L = sys%length
     R = env%length
@@ -596,15 +616,15 @@ contains
 
 
   function actualize_Op_dmrg(Op,i) result(Oi)
-    type(sparse_matrix)              :: Op
-    integer                          :: i
-    type(sparse_matrix)              :: Oi
+    type(sparse_matrix),intent(in) :: Op
+    integer                        :: i
+    type(sparse_matrix)            :: Oi
     !
-    character(len=1)                 :: label
-    type(sparse_matrix)              :: U
-    integer                          :: L,R
-    integer                          :: dims(2),dim
-    integer                          :: pos,it
+    character(len=1)               :: label
+    type(sparse_matrix)            :: U
+    integer                        :: L,R
+    integer                        :: dims(2),dim
+    integer                        :: pos,it
     !
     L = sys%length
     R = env%length
@@ -641,7 +661,7 @@ contains
 
 
   function measure_op_dmrg(Op,i) result(avOp)
-    type(sparse_matrix)              :: Op
+    type(sparse_matrix),intent(in)   :: Op
     integer                          :: i
     real(8)                          :: avOp
     character(len=1)                 :: label
