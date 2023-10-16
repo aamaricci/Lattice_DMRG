@@ -23,16 +23,16 @@ MODULE SYSTEM
        type(sparse_matrix)           :: Hconnect
      end function Hconnect
 
-     function UserMeasure(left,right,states)
+     subroutine UserMeasure(sys,Olist)
        USE BLOCKS
        USE MATRIX_SPARSE
-       type(block)                   :: left
-       type(block)                   :: right
-       type(sparse_matrix)           :: Hconnect
-     end function UserMeasure
+       type(block)                                  :: sys
+       type(sparse_matrix),dimension(:),allocatable :: Olist
+     end subroutine UserMeasure
   end interface
-  procedure(Hconnect),pointer,public    :: H2model=>null()
-  procedure(UserMeasure),pointer,public :: DmrgMeasure=>null()
+
+  procedure(Hconnect),pointer,public    :: H2Model=>null()
+  procedure(UserMeasure),pointer,public :: MeasureModel=>null()
   !
   type(sparse_matrix)                   :: spHsb
   !
@@ -40,6 +40,7 @@ MODULE SYSTEM
   real(8),dimension(:),allocatable      :: target_Qn,current_target_QN
   type(block)                           :: init_sys,init_env
   logical                               :: init_called=.false.
+  logical                               :: init_measure=.false.
   real(8),dimension(:),allocatable      :: energies
   real(8),dimension(:),allocatable      :: rho_sys_evals
   real(8),dimension(:),allocatable      :: rho_env_evals
@@ -48,8 +49,6 @@ MODULE SYSTEM
   !GLOBAL SYS & ENV 
   type(block)                           :: sys,env
   !
-  type(sparse_matrix)                   :: SiSj
-
 
   public :: init_DMRG
   public :: finalize_DMRG
@@ -58,29 +57,59 @@ MODULE SYSTEM
   public :: infinite_DMRG
   public :: finite_DMRG
 
-
+  !Measuring:
   interface measure_dmrg
-     module procedure :: 
      module procedure :: measure_Osite_dmrg
      module procedure :: measure_Ocurrent_dmrg
   end interface measure_dmrg
-
-
-  !Measuring:
+  public :: measure_DMRG
   public :: op_measure_DMRG
   public :: op_build_DMRG
-  public :: measure_DMRG
+
 
 contains
 
 
+  subroutine init_dmrg(h2,QN,ModelDot,Measure)
+    procedure(Hconnect)             :: h2
+    real(8),dimension(:)            :: QN
+    type(site)                      :: ModelDot
+    procedure(UserMeasure),optional :: Measure
+    if(associated(H2model))nullify(H2model);H2model => h2
+    if(associated(MeasureModel))nullify(MeasureModel)
+    if(present(Measure))then
+       init_measure=.true.
+       MeasureModel => Measure
+    endif
+    allocate(target_qn, source=qn)
+    dot        = ModelDot
+    init_sys   = block(dot)
+    init_env   = block(dot)
+    init_called=.true.
+  end subroutine init_dmrg
+
+
+  subroutine finalize_dmrg()
+    if(associated(H2model))nullify(H2model)
+    if(associated(MeasureModel))nullify(MeasureModel)
+    call dot%free()
+    call init_sys%free()
+    call init_env%free()
+    call sys%free()
+    call env%free()
+    call psi_sys%free()
+    call psi_env%free()
+    init_called=.false.
+    init_measure=.false.
+  end subroutine finalize_dmrg
+
+
+
   subroutine infinite_DMRG()
-    character(len=128)  :: prefix
-    real(8)             :: val(Ldmrg),nval
-    integer             :: i,j
-    type(sparse_matrix) :: Op,bSz,bSp,Sij(Ldmrg)
-
-
+    character(len=128)                           :: prefix
+    type(sparse_matrix),dimension(:),allocatable :: Olist
+    real(8),dimension(:),allocatable             :: svalues,evalues
+    integer                                      :: i 
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
     env=init_env
@@ -88,34 +117,24 @@ contains
     if(Edmrg/=0d0)prefix="L"//str(Ldmrg)//"_Err"//str(Edmrg)
     !
     do while (2*sys%length < Ldmrg)
-       SiSj=heisenberg_1d_SiSj(sys%operators%op("Sz"),sys%operators%op("Sp"),dot%operators%op("Sz"),dot%operators%op("Sp"))
-       Sij(sys%length)=SiSj
+       if(init_measure)call MeasureModel(sys,Olist) !Obtain a number of operators from the User
        call step_dmrg()
-       call write_energy(suffix=str(label)//"_iDMRG")
-       call write_entanglement(suffix=str(label)//"_iDMRG")
-       val(sys%length)= measure_DMRG(SiSj,'l')
-       write(300,*)sys%length-1,val(sys%length)
-    enddo
-
-    do i=2,Ldmrg/2
-       ! bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
-       ! bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
-       ! !Build SiSj
-       ! Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
-       Op = Sij(i-1)
-       nval= measure_DMRG(Op,i)
-       write(*,*)i-1,nval,val(i)
-       write(200,*)i-1,nval
+       call write_energy(suffix=str(prefix)//"_iDMRG")
+       call write_entanglement(suffix=str(prefix)//"_iDMRG")
+       if(init_measure)then
+          if(allocated(svalues))deallocate(svalues)
+          allocate(svalues(size(Olist)))
+          do i=1,size(Olist)
+             svalues(i) = measure_DMRG(Olist(i),'l')
+          enddo
+          call write_user(str(prefix)//"_iDMRG",svalues)
+          
+       endif
     enddo
   end subroutine infinite_DMRG
 
 
-  function heisenberg_1d_SiSj(lSz,lSp,rSz,rSp) result(SiSj)
-    type(sparse_matrix)           :: lSz,lSp
-    type(sparse_matrix)           :: rSz,rSp
-    type(sparse_matrix)           :: SiSj
-    SiSj = 0.5d0*(lSp.x.rSp%dgr()) + 0.5d0*(lSp%dgr().x.rSp)  + (lSz.x.rSz)
-  end function heisenberg_1d_SiSj
+
 
 
   subroutine finite_DMRG()
@@ -177,30 +196,6 @@ contains
 
 
 
-  subroutine init_dmrg(h2,QN,ModelDot)
-    procedure(Hconnect)  :: h2
-    real(8),dimension(:) :: QN
-    type(site)           :: ModelDot
-    if(associated(H2model))nullify(H2model); H2model => h2
-    allocate(target_qn, source=qn)
-    dot        = ModelDot
-    init_sys   = block(dot)
-    init_env   = block(dot)
-    init_called=.true.
-  end subroutine init_dmrg
-
-
-  subroutine finalize_dmrg()
-    if(associated(H2model))nullify(H2model)
-    call dot%free()
-    call init_sys%free()
-    call init_env%free()
-    call sys%free()
-    call env%free()
-    call psi_sys%free()
-    call psi_env%free()
-    init_called=.false.
-  end subroutine finalize_dmrg
 
 
 
@@ -568,6 +563,20 @@ contains
     close(Eunit)
   end subroutine write_entanglement
 
+  subroutine write_user(suffix,sys_values)!,env_values)
+    character(len=*)     :: suffix
+    real(8),dimension(:) :: sys_values
+    ! real(8),dimension(:) :: env_values
+    integer              :: Eunit
+    Eunit     = fopen("userVSsys.length_"//str(suffix)//".dmrg",append=.true.)
+    write(Eunit,*)sys%length,sys_values
+    close(Eunit)
+    ! Eunit     = fopen("userVSenv.length_"//str(suffix)//".dmrg",append=.true.)
+    ! write(Eunit,*)env%length,env_values
+    ! close(Eunit)
+  end subroutine write_user
+
+
 
   !Return the Operator Oi at a site I of the chain given the operator O in the dot basis:
   function Op_build_dmrg(Op,i) result(Oi)
@@ -582,7 +591,7 @@ contains
     !
     L = sys%length
     R = env%length
-    if(i<1.OR.i>L+R)stop "construct_op_dmrg error: I not in [1,Lchain]"
+    if(i<1.OR.i>L+R)stop "Op_Build_DMRG error: I not in [1,Lchain]"
     !
     label='l';if(i>L)label='r'
     !
@@ -613,7 +622,7 @@ contains
     if(allocated(avOp))deallocate(avOp)
     allocate(avOp(size(i)))
     do io=1,size(i)
-       Oi      = construct_op_DMRG(Op(io),i(io))
+       Oi      = Op_Build_DMRG(Op(io),i(io))
        avOp(io)= measure_DMRG(Oi,i(io))
     enddo
     call Oi%free()

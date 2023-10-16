@@ -26,15 +26,16 @@ program heisenberg_1d
   call read_input(finput)
 
 
+
   !Init DMRG
   select case(SUN)
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
      dot = spin_onehalf_site(hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_onehalf_site(hvec))
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,Measure=Heisenberg_1d_measure)
   case(3)
      dot = spin_one_site(Hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=spin_one_site(Hvec))
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,Measure=Heisenberg_1d_measure)
   end select
 
   !Run DMRG algorithm
@@ -49,25 +50,12 @@ program heisenberg_1d
   !Measure Sz
   unit=fopen("SzVSj.dmrg")
   do i=1,Ldmrg/2
-     vals = measure_local_dmrg([dot%operators%op(key='Sz')],[i])
+     vals = Op_Measure_DMRG([dot%operators%op(key='Sz')],[i])
      write(unit,*)i,vals
   enddo
   close(unit)
 
 
-
-  ! do i=1,2
-  !    bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
-  !    bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
-  !    !Build SiSj
-  !    Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
-  !    Op = actualize_op_DMRG(Op,i+1)
-  !    val= measure_op_DMRG(Op,i+1)
-  !    write(*,*)i,val
-  !    write(200,*)i,val
-  ! enddo
-
-  
   !Finalize DMRG
   call finalize_dmrg()
 
@@ -97,17 +85,26 @@ contains
   end function Heisenberg_1d_Model
 
 
+  subroutine Heisenberg_1d_measure(sys,Olist)
+    type(block)                     :: sys
+    type(sparse_matrix),allocatable :: Olist(:)
+    type(sparse_matrix)             :: Sz1,Sp1
+    type(sparse_matrix)             :: Sz2,Sp2
+    type(sparse_matrix)             :: SiSj
+    if(allocated(Olist))deallocate(Olist)
+    allocate(Olist(1))
+    Sz1 = sys%operators%op("Sz")
+    Sp1 = sys%operators%op("Sp")
+    Sz2 = dot%operators%op("Sz")
+    Sp2 = dot%operators%op("Sp")
+    Olist(1) = 0.5d0*(Sp1.x.Sp2%dgr()) + 0.5d0*(Sp1%dgr().x.Sp2) + (Sz1.x.Sz2)
+    call Sz1%free()
+    call Sp1%free()
+    call Sz2%free()
+    call Sp2%free()
+  end subroutine Heisenberg_1d_measure
 
-  function heisenberg_1d_SiSj(lSz,lSp,rSz,rSp) result(SiSj)
-    type(sparse_matrix)           :: lSz,lSp
-    type(sparse_matrix)           :: rSz,rSp
-    type(sparse_matrix)           :: SiSj
-    ! if(present(states))then
-    !    H2 = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states) +  Jx/2d0*sp_kron(Sp1%dgr(),Sp2,states)  + Jp*sp_kron(Sz1,Sz2,states)
-    ! else
-    SiSj = 0.5d0*(lSp.x.rSp%dgr()) + 0.5d0*(lSp%dgr().x.rSp)  + (lSz.x.rSz)
-    ! endif
-  end function heisenberg_1d_SiSj
+
 
 end program heisenberg_1d
 
