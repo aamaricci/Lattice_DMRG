@@ -527,19 +527,19 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE: dump a sparse matrix into a regular 2dim array
   !+------------------------------------------------------------------+
-  function sparse_blocks_matrix(self,m) result(sparse)
+  function sparse_blocks_matrix(self,n,m) result(sparse)
     class(blocks_matrix),intent(inout) :: self
-    integer,optional                   :: m
+    integer                            :: n,m
     type(sparse_matrix)                :: sparse
     integer,dimension(2)               :: dims
-    integer                            :: i,it,m_
+    integer                            :: i,it
     real(8),dimension(:),allocatable   :: self_vec
     integer,dimension(:),allocatable   :: self_map
-    dims = shape(self)
-    m_=dims(2);if(present(m))m_=m
-    if(m_<1.OR.m_>dims(2))stop "as_sparse_truncate_blocks_matrix ERROR: m<1 OR m>size(self,2)"
-    call sparse%init(dims(1),m_)
-    do it=1,m_
+    ! dims = shape(self)
+    ! m_=dims(2);if(present(m))m_=m
+    ! if(m_<1.OR.m_>dims(2))stop "as_sparse_truncate_blocks_matrix ERROR: m<1 OR m>size(self,2)"
+    call sparse%init(n,m)
+    do it=1,m
        self_vec = self%evec(m=it)
        self_map = self%map(m=it)
        do i=1,size(self_vec)

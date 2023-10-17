@@ -9,7 +9,7 @@ program heisenberg_1d
   real(8)             :: target_Sz(1),Hvec(3)
   !
   type(site)          :: Dot
-  type(sparse_matrix) :: Op,bSz,bSp
+  type(sparse_matrix) :: Splus,Sminus,Sz,SiSj,SSp,SSm,SSz
   real(8)             :: val
 
 
@@ -30,10 +30,10 @@ program heisenberg_1d
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
      dot = spin_onehalf_site(hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,Corr=get_SiSj)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot)
   case(3)
      dot = spin_one_site(Hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,Corr=get_SiSj)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot)
   end select
 
   !Run DMRG algorithm
@@ -45,26 +45,9 @@ program heisenberg_1d
      call finite_DMRG()
   end select
 
-  !Measure Sz
-  unit=fopen("SzVSj.dmrg")
-  do i=1,Ldmrg/2
-     val = Measure_dmrg(dot%operators%op(key='Sz'),i)
-     write(unit,*)i,val
-  enddo
-  close(unit)
 
-
-
-  ! do i=1,2
-  !    bSz = construct_op_DMRG(dot%operators%op(key='Sz'),i)
-  !    bSp = construct_op_DMRG(dot%operators%op(key='Sp'),i)
-  !    !Build SiSj
-  !    Op = heisenberg_1d_SiSj(bSz,bSp,dot%operators%op(key='Sz'),dot%operators%op(key='Sp'))
-  !    Op = actualize_op_DMRG(Op,i+1)
-  !    val= measure_op_DMRG(Op,i+1)
-  !    write(*,*)i,val
-  !    write(200,*)i,val
-  ! enddo
+  !TODO: not working properly:
+  !call MeasureLocalOp_DMRG(dot%operators%op(key='Sz'),arange(1,Ldmrg/2),file="SzVSj")
 
 
   !Finalize DMRG
@@ -96,22 +79,24 @@ contains
   end function Heisenberg_1d_Model
 
 
-  subroutine get_SiSj(sys,sisj)
-    type(block)                   :: sys
-    type(sparse_matrix)           :: sisj
-    type(sparse_matrix)           :: Sz1,Sp1
-    type(sparse_matrix)           :: Sz2,Sp2
+  function get_SiSj(sys) result(sisj)
+    type(block)                     :: sys
+    type(sparse_matrix),allocatable :: sisj(:)
+    type(sparse_matrix)             :: Sz1,Sp1
+    type(sparse_matrix)             :: Sz2,Sp2
     Sz1  = sys%operators%op("Sz")
     Sp1  = sys%operators%op("Sp")
     Sz2  = dot%operators%op("Sz")
     Sp2  = dot%operators%op("Sp")
-    SiSj = 0.5d0*(Sp1.x.Sp2%dgr()) +  0.5d0*(Sp1%dgr().x.Sp2)  + (Sz1.x.Sz2)
+    if(allocated(SiSj))deallocate(SiSj)
+    allocate(SiSj(1))
+    SiSj(1) = 0.5d0*(Sp1.x.Sp2%dgr()) +  0.5d0*(Sp1%dgr().x.Sp2)  + (Sz1.x.Sz2)
     call Sz1%free()
     call Sp1%free()
     call Sz2%free()
     call Sp2%free()
-  end subroutine get_SiSj
-  
+  end function get_SiSj
+
 end program heisenberg_1d
 
 

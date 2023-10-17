@@ -1,5 +1,5 @@
 MODULE AUX_FUNCS
-  USE SCIFOR, only: free_unit
+  USE SCIFOR, only: free_unit,str
   implicit none
   private
 
@@ -278,15 +278,15 @@ contains
     append_=.true.;if(present(append))append_=append
     select case(append_)
     case (.true.)    
-       inquire(file=trim(fname), exist=bool)
+       inquire(file=str(fname), exist=bool)
        unit = free_unit()
        if (bool) then
-          open(unit,file=trim(fname),status="old",position="append",action="write")
+          open(unit,file=str(fname),status="old",position="append",action="write")
        else
-          open(unit,file=trim(fname),status="new",action="write")
+          open(unit,file=str(fname),status="new",action="write")
        end if
     case(.false.)
-       open(unit,file=trim(fname),status="new",action="write")
+       open(unit,file=str(fname),status="new",action="write")
     end select
   end function fopen
 

@@ -73,7 +73,7 @@ create an issue in this repo.
 - [x] Develop *finite* DMRG algorithm
 - [x] Measure local observables 
 - [x] Measure entanglement
-- [x] Measure nearest neighbor correlations
+- [o] Measure nearest neighbor correlations
 
 #### Milestone 5
 - [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of H_sb. 
@@ -82,6 +82,16 @@ create an issue in this repo.
 #### Future developemnts
 - [ ] Development of a iDMRG algorithm for fermions exploiting the spin separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
 
+
+#### Known issues
+There are a number of known issues with this code which, mostly for time reasons, we did not solve completely.
+
+1. Measure of local quantities has a little bug related to a mismatch in the evolved local operator $O(i)$ at the $\psi$ basis. `shape(\psi) \= shape(O(i))`. This error issues from a change in the final truncation and should be solved arranging correctly the measure procedure.
+    
+2. There is a possible issues from the truncated $\rho_{sys,env}$ matrices obtained from dumping the block matrices. Now this is solved passing explicitly the required dimensions of the truncated matrix `(m_sys,m_s)` or `(m_env,m_s)` this can be different from `shape(rho_sys/env)`.
+    
+    
+3. There is an issue with storage, progression and measurement of non-local, nearest-neighbor correlations such as spin-spin $\langle S_iS_j\rangle$. The working way is, so far, to store at each dmrg_step the correlation $\langle S_iS_{i+1}\rangle(l=1,\dots,L)$, progress each of them up to $\psi$ basis and only then measure it.
 
 --
 
