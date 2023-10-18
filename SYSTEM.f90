@@ -109,7 +109,7 @@ contains
     real(8),allocatable             :: val(:)
     integer                         :: i,j,Ncorr,it,dim
     type(sparse_matrix),allocatable :: Ocorr(:)
-    type(sparse_matrix)             :: SS,SiSj(Ldmrg),U
+    type(sparse_matrix)             :: Op,SS,Sz,Sp,Sm,SiSj(Ldmrg),Szi(Ldmrg)
     !
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
@@ -118,35 +118,67 @@ contains
     suffix="L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG"
     if(Edmrg/=0d0)suffix="L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG"
     !
-    do while (2*sys%length < Ldmrg)
-       ! if(init_measure)then
-       !    Ocorr = CorrModel(sys)
-       !    SiSj(sys%length)=Ocorr(1)
-       ! endif
+    do while (2*sys%length <= Ldmrg)
+       if(init_measure)then
+          Ocorr = CorrModel(sys)
+          SiSj(sys%length)=Ocorr(1)
+          Szi(sys%length)=Ocorr(2)
+       endif
        call step_dmrg()
        call write_energy()
        call write_entanglement()
-       ! if(init_measure)then
-       !    Ncorr=size(Ocorr)
-       !    allocate(val(Ncorr))
-       !    do i=1,Ncorr
-       !       val(i)=Average_Op_DMRG(Ocorr(i),'l')
-       !    enddo
-       !    call write_user(file="ucorrVSsite",vals=val)
-       !    deallocate(val)
-       ! endif
     enddo
-    
-    ! do i=1,sys%length-1
-    !    SS=Advance_Op_DMRG(SiSj(i),i+1)
-    !    write(*,*)i,Average_Op_DMRG(SS,'l')
-    !    write(100,*)i,Average_Op_DMRG(SS,'l')
-    ! enddo
 
+    do i=1,sys%length-1
+       SS = SiSj(i)
+       Sz = Szi(i)
+       SS = Advance_Op_DMRG(SS,i+1)
+       Sz = Advance_Op_DMRG(Sz,i)
+       write(*,*)i,Average_Op_DMRG(SS,'l'),Average_Op_DMRG(Sz,'l')
+       write(100,*)i,Average_Op_DMRG(SS,'l'),Average_Op_DMRG(Sz,'l')
+    enddo
+
+
+
+    do i=1,sys%length-1
+       Sz = BlockLeft_Op_DMRG(dot%operators%op("Sz"),i)
+       Sp = BlockLeft_Op_DMRG(dot%operators%op("Sp"),i)
+       Sm = Sp%t()
+       SS = 0.5d0*(Sp.x.transpose(dot%operators%op("Sp"))) +  &
+            0.5d0*(Sm.x.dot%operators%op("Sp"))  + &
+            (Sz.x.dot%operators%op("Sz"))
+       SS = Advance_Op_DMRG(SS,i+1)
+       write(*,*)i,Average_Op_DMRG(SS,'l')
+       write(200,*)i,Average_Op_DMRG(SS,'l')
+    enddo
   end subroutine infinite_DMRG
 
+  function BlockLeft_Op_dmrg(Op,n) result(Oi)
+    type(sparse_matrix),intent(in)   :: Op
+    integer                          :: n
+    type(sparse_matrix)              :: Oi,U
+    character(len=1)                 :: label
+    integer                          :: L,R
+    integer                          :: dims(2),dim
+    integer                          :: istart,iend,it
+    !
+    L = sys%length
+    if(n>L)stop "BlockLeft_Op_DMRG error"
+    !
+    !
+    !Bring the operator to the actual basis
+    Oi = Op
+    if(n>1)then
+       U  = sys%omatrices%op(index=n-1)
+       Oi = matmul(U%t(),U).x.Op      !id(sys(n-1)).x.dot(Op)
+       U  = sys%omatrices%op(index=n) !get O(n)
+       Oi = matmul(U%t(),matmul(Oi,U)) !rotate+truncate 
+       call U%free()
+    end if
+  end function BlockLeft_Op_dmrg
 
 
+  
   subroutine finite_DMRG()
     integer                                :: i,im,env_label,sys_label,current_L
     type(block),dimension(:,:),allocatable :: blocks_list
@@ -377,8 +409,8 @@ contains
     truncation_error_env = 1d0 - sum(rho_env_evals(1:m_e))
     !
     !>truncation-rotation matrices:
-    trRho_sys = rho_sys%sparse(n=m_sys,m=m_s)
-    trRho_env = rho_env%sparse(n=m_env,m=m_e)
+    trRho_sys = rho_sys%sparse(m_sys,m_s)
+    trRho_env = rho_env%sparse(m_env,m_e)
     !
     !>Store all the rotation/truncation matrices:
     call sys%put_omat(str(sys%length),trRho_sys)
@@ -668,7 +700,7 @@ contains
     nstep = j-i
     !
     Oi = Build_Op_DMRG(Opi,i)
-    Oi = Advance_Op_DMRG(Oi,i,nstep)
+    Oi = Advance_Op_DMRG(Oi,i,nstep-1)
     !
     Corr = Oi.x.Opj
     !
@@ -738,26 +770,17 @@ contains
     real(8),dimension(:),allocatable :: psi_vec
     integer,dimension(:),allocatable :: psi_map
     !
-    ! L = sys%length
-    ! R = env%length
-    !
-    ! if(i<1.OR.i>L+R)stop "actualize_Op_dmrg error: I not in [1,Lchain]"
-    ! !
-    ! label='l';if(i>L)label='r'
-    ! pos=i    ;if(i>L)pos=R+1-(i-L)
-    ! !
     !Measure using PSI matrix:
     select case(label)
     case ("l")
-       print*,shape(psi_sys),shape(Op)
        if(any(shape(psi_sys)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       dims = shape(psi_sys)
-       Psi  = psi_sys%sparse(dims(1),dims(2))
+       ! dims = shape(psi_sys)
+       Psi  = as_sparse(psi_sys)!%sparse(dims(1),dims(2))
        AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
     case ("r")
        if(any(shape(psi_env)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       dims = shape(psi_env)
-       Psi  = psi_env%sparse(dims(1),dims(2))
+       ! dims = shape(psi_env)
+       Psi  = as_sparse(psi_env)!%sparse(dims(1),dims(2))
        AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
     end select
     call Psi%free()
