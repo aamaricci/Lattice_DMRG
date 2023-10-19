@@ -22,25 +22,16 @@ MODULE SYSTEM
        integer,dimension(:),optional :: states
        type(sparse_matrix)           :: Hconnect
      end function Hconnect
-
-     function UserCorr(sys) result(Op)
-       USE BLOCKS
-       USE MATRIX_SPARSE
-       type(block)                     :: sys
-       type(sparse_matrix),allocatable :: Op(:)
-     end function UserCorr
   end interface
   procedure(Hconnect),pointer,public    :: H2model=>null()
-  procedure(UserCorr),pointer,public    :: CorrModel =>null()
   !
   type(sparse_matrix)                   :: spHsb
   !
   type(site)                            :: dot
-  character(len=128)                    :: suffix
+  character(len=:),allocatable          :: suffix
   real(8),dimension(:),allocatable      :: target_Qn,current_target_QN
   type(block)                           :: init_sys,init_env
   logical                               :: init_called=.false.
-  logical                               :: init_measure=.false.
   real(8),dimension(:),allocatable      :: energies
   real(8),dimension(:),allocatable      :: rho_sys_evals
   real(8),dimension(:),allocatable      :: rho_env_evals
@@ -58,11 +49,11 @@ MODULE SYSTEM
   public :: finite_DMRG
 
   !Measuring:
-  public :: MeasureLocalOp_DMRG
-  public :: Build_Op_dmrg
-  public :: Advance_Op_dmrg
-  public :: Advance_Corr_dmrg
-  public :: Average_Op_dmrg
+  public :: Measure_Op_DMRG
+  public :: Build_Op_DMRG
+  public :: Advance_Op_DMRG
+  public :: Advance_Corr_DMRG
+  public :: Average_Op_DMRG
 
 
 
@@ -71,18 +62,12 @@ contains
 
 
 
-  subroutine init_dmrg(h2,QN,ModelDot,Corr)
+  subroutine init_dmrg(h2,QN,ModelDot)
     procedure(Hconnect)          :: h2
-    procedure(UserCorr),optional :: Corr
     real(8),dimension(:)         :: QN
     type(site)                   :: ModelDot
-    if(associated(CorrModel))nullify(CorrModel)
     if(associated(H2model))nullify(H2model)
     H2model => h2
-    if(present(Corr))then
-       init_measure = .true.
-       CorrModel       => Corr
-    end if
     allocate(target_qn, source=qn)
     dot        = ModelDot
     init_sys   = block(dot)
@@ -93,7 +78,6 @@ contains
 
   subroutine finalize_dmrg()
     if(associated(H2model))nullify(H2model)
-    if(associated(CorrModel))nullify(CorrModel)
     call dot%free()
     call init_sys%free()
     call init_env%free()
@@ -102,81 +86,27 @@ contains
     call psi_sys%free()
     call psi_env%free()
     init_called  = .false.
-    init_measure = .false.
   end subroutine finalize_dmrg
 
 
 
 
   subroutine infinite_DMRG()
-    real(8),allocatable             :: val(:)
-    integer                         :: i,j,Ncorr,it,dim
-    type(sparse_matrix),allocatable :: Ocorr(:)
-    type(sparse_matrix)             :: Op,SS,Sz,Sp,Sm,SiSj(Ldmrg),Szi(Ldmrg)
     !
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     sys=init_sys
     env=init_env
     !
-    suffix="L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG"
-    if(Edmrg/=0d0)suffix="L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG"
+    suffix = label_DMRG('i',1)
     !
     do while (2*sys%length <= Ldmrg)
-       if(init_measure)then
-          Ocorr = CorrModel(sys)
-          SiSj(sys%length)=Ocorr(1)
-          Szi(sys%length)=Ocorr(2)
-       endif
        call step_dmrg()
        call write_energy()
        call write_entanglement()
     enddo
-
-    do i=1,sys%length-1
-       SS = SiSj(i)
-       Sz = Szi(i)
-       SS = Advance_Op_DMRG(SS,i+1)
-       Sz = Advance_Op_DMRG(Sz,i)
-       write(*,*)i,Average_Op_DMRG(SS,'l'),Average_Op_DMRG(Sz,'l')
-       write(100,*)i,Average_Op_DMRG(SS,'l'),Average_Op_DMRG(Sz,'l')
-    enddo
-
-    !Get Ops at B(I)
-    !Advance each Op to B(J)
-    !Build the Corr Ops(I).Ops(J)
-    !Advance the Corr to \psi
-    !
-    ! do i=1,sys%length-1
-    !    Sz = BlockLeft_Op_DMRG(dot%operators%op("Sz"),i)
-    !    Sp = BlockLeft_Op_DMRG(dot%operators%op("Sp"),i)
-    !    Sm = Sp%t()
-    !    SS = 0.5d0*(Sp.x.transpose(dot%operators%op("Sp"))) +  &
-    !         0.5d0*(Sm.x.dot%operators%op("Sp"))  + &
-    !         (Sz.x.dot%operators%op("Sz"))
-    !    SS = Advance_Op_DMRG(SS,i+1)
-    !    write(*,*)i,Average_Op_DMRG(SS,'l')
-    !    write(200,*)i,Average_Op_DMRG(SS,'l')
-    ! enddo
-
-
-
-    call MeasureLocalOp_DMRG(dot%operators%op(key='Sz'),arange(1,Ldmrg/2),file="new_SzVSj")
-
-    do i=1,sys%length-1
-       !Get Block Operators 
-       Sz = Build_Op_DMRG(dot%operators%op("Sz"),i)
-       Sp = Build_Op_DMRG(dot%operators%op("Sp"),i)
-       Sm = Sp%t()
-       !Build the correlation
-       SS = 0.5d0*(Sp.x.transpose(dot%operators%op("Sp"))) +  &
-            0.5d0*(Sm.x.dot%operators%op("Sp"))  + &
-            (Sz.x.dot%operators%op("Sz"))
-       !Advance correlation to Psi + measure
-       SS = Advance_Corr_DMRG(SS,i)
-       write(*,*)i,Average_Op_DMRG(SS,'l')
-       write(300,*)i,Average_Op_DMRG(SS,'l')
-    enddo
   end subroutine infinite_DMRG
+
+
 
 
 
@@ -199,13 +129,12 @@ contains
     env_label=2
     !Infinite DMRG
     !
-    suffix="L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG"
-    if(Edmrg/=0d0)suffix="L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG"
+    suffix = label_DMRG('i',1)
     !
     allocate(blocks_list(2,Ldmrg))
     blocks_list(sys_label,1)=sys
     blocks_list(env_label,1)=env
-    do while (2*sys%length < Ldmrg)
+    do while (2*sys%length <= Ldmrg)
        call step_dmrg()
        call write_energy()
        call write_entanglement()
@@ -220,9 +149,12 @@ contains
 
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
-       write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
-       suffix="L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_sweep"//str(im)
-       if(Edmrg/=0d0)suffix="L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_sweep"//str(im)
+       if(Esweep(im)==0)then
+          write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
+       else
+          write(*,"(A,I3,I6)")"Sweep, E:",im,Esweep(im)
+       endif
+       suffix = label_DMRG('f',im)
        sweep: do while(.true.)
           env = blocks_list(env_label,Ldmrg - sys%length)
           if(env%length==1)then          !end of the chain for env, switch roles sys<-->env
@@ -588,7 +520,7 @@ contains
     integer                   :: current_L
     integer                   :: Eunit
     current_L = sys%length + env%length
-    Eunit     = fopen("energyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
+    Eunit     = fopen("energyVSsys.length_"//str(suffix),append=.true.)
     write(Eunit,*)sys%length,energies/current_L
     close(Eunit)
   end subroutine write_energy
@@ -603,7 +535,7 @@ contains
        if(rho_sys_evals(i)<0d0)cycle       
        entropy = entropy-rho_sys_evals(i)*log(rho_sys_evals(i))
     enddo
-    Eunit     = fopen("SentropyVSsys.length_"//str(suffix)//".dmrg",append=.true.)
+    Eunit     = fopen("SentropyVSsys.length_"//str(suffix),append=.true.)
     write(Eunit,*)sys%length,entropy
     close(Eunit)
   end subroutine write_entanglement
@@ -615,7 +547,7 @@ contains
     real(8)          :: vals(:)
     integer          :: Eunit
     x_ = sys%length;if(present(x))x_=x
-    Eunit     = fopen(str(file)//"_"//str(suffix)//".dmrg",append=.true.)
+    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
     write(Eunit,*)x_,vals
     close(Eunit)
   end subroutine write_user
@@ -627,8 +559,8 @@ contains
 
 
 
-  
-  subroutine MeasureLocalOp_dmrg(Op,ivec,file,avOp)
+
+  subroutine Measure_Op_dmrg(Op,ivec,file,avOp)
     integer,dimension(:),intent(in)        :: ivec
     type(sparse_matrix),intent(in)         :: Op
     character(len=*)                       :: file
@@ -638,6 +570,7 @@ contains
     integer                                :: it,i
     type(sparse_matrix)                    :: Oi
     !
+    suffix=label_DMRG('u')
     do it=1,size(ivec)
        i   = ivec(it)
        label='l';if(i>sys%length)label='r'
@@ -648,7 +581,7 @@ contains
        call Oi%free()
        if(present(avOp))avOp(it)=val
     enddo
-  end subroutine MeasureLocalOp_dmrg
+  end subroutine Measure_Op_dmrg
 
 
   !Return the Operator Oi at a site I of the chain given the operator O in the dot basis:
@@ -791,15 +724,12 @@ contains
     !Measure using PSI matrix:
     select case(label)
     case ("l")
-       write(999,*)shape(psi_sys),shape(Op)
        if(any(shape(psi_sys)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       ! dims = shape(psi_sys)
-       Psi  = as_sparse(psi_sys)!%sparse(dims(1),dims(2))
+       Psi  = as_sparse(psi_sys)
        AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
     case ("r")
        if(any(shape(psi_env)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       ! dims = shape(psi_env)
-       Psi  = as_sparse(psi_env)!%sparse(dims(1),dims(2))
+       Psi  = as_sparse(psi_env)
        AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
     end select
     call Psi%free()
@@ -897,42 +827,10 @@ contains
        end do matmul
     end do
   end subroutine sb_HxV
-
-
-
-
-
-
-
-
-
+  
 END MODULE SYSTEM
 
 
 
 
 
-
-  ! function Build_Corr_dmrg(Opi,i,Opj,j) result(Corr)
-  !   type(sparse_matrix),intent(in)   :: Opi,Opj
-  !   integer                          :: i,j
-  !   type(sparse_matrix)              :: Corr
-  !   type(sparse_matrix)              :: Oi,Oj
-  !   integer                          :: L,R
-  !   integer                          :: it,nstep
-  !   !
-  !   !Put a test that Opi,Opj are in the DOT basis:
-  !   L = sys%length
-  !   R = env%length
-  !   if(i<1.OR.i>L+R)stop "Build_Corr_DMRG error: I not in [1,Lchain]"
-  !   if(j<i)stop "Build_Corr_DMRG ERROR: j <= i"
-  !   if(i<L.AND.j>L)stop "Build_Corr_DMRG ERROR: i<L and j>L" !or j>=i
-  !   !
-  !   nstep = j-i
-  !   !
-  !   Oi = Build_Op_DMRG(Opi,i)
-  !   Oi = Advance_Op_DMRG(Oi,i,nstep-1)
-  !   !
-  !   Corr = Oi.x.Opj
-  !   !
-  ! end function Build_Corr_dmrg
