@@ -1,18 +1,14 @@
 # Lattice DMRG
-
 *beta version*  
-*This code mostly serves as development platform for a Quantum Impurity Solver algorithm.*
 
-
-A simple DMRG code to solve Heisenberg (spin-S) and Hubbard models in 1d.  
-The software exploits consevation of the Quantum Numbers tuple ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
+This is simple, yet complete, DMRG code to solve Heisenberg (spin-S) and Hubbard models, prevalently in 1d. The software exploits consevation of the Quantum Numbers ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
 
  
 The structure of this code is largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
 
 ### Dependencies
-
 The code is based on:  
+
 
 - [X] [SciFortran](https://github.com/aamaricci/SciFortran)  
 
@@ -20,7 +16,6 @@ The code is based on:
 
   
 ### Installation
-
 Clone the repo  
 Open and setup the Makefile with your favorite editor (hint: `emacs`)  
 Compile  
@@ -73,27 +68,32 @@ create an issue in this repo.
 - [x] Develop *finite* DMRG algorithm
 - [x] Measure local observables 
 - [x] Measure entanglement
-- [o] Measure nearest neighbor correlations
+- [x] Measure nearest neighbor correlations
 
 #### Milestone 5
-- [ ] Implement a better strategy for the matrix-vector product H_sb*V, using tensor product structure of H_sb. 
-- [ ] Implement parallel tensor product. 
+- [ ] Implement a better strategy for the SuperBlock matrix-vector product $H_{sb}|\psi\rangle$, exploiting the tensor product structure of $H_{sb}= H_L\otimes 1_R + 1_L\otimes H_R + H_{LR}$. 
+- [ ] Implement parallel tensor product, see [Large-Scale Implementation of the Density Matrix Renormalization Group Algorithm](https://iris.sissa.it/handle/20.500.11767/68070). 
 
 #### Future developemnts
 - [ ] Development of a iDMRG algorithm for fermions exploiting the spin separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
 
 
-#### Known issues
-There are a number of known issues with this code which, mostly for time reasons, we did not solve completely.
+### Results
+Here are some results for the Heisenberg model:  
+$H = J_z \sum_{i} S_z(i)S_z(i+1) + J_{xy} \sum_{i,a=x,y} S_a(i)S_a(i+1)$
 
-1. Measure of local quantities has a little bug related to a mismatch in the evolved local operator $O(i)$ at the $\psi$ basis. `shape(\psi) \= shape(O(i))`. This error issues from a change in the final truncation and should be solved arranging correctly the measure procedure.
-    
-2. There is a possible issues from the truncated $\rho_{sys,env}$ matrices obtained from dumping the block matrices. Now this is solved passing explicitly the required dimensions of the truncated matrix `(m_sys,m_s)` or `(m_env,m_s)` this can be different from `shape(rho_sys/env)`.
-    
-    
-3. There is an issue with storage, progression and measurement of non-local, nearest-neighbor correlations such as spin-spin $\langle S_iS_j\rangle$. The working way is, so far, to store at each dmrg_step the correlation $\langle S_iS_{i+1}\rangle(l=1,\dots,L)$, progress each of them up to $\psi$ basis and only then measure it.
+![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/plot/figs.png)
 
+In the top panels we show the groundstate energy $E(j)$ and the entanglement entropy of the left block sites $S_L(j) = -{\mathrm Tr}[{\rho_L}\ln{\rho_L}]$ as a function the chain sites in a Spin 1/2 chain of 300 sites. The nearest-neighbor spin-spin correlation $\langle \vec{S}(j)\cdot \vec{S}(j+1)\rangle$ for the same system is reported in the bottom-left panel. Compare this result to the fig.6 of [Density-matrix algorithms for quantum renormalization groups](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.48.10345) (S.White, Phys. Rev. B 48, 10345).  
+Finally, in the bottom-right panel we report the spatial distribution of the local magnetization for a Spin 1 chain with open boundary conditions, showing Spin 1/2 edge modes.
+
+
+### Known issues
+There are a number of known issues with this code which, mostly for time reasons, we did not solve completely. Please report to any of the authors.
+    
+    
 --
+
 
 ***LICENSE***  
 Copyright 2023- (C) Adriano Amaricci, Carlos Mejuto Zaera, Ricardo Lopes

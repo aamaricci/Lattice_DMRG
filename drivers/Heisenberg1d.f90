@@ -7,10 +7,8 @@ program heisenberg_1d
   character(len=1)    :: DMRGtype
   integer             :: i,SUN,Unit
   real(8)             :: target_Sz(1),Hvec(3)
-  !
   type(site)          :: Dot
-  type(sparse_matrix) :: Splus,Sminus,Sz,SiSj,SSp,SSm,SSz
-  real(8)             :: val
+  type(sparse_matrix) :: bSz,bSp,SiSj
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
@@ -30,10 +28,10 @@ program heisenberg_1d
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
      dot = spin_onehalf_site(hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,corr=get_SiSj)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot)
   case(3)
      dot = spin_one_site(Hvec)
-     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot,corr=get_SiSj)
+     call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot)
   end select
 
   !Run DMRG algorithm
@@ -45,10 +43,25 @@ program heisenberg_1d
      call finite_DMRG()
   end select
 
+  !Post-processing and measure quantities:
+  
+  !Measure <Sz(i)>
+  call Measure_Op_DMRG(dot%operators%op(key='Sz'),arange(1,Ldmrg/2),file="SzVSj")
 
-  !TODO: not working properly:
-  call MeasureLocalOp_DMRG(dot%operators%op(key='Sz'),arange(1,Ldmrg/2),file="SzVSj")
-
+  
+  unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
+  !Measure <S(i).S(i+1)>
+  do i=1,Ldmrg/2-1
+     !Get Block Operators at the site I 
+     bSz = Build_Op_DMRG(dot%operators%op("Sz"),i)
+     bSp = Build_Op_DMRG(dot%operators%op("Sp"),i)
+     !Build the correlation:
+     SiSj= get_SiSj(bSz,bSp,dot%operators%op("Sz"),dot%operators%op("Sp"))
+     !Advance correlation to Psi + measure
+     SiSj= Advance_Corr_DMRG(SiSj,i)
+     write(unit,*)i,Average_Op_DMRG(SiSj,'l')
+  enddo
+  close(unit)
 
   !Finalize DMRG
   call finalize_dmrg()
@@ -79,30 +92,13 @@ contains
   end function Heisenberg_1d_Model
 
 
-  function get_SiSj(sys) result(sisj)
-    type(block)                     :: sys
-    type(sparse_matrix),allocatable :: sisj(:)
-    type(sparse_matrix)             :: Sz1,Sp1,Sz2,Sp2,U
-    Sz1  = sys%operators%op("Sz")
-    Sp1  = sys%operators%op("Sp")
-    Sz2  = dot%operators%op("Sz")
-    Sp2  = dot%operators%op("Sp")
-    if(allocated(SiSj))deallocate(SiSj)
-    allocate(SiSj(2))
-    SiSj(1) = 0.5d0*(Sp1.x.Sp2%dgr()) +  0.5d0*(Sp1%dgr().x.Sp2)  + (Sz1.x.Sz2)
-    if(sys%length==1)then
-       SiSj(2)   = Sz2
-    else
-       U         = sys%omatrices%op(index=sys%length)
-       SiSj(2)   = matmul(U%t(),U).x.Sz2
-    endif
-    call Sz1%free()
-    call Sp1%free()
-    call Sz2%free()
-    call Sp2%free()
+  function get_SiSj(Sz1,Sp1,Sz2,Sp2) result(sisj)
+    type(sparse_matrix) :: sisj
+    type(sparse_matrix) :: Sz1,Sp1,Sz2,Sp2
+    SiSj = 0.5d0*(Sp1.x.Sp2%dgr()) +  0.5d0*(Sp1%dgr().x.Sp2)  + (Sz1.x.Sz2)
   end function get_SiSj
 
-end program heisenberg_1d
+end program
 
 
 

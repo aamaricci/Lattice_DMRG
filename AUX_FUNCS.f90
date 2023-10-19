@@ -1,5 +1,6 @@
 MODULE AUX_FUNCS
-  USE SCIFOR, only: free_unit,str
+  USE INPUT_VARS
+  USE SCIFOR, only: free_unit,str,to_lower
   implicit none
   private
 
@@ -25,6 +26,7 @@ MODULE AUX_FUNCS
   public :: KSz
   public :: fopen
   public :: cumulate
+  public :: label_dmrg
   
   logical,parameter,public           :: show_dble=.true.
   character(len=12),parameter,public :: show_fmt='F9.3'
@@ -72,6 +74,29 @@ contains
        vec = [szvec(n-1),-szvec(n-1)]
     endif
   end function szvec
+
+
+  function label_dmrg(type,im) result(label)
+    character(len=1),optional    :: type
+    integer,optional             :: im
+    character(len=1)             :: type_
+    integer                      :: im_
+    character(len=:),allocatable :: label
+    type_='u'     ;if(present(type))type_=type
+    im_  = Nsweep ;if(present(im))im_=im
+    select case(to_lower(str(type)))
+    case default
+       label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_User")
+       if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_User")
+    case('i')
+       label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG")
+       if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
+    case('f')
+       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im)
+       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im))//"_sweep"//str(im)
+    end select
+    label=str(label)//".dmrg"
+  end function label_dmrg
 
 
 
