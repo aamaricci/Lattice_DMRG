@@ -61,8 +61,11 @@ MODULE SYSTEM
   public :: MeasureLocalOp_DMRG
   public :: Build_Op_dmrg
   public :: Advance_Op_dmrg
+  public :: Advance_Corr_dmrg
   public :: Average_Op_dmrg
-  public :: Build_Corr_dmrg
+
+
+
 contains
 
 
@@ -138,47 +141,45 @@ contains
        write(100,*)i,Average_Op_DMRG(SS,'l'),Average_Op_DMRG(Sz,'l')
     enddo
 
+    !Get Ops at B(I)
+    !Advance each Op to B(J)
+    !Build the Corr Ops(I).Ops(J)
+    !Advance the Corr to \psi
+    !
+    ! do i=1,sys%length-1
+    !    Sz = BlockLeft_Op_DMRG(dot%operators%op("Sz"),i)
+    !    Sp = BlockLeft_Op_DMRG(dot%operators%op("Sp"),i)
+    !    Sm = Sp%t()
+    !    SS = 0.5d0*(Sp.x.transpose(dot%operators%op("Sp"))) +  &
+    !         0.5d0*(Sm.x.dot%operators%op("Sp"))  + &
+    !         (Sz.x.dot%operators%op("Sz"))
+    !    SS = Advance_Op_DMRG(SS,i+1)
+    !    write(*,*)i,Average_Op_DMRG(SS,'l')
+    !    write(200,*)i,Average_Op_DMRG(SS,'l')
+    ! enddo
 
+
+
+    call MeasureLocalOp_DMRG(dot%operators%op(key='Sz'),arange(1,Ldmrg/2),file="new_SzVSj")
 
     do i=1,sys%length-1
-       Sz = BlockLeft_Op_DMRG(dot%operators%op("Sz"),i)
-       Sp = BlockLeft_Op_DMRG(dot%operators%op("Sp"),i)
+       !Get Block Operators 
+       Sz = Build_Op_DMRG(dot%operators%op("Sz"),i)
+       Sp = Build_Op_DMRG(dot%operators%op("Sp"),i)
        Sm = Sp%t()
+       !Build the correlation
        SS = 0.5d0*(Sp.x.transpose(dot%operators%op("Sp"))) +  &
             0.5d0*(Sm.x.dot%operators%op("Sp"))  + &
             (Sz.x.dot%operators%op("Sz"))
-       SS = Advance_Op_DMRG(SS,i+1)
+       !Advance correlation to Psi + measure
+       SS = Advance_Corr_DMRG(SS,i)
        write(*,*)i,Average_Op_DMRG(SS,'l')
-       write(200,*)i,Average_Op_DMRG(SS,'l')
+       write(300,*)i,Average_Op_DMRG(SS,'l')
     enddo
   end subroutine infinite_DMRG
 
-  function BlockLeft_Op_dmrg(Op,n) result(Oi)
-    type(sparse_matrix),intent(in)   :: Op
-    integer                          :: n
-    type(sparse_matrix)              :: Oi,U
-    character(len=1)                 :: label
-    integer                          :: L,R
-    integer                          :: dims(2),dim
-    integer                          :: istart,iend,it
-    !
-    L = sys%length
-    if(n>L)stop "BlockLeft_Op_DMRG error"
-    !
-    !
-    !Bring the operator to the actual basis
-    Oi = Op
-    if(n>1)then
-       U  = sys%omatrices%op(index=n-1)
-       Oi = matmul(U%t(),U).x.Op      !id(sys(n-1)).x.dot(Op)
-       U  = sys%omatrices%op(index=n) !get O(n)
-       Oi = matmul(U%t(),matmul(Oi,U)) !rotate+truncate 
-       call U%free()
-    end if
-  end function BlockLeft_Op_dmrg
 
 
-  
   subroutine finite_DMRG()
     integer                                :: i,im,env_label,sys_label,current_L
     type(block),dimension(:,:),allocatable :: blocks_list
@@ -621,6 +622,12 @@ contains
 
 
 
+
+
+
+
+
+  
   subroutine MeasureLocalOp_dmrg(Op,ivec,file,avOp)
     integer,dimension(:),intent(in)        :: ivec
     type(sparse_matrix),intent(in)         :: Op
@@ -642,10 +649,6 @@ contains
        if(present(avOp))avOp(it)=val
     enddo
   end subroutine MeasureLocalOp_dmrg
-
-
-
-
 
 
   !Return the Operator Oi at a site I of the chain given the operator O in the dot basis:
@@ -672,40 +675,19 @@ contains
     if(pos>1)then
        select case(to_lower(str(label)))
        case ("l")
-          U    = sys%omatrices%op(index=pos-1)
-          Oi   = matmul(U%t(),U).x.Op
+          U   = sys%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
+          Oi  = matmul(U%t(),U).x.Op          !build right-most Op of the block_I as Id(I-1)xOp_I
+          U   = sys%omatrices%op(index=pos)   !retrieve O_I 
+          Oi  = matmul(U%t(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
        case ("r")
-          U    = env%omatrices%op(index=pos-1)
-          Oi   = Op.x.matmul(U%t(),U)
+          U   = env%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
+          Oi  = Op.x.matmul(U%t(),U)          !build right-most Op of the block_I as Id(I-1)xOp_I
+          U   = env%omatrices%op(index=pos)   !retrieve O_I 
+          Oi  = matmul(U%t(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
        end select
+       call U%free()
     end if
   end function Build_Op_dmrg
-
-
-  function Build_Corr_dmrg(Opi,i,Opj,j) result(Corr)
-    type(sparse_matrix),intent(in)   :: Opi,Opj
-    integer                          :: i,j
-    type(sparse_matrix)              :: Corr
-    type(sparse_matrix)              :: Oi,Oj
-    integer                          :: L,R
-    integer                          :: it,nstep
-    !
-    !Put a test that Opi,Opj are in the DOT basis:
-    L = sys%length
-    R = env%length
-    if(i<1.OR.i>L+R)stop "Build_Corr_DMRG error: I not in [1,Lchain]"
-    if(j<i)stop "Build_Corr_DMRG ERROR: j <= i"
-    if(i<L.AND.j>L)stop "Build_Corr_DMRG ERROR: i<L and j>L" !or j>=i
-    !
-    nstep = j-i
-    !
-    Oi = Build_Op_DMRG(Opi,i)
-    Oi = Advance_Op_DMRG(Oi,i,nstep-1)
-    !
-    Corr = Oi.x.Opj
-    !
-  end function Build_Corr_dmrg
-
 
 
   function Advance_Op_dmrg(Op,i,nstep) result(Oi)
@@ -715,10 +697,7 @@ contains
     type(sparse_matrix)              :: Oi,U
     character(len=1)                 :: label
     integer                          :: L,R
-    integer                          :: dims(2),dim
     integer                          :: istart,iend,it
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
     !
     L = sys%length
     R = env%length
@@ -727,30 +706,27 @@ contains
     label ='l';if(i>L) label ='r'
     select case(label)
     case ("l")
-       istart = i
-       iend   = L ; if(present(nstep))iend=istart+nstep
+       istart = i         ; iend   = L ; if(present(nstep))iend=istart+nstep
        if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
-    case ("r")
-       istart = R+1-(i-L)
-       iend   = R ; if(present(nstep))iend=istart+nstep
+    case ("r") 
+       istart = R+1-(i-L) ; iend   = R ; if(present(nstep))iend=istart+nstep
        if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
     end select
     !
-    !
-    !Bring the operator to the actual basis
-    !Measure using PSI matrix:
+    !Bring the operator to the L/R basis of the target states
+    !Here we try to reproduce the same strategy of the dmrg_step: increase and rotate 
     Oi = Op
     select case(label)
     case ("l")
-       ! dims = shape(sys%omatrices%op(index=1));dim=dims(1)
-       do it=istart,iend
+       Oi = Oi.x.Id(dot%dim)
+       do it=istart+1,iend
           U  = sys%omatrices%op(index=it)
           Oi = matmul(U%t(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
-       ! dims = shape(env%omatrices%op(index=1));dim=dims(1)
-       do it=istart,iend
+       Oi = Id(dot%dim).x.Oi
+       do it=istart+1,iend
           U  = env%omatrices%op(index=it)
           Oi = matmul(U%t(),matmul(Oi,U))
           Oi = Id(dot%dim).x.Oi
@@ -760,6 +736,48 @@ contains
   end function Advance_Op_dmrg
 
 
+  function Advance_Corr_dmrg(Op,i,nstep) result(Oi)
+    type(sparse_matrix),intent(in)   :: Op
+    integer                          :: i
+    integer,optional                 :: nstep
+    type(sparse_matrix)              :: Oi,U
+    character(len=1)                 :: label
+    integer                          :: L,R
+    integer                          :: istart,iend,it
+    !
+    L = sys%length
+    R = env%length
+    if(i<1.OR.i>L+R)stop "Advance_Op_DMRG error: I not in [1,Lchain]"
+    !
+    label ='l';if(i>L) label ='r'
+    select case(label)
+    case ("l")
+       istart = i         ; iend   = L ; if(present(nstep))iend=istart+nstep
+       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
+    case ("r") 
+       istart = R+1-(i-L) ; iend   = R ; if(present(nstep))iend=istart+nstep
+       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
+    end select
+    !
+    !Bring the operator to the L/R basis of the target states
+    !Here we try to reproduce the same strategy of the dmrg_step: increase and rotate 
+    Oi = Op
+    select case(label)
+    case ("l")
+       do it=istart+1,iend
+          U  = sys%omatrices%op(index=it)
+          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = Oi.x.Id(dot%dim)
+       enddo
+    case ("r")
+       do it=istart+1,iend
+          U  = env%omatrices%op(index=it)
+          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = Id(dot%dim).x.Oi
+       enddo
+    end select
+    call U%free()
+  end function Advance_Corr_dmrg
 
   function Average_Op_dmrg(Op,label) result(avOp)
     type(sparse_matrix),intent(in)   :: Op
@@ -773,6 +791,7 @@ contains
     !Measure using PSI matrix:
     select case(label)
     case ("l")
+       write(999,*)shape(psi_sys),shape(Op)
        if(any(shape(psi_sys)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
        ! dims = shape(psi_sys)
        Psi  = as_sparse(psi_sys)!%sparse(dims(1),dims(2))
@@ -893,3 +912,27 @@ END MODULE SYSTEM
 
 
 
+
+  ! function Build_Corr_dmrg(Opi,i,Opj,j) result(Corr)
+  !   type(sparse_matrix),intent(in)   :: Opi,Opj
+  !   integer                          :: i,j
+  !   type(sparse_matrix)              :: Corr
+  !   type(sparse_matrix)              :: Oi,Oj
+  !   integer                          :: L,R
+  !   integer                          :: it,nstep
+  !   !
+  !   !Put a test that Opi,Opj are in the DOT basis:
+  !   L = sys%length
+  !   R = env%length
+  !   if(i<1.OR.i>L+R)stop "Build_Corr_DMRG error: I not in [1,Lchain]"
+  !   if(j<i)stop "Build_Corr_DMRG ERROR: j <= i"
+  !   if(i<L.AND.j>L)stop "Build_Corr_DMRG ERROR: i<L and j>L" !or j>=i
+  !   !
+  !   nstep = j-i
+  !   !
+  !   Oi = Build_Op_DMRG(Opi,i)
+  !   Oi = Advance_Op_DMRG(Oi,i,nstep-1)
+  !   !
+  !   Corr = Oi.x.Opj
+  !   !
+  ! end function Build_Corr_dmrg
