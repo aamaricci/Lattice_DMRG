@@ -795,7 +795,8 @@ contains
     integer                  :: M=50
 
     call wait(50)
-    call system("clear")
+    !call system("clear")
+    call execute_command_line("clear")
     Ltot = Ldmrg/2
     Ldot = bold_green('=')
     Rdot = bold_red('-')
