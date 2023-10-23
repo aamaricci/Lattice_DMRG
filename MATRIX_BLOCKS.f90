@@ -498,7 +498,8 @@ contains
     integer                            :: i,it
     real(8),dimension(:),allocatable   :: self_vec
     integer,dimension(:),allocatable   :: self_map
-    dims = shape(self)
+    !dims = shape(self)
+    dims = self%shape()
     call sparse%init(dims(1),dims(2))
     do it=1,dims(2)
        self_vec = self%evec(m=it)
