@@ -152,7 +152,7 @@ contains
        if(Esweep(im)==0)then
           write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
        else
-          write(*,"(A,I3,I6)")"Sweep, E:",im,Esweep(im)
+          write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
        suffix = label_DMRG('f',im)
        sweep: do while(.true.)
