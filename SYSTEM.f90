@@ -152,7 +152,7 @@ contains
        if(Esweep(im)==0)then
           write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
        else
-          write(*,"(A,I3,I6)")"Sweep, E:",im,Esweep(im)
+          write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
        suffix = label_DMRG('f',im)
        sweep: do while(.true.)
@@ -209,7 +209,7 @@ contains
     real(8)                            :: truncation_error_sys,truncation_error_env
     logical                            :: exist
     !
-    iLabel=1;if(present(label))iLabel=label
+    iLabel=0;if(present(label))iLabel=label
     Mstates=Mdmrg
     Estates=Edmrg
     if(present(isweep))then
@@ -375,7 +375,7 @@ contains
     write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
          "Energies/L                           :",energies/current_L
     call stop_timer("dmrg_step")
-    !
+    call wait(100)
     !
     !Clean memory:
     if(allocated(sb_states))deallocate(sb_states)
@@ -787,27 +787,74 @@ contains
 
 
 
-
   subroutine dmrg_graphic(label)
-    ! type(block) :: sys,env
-    integer     :: label,M
-    integer     :: i
-    write(LOGfile,*)""
-    write(LOGfile,*)""
+    integer                  :: label
+    integer                  :: i,N,Msys,Menv,LMsys,LMenv,index,Ltot
+    character(:),allocatable :: Ldot,Rdot
+    real(8)                  :: eps=1d-6
+    integer                  :: M=50
+
+    call wait(50)
+    !call system("clear")
+    call execute_command_line("clear")
+    Ltot = Ldmrg/2
+    Ldot = bold_green('=')
+    Rdot = bold_red('-')
+    ! if(Ltot>M)then
+    !    Ldot = bg_green('=')
+    !    Rdot = bg_red('-')
+    ! endif
+    !
+    N = int(Ltot/(M+eps))+1
+    !
     select case(label)
     case default; stop "dmrg_graphic error: label != 1(L),2(R)"
+    case(0)
+       Msys = int(sys%length/(N+eps))+1
+       Menv = int(env%length/(N+eps))+1
+       LMsys= Ltot/N-Msys
+       LMenv= Ltot/N-Menv
+       index=nint(mod(dble(sys%length),N+eps))
+       write(LOGfile,*)""
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"sys; env=",sys%length,env%length,"|"
+       if(LMsys>0)write(LOGfile,"("//str(LMsys)//"A)",advance="no")(" ",i=1,LMsys)
+       write(LOGfile,"("//str(Msys)//"A)",advance="no")(trim(Ldot),i=1,Msys)
+       write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
+       write(LOGfile,"("//str(Menv)//"A)",advance="no")(trim(Rdot),i=1,Menv)
+       if(LMenv>0)write(LOGfile,"("//str(LMenv)//"A)",advance="no")(" ",i=1,LMenv)
     case(1)
-       write(LOGfile,"(A,2I4,A6,1x)",advance="no")"sys.L + env.L:",sys%length,env%length,"|"
-       write(LOGfile,"("//str(sys%length)//"A1)",advance="no")("=",i=1,sys%length)
-       write(LOGfile,"(A2)",advance="no")"**"
-       write(LOGfile,"("//str(env%length)//"A1)",advance="no")("-",i=1,env%length)
+       Msys = int(sys%length/(N+eps))+1
+       Menv = int(env%length/(N+eps))+1
+       LMsys= 0
+       LMenv= 0
+       index=nint(mod(dble(sys%length),N+eps))
+       write(LOGfile,*)""
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"sys; env=",sys%length,env%length,"|"
+       if(LMsys>0)write(LOGfile,"("//str(LMsys)//"A)",advance="no")(" ",i=1,LMsys)
+       write(LOGfile,"("//str(Msys)//"A)",advance="no")(trim(Ldot),i=1,Msys)
+       write(LOGfile,"(A)",advance="no")bg_green(">")//"|"//bold_red("*")
+       write(LOGfile,"("//str(Menv)//"A)",advance="no")(trim(Rdot),i=1,Menv)
+       if(LMenv>0)write(LOGfile,"("//str(LMenv)//"A)",advance="no")(" ",i=1,LMenv)
     case(2)
-       write(LOGfile,"(A,2I4,A6,1x)",advance="no")"sys.L + env.L:",env%length,sys%length,"|"
-       write(LOGfile,"("//str(env%length)//"A1)",advance="no")("=",i=1,env%length)
-       write(LOGfile,"(A2)",advance="no")"**"
-       write(LOGfile,"("//str(sys%length)//"A1)",advance="no")("-",i=1,sys%length)
+       Msys = int(env%length/(N+eps))+1
+       Menv = int(sys%length/(N+eps))+1
+       LMsys= 0
+       LMenv= 0
+       index=nint(mod(dble(env%length),N+eps))
+       write(LOGfile,*)""
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"sys; env=",sys%length,env%length,"|"
+       if(LMsys>0)write(LOGfile,"("//str(LMsys)//"A)",advance="no")(" ",i=1,LMsys)
+       write(LOGfile,"("//str(Msys)//"A)",advance="no")(trim(Ldot),i=1,Msys)
+       write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
+       write(LOGfile,"("//str(Menv)//"A)",advance="no")(trim(Rdot),i=1,Menv)
+       if(LMenv>0)write(LOGfile,"("//str(LMenv)//"A)",advance="no")(" ",i=1,LMenv)
     end select
-    write(LOGfile,"(1x,A1,2I6)",advance='yes')"|",Ldmrg
+    if(Ltot<=M)then
+       write(LOGfile,"(A1)",advance='yes')"|"
+    else
+       write(LOGfile,"(A1,I3,2x,A,1x,A)",advance='yes')"|",index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
+    endif
+    call wait(150)
   end subroutine dmrg_graphic
 
 
@@ -827,7 +874,7 @@ contains
        end do matmul
     end do
   end subroutine sb_HxV
-  
+
 END MODULE SYSTEM
 
 
