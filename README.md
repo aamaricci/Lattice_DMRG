@@ -97,7 +97,7 @@ There are a number of known issues with this code which, mostly for time reasons
 
 
 ***LICENSE***  
-Copyright 2023- (C) Adriano Amaricci, Carlos Mejuto Zaera, Ricardo Lopes
+Copyright 2023- (C) Adriano Amaricci, Carlos Mejuto Zaera, Ricardo Lopes and Massimo Capone
 
 The software is provided with no license, as such it is protected by copyright.
 The software is provided as it is and can be read and copied, in agreement with 
