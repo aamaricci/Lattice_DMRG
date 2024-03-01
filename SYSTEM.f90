@@ -268,10 +268,10 @@ contains
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
     allocate(eig_values(Lanc_Neigen))    ;eig_values=0d0
-    allocate(eig_basis(m_sb,Lanc_Neigen));eig_basis =0d0
+    allocate(eig_basis(m_sb,Lanc_Neigen));eig_basis =zero
     call start_timer()
     if(m_sb < lanc_dim_threshold)then
-       allocate(Hsb(m_sb,m_sb));Hsb=0d0
+       allocate(Hsb(m_sb,m_sb));Hsb=zero
        allocate(evals(m_sb))
        call spHsb%dump(Hsb)
        call eigh(Hsb,evals)
