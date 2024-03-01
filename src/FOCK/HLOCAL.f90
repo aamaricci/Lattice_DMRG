@@ -53,7 +53,11 @@ MODULE HLOCAL
   public :: Build_Dens_Operator
 
   public :: Build_BasisStates
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   public :: Build_FermionicSign
+=======
+
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 contains
 
 
@@ -64,7 +68,12 @@ contains
   !               CREATE THE LOCAL FOCK SPACE
   !##################################################################
   !##################################################################
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   subroutine Init_LocalFock_Space()
+=======
+  subroutine Init_LocalFock_Space(Norb)
+    integer :: Norb
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
     integer :: DimUp,DimDw
     integer :: DimUps(1),DimDws(1)
     integer :: Nups(1),Ndws(1)
@@ -209,6 +218,7 @@ contains
   !PURPOSE: 
   !+-------------------------------------------------------------------+
   function build_Hlocal_operator(H) result(Hmat)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
     complex(8),dimension(:,:),allocatable :: Hmat
@@ -226,6 +236,16 @@ contains
     real(8)                               :: sg1,sg2
     integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
     logical                               :: Jcondition
+=======
+    complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
+    complex(8),dimension(:,:),allocatable :: Hmat
+    complex(8),dimension(Nspin,Ns,Ns)     :: Hloc
+    type(local_fock_sector)               :: sectorI
+    real(8)                               :: htmp
+    integer                               :: isector,i,m,io,jo,iorb,ispin,jorb
+    integer                               :: iup,idw,mup,mdw
+    integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
     !
 
 #ifdef _CMPLX
@@ -241,13 +261,23 @@ contains
     !
     do ispin=1,Nspin
        do iorb=1,Norb
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           io = iorb+(ispin-1)*Norb      
           do jorb=1,Norb
              jo = jorb + (ispin-1)*Norb
+=======
+          io = iorb+(ispin-1)*Nspin          
+          do jorb=1,Norb
+             jo = jorb + (ispin-1)*Nspin
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
              Hloc(ispin,iorb,jorb) = H(io,jo)
           enddo
        enddo
     enddo
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
+=======
+    !
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
     !
     !
     !
@@ -259,7 +289,11 @@ contains
           nvec = bdecomp(m,2*Ns)
           nup  = nvec(1:Ns)
           ndw  = nvec(Ns+1:2*Ns)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           ii   = m+1
+=======
+          m    = m+1
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
           !
           htmp = zero
           !LOCAL HAMILTONIAN PART:
@@ -353,11 +387,15 @@ contains
   function build_C_operator(iorb,ispin) result(Cmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Cmat
 #else
     real(8),dimension(:,:),allocatable    :: Cmat
 #endif
+=======
+    complex(8),dimension(:,:),allocatable :: Cmat
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
     real(8)                               :: c_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -377,7 +415,11 @@ contains
           m   = sectorI%H(1)%map(i)
           nvec= bdecomp(m,2*Ns)
           if(nvec(alfa) == 0) cycle
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           call c(alfa,m,l,c_)
+=======
+          call c(alfa,m,l,c_)          
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
           Cmat(l+1,m+1) = one*c_
        enddo
        call Delete_LocalFock_Sector(sectorI)
@@ -387,11 +429,15 @@ contains
   function build_Cdg_operator(iorb,ispin) result(CDGmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: CDGmat
 #else
     real(8),dimension(:,:),allocatable    :: CDGmat
 #endif
+=======
+    complex(8),dimension(:,:),allocatable :: CDGmat
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
     real(8)                               :: cdg_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -423,11 +469,15 @@ contains
   function build_Dens_operator(iorb,ispin) result(Dmat)
     integer                               :: ispin,iorb
     type(local_fock_sector)               :: sectorI
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Dmat
 #else
     real(8),dimension(:,:),allocatable :: Dmat
 #endif
+=======
+    complex(8),dimension(:,:),allocatable :: Dmat
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
     real(8)                               :: dens
     integer                               :: imp,isector,i,m,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -481,6 +531,27 @@ contains
 
 
 
+  !##################################################################
+  !##################################################################
+  !         BUILD and RETURN THE LOCAL FOCK BASIS QN
+  !##################################################################
+  !##################################################################
+  function Build_BasisStates() result(Hvec)
+    type(local_fock_sector)          :: sectorI
+    integer,dimension(:),allocatable :: Hvec
+    integer                          :: i,isector
+    !
+    if(allocated(Hvec))deallocate(Hvec)
+    !
+    do isector=1,Nsectors
+       call Build_LocalFock_Sector(isector,SectorI)
+       do i=1,sectorI%Dim
+          call append(Hvec,sectorI%Nup)
+          call append(Hvec,sectorI%Ndw)
+       enddo
+       call Delete_LocalFock_Sector(sectorI)
+    enddo
+  end function Build_BasisStates
 
 
 
@@ -740,6 +811,7 @@ contains
   end subroutine map_deallocate_vector
 
 
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 
 
 
@@ -763,6 +835,8 @@ contains
   end subroutine print_conf
 
 
+=======
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 END MODULE HLOCAL
 
 
@@ -787,6 +861,7 @@ program testHLOCAL
   USE HLOCAL
   implicit none
   character(len=64)                     :: finput
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
   complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   complex(8),dimension(:,:),allocatable :: hloc
@@ -794,12 +869,17 @@ program testHLOCAL
   real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   real(8),dimension(:,:),allocatable :: hloc
 #endif
+=======
+  complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
+  complex(8),dimension(:,:),allocatable :: hloc
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
   integer,dimension(:),allocatable      :: Hvec
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')  
   call read_input(finput)
 
 
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 
 
 
@@ -814,56 +894,106 @@ program testHLOCAL
   print*,"H:"
   Hlocal = build_Hlocal_operator(hloc)
   call print_matrix(Hlocal)
+=======
+  print*,"Imp Fock space"  
+  call Init_LocalFock_Space(Norb)
+  allocate(hloc(nspin*norb,nspin*norb))
+  hloc=0d0
+  if(Norb==2)then
+     hloc=0.5d0*pauli_z
+  elseif(Norb==3)then
+     hloc=0.5d0*spin1_z
+  endif
+  print*,""
+  print*,"H:"
+  Hlocal = build_Hlocal_operator(hloc)
+  call print_mat(Hlocal)
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
   print*,""
   print*,"C_up:"
   Cup = build_C_operator(iorb=1,ispin=1)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(Cup)
   ! call print_matrix(kron(eye(2),Cop))
+=======
+  call print_mat(Cup)
+  ! call print_mat(kron(eye(2),Cop))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
   print*,""
   print*,"C_dw:"
   Cdw = build_C_operator(iorb=1,ispin=2)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(Cdw)
   ! call print_matrix(kron(Cop,dble(pauli_z)))
+=======
+  call print_mat(Cdw)
+  ! call print_mat(kron(Cop,dble(pauli_z)))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
   print*,""
   print*,"CDG_up:"
   CDGup = build_CDG_operator(iorb=1,ispin=1)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(CDGup)
   ! call print_matrix(transpose(kron(eye(2),Cop)))
+=======
+  call print_mat(CDGup)
+  ! call print_mat(transpose(kron(eye(2),Cop)))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
   print*,""
   print*,"CDG_dw:"
   CDGdw = build_CDG_operator(iorb=1,ispin=2)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(CDGdw)
   ! call print_matrix(transpose(kron(Cop,dble(pauli_z))))
+=======
+  call print_mat(CDGdw)
+  ! call print_mat(transpose(kron(Cop,dble(pauli_z))))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
 
   print*,""
   print*,"Dens_up:"
   Dens = build_Dens_operator(iorb=1,ispin=1)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(dens)
   ! call print_matrix(kron(eye(2),Dens))
+=======
+  call print_mat(dens)
+  ! call print_mat(kron(eye(2),Dens))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
   print*,""
   print*,"Dens_dw:"  
   Dens = build_Dens_operator(iorb=1,ispin=2)
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(dens)
   ! call print_matrix(kron(Dens,eye(2)))
+=======
+  call print_mat(dens)
+  ! call print_mat(kron(Dens,eye(2)))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
 
   print*,""
   print*,"Docc = CDG_up.C_up.CDG_dw.C_dw"  
   allocate(Docc, mold=Dens)
   Docc = CDGup.x.Cup.x.CDGdw.x.Cdw
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(Docc)
+=======
+  call print_mat(Docc)
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
 
   Hvec = Build_BasisStates()
   print*,size(Hvec)
   print*,Hvec
 
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 
 
 
@@ -873,6 +1003,8 @@ program testHLOCAL
   call print_matrix(kSz(2*Norb))
 
   print*,diagonal(P)-diagonal(kSz(2*Norb))
+=======
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
   call Delete_LocalFock_space()
 
 
@@ -881,6 +1013,7 @@ program testHLOCAL
 contains
 
 
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 
   recursive function KSz(n) result(A)
     integer, intent(in) :: n
@@ -902,6 +1035,15 @@ contains
     endif
   end function szvec
 
+=======
+  subroutine print_mat(M)
+    complex(8),dimension(:,:) :: M
+    integer                   :: i,j
+    do i=1,size(M,1)
+       write(*,"("//str(size(M,2))//"(F4.1,1x))")(dreal(M(i,j)),j=1,size(M,2))
+    enddo
+  end subroutine print_mat
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
 
 end program testHLOCAL
 #endif

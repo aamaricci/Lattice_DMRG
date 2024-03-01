@@ -75,12 +75,17 @@ MODULE LIST_SECTORS
   public :: assignment(=)
 
 
+<<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
 
 
+=======
+  
+  
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_SECTORS.f90
 contains
 
 
-
+  
 
 
   !##################################################################

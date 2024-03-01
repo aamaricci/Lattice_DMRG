@@ -224,6 +224,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a dense matrix as operator in the operators_list
   !+------------------------------------------------------------------+
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
   subroutine load_operators_list(self,key,op,type)
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
@@ -235,6 +236,12 @@ contains
 #endif
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)    
+=======
+  subroutine load_operators_list(self,key,op)
+    class(operators_list),intent(inout)  :: self
+    character(len=*),intent(in)          :: key
+    complex(8),dimension(:,:),intent(in) :: op
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
     if(.not.associated(self%root))allocate(self%root)
     call self%put(key,as_sparse(op),type_)
   end subroutine load_operators_list
@@ -433,6 +440,7 @@ contains
 
 
   !+------------------------------------------------------------------+
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
   !PURPOSE: Return all the keys in the operators_list
   !+------------------------------------------------------------------+  
   function types_operators_list(self,len) result(types)
@@ -447,6 +455,35 @@ contains
     enddo
   end function types_operators_list
 
+=======
+  !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
+  !+------------------------------------------------------------------+
+  function dump_op_operators_list(self,key) result(matrix)
+    class(operators_list),intent(inout)   :: self
+    character(len=*),intent(in)           :: key
+    complex(8),dimension(:,:),allocatable :: matrix
+    type(optype),pointer                  :: c
+    logical                               :: ifound
+    !
+    if(allocated(matrix))deallocate(matrix)
+    !
+    ifound=.false.
+    c => self%root%next
+    do                            !traverse the list until KEY is found
+       if(.not.associated(c))exit
+       if(str(c%ckey) == str(key)) then
+          ifound=.true.
+          exit          
+       endif
+       c => c%next
+    end do
+    if(.not.ifound)stop "dump_operator_matrix error: not found"
+    !
+    matrix = c%ope%as_matrix()
+    !
+    c=>null()
+  end function dump_op_operators_list
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
 
 
 
@@ -574,11 +611,19 @@ contains
     do
        if(.not.associated(c))exit
        count=count+1
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
        write(unit_,"(A6,I12)")  "Index:",c%index
        write(unit_,"(A6,A)")"Key  :",str(c%ckey)
        write(unit_,"(A6,A)")"Type :",str(c%ctype)
        call c%ope%display()
        write(unit_,*)""
+=======
+       write(*,"(A6,I12)")  "Index:",c%index
+       write(*,"(A6,A)")"Key  :",str(c%ckey)
+       write(*,*)"Op  :"
+       call c%ope%display()
+       write(*,*)""
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
        c => c%next
     end do
     c=>null()
@@ -662,6 +707,22 @@ program testOPERATORS_TUPLE
   character(len=10),allocatable         :: keys(:)
   integer,parameter                     :: sec=500
 
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+  type(operators_list)                  :: my_list,a_list
+  type(operators_list)                  :: copy_list,clist(2)
+  type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
+  complex(8),dimension(:,:),allocatable :: mat
+  integer                               :: i,j,n
+  logical                               :: bool
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+  character(len=10)                     :: key
+  character(len=10),allocatable         :: keys(:)
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)

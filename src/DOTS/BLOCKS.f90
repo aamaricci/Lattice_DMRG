@@ -1,5 +1,9 @@
 MODULE BLOCKS
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
+=======
+  USE SCIFOR, only: str,assert_shape,zeye
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -28,8 +32,11 @@ MODULE BLOCKS
      procedure,pass :: is_valid    => is_valid_block
      procedure,pass :: renormalize => rotate_operators_block
      procedure,pass :: okey        => okey_block
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
      procedure,pass :: name        => Opname_block
      procedure,pass :: type        => SiteType_block
+=======
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
   end type block
 
 
@@ -115,11 +122,15 @@ contains
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 #ifdef _CMPLX
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
 #else
     call self%omatrices%put("1",sparse(eye(self%Dim)))
 #endif
+=======
+    call self%omatrices%put("1",sparse(zeye(self%Dim)))
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
@@ -194,6 +205,7 @@ contains
   !PURPOSE:  
   !+------------------------------------------------------------------+
   subroutine rotate_operators_block(self,Umat)
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     class(block)                     :: self
 #ifdef _CMPLX
     complex(8),dimension(:,:)        :: Umat   ![N,M]
@@ -203,6 +215,13 @@ contains
     integer                          :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)              :: Op
     character(len=:),allocatable     :: key,type
+=======
+    class(block)                 :: self
+    complex(8),dimension(:,:)    :: Umat   ![N,M]
+    integer                      :: i,N,M  !N=self%dim,M=truncated dimension
+    type(sparse_matrix)          :: Op
+    character(len=:),allocatable :: key
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
     !
     N = size(Umat,1)
     M = size(Umat,2)
@@ -248,6 +267,23 @@ contains
     !
   end subroutine rotate_operators_block
   !
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+  function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
+    type(sparse_matrix),intent(in) :: Op
+    complex(8),dimension(N,M)      :: trRho  ![Nesys,M]
+    integer                        :: N,M
+    type(sparse_matrix)            :: RotOp
+    complex(8),dimension(M,M)      :: Umat
+    complex(8),dimension(N,N)      :: OpMat
+    N = size(trRho,1)
+    M = size(trRho,2)
+    if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
+    OpMat= Op%as_matrix()
+    Umat = matmul( transpose(trRho), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
+    call RotOp%load( Umat )
+  end function rotate_and_truncate
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 
 
   !##################################################################
@@ -303,6 +339,7 @@ contains
 
   function okey_block(self,iorb,ispin,isite) result(string)
     class(block)                 :: self
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     integer,optional             :: iorb,isite,ispin
     integer                      :: iorb_,isite_,ispin_
     character(len=:),allocatable :: string
@@ -313,10 +350,21 @@ contains
     if(iorb_==0.AND.ispin_==0)stop "Okey_Block ERROR: iorb == ispin == 0"
     string = okey(iorb_,ispin_,isite_)
     !
+=======
+    integer                      :: iorb
+    integer,optional             :: ispin,isite
+    integer                      :: isite_,ispin_
+    character(len=:),allocatable :: string
+    ispin_=0;if(present(ispin))ispin_=ispin
+    isite_=0;if(present(isite))isite_=isite
+    !
+    string = okey(iorb,ispin_,isite_)
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
     !
   end function okey_block
 
 
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   function OpName_block(self) result(string)
     class(block)                  :: self
     character(len=:),allocatable :: string
@@ -330,6 +378,8 @@ contains
     string = to_lower(str(self%SiteType))
   end function SiteType_block
 
+=======
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 
 
   !##################################################################
@@ -406,6 +456,7 @@ program testBLOCKS
   USE SITES
   USE BLOCKS
   implicit none
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   type(block)                         :: my_block,a
   type(block),allocatable             :: my_blocks(:)
   type(operators_list)                :: op
@@ -427,9 +478,29 @@ program testBLOCKS
   real(8),dimension(2,2),parameter    :: Splus=reshape([zero,zero,one,zero],[2,2])
   real(8),dimension(4,4)              :: Gamma13,Gamma03
 #endif
+=======
 
+
+  type(block)                      :: my_block,a
+  type(block),allocatable          :: my_blocks(:)
+  type(operators_list)             :: op
+  type(sectors_list)               :: sect
+  type(tbasis)                     :: sz_basis
+  integer                          :: i
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+
+  
   Gamma13=kron(Sx,Sz)
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   Gamma03=kron(S0,Sz)
+=======
+  Gamma03=kron(id(2),Sz)
+>>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 
 
   sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)
