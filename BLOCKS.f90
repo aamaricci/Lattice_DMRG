@@ -1,5 +1,5 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,eye
+  USE SCIFOR, only: str,assert_shape,zeye
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -25,6 +25,7 @@ MODULE BLOCKS
      procedure,pass :: show        => show_block
      procedure,pass :: is_valid    => is_valid_block
      procedure,pass :: renormalize => rotate_operators_block
+     procedure,pass :: okey        => okey_block
   end type block
 
 
@@ -104,7 +105,7 @@ contains
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
-    call self%omatrices%put("1",sparse(eye(self%Dim)))
+    call self%omatrices%put("1",sparse(zeye(self%Dim)))
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
@@ -179,7 +180,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine rotate_operators_block(self,Umat)
     class(block)                 :: self
-    real(8),dimension(:,:)       :: Umat   ![N,M]
+    complex(8),dimension(:,:)    :: Umat   ![N,M]
     integer                      :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)          :: Op
     character(len=:),allocatable :: key
@@ -200,11 +201,11 @@ contains
   !
   function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
     type(sparse_matrix),intent(in) :: Op
-    real(8),dimension(N,M)         :: trRho  ![Nesys,M]
+    complex(8),dimension(N,M)      :: trRho  ![Nesys,M]
     integer                        :: N,M
     type(sparse_matrix)            :: RotOp
-    real(8),dimension(M,M)         :: Umat
-    real(8),dimension(N,N)         :: OpMat
+    complex(8),dimension(M,M)      :: Umat
+    complex(8),dimension(N,N)      :: OpMat
     N = size(trRho,1)
     M = size(trRho,2)
     if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
@@ -261,6 +262,20 @@ contains
     enddo
     bool=bool.AND.(self%dim==product(Dims))
   end function is_valid_block
+
+
+  function okey_block(self,iorb,ispin,isite) result(string)
+    class(block)                 :: self
+    integer                      :: iorb
+    integer,optional             :: ispin,isite
+    integer                      :: isite_,ispin_
+    character(len=:),allocatable :: string
+    ispin_=0;if(present(ispin))ispin_=ispin
+    isite_=0;if(present(isite))isite_=isite
+    !
+    string = okey(iorb,ispin_,isite_)
+    !
+  end function okey_block
 
 
 
@@ -339,14 +354,15 @@ program testBLOCKS
   type(sectors_list)               :: sect
   type(tbasis)                     :: sz_basis
   integer                          :: i
-  real(8),dimension(2,2),parameter :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-  real(8),dimension(2,2),parameter :: Sz=dble(pauli_z)
-  real(8),dimension(2,2),parameter :: Sx=dble(pauli_x)
-  real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
-  real(8),dimension(4,4)           :: Gamma13,Gamma03
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
 
+  
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(eye(2),Sz)
+  Gamma03=kron(id(2),Sz)
 
 
   sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)

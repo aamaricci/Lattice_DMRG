@@ -27,10 +27,10 @@ program heisenberg_1d
   select case(SUN)
   case default;stop "SU(N) Spin. Allowed values N=2,3 => Spin 1/2, Spin 1"
   case(2)
-     dot = spin_onehalf_site(hvec)
+     dot = spin_onehalf_site(one*hvec)
      call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot)
   case(3)
-     dot = spin_one_site(Hvec)
+     dot = spin_one_site(one*Hvec)
      call init_dmrg(heisenberg_1d_model,target_Sz,ModelDot=Dot)
   end select
 
