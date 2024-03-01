@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,eye,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.)
+  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one
   USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
@@ -23,6 +23,7 @@ MODULE SITES
      procedure,pass     :: set_basis   => set_basis_site
      procedure,pass     :: show        => show_site
      procedure,pass     :: is_valid    => is_valid_site
+     procedure,pass     :: okey        => okey_site
   end type site
 
 
@@ -36,7 +37,10 @@ MODULE SITES
      module procedure :: equality_site
   end interface assignment(=)
 
-
+  interface spin_onehalf_site
+     module procedure :: pauli_site
+  end interface spin_onehalf_site
+  
   public :: site
   public :: pauli_site
   public :: spin_onehalf_site
@@ -44,9 +48,12 @@ MODULE SITES
   public :: hubbard_site
   public :: assignment(=)
 
+  
   integer :: i
 
 contains
+
+
 
 
   !##################################################################
@@ -113,9 +120,9 @@ contains
   !PURPOSE:  Load a dense operator in the site dictionary
   !+------------------------------------------------------------------+
   subroutine load_op_site(self,key,op)
-    class(site)                       :: self
-    character(len=*),intent(in)       :: key
-    real(8),dimension(:,:),intent(in) :: op
+    class(site)                          :: self
+    character(len=*),intent(in)          :: key
+    complex(8),dimension(:,:),intent(in) :: op
     call self%operators%load(str(key),op)
   end subroutine load_op_site
 
@@ -183,7 +190,18 @@ contains
   end function is_valid_site
 
 
-
+  function okey_site(self,iorb,ispin,isite) result(string)
+    class(site)                  :: self
+    integer                      :: iorb
+    integer,optional             :: isite,ispin
+    integer                      :: isite_,ispin_
+    character(len=:),allocatable :: string
+    ispin_=0;if(present(ispin))ispin_=ispin
+    isite_=0;if(present(isite))isite_=isite
+    !
+    string = okey(iorb,ispin_,isite_)
+    !
+  end function okey_site
 
 
   !##################################################################
@@ -218,11 +236,11 @@ contains
   !##################################################################
   !##################################################################
   function pauli_site(hvec) result(self)
-    real(8),dimension(3),optional :: hvec
-    type(site)                    :: self
-    real(8),dimension(2,2)        :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-    real(8),dimension(2,2)        :: Szeta=reshape([1d0,0d0,0d0,-1d0]/2,[2,2])
-    real(8),dimension(2,2)        :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
+    complex(8),dimension(3),optional :: hvec
+    type(site)                       :: self
+    complex(8),dimension(2,2)        :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+    complex(8),dimension(2,2)        :: Szeta=reshape([one,zero,zero,-one]/2,[2,2])
+    complex(8),dimension(2,2)        :: Splus=reshape([zero,zero,one,zero],[2,2])
     call self%free()
     self%Dim = 2
     if(present(hvec))then
@@ -236,40 +254,21 @@ contains
   end function pauli_site
 
 
-  function spin_onehalf_site(hvec) result(self)
-    real(8),dimension(3),optional :: hvec
-    type(site)                    :: self
-    real(8),dimension(2,2)        :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-    real(8),dimension(2,2)        :: Szeta=reshape([1d0,0d0,0d0,-1d0]/2,[2,2])
-    real(8),dimension(2,2)        :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
-    call self%free()
-    self%Dim = 2
-    if(present(hvec))then
-       Hzero = Hzero+hvec(1)*pauli_x+hvec(3)*pauli_z
-    endif
-    call self%put("H",sparse(Hzero))
-    call self%put("Sz",sparse(Szeta))
-    call self%put("Sp",sparse(Splus))
-    allocate(self%sectors(1))
-    self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
-  end function spin_onehalf_site
-
-
   function spin_one_site(hvec) result(self)
-    real(8),dimension(3),optional :: hvec
+    complex(8),dimension(3),optional :: hvec
     type(site)                        :: self
-    real(8),dimension(3,3)            :: Hzero
-    real(8),dimension(3,3)            :: Szeta
-    real(8),dimension(3,3)            :: Splus
-    real(8),dimension(3,3)            :: Sx=&
-         reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
-    Hzero = 0d0
-    Szeta = diag([1d0,0d0,-1d0])
+    complex(8),dimension(3,3)            :: Hzero
+    complex(8),dimension(3,3)            :: Szeta
+    complex(8),dimension(3,3)            :: Splus
+    complex(8),dimension(3,3)            :: Sx=&
+         reshape([zero,one,zero,one,zero,one,zero,one,zero],[3,3])/sqrt(2d0)
+    Hzero = zero
+    Szeta = diag([one,zero,-one])
     if(present(hvec))then
        Hzero = Hzero+hvec(1)*Sx+hvec(3)*Szeta
     endif
     !
-    Splus = 0d0
+    Splus = zero
     Splus(1,2) = sqrt(2d0)
     Splus(2,3) = sqrt(2d0)
     !
@@ -285,31 +284,38 @@ contains
 
   !Fock = [|0,0>,|1,0>,|0,1>,|1,1>] <- |up,dw> <- cycle UP first 1_dw x 1_up
   function hubbard_site(hloc) result(self)
-    real(8),dimension(Nspin,Norb,Norb),optional :: hloc  
-    real(8),dimension(Nspin,Norb,Norb)          :: hloc_
-    type(site)                                  :: self
-    real(8)                                     :: uloc
-    real(8)                                     :: xmu
-    real(8),dimension(:,:),allocatable          :: H
-    real(8),dimension(:,:),allocatable          :: Cup,Cdw,Cp
+    complex(8),dimension(Nspin*Norb,Nspin*Norb),optional :: hloc  
+    complex(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
+    type(site)                                           :: self
+    integer,dimension(:),allocatable                     :: Basis
+    complex(8),dimension(:,:),allocatable                :: H
+    complex(8),dimension(:,:),allocatable                :: Op
+    integer                                              :: iorb,ispin
+    character(len=:),allocatable                         :: key
     !
-    print*,Nspin,Norb,size(hloc_)
-    hloc_ = zeros(Nspin,Norb,Norb);if(present(hloc))hloc_=hloc
+    hloc_ = zeros(Nspin*Norb,Nspin*Norb);if(present(hloc))hloc_=hloc
     !
-    call Init_LocalFock_Sectors()
-    !
-    H   = build_Hlocal_operator(hloc_)
-    Cp  = build_C_operator(1,1);Cup=KId(1).kx.Cp
-    Cp  = build_C_operator(1,2);Cdw=Cp.kx.KSz(1)
+    call Init_LocalFock_Space(Norb)
     !
     call self%free()
-    self%Dim = 4
+    self%Dim = 4**Norb
+    !Set local H operator
+    H   = build_Hlocal_operator(hloc_)
     call self%put("H",sparse(H))
-    call self%put("Cup",sparse(Cup))
-    call self%put("Cdw",sparse(Cdw))
-    call self%put("P",sparse(kSz(2)))
+    !Set all the other C operators (Cdg obtained by H.C.)
+    do ispin=1,2
+       do iorb=1,Norb
+          Op = build_C_operator(iorb,ispin)
+          Key= "C"//self%okey(1,iorb,ispin)
+          call self%put(Key,sparse(Op))
+       enddo
+    enddo
+    call self%put("P",sparse(kSz(2*Norb)))
+    !
+    !Build QN for the local basis:
     allocate(self%sectors(1))
-    self%sectors(1) = sectors_list( tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2) )    
+    Basis = Build_BasisStates()
+    self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
   end function hubbard_site
 
 
@@ -347,16 +353,16 @@ program testSITES
   implicit none
 
 
-  type(site)                       :: my_site,a,b
-  type(tbasis)                     :: sz_basis
-  real(8),dimension(2,2),parameter :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-  real(8),dimension(2,2),parameter :: Sz=dble(pauli_z)
-  real(8),dimension(2,2),parameter :: Sx=dble(pauli_x)
-  real(8),dimension(2,2),parameter :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
-  real(8),dimension(4,4)           :: Gamma13,Gamma03
+  type(site)                          :: my_site,a,b
+  type(tbasis)                        :: sz_basis
+  complex(8),dimension(2,2),parameter :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)           :: Gamma13,Gamma03
 
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(eye(2),Sz)
+  Gamma03=kron(id(2),Sz)
 
   sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)
 

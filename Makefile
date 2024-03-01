@@ -34,35 +34,36 @@ test: hlocal matrix_sparse matrix_blocks tuples sectors operators sites blocks
 
 
 hlocal: FLAG=$(DFLAG)
-hlocal: MYOBJ=VERSION.o INPUT_VARS.o
-hlocal: version VERSION.o INPUT_VARS.o
+hlocal: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o
+hlocal: version VERSION.o INPUT_VARS.o AUX_FUNCS.o
 	${FC} $(FLAG) -D_TEST $(MYOBJ) HLOCAL.f90 -o $(HOME)/.bin/testHLOCAL ${SF_INC} ${SF_LIB}
 
 matrix_sparse: FLAG=$(DFLAG)
-matrix_sparse: MYOBJ=AUX_FUNCS.o 
-matrix_sparse: version AUX_FUNCS.o
+matrix_sparse: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
+matrix_sparse: version VERSION.o INPUT_VARS.o AUX_FUNCS.o
 	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_SPARSE.f90 -o $(HOME)/.bin/testMATRIX_SPARSE ${SF_INC} ${SF_LIB}
 
 tuples: FLAG=$(DFLAG)
-tuples: MYOBJ=AUX_FUNCS.o
-tuples: version AUX_FUNCS.o
+tuples: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o
+tuples: version VERSION.o INPUT_VARS.o AUX_FUNCS.o
 	${FC} $(FLAG) -D_TEST ${MYOBJ}  TUPLE_BASIS.f90 -o $(HOME)/.bin/testTUPLE_BASIS ${SF_INC} ${SF_LIB}
 
 
 sectors: FLAG=$(DFLAG)
-sectors: MYOBJ=AUX_FUNCS.o TUPLE_BASIS.o 
-sectors: version AUX_FUNCS.o TUPLE_BASIS.o
+sectors: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o 
+sectors: version VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o
 	${FC} $(FLAG) -D_TEST ${MYOBJ} LIST_SECTORS.f90 -o $(HOME)/.bin/testLIST_SECTORS ${SF_INC} ${SF_LIB}
 
-operators: FLAG=$(DFLAG)
-operators: MYOBJ=AUX_FUNCS.o MATRIX_SPARSE.o
-operators: version AUX_FUNCS.o MATRIX_SPARSE.o
-	${FC} $(FLAG) -D_TEST ${MYOBJ} LIST_OPERATORS.f90 -o $(HOME)/.bin/testLIST_OPERATORS ${SF_INC} ${SF_LIB}
-
 matrix_blocks: FLAG=$(DFLAG)
-matrix_blocks: MYOBJ=AUX_FUNCS.o  TUPLE_BASIS.o LIST_SECTORS.o 
-matrix_blocks: version AUX_FUNCS.o  TUPLE_BASIS.o  LIST_SECTORS.o 
+matrix_blocks: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o LIST_SECTORS.o MATRIX_SPARSE.o
+matrix_blocks: version VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o  LIST_SECTORS.o MATRIX_SPARSE.o 
 	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_BLOCKS.f90 -o $(HOME)/.bin/testMATRIX_BLOCKS ${SF_INC} ${SF_LIB}
+
+
+operators: FLAG=$(DFLAG)
+operators: MYOBJ= VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
+operators: version VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
+	${FC} $(FLAG) -D_TEST ${MYOBJ} LIST_OPERATORS.f90 -o $(HOME)/.bin/testLIST_OPERATORS ${SF_INC} ${SF_LIB}
 
 
 sites: FLAG=$(DFLAG)
