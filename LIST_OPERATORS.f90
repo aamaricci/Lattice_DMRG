@@ -183,9 +183,9 @@ contains
   !PURPOSE:  Load a dense matrix as operator in the operators_list
   !+------------------------------------------------------------------+
   subroutine load_operators_list(self,key,op)
-    class(operators_list),intent(inout) :: self
-    character(len=*),intent(in)         :: key
-    real(8),dimension(:,:),intent(in)   :: op
+    class(operators_list),intent(inout)  :: self
+    character(len=*),intent(in)          :: key
+    complex(8),dimension(:,:),intent(in) :: op
     if(.not.associated(self%root))allocate(self%root)
     call self%put(key,as_sparse(op))
   end subroutine load_operators_list
@@ -376,11 +376,11 @@ contains
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
   function dump_op_operators_list(self,key) result(matrix)
-    class(operators_list),intent(inout) :: self
-    character(len=*),intent(in)         :: key
-    real(8),dimension(:,:),allocatable  :: matrix
-    type(optype),pointer                :: c
-    logical                             :: ifound
+    class(operators_list),intent(inout)   :: self
+    character(len=*),intent(in)           :: key
+    complex(8),dimension(:,:),allocatable :: matrix
+    type(optype),pointer                  :: c
+    logical                               :: ifound
     !
     if(allocated(matrix))deallocate(matrix)
     !
@@ -509,7 +509,7 @@ contains
        write(*,"(A6,I12)")  "Index:",c%index
        write(*,"(A6,A)")"Key  :",str(c%ckey)
        write(*,*)"Op  :"
-       call c%ope%display()!(fmt=fmt_)
+       call c%ope%display()
        write(*,*)""
        c => c%next
     end do
@@ -568,19 +568,19 @@ program testOPERATORS_TUPLE
   USE LIST_OPERATORS
   implicit none
 
-  type(operators_list)               :: my_list,a_list
-  type(operators_list)               :: copy_list,clist(2)
-  type(sparse_matrix)                :: spSz,spSp,spH,spK,a,b,c
-  real(8),dimension(:,:),allocatable :: mat
-  integer                            :: i,j,n
-  logical                            :: bool
-  real(8),dimension(2,2),parameter   :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-  real(8),dimension(2,2),parameter   :: Sz=dble(pauli_z)
-  real(8),dimension(2,2),parameter   :: Sx=dble(pauli_x)
-  real(8),dimension(2,2),parameter   :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
-  real(8),dimension(4,4)             :: Gamma13,Gamma03
-  character(len=10) :: key
-  character(len=10),allocatable :: keys(:)
+  type(operators_list)                  :: my_list,a_list
+  type(operators_list)                  :: copy_list,clist(2)
+  type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
+  complex(8),dimension(:,:),allocatable :: mat
+  integer                               :: i,j,n
+  logical                               :: bool
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+  character(len=10)                     :: key
+  character(len=10),allocatable         :: keys(:)
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(eye(2),Sz)

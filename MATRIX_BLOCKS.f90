@@ -7,24 +7,24 @@ MODULE MATRIX_BLOCKS
 
   !BLOCK MATRIX COMPONENT
   type block_type
-     integer                            :: index=0
-     real(8),dimension(:),allocatable   :: qn
-     real(8),dimension(:),allocatable   :: E
-     integer,dimension(:),allocatable   :: map
-     real(8),dimension(:,:),allocatable :: M
-     type(block_type),pointer           :: next=>null()
+     integer                               :: index=0
+     real(8),dimension(:),allocatable      :: qn
+     real(8),dimension(:),allocatable      :: E
+     integer,dimension(:),allocatable      :: map
+     complex(8),dimension(:,:),allocatable :: M
+     type(block_type),pointer              :: next=>null()
   end type block_type
 
 
   !BLOCK MATRIX STRUCTURE
   type blocks_matrix
-     integer                          :: Nblock=0
-     integer                          :: Nrow=0
-     integer                          :: Ncol=0
-     real(8),dimension(:),allocatable :: evalues
-     integer,dimension(:),allocatable :: eorder
-     logical                          :: diag=.false.
-     type(block_type),pointer         :: root=>null()
+     integer                               :: Nblock=0
+     integer                               :: Nrow=0
+     integer                               :: Ncol=0
+     real(8),dimension(:),allocatable      :: evalues
+     integer,dimension(:),allocatable      :: eorder
+     logical                               :: diag=.false.
+     type(block_type),pointer              :: root=>null()
    contains
      procedure,pass :: free   => free_blocks_matrix
      procedure,pass :: load   => load_blocks_matrix
@@ -123,10 +123,10 @@ contains
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
   function construct_blocks_matrix(matrix,qn,map) result(self)
-    real(8),dimension(:,:),intent(in) :: matrix
-    real(8),dimension(:),intent(in)   :: qn
-    integer,dimension(:)              :: map
-    type(blocks_matrix)               :: self
+    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:),intent(in)      :: qn
+    integer,dimension(:)                 :: map
+    type(blocks_matrix)                  :: self
     call self%free()
     allocate(self%root)
     call self%append(matrix,qn,map)
@@ -137,10 +137,10 @@ contains
   !PURPOSE: load a block matrix into a block one
   !+------------------------------------------------------------------+
   subroutine load_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:)               :: qn
-    integer,dimension(:)               :: map
-    real(8),dimension(:,:),intent(in)  :: matrix
+    class(blocks_matrix),intent(inout)   :: self
+    real(8),dimension(:)                 :: qn
+    integer,dimension(:)                 :: map
+    complex(8),dimension(:,:),intent(in) :: matrix
     call self%free()
     allocate(self%root)
     call self%append(matrix,qn,map)
@@ -153,7 +153,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine free_blocks_matrix(self)    
     class(blocks_matrix),intent(inout) :: self
-    type(block_type),pointer          :: p,c
+    type(block_type),pointer           :: p,c
     if(.not.associated(self%root))return
     do
        p => self%root
@@ -192,12 +192,12 @@ contains
   !PURPOSE:  Append a block
   !+------------------------------------------------------------------+
   subroutine append_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:,:),intent(in)  :: matrix
-    real(8),dimension(:),intent(in)    :: qn
-    integer,dimension(:)               :: map
-    integer                            :: Dim
-    type(block_type),pointer           :: p,c
+    class(blocks_matrix),intent(inout)   :: self
+    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:),intent(in)      :: qn
+    integer,dimension(:)                 :: map
+    integer                              :: Dim
+    type(block_type),pointer             :: p,c
     !    
     if(.not.associated(self%root))allocate(self%root)
     !
@@ -236,13 +236,13 @@ contains
   !PURPOSE:  PUSH a block
   !+------------------------------------------------------------------+
   subroutine push_blocks_matrix(self,matrix,qn,map)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:,:),intent(in)  :: matrix
-    real(8),dimension(:),intent(in)    :: qn
-    integer,dimension(:)               :: map
-    logical                            :: iupdate
-    type(block_type),pointer           :: p,c
-    integer                            :: Dim
+    class(blocks_matrix),intent(inout)   :: self
+    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:),intent(in)      :: qn
+    integer,dimension(:)                 :: map
+    logical                              :: iupdate
+    type(block_type),pointer             :: p,c
+    integer                              :: Dim
     !    
     if(.not.associated(self%root))allocate(self%root)
     !
@@ -292,12 +292,12 @@ contains
   !PURPOSE: get 
   !+------------------------------------------------------------------+
   function get_block_blocks_matrix(self,index,m) result(matrix)
-    class(blocks_matrix)               :: self
-    integer,optional                   :: index,m
-    real(8),dimension(:,:),allocatable :: matrix
-    integer                            :: index_,m_
-    logical                            :: ifound
-    type(block_type),pointer           :: c
+    class(blocks_matrix)                  :: self
+    integer,optional                      :: index,m
+    complex(8),dimension(:,:),allocatable :: matrix
+    integer                               :: index_,m_
+    logical                               :: ifound
+    type(block_type),pointer              :: c
     !    
     index_=1
     if(present(index))then
@@ -422,11 +422,11 @@ contains
   !PURPOSE: get the element value at position (i,j) in the block matrix
   !+------------------------------------------------------------------+
   function get_index_blocks_matrix(self,qn) result(index)
-    class(blocks_matrix)                        :: self
+    class(blocks_matrix)            :: self
     real(8),dimension(:),intent(in) :: qn
-    integer                                     :: index
-    logical                                     :: ifound
-    type(block_type),pointer                    :: c
+    integer                         :: index
+    logical                         :: ifound
+    type(block_type),pointer        :: c
     !
     !qn does not exist: return with index=0
     index=0
@@ -452,11 +452,11 @@ contains
   !PURPOSE: dump a block matrix into a regular 2dim array
   !+------------------------------------------------------------------+
   function dump_blocks_matrix(self) result(matrix)
-    class(blocks_matrix),intent(inout) :: self
-    real(8),dimension(:,:),allocatable :: matrix,mtmp
-    integer                            :: Offset1,Offset2
-    integer                            :: N1,N2
-    type(block_type),pointer           :: c
+    class(blocks_matrix),intent(inout)    :: self
+    complex(8),dimension(:,:),allocatable :: matrix,mtmp
+    integer                               :: Offset1,Offset2
+    integer                               :: N1,N2
+    type(block_type),pointer              :: c
     if(allocated(matrix))deallocate(matrix)
     allocate(matrix(self%Nrow,self%Ncol));matrix=0d0
     Offset1=0
@@ -492,12 +492,12 @@ contains
   !PURPOSE: dump a sparse matrix into a regular 2dim array
   !+------------------------------------------------------------------+
   function as_sparse_blocks_matrix(self) result(sparse)
-    class(blocks_matrix),intent(inout) :: self
-    type(sparse_matrix)                :: sparse
-    integer,dimension(2)               :: dims
-    integer                            :: i,it
-    real(8),dimension(:),allocatable   :: self_vec
-    integer,dimension(:),allocatable   :: self_map
+    class(blocks_matrix),intent(inout)  :: self
+    type(sparse_matrix)                 :: sparse
+    integer,dimension(2)                :: dims
+    integer                             :: i,it
+    complex(8),dimension(:),allocatable :: self_vec
+    integer,dimension(:),allocatable    :: self_map
     !dims = shape(self)
     dims = self%shape()
     call sparse%init(dims(1),dims(2))
@@ -529,13 +529,13 @@ contains
   !PURPOSE: dump a sparse matrix into a regular 2dim array
   !+------------------------------------------------------------------+
   function sparse_blocks_matrix(self,n,m) result(sparse)
-    class(blocks_matrix),intent(inout) :: self
-    integer                            :: n,m
-    type(sparse_matrix)                :: sparse
-    integer,dimension(2)               :: dims
-    integer                            :: i,it
-    real(8),dimension(:),allocatable   :: self_vec
-    integer,dimension(:),allocatable   :: self_map
+    class(blocks_matrix),intent(inout)  :: self
+    integer                             :: n,m
+    type(sparse_matrix)                 :: sparse
+    integer,dimension(2)                :: dims
+    integer                             :: i,it
+    complex(8),dimension(:),allocatable :: self_vec
+    integer,dimension(:),allocatable    :: self_map
     ! dims = shape(self)
     ! m_=dims(2);if(present(m))m_=m
     ! if(m_<1.OR.m_>dims(2))stop "as_sparse_truncate_blocks_matrix ERROR: m<1 OR m>size(self,2)"
@@ -651,11 +651,11 @@ contains
   !PURPOSE: 
   !+------------------------------------------------------------------+
   function evec_blocks_matrix(self,m) result(vec)
-    class(blocks_matrix)             :: self
-    integer                          :: m
-    real(8),dimension(:),allocatable :: vec
-    integer                          :: m_,i,q,pos
-    type(block_type),pointer         :: c
+    class(blocks_matrix)                :: self
+    integer                             :: m
+    complex(8),dimension(:),allocatable :: vec
+    integer                             :: m_,i,q,pos
+    type(block_type),pointer            :: c
     !
     ! if(.not.self%diag)stop "Evec_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
     !
@@ -842,10 +842,10 @@ contains
   !PURPOSE:  Returns True is qn exists, False otherwise
   !+------------------------------------------------------------------+
   function has_qn_blocks_matrix(self, qn) result(bool)
-    class(blocks_matrix),intent(inout)          :: self
-    real(8),dimension(:),intent(in) :: qn
-    type(block_type),pointer                    :: c
-    logical                                     :: bool
+    class(blocks_matrix),intent(inout) :: self
+    real(8),dimension(:),intent(in)    :: qn
+    type(block_type),pointer           :: c
+    logical                            :: bool
     bool=.false.
     c => self%root%next
     do                            !traverse the list until index is found
@@ -869,28 +869,21 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE: show matrix
   !+------------------------------------------------------------------+
-  subroutine show_blocks_matrix(self,dble,fmt,file)
+  subroutine show_blocks_matrix(self,fmt,file)
     class(blocks_matrix),intent(in) :: self
     character(len=*),optional       :: fmt
-    logical,optional                :: dble
     character(len=*),optional       :: file
     character(len=12)               :: fmt_
-    logical                         :: dble_
     integer                         :: i,j,unit_
     character(len=64)               :: format
-    real(8)                         :: val
+    complex(8)                      :: val
     type(block_type),pointer        :: c
     !
     unit_=6
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
-    dble_=show_dble;if(present(dble))dble_=dble
     if(present(file))open(free_unit(unit_),file=str(file))
     !
-    if(dble_)then
-       format='('//str(fmt_)//',1x)'
-    else       
-       format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
-    endif
+    format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
     !
     write(*,"(A6,I12)")"Size :",size(self)
     write(*,"(A6,2I6)")"Shape:",shape(self)
@@ -907,7 +900,7 @@ contains
        do i=1,size(c%M,1)
           do j=1,size(c%M,2)
              val = c%M(i,j)
-             write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')val
+             write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
           enddo
           write(unit_,*)
        enddo
@@ -929,7 +922,7 @@ contains
   function dgr_blocks_matrix(a) result(adg)
     class(blocks_matrix), intent(in) :: a
     type(blocks_matrix)              :: adg
-    integer                               :: i    
+    integer                          :: i    
     call adg%free()
     do i=1,size(a)
        call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
@@ -939,7 +932,7 @@ contains
   function transpose_blocks_matrix(a) result(adg)
     class(blocks_matrix), intent(in) :: a
     type(blocks_matrix)              :: adg
-    integer                               :: i    
+    integer                          :: i    
     call adg%free()
     do i=1,size(a)
        call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
@@ -987,23 +980,23 @@ program testBLOCK_MATRICES
   implicit none
 
 
-  type(blocks_matrix)                :: blH,a,adg,bvec(3)
-  type(tbasis)                       :: a_basis
-  type(sectors_list)                 :: a_sector
-  integer,dimension(:),allocatable   :: a_map
-  real(8),dimension(:,:),allocatable :: Matrix
-  real(8),dimension(:),allocatable   :: Vec
-  real(8),dimension(:),allocatable   :: evals
-  integer,dimension(:),allocatable   :: eorder,Dq
-  integer                            :: i,j,q,N,count
-  real(8),dimension(2,2),parameter   :: Hzero=reshape([0d0,0d0,0d0,0d0],[2,2])
-  real(8),dimension(2,2),parameter   :: Sz=dble(pauli_z)
-  real(8),dimension(2,2),parameter   :: Sx=dble(pauli_x)
-  real(8),dimension(2,2),parameter   :: Splus=reshape([0d0,0d0,1d0,0d0],[2,2])
-  real(8),dimension(4,4)             :: Gamma13,Gamma03
+  type(blocks_matrix)                   :: blH,a,adg,bvec(3)
+  type(tbasis)                          :: a_basis
+  type(sectors_list)                    :: a_sector
+  integer,dimension(:),allocatable      :: a_map
+  complex(8),dimension(:,:),allocatable :: Matrix
+  complex(8),dimension(:),allocatable   :: Vec
+  real(8),dimension(:),allocatable      :: evals
+  integer,dimension(:),allocatable      :: eorder,Dq
+  integer                               :: i,j,q,N,count
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
 
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(eye(2),Sz)
+  Gamma03=kron(zeye(2),Sz)
 
   !Here we create a fake basis, a fake sector to use when building block_matrices
   a_basis  = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
@@ -1011,7 +1004,7 @@ program testBLOCK_MATRICES
 
   print*,"test CONSTRUCTOR 1: block_matrix(matrix)"
   a = blocks_matrix(Sz,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
-  call a%show(dble=.true.)
+  call a%show()
   print*,"shape a:",shape(a)
   call a%free()
   print*,""
@@ -1019,14 +1012,14 @@ program testBLOCK_MATRICES
 
   print*,"test CONSTRUCTOR 2: load(matrix)"
   call blH%load(Sx,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
-  call blH%show(dble=.true.)
+  call blH%show()
   call blH%free()
   print*,""
 
   print*,"test CONSTRUCTOR 3: append (two elements [2x2],[4x4])"
-  call a%append(eye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
-  call a%append(kron(eye(2),Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
-  call a%show(dble=.true.)
+  call a%append(zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  call a%append(kron(zeye(2),Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
+  call a%show()
   bvec(1)=a
   call a%free()
   print*,""
@@ -1034,10 +1027,10 @@ program testBLOCK_MATRICES
 
 
   print*,"test GET BLOCK MATRIX:"
-  call a%load(eye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  call a%load(zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%append(kron(Sz,Sx),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
   bvec(2)=a
-  call a%show(dble=.true.)
+  call a%show()
   matrix = a%block(index=2)
   do i=1,4
      write(*,"(100F5.2)")(matrix(i,j),j=1,4)
@@ -1058,11 +1051,11 @@ program testBLOCK_MATRICES
 
   print*,"test EQUALITY:"
   call a%load(Sx,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
-  call a%append(kron(eye(2),Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
-  call a%show(dble=.true.)
+  call a%append(kron(zeye(2),Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
+  call a%show()
   blH = a
   bvec(3)=a
-  call blH%show(dble=.true.)
+  call blH%show()
   call a%free()
   call blH%free()
   print*,""
@@ -1078,7 +1071,7 @@ program testBLOCK_MATRICES
 
 
   print*,"test PUSH:"
-  a = as_blocks(eye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  a = as_blocks(zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%show()  
   call a%push(kron(Sx,Sz),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
   call a%push(Sx,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
@@ -1090,7 +1083,7 @@ program testBLOCK_MATRICES
   print*,""
 
   print*,"test DGR:"
-  a = blocks_matrix(reshape([0d0,0d0,1d0,0d0],[2,2]),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  a = blocks_matrix(reshape([zero,zero,one,zero],[2,2]),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%append(kron(Splus,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
   call a%show()
   adg = a%dgr()
@@ -1102,7 +1095,7 @@ program testBLOCK_MATRICES
 
 
   print*,"test EIGH:"
-  call a%append(mersenne()*eye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  call a%append(mersenne()*zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%append(mersenne()*Sx,qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
   call a%append(mersenne()*Sz,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
   call a%append(mersenne()*kron(Sz,Sx),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
@@ -1110,7 +1103,7 @@ program testBLOCK_MATRICES
   print*,""
   call a%eigh(sort=.true.,reverse=.true.,order=eorder)
   print*,"E,V:"
-  call a%show(dble=.true.)
+  call a%show()
   print*,""
   evals = a%evals()
   write(*,"(A3,100I12)")"O:",arange(1,size(evals))

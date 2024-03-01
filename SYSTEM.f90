@@ -197,11 +197,10 @@ contains
     integer                            :: i,j,iqn,Ncv,im,unit,current_L    
     integer,dimension(:),allocatable   :: sys_map,env_map,sb_map
     real(8),dimension(:),allocatable   :: sb_qn,qn
-    real(8),dimension(:),allocatable   :: rho_vec
     real(8),dimension(:),allocatable   :: evals
-    real(8),dimension(:,:),allocatable :: Hsb
+    complex(8),dimension(:,:),allocatable :: Hsb
     real(8),dimension(:),allocatable   :: eig_values
-    real(8),dimension(:,:),allocatable :: eig_basis
+    complex(8),dimension(:,:),allocatable :: eig_basis
     integer,dimension(:),allocatable   :: sb_states
     type(tbasis)                       :: sys_basis,env_basis
     type(sparse_matrix)                :: trRho_sys,trRho_env
@@ -384,7 +383,6 @@ contains
     if(allocated(sb_map))deallocate(sb_map)
     if(allocated(sb_qn))deallocate(sb_qn)
     if(allocated(qn))deallocate(qn)
-    if(allocated(rho_vec))deallocate(rho_vec)
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
     ! if(allocated(evals_sys))deallocate(evals_sys)
@@ -746,11 +744,11 @@ contains
 
 
   function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)
-    integer                            :: Nsys,Nenv
-    real(8),dimension(:)               :: psi
-    integer,dimension(nsys*nenv)       :: map
-    character(len=*)                   :: direction
-    real(8),dimension(:,:),allocatable :: psi_mat
+    integer                               :: Nsys,Nenv
+    complex(8),dimension(:)               :: psi
+    integer,dimension(nsys*nenv)          :: map
+    character(len=*)                      :: direction
+    complex(8),dimension(:,:),allocatable :: psi_mat
     if(allocated(psi_mat))deallocate(psi_mat)
     select case(to_lower(str(direction)))
     case ('left','l')
@@ -764,12 +762,12 @@ contains
 
 
   function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
-    integer                            :: Nsys,Nenv
-    real(8),dimension(:)               :: psi
-    integer,dimension(nsys*nenv)       :: map
-    character(len=*)                   :: direction
-    real(8),dimension(:,:),allocatable :: rho
-    real(8),dimension(nsys,nenv)       :: psi_tmp
+    integer                               :: Nsys,Nenv
+    complex(8),dimension(:)               :: psi
+    integer,dimension(nsys*nenv)          :: map
+    character(len=*)                      :: direction
+    complex(8),dimension(:,:),allocatable :: rho
+    complex(8),dimension(nsys,nenv)       :: psi_tmp
     !
     if(allocated(rho))deallocate(rho)
     !
@@ -860,11 +858,11 @@ contains
 
 
   subroutine sb_HxV(Nloc,v,Hv)
-    integer                 :: Nloc
-    real(8),dimension(Nloc) :: v
-    real(8),dimension(Nloc) :: Hv
-    real(8)                 :: val
-    integer                 :: i,j,jcol
+    integer                    :: Nloc
+    complex(8),dimension(Nloc) :: v
+    complex(8),dimension(Nloc) :: Hv
+    complex(8)                 :: val
+    integer                    :: i,j,jcol
     Hv=0d0
     do i=1,Nloc
        matmul: do jcol=1, spHsb%row(i)%Size

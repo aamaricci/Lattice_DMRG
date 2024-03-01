@@ -1,6 +1,6 @@
 MODULE AUX_FUNCS
   USE INPUT_VARS
-  USE SCIFOR, only: free_unit,str,to_lower
+  USE SCIFOR, only: free_unit,str,to_lower,one,zero
   implicit none
   private
 
@@ -22,16 +22,41 @@ MODULE AUX_FUNCS
   public :: append
   public :: add_to
   public :: binary_search
-  public :: KId
   public :: KSz
   public :: fopen
   public :: cumulate
   public :: label_dmrg
-  
+  public :: okey
+
+
   logical,parameter,public           :: show_dble=.true.
   character(len=12),parameter,public :: show_fmt='F9.3'
 
 contains
+
+
+
+  function okey(iorb,ispin,isite) result(string)
+    integer                      :: iorb
+    integer,optional             :: isite,ispin
+    integer                      :: isite_,ispin_
+    character(len=:),allocatable :: string,str_orb,str_spin,str_site
+    ispin_=0;if(present(ispin))ispin_=ispin
+    isite_=0;if(present(isite))isite_=isite
+    str_orb ="_l"//str(iorb)
+    !
+    select case(ispin_)
+    case default;str_spin = "_s"//str(ispin_)
+    case (0)    ;str_spin=""
+    end select
+    !
+    select case(isite_)
+    case default;str_site = "_i"//str(isite_,npad=4)
+    case (0)    ;str_site=""
+    end select
+    !
+    string = trim(str_orb)//trim(str_spin)//trim(str_site)
+  end function okey
 
 
 
@@ -47,22 +72,22 @@ contains
     enddo
   end function cumulate
 
-  function KId(n) result(A)
-    integer, intent(in) :: n
-    real(8)             :: A(2**n, 2**n)
-    integer             :: i
-    A = 0d0
-    forall(i=1:2**n)A(i,i) = 1d0
-  end function KId
+  ! function KId(n) result(A)
+  !   integer, intent(in) :: n
+  !   real(8)             :: A(2**n, 2**n)
+  !   integer             :: i
+  !   A = 0d0
+  !   forall(i=1:2**n)A(i,i) = 1d0
+  ! end function KId
 
   recursive function KSz(n) result(A)
     integer, intent(in) :: n
-    real(8)             :: A(2**n, 2**n)
+    complex(8)          :: A(2**n, 2**n)
     integer             :: d(2**n)
     integer             :: i
     d = szvec(n)
-    A = 0d0
-    forall(i=1:2**n)A(i,i) = dble(d(i))
+    A = zero
+    forall(i=1:2**n)A(i,i) = one*d(i)
   end function KSz
 
   recursive function szvec(n) result(vec)

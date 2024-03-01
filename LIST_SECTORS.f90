@@ -73,10 +73,13 @@ MODULE LIST_SECTORS
   public :: dim
   public :: assignment(=)
 
+
+  
+  
 contains
 
 
-
+  
 
 
   !##################################################################
