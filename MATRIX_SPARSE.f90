@@ -115,6 +115,12 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_transpose_matrix
   end interface transpose
 
+  !EXTEND TRANSPOSE TO SPARSE MATRIX
+  interface hconjg
+     module procedure :: sp_hconjg_matrix
+  end interface hconjg
+
+
   intrinsic :: matmul
   interface matmul
      module procedure :: sp_matmul_matrix
@@ -136,6 +142,7 @@ MODULE MATRIX_SPARSE
   public :: sp_kron
   public :: shape
   public :: transpose
+  public :: hconjg
   public :: matmul
   public :: sp_eye
 
@@ -582,12 +589,12 @@ contains
     integer                          :: col
     complex(8)                       :: val
     integer                          :: i,j    
-    call c%init(a%Ncol,a%Nrow)      !tranpose
+    call c%init(a%Ncol,a%Nrow)       !hconjg
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
-          call c%insert(val,col,i)
+          call c%insert(conjg(val),col,i)
        enddo
     enddo
   end function sp_dgr_matrix
@@ -599,7 +606,7 @@ contains
     integer                          :: col
     complex(8)                       :: val
     integer                          :: i,j    
-    call c%init(a%Ncol,a%Nrow)      !tranpose
+    call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
@@ -609,7 +616,24 @@ contains
     enddo
   end function sp_transpose_matrix
 
+  
+  function sp_hconjg_matrix(a) result(c)
+    class(sparse_matrix), intent(in) :: a
+    type(sparse_matrix)              :: c
+    integer                          :: col
+    complex(8)                       :: val
+    integer                          :: i,j    
+    call c%init(a%Ncol,a%Nrow)       !tranpose
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          col = a%row(i)%cols(j)
+          val = a%row(i)%vals(j)
+          call c%insert(conjg(val),col,i)
+       enddo
+    enddo
+  end function sp_hconjg_matrix
 
+  
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix equality spA = spB. Deep copy
   !+------------------------------------------------------------------+
