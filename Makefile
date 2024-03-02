@@ -26,7 +26,7 @@ ddebug: FLAG=$(DDFLAG)
 ddebug: code
 
 code: version $(OBJS)
-	@echo "compiling test_iDMRG"
+	@echo "compiling ${EXE}"
 	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE) ${SF_INC} ${SF_LIB}
 
 

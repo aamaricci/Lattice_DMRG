@@ -551,8 +551,11 @@ contains
 =======
     complex(8),dimension(:),allocatable :: self_vec
     integer,dimension(:),allocatable    :: self_map
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
     !dims = shape(self)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_BLOCKS.f90
     dims = self%shape()
     call sparse%init(dims(1),dims(2))
     do it=1,dims(2)
@@ -1026,11 +1029,15 @@ contains
     integer                          :: i    
     call adg%free()
     do i=1,size(a)
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 #ifdef _CMPLX
        call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 #else
        call adg%append(transpose(a%block(index=i)),a%qn(index=i), a%map(index=i) )
 #endif
+=======
+       call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_BLOCKS.f90
     enddo
   end function dgr_blocks_matrix
 
@@ -1063,6 +1070,16 @@ contains
        call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 #endif
 
+    enddo
+  end function hconjg_blocks_matrix
+
+  function hconjg_blocks_matrix(a) result(adg)
+    class(blocks_matrix), intent(in) :: a
+    type(blocks_matrix)              :: adg
+    integer                          :: i    
+    call adg%free()
+    do i=1,size(a)
+       call adg%append(conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
     enddo
   end function hconjg_blocks_matrix
 

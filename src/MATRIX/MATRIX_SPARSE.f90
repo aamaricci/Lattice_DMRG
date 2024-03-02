@@ -162,6 +162,10 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_hconjg_matrix
   end interface hconjg
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
   intrinsic :: matmul
   interface matmul
      module procedure :: sp_matmul_matrix
@@ -861,17 +865,25 @@ contains
 =======
     complex(8)                       :: val
     integer                          :: i,j    
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     call c%init(a%Ncol,a%Nrow)      !tranpose
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    call c%init(a%Ncol,a%Nrow)       !hconjg
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
           call c%insert(conjg(val),col,i)
 #else
           call c%insert(val,col,i)
 #endif
+=======
+          call c%insert(conjg(val),col,i)
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
        enddo
     enddo
   end function sp_dgr_matrix
@@ -892,8 +904,12 @@ contains
 =======
     complex(8)                       :: val
     integer                          :: i,j    
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     call c%init(a%Ncol,a%Nrow)      !tranpose
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    call c%init(a%Ncol,a%Nrow)       !tranpose
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
@@ -903,7 +919,24 @@ contains
     enddo
   end function sp_transpose_matrix
 
+  
+  function sp_hconjg_matrix(a) result(c)
+    class(sparse_matrix), intent(in) :: a
+    type(sparse_matrix)              :: c
+    integer                          :: col
+    complex(8)                       :: val
+    integer                          :: i,j    
+    call c%init(a%Ncol,a%Nrow)       !tranpose
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          col = a%row(i)%cols(j)
+          val = a%row(i)%vals(j)
+          call c%insert(conjg(val),col,i)
+       enddo
+    enddo
+  end function sp_hconjg_matrix
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   function sp_hconjg_matrix(a) result(c)
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
@@ -929,6 +962,9 @@ contains
   end function sp_hconjg_matrix
 
 
+=======
+  
+>>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix equality spA = spB. Deep copy
   !+------------------------------------------------------------------+
