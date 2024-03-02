@@ -88,7 +88,7 @@ MODULE MATRIX_BLOCKS
   end interface transpose
 
   interface hconjg
-     module procedure :: transpose_blocks_matrix
+     module procedure :: hconjg_blocks_matrix
   end interface hconjg
 
   interface as_sparse
@@ -498,7 +498,6 @@ contains
     integer                             :: i,it
     complex(8),dimension(:),allocatable :: self_vec
     integer,dimension(:),allocatable    :: self_map
-    !dims = shape(self)
     dims = self%shape()
     call sparse%init(dims(1),dims(2))
     do it=1,dims(2)
@@ -925,7 +924,7 @@ contains
     integer                          :: i    
     call adg%free()
     do i=1,size(a)
-       call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+       call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
     enddo
   end function dgr_blocks_matrix
 
@@ -938,6 +937,16 @@ contains
        call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
     enddo
   end function transpose_blocks_matrix
+
+  function hconjg_blocks_matrix(a) result(adg)
+    class(blocks_matrix), intent(in) :: a
+    type(blocks_matrix)              :: adg
+    integer                          :: i    
+    call adg%free()
+    do i=1,size(a)
+       call adg%append(conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+    enddo
+  end function hconjg_blocks_matrix
 
 
   !+------------------------------------------------------------------+
