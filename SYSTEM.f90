@@ -187,26 +187,26 @@ contains
 
 
   subroutine step_dmrg(label,isweep)
-    integer,optional                   :: label,isweep
-    integer                            :: iLabel
-    integer                            :: Mstates
-    real(8)                            :: Estates
-    integer                            :: m_sb,m_s,m_e
-    integer                            :: m_sys,m_env,Nsys,Nenv
-    integer                            :: isys,ienv,isb,m_err(1),m_threshold
-    integer                            :: i,j,iqn,Ncv,im,unit,current_L    
-    integer,dimension(:),allocatable   :: sys_map,env_map,sb_map
-    real(8),dimension(:),allocatable   :: sb_qn,qn
-    real(8),dimension(:),allocatable   :: evals
+    integer,optional                      :: label,isweep
+    integer                               :: iLabel
+    integer                               :: Mstates
+    real(8)                               :: Estates
+    integer                               :: m_sb,m_s,m_e
+    integer                               :: m_sys,m_env,Nsys,Nenv
+    integer                               :: isys,ienv,isb,m_err(1),m_threshold
+    integer                               :: i,j,iqn,Ncv,im,unit,current_L    
+    integer,dimension(:),allocatable      :: sys_map,env_map,sb_map
+    real(8),dimension(:),allocatable      :: sb_qn,qn
+    real(8),dimension(:),allocatable      :: evals
     complex(8),dimension(:,:),allocatable :: Hsb
-    real(8),dimension(:),allocatable   :: eig_values
+    real(8),dimension(:),allocatable      :: eig_values
     complex(8),dimension(:,:),allocatable :: eig_basis
-    integer,dimension(:),allocatable   :: sb_states
-    type(tbasis)                       :: sys_basis,env_basis
-    type(sparse_matrix)                :: trRho_sys,trRho_env
-    type(sectors_list)                 :: sb_sector
-    real(8)                            :: truncation_error_sys,truncation_error_env
-    logical                            :: exist
+    integer,dimension(:),allocatable      :: sb_states
+    type(tbasis)                          :: sys_basis,env_basis
+    type(sparse_matrix)                   :: trRho_sys,trRho_env
+    type(sectors_list)                    :: sb_sector
+    real(8)                               :: truncation_error_sys,truncation_error_env
+    logical                               :: exist
     !
     iLabel=0;if(present(label))iLabel=label
     Mstates=Mdmrg
@@ -254,13 +254,13 @@ contains
     write(LOGfile,"(A,I12,I12))")&
          "Enlarged Blocks dimensions           :", sys%dim,env%dim  
     write(LOGfile,"(A,I12,A1,I12,A1,F10.5,A1)")&
-         "SuperBlock Dimension  (tot)          :", m_sb,"(",m_sys*m_env,")",dble(m_sb)/m_sys/m_env,"%"
+         "SuperBlock Dimension  (tot)          :", m_sb,"(",m_sys*m_env,")",100*dble(m_sb)/m_sys/m_env,"%"
 
 
     !Build SuperBLock Hamiltonian
     call start_timer()
     spHsb = sp_kron(sys%operators%op("H"),id(m_env),sb_states) + &
-         sp_kron(id(m_sys),env%operators%op("H"),sb_states)  + &
+         sp_kron(id(m_sys),env%operators%op("H"),sb_states)    + &
          H2model(sys,env,sb_states)
     call stop_timer("Done H_sb")
     !
@@ -383,6 +383,7 @@ contains
     if(allocated(sb_map))deallocate(sb_map)
     if(allocated(sb_qn))deallocate(sb_qn)
     if(allocated(qn))deallocate(qn)
+    ! if(allocated(rho_vec))deallocate(rho_vec)
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
     ! if(allocated(evals_sys))deallocate(evals_sys)
@@ -607,14 +608,14 @@ contains
        select case(to_lower(str(label)))
        case ("l")
           U   = sys%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
-          Oi  = matmul(U%t(),U).x.Op          !build right-most Op of the block_I as Id(I-1)xOp_I
+          Oi  = matmul(U%dgr(),U).x.Op          !build right-most Op of the block_I as Id(I-1)xOp_I
           U   = sys%omatrices%op(index=pos)   !retrieve O_I 
-          Oi  = matmul(U%t(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
+          Oi  = matmul(U%dgr(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
        case ("r")
           U   = env%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
-          Oi  = Op.x.matmul(U%t(),U)          !build right-most Op of the block_I as Id(I-1)xOp_I
+          Oi  = Op.x.matmul(U%dgr(),U)          !build right-most Op of the block_I as Id(I-1)xOp_I
           U   = env%omatrices%op(index=pos)   !retrieve O_I 
-          Oi  = matmul(U%t(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
+          Oi  = matmul(U%dgr(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
        end select
        call U%free()
     end if
@@ -652,14 +653,14 @@ contains
        Oi = Oi.x.Id(dot%dim)
        do it=istart+1,iend
           U  = sys%omatrices%op(index=it)
-          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
        Oi = Id(dot%dim).x.Oi
        do it=istart+1,iend
           U  = env%omatrices%op(index=it)
-          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Id(dot%dim).x.Oi
        enddo
     end select
@@ -697,13 +698,13 @@ contains
     case ("l")
        do it=istart+1,iend
           U  = sys%omatrices%op(index=it)
-          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
        do it=istart+1,iend
           U  = env%omatrices%op(index=it)
-          Oi = matmul(U%t(),matmul(Oi,U))
+          Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Id(dot%dim).x.Oi
        enddo
     end select
@@ -724,11 +725,11 @@ contains
     case ("l")
        if(any(shape(psi_sys)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
        Psi  = as_sparse(psi_sys)
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
+       AvOp = trace(as_matrix(matmul(Psi%dgr(),matmul(Op,Psi))))
     case ("r")
        if(any(shape(psi_env)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
        Psi  = as_sparse(psi_env)
-       AvOp = trace(as_matrix(matmul(Psi%t(),matmul(Op,Psi))))
+       AvOp = trace(as_matrix(matmul(Psi%dgr(),matmul(Op,Psi))))
     end select
     call Psi%free()
   end function Average_Op_dmrg
@@ -744,28 +745,28 @@ contains
 
 
   function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)
-    integer                               :: Nsys,Nenv
+    integer                            :: Nsys,Nenv
     complex(8),dimension(:)               :: psi
-    integer,dimension(nsys*nenv)          :: map
-    character(len=*)                      :: direction
+    integer,dimension(nsys*nenv)       :: map
+    character(len=*)                   :: direction
     complex(8),dimension(:,:),allocatable :: psi_mat
     if(allocated(psi_mat))deallocate(psi_mat)
     select case(to_lower(str(direction)))
     case ('left','l')
-       allocate(psi_mat(nsys,nenv));psi_mat=0d0
+       allocate(psi_mat(nsys,nenv));psi_mat=zero
        psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
     case ('right','r')
-       allocate(psi_mat(nenv,nsys));psi_mat=0d0
+       allocate(psi_mat(nenv,nsys));psi_mat=zero
        psi_mat = reshape(psi(map), [nenv,nsys])
     end select
   end function build_psimat
 
 
   function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
-    integer                               :: Nsys,Nenv
+    integer                            :: Nsys,Nenv
     complex(8),dimension(:)               :: psi
-    integer,dimension(nsys*nenv)          :: map
-    character(len=*)                      :: direction
+    integer,dimension(nsys*nenv)       :: map
+    character(len=*)                   :: direction
     complex(8),dimension(:,:),allocatable :: rho
     complex(8),dimension(nsys,nenv)       :: psi_tmp
     !
@@ -775,11 +776,11 @@ contains
     !
     select case(to_lower(str(direction)))
     case ('left','l')
-       allocate(rho(nsys,nsys));rho=0d0
-       rho  = matmul(psi_tmp,  transpose(psi_tmp) )
+       allocate(rho(nsys,nsys));rho=zero
+       rho  = matmul(psi_tmp,  conjg(transpose(psi_tmp)) )
     case ('right','r')
-       allocate(rho(nenv,nenv));rho=0d0
-       rho  = matmul(transpose(psi_tmp), psi_tmp  )
+       allocate(rho(nenv,nenv));rho=zero
+       rho  = matmul(conjg(transpose(psi_tmp)), psi_tmp  )
     end select
   end function build_density_matrix
 
@@ -858,12 +859,12 @@ contains
 
 
   subroutine sb_HxV(Nloc,v,Hv)
-    integer                    :: Nloc
+    integer                 :: Nloc
     complex(8),dimension(Nloc) :: v
     complex(8),dimension(Nloc) :: Hv
-    complex(8)                 :: val
-    integer                    :: i,j,jcol
-    Hv=0d0
+    real(8)                 :: val
+    integer                 :: i,j,jcol
+    Hv=zero
     do i=1,Nloc
        matmul: do jcol=1, spHsb%row(i)%Size
           val = spHsb%row(i)%vals(jcol)

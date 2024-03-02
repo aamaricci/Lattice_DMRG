@@ -75,16 +75,19 @@ contains
     integer,dimension(:),optional :: states
     type(sparse_matrix)           :: Sz1,Sp1
     type(sparse_matrix)           :: Sz2,Sp2
-    type(sparse_matrix)           :: H2
+    type(sparse_matrix)           :: Hp,Hz,H2
     Sz1 = left%operators%op("Sz")
     Sp1 = left%operators%op("Sp")
     Sz2 = right%operators%op("Sz")
     Sp2 = right%operators%op("Sp")
     if(present(states))then
-       H2 = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states) +  Jx/2d0*sp_kron(Sp1%dgr(),Sp2,states)  + Jp*sp_kron(Sz1,Sz2,states)
+       Hz = Jp*sp_kron(Sz1,Sz2,states)
+       Hp = Jx/2d0*sp_kron(Sp1,Sp2%dgr(),states)
     else
-       H2 = Jx/2d0*(Sp1.x.Sp2%dgr()) +  Jx/2d0*(Sp1%dgr().x.Sp2)  + Jp*(Sz1.x.Sz2)
+       Hz = Jp*(Sz1.x.Sz2)
+       Hp = Jx/2d0*(Sp1.x.Sp2%dgr())
     endif
+    H2 = Hz + Hp + Hp%dgr()
     call Sz1%free()
     call Sp1%free()
     call Sz2%free()
