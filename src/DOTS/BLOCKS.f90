@@ -1,9 +1,13 @@
 MODULE BLOCKS
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
 =======
   USE SCIFOR, only: str,assert_shape,zeye
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+=======
+  USE SCIFOR, only: str,assert_shape,zeye,eye
+>>>>>>> f63915b (Testing the code.):BLOCKS.f90
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -123,6 +127,7 @@ contains
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 #ifdef _CMPLX
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
 #else
@@ -131,6 +136,9 @@ contains
 =======
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+=======
+    call self%omatrices%put("1",sparse(eye(self%Dim)))
+>>>>>>> f63915b (Testing the code.):BLOCKS.f90
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
@@ -217,7 +225,7 @@ contains
     character(len=:),allocatable     :: key,type
 =======
     class(block)                 :: self
-    complex(8),dimension(:,:)    :: Umat   ![N,M]
+    real(8),dimension(:,:)    :: Umat   ![N,M]
     integer                      :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)          :: Op
     character(len=:),allocatable :: key
@@ -271,16 +279,17 @@ contains
 =======
   function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
     type(sparse_matrix),intent(in) :: Op
-    complex(8),dimension(N,M)      :: trRho  ![Nesys,M]
+    real(8),dimension(N,M)      :: trRho  ![Nesys,M]
     integer                        :: N,M
     type(sparse_matrix)            :: RotOp
-    complex(8),dimension(M,M)      :: Umat
-    complex(8),dimension(N,N)      :: OpMat
+    real(8),dimension(M,M)      :: Umat
+    real(8),dimension(N,N)      :: OpMat
     N = size(trRho,1)
     M = size(trRho,2)
     if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
     OpMat= Op%as_matrix()
-    Umat = matmul( conjg(transpose(trRho)), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
+    ! Umat = matmul( conjg(transpose(trRho)), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
+    Umat = matmul( (transpose(trRho)), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
     call RotOp%load( Umat )
   end function rotate_and_truncate
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
@@ -448,7 +457,11 @@ END MODULE BLOCKS
 !##################################################################
 #ifdef _TEST
 program testBLOCKS
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR
+=======
+  USE SCIFOR,  id => eye
+>>>>>>> f63915b (Testing the code.):BLOCKS.f90
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
   USE TUPLE_BASIS
@@ -487,12 +500,20 @@ program testBLOCKS
   type(sectors_list)               :: sect
   type(tbasis)                     :: sz_basis
   integer                          :: i
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
   complex(8),dimension(2,2),parameter   :: Sz=pauli_z
   complex(8),dimension(2,2),parameter   :: Sx=pauli_x
   complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
   complex(8),dimension(4,4)             :: Gamma13,Gamma03
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+=======
+  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter   :: Sz=pauli_z
+  real(8),dimension(2,2),parameter   :: Sx=pauli_x
+  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)             :: Gamma13,Gamma03
+>>>>>>> f63915b (Testing the code.):BLOCKS.f90
 
   
   Gamma13=kron(Sx,Sz)

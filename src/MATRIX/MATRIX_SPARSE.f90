@@ -1,9 +1,13 @@
 MODULE MATRIX_SPARSE  
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
   USE AUX_FUNCS, only: show_fmt,append
 =======
   USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye
+=======
+  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eye
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   USE AUX_FUNCS
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
   implicit none
@@ -21,6 +25,7 @@ MODULE MATRIX_SPARSE
 
   !SPARSE ROW OF THE SPARSE MATRIX: note this is dynamic array
   type sparse_row
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
      integer                             :: size
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
      integer,dimension(:),allocatable    :: cols
@@ -33,6 +38,11 @@ MODULE MATRIX_SPARSE
      complex(8),dimension(:),allocatable :: vals
      integer,dimension(:),allocatable    :: cols
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+     integer                          :: size
+     real(8),dimension(:),allocatable :: vals
+     integer,dimension(:),allocatable :: cols
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   end type sparse_row
 
   !SPARSE MATRIX STRUCTURE
@@ -97,6 +107,7 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_left_product_matrix_i
      module procedure :: sp_left_product_matrix_d
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
      module procedure :: sp_left_product_matrix_c
 #endif
@@ -113,6 +124,13 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_right_product_matrix_d
      module procedure :: sp_right_product_matrix_c
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+     ! module procedure :: sp_left_product_matrix_c
+     !
+     module procedure :: sp_right_product_matrix_i
+     module procedure :: sp_right_product_matrix_d
+     ! module procedure :: sp_right_product_matrix_c
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   end interface operator(*)
 
   !SCALAR DIVISION
@@ -120,12 +138,16 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_right_division_matrix_i
      module procedure :: sp_right_division_matrix_d
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
      module procedure :: sp_right_division_matrix_c
 #endif
 =======
      module procedure :: sp_right_division_matrix_c
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+     ! module procedure :: sp_right_division_matrix_c
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   end interface operator(/)
 
 
@@ -177,6 +199,7 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_filter_matrix_2
   end interface sp_filter
 
+
   public :: sparse_matrix
   public :: as_sparse
   public :: as_matrix
@@ -195,7 +218,6 @@ MODULE MATRIX_SPARSE
   public :: matmul
   public :: sp_eye
   public :: sp_filter
-
 
 contains       
 
@@ -231,6 +253,7 @@ contains
 
   function sp_construct_matrix(matrix) result(self)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
@@ -239,6 +262,9 @@ contains
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8),dimension(:,:),intent(in) :: matrix
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     type(sparse_matrix)                  :: self
     call self%load(matrix)
   end function sp_construct_matrix
@@ -273,6 +299,7 @@ contains
   subroutine sp_load_matrix(sparse,matrix)
     class(sparse_matrix),intent(inout)   :: sparse
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
@@ -281,6 +308,9 @@ contains
     integer                              :: Ndim1,Ndim2
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
+=======
+    real(8),dimension(:,:),intent(in) :: matrix
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                              :: i,j,Ndim1,Ndim2
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     !
@@ -303,6 +333,7 @@ contains
   subroutine sp_dump_matrix(sparse,matrix)
     class(sparse_matrix),intent(in)         :: sparse
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(inout) :: matrix
 #else
@@ -311,6 +342,9 @@ contains
     integer                                 :: Ndim1,Ndim2
 =======
     complex(8),dimension(:,:),intent(inout) :: matrix
+=======
+    real(8),dimension(:,:),intent(inout) :: matrix
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                                 :: i,j,Ndim1,Ndim2
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     Ndim1=size(matrix,1)
@@ -331,6 +365,7 @@ contains
   function sp_as_matrix(sparse) result(matrix)
     class(sparse_matrix),intent(in)               :: sparse
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
 #else
@@ -340,6 +375,9 @@ contains
     if(.not.sparse%status)return
 =======
     complex(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
+=======
+    real(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                                       :: i,j
     matrix = zero
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
@@ -357,6 +395,7 @@ contains
   subroutine sp_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),intent(in)              :: value
 #else
@@ -365,6 +404,9 @@ contains
 =======
     complex(8),intent(in)              :: value
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8),intent(in)              :: value
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     logical                            :: iadd
@@ -394,6 +436,7 @@ contains
   subroutine sp_fast_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),intent(in)              :: value
 #else
@@ -402,6 +445,9 @@ contains
 =======
     complex(8),intent(in)              :: value
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8),intent(in)              :: value
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     !
@@ -438,7 +484,7 @@ contains
   function sp_get_element(sparse,i,j) result(value)
     class(sparse_matrix),intent(inout) :: sparse    
     integer,intent(in)                 :: i,j
-    complex(8)                         :: value
+    real(8)                         :: value
     integer                            :: pos
     value=zero
     do pos=1,sparse%row(i)%size
@@ -539,6 +585,7 @@ contains
     integer                   :: Ns,NN
     character(len=64)         :: format
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                :: val
 #else
@@ -560,10 +607,19 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
     format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8)                :: val
+    unit_=6
+    if(present(file))open(free_unit(unit_),file=str(file))
+    fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
+    format='(A1,'//str(fmt_)//',1x)'
+    ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
           write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
@@ -573,6 +629,10 @@ contains
 =======
           write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')val
+          ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
        enddo
        write(unit_,*)
     enddo
@@ -585,6 +645,7 @@ contains
     integer              :: Ns
     character(len=20)    :: fmtR,fmtI
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)           :: val
 #else
@@ -593,6 +654,9 @@ contains
 =======
     complex(8)           :: val
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8)           :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     unit_=6
     fmtI='(I10)'
     fmtR='(ES10.3)'
@@ -683,6 +747,7 @@ contains
     integer                         :: i,icol,j,k,kcol,l
     integer                         :: indx_row,indx_col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                      :: value
 #else
@@ -693,6 +758,9 @@ contains
 =======
     complex(8)                      :: value
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8)                      :: value
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     call AxB%free()
     call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
     do indx_row = 1,A%Nrow*B%Nrow
@@ -733,7 +801,7 @@ contains
     type(sparse_matrix)              :: AxB
     integer                          :: i,icol,j,k,kcol,l,istate,jstate
     integer                          :: indx_row,indx_col
-    complex(8)                       :: value
+    real(8)                       :: value
     integer,dimension(:),allocatable :: inv_states
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call AxB%free()
@@ -768,6 +836,7 @@ contains
     type(sparse_matrix)             :: Bt,AxB
     integer                         :: i,icol,j,jcol,k
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                      :: value
 #else
@@ -779,6 +848,9 @@ contains
 =======
     complex(8)                      :: value
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8)                      :: value
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     !
     call AxB%free
     call AxB%init(a%Nrow,b%Ncol)
@@ -808,6 +880,7 @@ contains
   function sp_matmul_vector(H,v) result(Hv)
     class(sparse_matrix), intent(in)    :: H
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     integer                             :: Nloc
 #ifdef _CMPLX
     complex(8),dimension(:)             :: v
@@ -825,8 +898,12 @@ contains
 =======
     complex(8),dimension(:)             :: v
     complex(8),dimension(:),allocatable :: Hv
+=======
+    real(8),dimension(:)             :: v
+    real(8),dimension(:),allocatable :: Hv
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                             :: Nloc
-    complex(8)                          :: val
+    real(8)                          :: val
     integer                             :: i,j,jcol
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     if(allocated(Hv))deallocate(Hv)
@@ -855,6 +932,7 @@ contains
     type(sparse_matrix)              :: c
     integer                          :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
@@ -864,6 +942,9 @@ contains
     call c%init(a%Ncol,a%Nrow)       !hconjg
 =======
     complex(8)                       :: val
+=======
+    real(8)                       :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                          :: i,j    
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     call c%init(a%Ncol,a%Nrow)      !tranpose
@@ -876,6 +957,7 @@ contains
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
           call c%insert(conjg(val),col,i)
 #else
@@ -884,6 +966,10 @@ contains
 =======
           call c%insert(conjg(val),col,i)
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
+=======
+          ! call c%insert(conjg(val),col,i)
+          call c%insert(val,col,i)
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
        enddo
     enddo
   end function sp_dgr_matrix
@@ -894,6 +980,7 @@ contains
     type(sparse_matrix)              :: c
     integer                          :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
@@ -903,6 +990,9 @@ contains
     call c%init(a%Ncol,a%Nrow)       !tranpose
 =======
     complex(8)                       :: val
+=======
+    real(8)                       :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                          :: i,j    
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     call c%init(a%Ncol,a%Nrow)      !tranpose
@@ -919,23 +1009,25 @@ contains
     enddo
   end function sp_transpose_matrix
 
-  
+
   function sp_hconjg_matrix(a) result(c)
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    complex(8)                       :: val
+    real(8)                       :: val
     integer                          :: i,j    
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
-          call c%insert(conjg(val),col,i)
+          ! call c%insert(conjg(val),col,i)
+          call c%insert((val),col,i)
        enddo
     enddo
   end function sp_hconjg_matrix
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   function sp_hconjg_matrix(a) result(c)
     class(sparse_matrix), intent(in) :: a
@@ -965,6 +1057,9 @@ contains
 =======
   
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
+=======
+
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix equality spA = spB. Deep copy
   !+------------------------------------------------------------------+
@@ -972,6 +1067,7 @@ contains
     type(sparse_matrix),intent(inout) :: a
     type(sparse_matrix),intent(in)    :: b
     integer                           :: col
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                        :: val
@@ -981,6 +1077,9 @@ contains
     if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
 =======
     complex(8)                        :: val
+=======
+    real(8)                        :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                           :: i,j    
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call a%free()
@@ -1001,6 +1100,7 @@ contains
   subroutine sp_matrix_equal_scalar(a,c)
     type(sparse_matrix),intent(inout) :: a
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                        :: val
     complex(8),intent(in)             :: c
@@ -1011,6 +1111,9 @@ contains
     if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
 =======
     complex(8),intent(in)             :: c
+=======
+    real(8),intent(in)             :: c
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                           :: i,j    
     ! if(.not.a%status)stop "sp_matrix_equal_scalar error: a is not allocated"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
@@ -1031,6 +1134,7 @@ contains
     type(sparse_matrix)             :: c
     integer                         :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
@@ -1040,6 +1144,9 @@ contains
     if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
 =======
     complex(8)                      :: val
+=======
+    real(8)                      :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                         :: i,j    
     ! if(.not.a%status)stop "sp_plus_matrix error: a is not allocated"
     ! if(.not.b%status)stop "sp_plus_matrix error: b is not allocated"
@@ -1065,6 +1172,7 @@ contains
     type(sparse_matrix)             :: c
     integer                         :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
@@ -1076,6 +1184,9 @@ contains
     if(a%Ncol/=b%Ncol)stop "sp_minus_matrix error: a.Ncol != b.Ncol"
 =======
     complex(8)                      :: val
+=======
+    real(8)                      :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                         :: i,j    
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
@@ -1103,6 +1214,7 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
@@ -1111,6 +1223,9 @@ contains
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 =======
     complex(8)                     :: val
+=======
+    real(8)                     :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call b%free()
@@ -1130,6 +1245,7 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
@@ -1138,6 +1254,9 @@ contains
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 =======
     complex(8)                     :: val
+=======
+    real(8)                     :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call b%free()
@@ -1151,6 +1270,7 @@ contains
     enddo
   end function sp_left_product_matrix_d
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
 =======
@@ -1179,6 +1299,25 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #endif
 =======
+=======
+  ! function sp_left_product_matrix_c(C,A) result(B)
+  !   real(8),intent(in)          :: C
+  !   type(sparse_matrix),intent(in) :: A
+  !   type(sparse_matrix)            :: B
+  !   integer                        :: col
+  !   real(8)                     :: val
+  !   integer                        :: i,j   
+  !   call b%free()
+  !   call b%init(a%Nrow,a%Ncol)
+  !   do i=1,a%Nrow
+  !      do j=1,a%row(i)%size
+  !         col = a%row(i)%cols(j)
+  !         val = a%row(i)%vals(j)*C
+  !         call b%insert(val,i,col)
+  !      enddo
+  !   enddo
+  ! end function sp_left_product_matrix_c
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 
@@ -1194,6 +1333,7 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
@@ -1202,6 +1342,9 @@ contains
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 =======
     complex(8)                     :: val
+=======
+    real(8)                     :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call b%free()
@@ -1221,6 +1364,7 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
@@ -1229,6 +1373,9 @@ contains
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 =======
     complex(8)                     :: val
+=======
+    real(8)                     :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call b%free()
@@ -1242,6 +1389,7 @@ contains
     enddo
   end function sp_right_product_matrix_d
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
 =======
@@ -1270,6 +1418,25 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #endif
 =======
+=======
+  ! function sp_right_product_matrix_c(A,C) result(B)
+  !   real(8),intent(in)          :: C
+  !   type(sparse_matrix),intent(in) :: A
+  !   type(sparse_matrix)            :: B
+  !   integer                        :: col
+  !   real(8)                     :: val
+  !   integer                        :: i,j   
+  !   call b%free()
+  !   call b%init(a%Nrow,a%Ncol)
+  !   do i=1,a%Nrow
+  !      do j=1,a%row(i)%size
+  !         col = a%row(i)%cols(j)
+  !         val = a%row(i)%vals(j)*C
+  !         call b%insert(val,i,col)
+  !      enddo
+  !   enddo
+  ! end function sp_right_product_matrix_c
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 
@@ -1285,6 +1452,7 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
@@ -1293,6 +1461,9 @@ contains
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 =======
     complex(8)                     :: val
+=======
+    real(8)                     :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call b%free()
@@ -1312,6 +1483,7 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
@@ -1320,6 +1492,9 @@ contains
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 =======
     complex(8)                     :: val
+=======
+    real(8)                     :: val
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call b%free()
@@ -1333,6 +1508,7 @@ contains
     enddo
   end function sp_right_division_matrix_d
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
 =======
@@ -1361,6 +1537,25 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #endif
 =======
+=======
+  ! function sp_right_division_matrix_c(A,C) result(B)
+  !   real(8),intent(in)          :: C
+  !   type(sparse_matrix),intent(in) :: A
+  !   type(sparse_matrix)            :: B
+  !   integer                        :: col
+  !   real(8)                     :: val
+  !   integer                        :: i,j   
+  !   call b%free()
+  !   call b%init(a%Nrow,a%Ncol)
+  !   do i=1,a%Nrow
+  !      do j=1,a%row(i)%size
+  !         col = a%row(i)%cols(j)
+  !         val = a%row(i)%vals(j)/C
+  !         call b%insert(val,i,col)
+  !      enddo
+  !   enddo
+  ! end function sp_right_division_matrix_c
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 
@@ -1383,6 +1578,7 @@ contains
     type(sparse_matrix) :: self
     integer             :: ndim
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     call self%load(zeye(ndim))
 #else
@@ -1391,6 +1587,9 @@ contains
 =======
     call self%load(zeye(ndim))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    call self%load(eye(ndim))
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   end function sp_eye
 
 
@@ -1530,6 +1729,7 @@ program testSPARSE_MATRICES
   integer                                      :: i,j
   type(sparse_matrix)                          :: spH,spK,a,b,c,avec(2)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
   complex(8),dimension(4,4)                    :: GammaX
   complex(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
@@ -1559,6 +1759,16 @@ program testSPARSE_MATRICES
   real(8)                                      :: myone=1d0,myzero=0d0
 #endif
 =======
+=======
+  real(8),dimension(4,4)                    :: GammaX
+  real(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
+
+  real(8),dimension(2,2),parameter          :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter          :: Sz=pauli_z
+  real(8),dimension(2,2),parameter          :: Sx=pauli_x
+  real(8),dimension(2,2),parameter          :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)                    :: Gamma13,Gamma03
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
   type(sparse_matrix),dimension(:),allocatable :: Olist
@@ -1567,10 +1777,14 @@ program testSPARSE_MATRICES
 
   Gamma13=kron(Sx,Sz)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   Gamma03=kron(S0,Sz)
 =======
   Gamma03=kron(zeye(2),Sz)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+  Gamma03=kron(eye(2),Sz)
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 
   print*,"test INIT"
   call spH%init(2,2)
@@ -1703,10 +1917,14 @@ program testSPARSE_MATRICES
   print*,"a=sigma_0"
   call a%init(2,2)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   call a%load(S0)
 =======
   call a%load(zeye(2))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+  call a%load(eye(2))
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   call a%show()
 
   print*,"b=sigma_X"  
@@ -1728,10 +1946,14 @@ program testSPARSE_MATRICES
   print*,"a=sigma_0"
   call a%init(2,2)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   call a%load(S0)
 =======
   call a%load(zeye(2))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+  call a%load(eye(2))
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   call a%show()
 
   print*,"b=sigma_Z"  
@@ -1755,10 +1977,14 @@ program testSPARSE_MATRICES
   print*,"a=sigma_0"
   call a%init(2,2)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   call a%load(S0)
 =======
   call a%load(zeye(2))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+  call a%load(eye(2))
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   call a%show()
 
   print*,"b=2*a"  
@@ -2001,6 +2227,7 @@ contains
   subroutine append_matrix(self,matrix)
     type(sparse_matrix),dimension(:),allocatable,intent(inout) :: self
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:)                                  :: matrix
 #else
@@ -2009,6 +2236,9 @@ contains
 =======
     complex(8),dimension(:,:)                                     :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    real(8),dimension(:,:)                                     :: matrix
+>>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     type(sparse_matrix),dimension(:),allocatable               :: tmp
     integer                                                    :: N
     if(allocated(self))then

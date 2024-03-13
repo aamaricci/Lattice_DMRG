@@ -11,10 +11,15 @@ MODULE DMRG
   !DMRG:
   USE SITES
   USE BLOCKS
+<<<<<<< HEAD:src/DMRG.f90
   USE DMRG_SUPERBLOCK
   USE DMRG_MAIN
   USE DMRG_MEASURE
   !
   !USE VARS_GLOBAL!< uncomment this to compile kron_ tests
+=======
+  USE SYSTEM
+  USE MEASURE
+>>>>>>> f63915b (Testing the code.):DMRG.f90
   implicit none  
 END MODULE DMRG

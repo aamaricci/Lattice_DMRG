@@ -33,7 +33,11 @@ MODULE LIST_OPERATORS
      procedure,pass :: types    => types_operators_list     !return all the types
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
      procedure,pass :: shape    => shape_operators_list 
+=======
+     procedure,pass :: shaope   => shape_operators_list !True if operators_list is valid
+>>>>>>> f63915b (Testing the code.):LIST_OPERATORS.f90
   end type operators_list
 
 
@@ -240,8 +244,12 @@ contains
   subroutine load_operators_list(self,key,op)
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
     complex(8),dimension(:,:),intent(in) :: op
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
+=======
+    real(8),dimension(:,:),intent(in) :: op
+>>>>>>> f63915b (Testing the code.):LIST_OPERATORS.f90
     if(.not.associated(self%root))allocate(self%root)
     call self%put(key,as_sparse(op),type_)
   end subroutine load_operators_list
@@ -461,7 +469,7 @@ contains
   function dump_op_operators_list(self,key) result(matrix)
     class(operators_list),intent(inout)   :: self
     character(len=*),intent(in)           :: key
-    complex(8),dimension(:,:),allocatable :: matrix
+    real(8),dimension(:,:),allocatable :: matrix
     type(optype),pointer                  :: c
     logical                               :: ifound
     !
@@ -558,6 +566,20 @@ contains
   end function has_key_operators_list
 
 
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Returns the shape of the operators in the operators_list
+  ! If valid list all operators have same shape so the first is fine. 
+  !+------------------------------------------------------------------+
+  function shape_operators_list(self) result(shape)
+    class(operators_list),intent(inout) :: self
+    integer,dimension(2)             :: shape
+    type(optype),pointer             :: c
+    logical :: bool
+    bool = self%is_valid()
+    if(.not.bool)stop "shape_operator_list: not a valid list"
+    c => self%root%next
+    shape = [c%ope%Nrow,c%ope%Ncol]
+  end function shape_operators_list
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Returns the shape of the operators in the operators_list
@@ -712,14 +734,14 @@ program testOPERATORS_TUPLE
   type(operators_list)                  :: my_list,a_list
   type(operators_list)                  :: copy_list,clist(2)
   type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
-  complex(8),dimension(:,:),allocatable :: mat
+  real(8),dimension(:,:),allocatable :: mat
   integer                               :: i,j,n
   logical                               :: bool
-  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
-  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
-  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
-  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter   :: Sz=pauli_z
+  real(8),dimension(2,2),parameter   :: Sx=pauli_x
+  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)             :: Gamma13,Gamma03
   character(len=10)                     :: key
   character(len=10),allocatable         :: keys(:)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90

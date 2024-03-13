@@ -101,6 +101,7 @@ In the top panels we show the groundstate energy $E(j)$ and the entanglement ent
 Finally, in the bottom-right panel we report the spatial distribution of the local magnetization for a Spin 1 chain with open boundary conditions, showing Spin 1/2 edge modes.
 
 ![gif](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/DMRG_record.gif)
+<<<<<<< HEAD
 
 
 
@@ -112,6 +113,8 @@ are available here:
 
 In the top-left panel we compare the energy per site $E(j)$ with respect to the exact solution $E_0=-4t/\pi$ and the exact numberical solution for the non-interacting case at one electron per site $\langle N\rangle=1$. We used $M=40$ states to reach a satisfactory convergence of the ground state energy. In the top-right panel we report the occupation profile per spin. In the bottom-left panel we show the evolution of the entanglement entropy per site $S(j)$, while the last panel bottom-right displayes the profile of the double occupation.  
 
+=======
+>>>>>>> f63915b (Testing the code.)
 
 ### Known issues
 There are a number of known issues with this code which, mostly for time reasons, we did not solve completely. Please report to any of the authors.

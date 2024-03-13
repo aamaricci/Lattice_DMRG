@@ -219,6 +219,7 @@ contains
   !+-------------------------------------------------------------------+
   function build_Hlocal_operator(H) result(Hmat)
 <<<<<<< HEAD:src/FOCK/HLOCAL.f90
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
     complex(8),dimension(:,:),allocatable :: Hmat
@@ -240,6 +241,11 @@ contains
     complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
     complex(8),dimension(:,:),allocatable :: Hmat
     complex(8),dimension(Nspin,Ns,Ns)     :: Hloc
+=======
+    real(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
+    real(8),dimension(:,:),allocatable :: Hmat
+    real(8),dimension(Nspin,Ns,Ns)     :: Hloc
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
     type(local_fock_sector)               :: sectorI
     real(8)                               :: htmp
     integer                               :: isector,i,m,io,jo,iorb,ispin,jorb
@@ -262,6 +268,7 @@ contains
     do ispin=1,Nspin
        do iorb=1,Norb
 <<<<<<< HEAD:src/FOCK/HLOCAL.f90
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           io = iorb+(ispin-1)*Norb      
           do jorb=1,Norb
              jo = jorb + (ispin-1)*Norb
@@ -270,6 +277,11 @@ contains
           do jorb=1,Norb
              jo = jorb + (ispin-1)*Nspin
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
+=======
+          io = iorb+(ispin-1)*Norb      
+          do jorb=1,Norb
+             jo = jorb + (ispin-1)*Norb
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
              Hloc(ispin,iorb,jorb) = H(io,jo)
           enddo
        enddo
@@ -388,6 +400,7 @@ contains
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
 <<<<<<< HEAD:src/FOCK/HLOCAL.f90
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Cmat
 #else
@@ -396,6 +409,9 @@ contains
 =======
     complex(8),dimension(:,:),allocatable :: Cmat
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
+=======
+    real(8),dimension(:,:),allocatable :: Cmat
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
     real(8)                               :: c_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -430,6 +446,7 @@ contains
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
 <<<<<<< HEAD:src/FOCK/HLOCAL.f90
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: CDGmat
 #else
@@ -438,6 +455,9 @@ contains
 =======
     complex(8),dimension(:,:),allocatable :: CDGmat
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
+=======
+    real(8),dimension(:,:),allocatable :: CDGmat
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
     real(8)                               :: cdg_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -470,6 +490,7 @@ contains
     integer                               :: ispin,iorb
     type(local_fock_sector)               :: sectorI
 <<<<<<< HEAD:src/FOCK/HLOCAL.f90
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Dmat
 #else
@@ -478,6 +499,9 @@ contains
 =======
     complex(8),dimension(:,:),allocatable :: Dmat
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
+=======
+    real(8),dimension(:,:),allocatable :: Dmat
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
     real(8)                               :: dens
     integer                               :: imp,isector,i,m,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -531,31 +555,37 @@ contains
 
 
 
+
+
+
+
   !##################################################################
   !##################################################################
   !         BUILD and RETURN THE LOCAL FOCK BASIS QN
   !##################################################################
   !##################################################################
   function Build_BasisStates() result(Hvec)
-    type(local_fock_sector)          :: sectorI
     integer,dimension(:),allocatable :: Hvec
-    integer                          :: i,isector
+    integer                          :: i,iup,idw,Nup,Ndw,NN
     !
     if(allocated(Hvec))deallocate(Hvec)
     !
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          call append(Hvec,sectorI%Nup)
-          call append(Hvec,sectorI%Ndw)
+    NN = 2**Ns
+    do idw = 0,NN-1
+       Ndw = popcnt(idw)
+       do iup = 0,NN-1
+          Nup = popcnt(iup)
+          i      = iup + idw*NN
+          call append(Hvec,nup)
+          call append(Hvec,ndw)
        enddo
-       call Delete_LocalFock_Sector(sectorI)
     enddo
   end function Build_BasisStates
 
 
 
 
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   !##################################################################
   !##################################################################
   !         BUILD and RETURN THE LOCAL FOCK BASIS QN
@@ -612,6 +642,9 @@ contains
 
 
 
+=======
+  
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
 
   !##################################################################
   !##################################################################
@@ -862,6 +895,7 @@ program testHLOCAL
   implicit none
   character(len=64)                     :: finput
 <<<<<<< HEAD:src/FOCK/HLOCAL.f90
+<<<<<<< HEAD:src/FOCK/HLOCAL.f90
 #ifdef _CMPLX
   complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   complex(8),dimension(:,:),allocatable :: hloc
@@ -873,6 +907,10 @@ program testHLOCAL
   complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
   complex(8),dimension(:,:),allocatable :: hloc
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
+=======
+  real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
+  real(8),dimension(:,:),allocatable :: hloc
+>>>>>>> f63915b (Testing the code.):HLOCAL.f90
   integer,dimension(:),allocatable      :: Hvec
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')  
@@ -901,8 +939,8 @@ program testHLOCAL
   hloc=0d0
   if(Norb==2)then
      hloc=0.5d0*pauli_z
-  elseif(Norb==3)then
-     hloc=0.5d0*spin1_z
+  ! elseif(Norb==3)then
+  !    hloc=0.5d0*spin1_z
   endif
   print*,""
   print*,"H:"
@@ -1037,10 +1075,10 @@ contains
 
 =======
   subroutine print_mat(M)
-    complex(8),dimension(:,:) :: M
+    real(8),dimension(:,:) :: M
     integer                   :: i,j
     do i=1,size(M,1)
-       write(*,"("//str(size(M,2))//"(F4.1,1x))")(dreal(M(i,j)),j=1,size(M,2))
+       write(*,"("//str(size(M,2))//"(F4.1,1x))")((M(i,j)),j=1,size(M,2))
     enddo
   end subroutine print_mat
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
