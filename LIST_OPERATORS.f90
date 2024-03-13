@@ -30,7 +30,7 @@ MODULE LIST_OPERATORS
      procedure,pass :: keys     => keys_operators_list     !return all the keys
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
-
+     procedure,pass :: shaope   => shape_operators_list !True if operators_list is valid
   end type operators_list
 
 
@@ -51,9 +51,14 @@ MODULE LIST_OPERATORS
      module procedure :: size_operators_list
   end interface size
 
+  !INTRINSIC FUNCTION SHAPE(OPERATORS_LIST)
+  interface shape
+     module procedure :: shape_operators_list
+  end interface shape
 
   public :: operators_list
   public :: size
+  public :: shape
   public :: assignment(=)
 
 
@@ -185,7 +190,7 @@ contains
   subroutine load_operators_list(self,key,op)
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
-    complex(8),dimension(:,:),intent(in) :: op
+    real(8),dimension(:,:),intent(in) :: op
     if(.not.associated(self%root))allocate(self%root)
     call self%put(key,as_sparse(op))
   end subroutine load_operators_list
@@ -378,7 +383,7 @@ contains
   function dump_op_operators_list(self,key) result(matrix)
     class(operators_list),intent(inout)   :: self
     character(len=*),intent(in)           :: key
-    complex(8),dimension(:,:),allocatable :: matrix
+    real(8),dimension(:,:),allocatable :: matrix
     type(optype),pointer                  :: c
     logical                               :: ifound
     !
@@ -474,6 +479,20 @@ contains
   end function has_key_operators_list
 
 
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Returns the shape of the operators in the operators_list
+  ! If valid list all operators have same shape so the first is fine. 
+  !+------------------------------------------------------------------+
+  function shape_operators_list(self) result(shape)
+    class(operators_list),intent(inout) :: self
+    integer,dimension(2)             :: shape
+    type(optype),pointer             :: c
+    logical :: bool
+    bool = self%is_valid()
+    if(.not.bool)stop "shape_operator_list: not a valid list"
+    c => self%root%next
+    shape = [c%ope%Nrow,c%ope%Ncol]
+  end function shape_operators_list
 
 
 
@@ -571,14 +590,14 @@ program testOPERATORS_TUPLE
   type(operators_list)                  :: my_list,a_list
   type(operators_list)                  :: copy_list,clist(2)
   type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
-  complex(8),dimension(:,:),allocatable :: mat
+  real(8),dimension(:,:),allocatable :: mat
   integer                               :: i,j,n
   logical                               :: bool
-  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
-  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
-  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
-  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter   :: Sz=pauli_z
+  real(8),dimension(2,2),parameter   :: Sx=pauli_x
+  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)             :: Gamma13,Gamma03
   character(len=10)                     :: key
   character(len=10),allocatable         :: keys(:)
 

@@ -7,49 +7,86 @@ MODULE INPUT_VARS
 
   !input variables
   !=========================================================
-  integer              :: Ldmrg=10               !# of iDMRG steps to take, Ldmrg=max length of the SB.
-  integer              :: Mdmrg=10               !# of states to retain at truncation. If 0 use Edmrg as threshold.  
-  real(8)              :: Edmrg=0               !Threshold energy used to evaluate the number of states to keep. If 0d0 use fixed Mdmrg.
-  integer              :: Nsweep=1              !# of DMRG sweep to take for finite DMRG algorithm.
-  real(8),allocatable  :: Esweep(:)           !list of threshold energies at each sweep in the finite DMRG algorithm.
-  integer,allocatable  :: Msweep(:)           !list of states to optimize at each sweep in the finite DMRG algorithm.
+  integer              :: Ldmrg
+  !# of iDMRG steps to take, Ldmrg=max length of the SB.
+  integer              :: Mdmrg
+  !# of states to retain at truncation. If 0 use Edmrg as threshold.  
+  real(8)              :: Edmrg
+  !Threshold energy used to evaluate the number of states to keep.
+  !If 0d0 use fixed Mdmrg.
+  integer              :: QNdim
+  !Number of Conserved quantum numbers to consider:
+  real(8),allocatable  :: Dmrg_QN(:)
+  !Desired Target Quantum Numbers: size(DMRG_QN)=QNdim
+  integer              :: Nsweep
+  !# of DMRG sweep to take for finite DMRG algorithm.
+  real(8),allocatable  :: Esweep(:)
+  !list of threshold energies at each sweep in the finite DMRG algorithm.
+  integer,allocatable  :: Msweep(:)
+  !list of states to optimize at each sweep in the finite DMRG algorithm.
+
+  integer              :: Norb=1
+  !# of orbitals
+  integer              :: Nspin=2
+  !Nspin=# spins 
+  real(8),allocatable  :: Uloc(:)
+  !local interactions
+  real(8)              :: Ust
+  !intra-orbitals interactions
+  real(8)              :: Jh
+  !J_Hund: Hunds' coupling constant 
+  real(8)              :: Jx
+  !J_X: coupling constant for the spin-eXchange interaction term
+  real(8)              :: Jp
+  !J_P: coupling constant for the Pair-hopping interaction term
+  real(8)              :: xmu=0d0
+  !chemical potential
+  real(8)              :: temp
+  !temperature
   !
-  integer              :: Norb=1                !# of orbitals
-  integer              :: Nspin=1               !Nspin=# spin degeneracy (max 2)
-  !
-  real(8),allocatable  :: ts(:)               !local interactions
-  real(8),allocatable  :: Uloc(:)             !local interactions
-  real(8)              :: Ust                 !intra-orbitals interactions
-  real(8)              :: Jh                  !J_Hund: Hunds' coupling constant 
-  real(8)              :: Jx                  !J_X: coupling constant for the spin-eXchange interaction term
-  real(8)              :: Jp                  !J_P: coupling constant for the Pair-hopping interaction term
-  !
-  real(8)              :: xmu=0d0                 !chemical potential
-  real(8)              :: temp                !temperature
-  !
-  real(8)              :: eps                 !broadening
-  real(8)              :: wini,wfin           !frequency range
-  logical              :: HFmode              !flag for HF interaction form U(n-1/2)(n-1/2) VS Unn
-  real(8)              :: cutoff              !cutoff for spectral summation
-  real(8)              :: gs_threshold        !Energy threshold for ground state degeneracy loop up
+  real(8)              :: eps
+  !broadening
+  real(8)              :: wini,wfin
+  !frequency range
+  logical              :: HFmode
+  !flag for HF interaction form U(n-1/2)(n-1/2) VS Unn
+  real(8)              :: cutoff
+  !cutoff for spectral summation
+  real(8)              :: gs_threshold
+  !Energy threshold for ground state degeneracy loop up
   !
 
-  logical,allocatable  :: gf_flag(:)           !evaluate Green's functions for Norb+1
-  logical,allocatable  :: chispin_flag(:)      !evaluate spin susceptibility for Norb+1
-  !
-  !
-  integer              :: filling          !Total number of allowed electrons
-  logical              :: sparse_H         !flag to select  storage of sparse matrix H (mem--, cpu++) if TRUE, or direct on-the-fly H*v product (mem++, cpu--
-  integer              :: verbose          !
-  !
-  character(len=12)    :: lanc_method         !select the lanczos method to be used in the determination of the spectrum. ARPACK (default), LANCZOS (T=0 only) 
-  real(8)              :: lanc_tolerance      !Tolerance for the Lanczos iterations as used in Arpack and plain lanczos. 
-  integer              :: lanc_niter          !Max number of Lanczos iterations
-  integer              :: lanc_ngfiter        !Max number of iteration in resolvant tri-diagonalization
-  integer              :: lanc_ncv_factor     !Set the size of the block used in Lanczos-Arpack by multiplying the required Neigen (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)
-  integer              :: lanc_ncv_add        !Adds up to the size of the block to prevent it to become too small (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)
-  integer              :: lanc_neigen         !Number of required eigenvalues per sector in the SuperBlock
-  integer              :: lanc_dim_threshold  !Min dimension threshold to use Lanczos determination of the spectrum rather than Lapack based exact diagonalization.
+  logical,allocatable  :: gf_flag(:)
+  !evaluate Green's functions for Norb+1
+  logical,allocatable  :: chispin_flag(:)
+  !evaluate spin susceptibility for Norb+1
+  integer              :: filling
+  !Total number of allowed electrons
+  logical              :: sparse_H
+  !flag to select  storage of sparse matrix H (mem--, cpu++) if TRUE,
+  !or direct on-the-fly H*v product (mem++, cpu--
+  integer              :: verbose
+  !Flag to control verbosity of the library
+  character(len=12)    :: lanc_method
+  !select the lanczos method to be used in the determination of the spectrum.
+  !ARPACK (default), LANCZOS (T=0 only) 
+  real(8)              :: lanc_tolerance
+  !Tolerance for the Lanczos iterations as used in Arpack and plain lanczos. 
+  integer              :: lanc_niter
+  !Max number of Lanczos iterations
+  integer              :: lanc_ngfiter
+  !Max number of iteration in resolvant tri-diagonalization
+  integer              :: lanc_ncv_factor
+  !Set the size of the block used by Lanczos-Arpack as:
+  !(Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)
+  integer              :: lanc_ncv_add
+  !Adds up to the size of the block to prevent it to become too small
+  !(Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)
+  integer              :: lanc_neigen
+  !Number of required eigenvalues per sector in the SuperBlock
+  integer              :: lanc_dim_threshold
+  !Min dimension threshold to use Lanczos determination of the
+  !spectrum rather than Lapack based exact diagonalization.
 
 
   !Some parameters for function dimension:
@@ -94,38 +131,56 @@ contains
     !DEFAULT VALUES OF THE PARAMETERS:
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,default=5,&
          comment="iDMRG steps to take=max length of the SB.")
+
     call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,&
-         comment="Number of states for truncation. If 0 use Edmrg as threshold.  ")
-    call parse_input_variable(Edmrg,"Edmrg",INPUTunit,default=1d-8,&
+         comment="Number of states for truncation. If 0 use Edmrg as threshold.")
+
+    call parse_input_variable(Edmrg,"Edmrg",INPUTunit,default=0d0,&
          comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
+
     call parse_input_variable(Nsweep,"Nsweep",INPUTunit,default=1,&
-         comment="Number of DMRG sweep to take for finite DMRG algorithm.")
+         comment="Number of DMRG sweep to take for finite DMRG algorithm (min 1).")
+
     allocate(Msweep(Nsweep),Esweep(Nsweep))
     call parse_input_variable(Msweep,"Msweep",INPUTunit,default=(/(Mdmrg,i=1,Nsweep )/),&
          comment="!list of states for each sweep in a finite DMRG algorithm.")
     call parse_input_variable(Esweep,"Esweep",INPUTunit,default=(/(Edmrg,i=1,Nsweep )/),&
          comment="!list of error threshold for each sweep in a finite DMRG algorithm.")
-    call parse_input_variable(Norb,"NORB",INPUTunit,default=1,comment="Number of impurity orbitals.")
-    ! call parse_input_variable(Nspin,"NSPIN",INPUTunit,default=1,comment="Number of spin degeneracy (max 2)")
+
+    call parse_input_variable(QNdim,"QNdim",INPUTunit,default=1,&
+         comment="Total  conserved abelian quantum numbers to consider.")
+
+    allocate(Dmrg_QN(QNdim))
+    call parse_input_variable(DMRG_QN,"DMRG_QN",INPUTunit,default=(/(0.5d0,i=1,QNdim )/),&
+         comment="Target Sector QN in units [0:1]. 1/2=Half-filling")
+
+    call parse_input_variable(Norb,"NORB",INPUTunit,default=1,&
+         comment="Number of impurity orbitals.")
+    ! call parse_input_variable(Nspin,"NSPIN",INPUTunit,default=2,comment="Number of spin degeneracy")
     ! call parse_input_variable(filling,"FILLING",INPUTunit,default=0,comment="Total number of allowed electrons")
-    allocate(Uloc(Norb),ts(Norb))
-    call parse_input_variable(ts,"TS",INPUTunit,default=(/( -1d0,i=1,size(ts) )/),&
-         comment="Hopping amplitudes per orbital")
+
+    !>Interaction parameters:
+    allocate(Uloc(Norb))
     call parse_input_variable(uloc,"ULOC",INPUTunit,default=(/( 2d0,i=1,size(Uloc) )/),&
          comment="Values of the local interaction per orbital")
-    ! call parse_input_variable(ust,"UST",INPUTunit,default=0.d0,comment="Value of the inter-orbital interaction term")
-    ! call parse_input_variable(Jh,"JH",INPUTunit,default=0.d0,comment="Hunds coupling")
+    call parse_input_variable(ust,"UST",INPUTunit,default=0.d0,comment="Value of the inter-orbital interaction term")
+    call parse_input_variable(Jh,"JH",INPUTunit,default=0.d0,comment="Hunds coupling")
     call parse_input_variable(Jx,"JX",INPUTunit,default=0.d0,comment="S-E coupling, Jxy Heisenberg")
     call parse_input_variable(Jp,"JP",INPUTunit,default=0.d0,comment="P-H coupling, Jz  Heisenberg")
+    call parse_input_variable(hfmode,"HFMODE",INPUTunit,default=.true.,&
+         comment="Flag to set the Hartree form of the interaction (n-1/2). see xmu.")
     !
+    !> Local parameters:
     ! call parse_input_variable(temp,"TEMP",INPUTunit,default=0d0,comment="temperature")
-    !
     call parse_input_variable(xmu,"XMU",INPUTunit,default=0.d0,&
          comment="Chemical potential. If HFMODE=T, xmu=0 indicates half-filling condition.")
-    !
+    ! call parse_input_variable(eps,"EPS",INPUTunit,default=0.01d0,comment="Broadening on the real-axis.")
+    ! call parse_input_variable(cutoff,"CUTOFF",INPUTunit,default=1.d-9,comment="Spectrum cut-off, used to determine the number states to be retained.")
+    ! call parse_input_variable(gs_threshold,"GS_THRESHOLD",INPUTunit,default=1.d-9,comment="Energy threshold for ground state degeneracy loop up")
+
+    !> Aux parameters (GF)
     ! call parse_input_variable(wini,"WINI",INPUTunit,default=-5.d0,comment="Smallest real-axis frequency")
     ! call parse_input_variable(wfin,"WFIN",INPUTunit,default=5.d0,comment="Largest real-axis frequency")
-    !
     ! call parse_input_variable(Lmats,"LMATS",INPUTunit,default=4096,comment="Number of Matsubara frequencies.")
     ! call parse_input_variable(Lreal,"LREAL",INPUTunit,default=5000,comment="Number of real-axis frequencies.")
     ! call parse_input_variable(Ltau,"LTAU",INPUTunit,default=1024,comment="Number of imaginary time points.")
@@ -135,15 +190,11 @@ contains
     ! call parse_input_variable(gf_flag,"GF_FLAG",INPUTunit,&default=(/( .false.,i=1,size(gf_flag) )/),comment="Flag to activate Greens functions calculation")
     ! call parse_input_variable(chispin_flag,"CHISPIN_FLAG",INPUTunit,default=(/( .false.,i=1,size(chispin_flag) )/),comment="Flag to activate spin susceptibility calculation.")
     ! !
-    call parse_input_variable(hfmode,"HFMODE",INPUTunit,default=.true.,&
-         comment="Flag to set the Hartree form of the interaction (n-1/2). see xmu.")
-    ! call parse_input_variable(eps,"EPS",INPUTunit,default=0.01d0,comment="Broadening on the real-axis.")
-    ! call parse_input_variable(cutoff,"CUTOFF",INPUTunit,default=1.d-9,comment="Spectrum cut-off, used to determine the number states to be retained.")
-    ! call parse_input_variable(gs_threshold,"GS_THRESHOLD",INPUTunit,default=1.d-9,comment="Energy threshold for ground state degeneracy loop up")
+
     !
-    ! call parse_input_variable(sparse_H,"SPARSE_H",INPUTunit,default=.true.,comment="flag to select  storage of sparse matrix H (mem--, cpu++) if TRUE, or direct on-the-fly H*v product (mem++, cpu--) if FALSE ")   
     ! call parse_input_variable(verbose,"VERBOSE",INPUTunit,default=3,comment="Verbosity level: 0=almost nothing --> 5:all. Really: all")
     !
+    !> Lanczos parameters:
     call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",&
          comment="select the lanczos method: ARPACK (default), LANCZOS (T=0 only)")
     call parse_input_variable(lanc_neigen,"LANC_NEIGEN",INPUTunit,default=2,&

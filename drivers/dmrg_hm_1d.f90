@@ -7,35 +7,34 @@ program hubbard_1d
   character(len=64)                     :: finput
   integer                               :: i,unit,iorb
   character(len=1)                      :: DMRGtype
-  real(8)                               :: target_Qn(2)
+  real(8)                               :: ts(2),Mh(2)
   type(site)                            :: Dot
   type(sparse_matrix)                   :: C,N
-  real(8)                               :: ts
-  complex(8),dimension(:,:),allocatable :: Hloc,Hij
+  real(8),dimension(:,:),allocatable :: Hloc,Hij
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
-  call parse_input_variable(target_qn,"target_qn",finput,default=[1d0,1d0],&
-       comment="Target Sector Occupation [Nup,Ndw] in units [0:1]")
+  call parse_input_variable(ts,"TS",finput,default=(/( -1d0,i=1,2 )/),&
+       comment="Hopping amplitudes")
+  call parse_input_variable(Mh,"MH",finput,default=(/(0d0,i=1,2 )/),&
+       comment="Crystal field splittings")  
   call parse_input_variable(DMRGtype,"DMRGtype",finput,default="infinite",&
        comment="DMRG algorithm: Infinite, Finite")
-  call parse_input_variable(ts,"TS",finput,default=-1d0,&
-       comment="Hopping amplitude")
   call read_input(finput)
 
+  
 
-  if(Norb>1)stop "This code is for Norb=1. Stop."
+  if(Norb>2)stop "This code is for Norb<=2. STOP"
   Nso = Nspin*Norb
 
 
   !>Local Hamiltonian:
   allocate(Hloc(Nso,Nso))
-  Hloc = zero
+  Hloc = one*diag([Mh,Mh])
   Dot  = hubbard_site(Hloc)
 
 
-
   !Init DMRG
-  call init_dmrg(hubbard_1d_model,target_qn,ModelDot=Dot)
+  call init_dmrg(hubbard_1d_model,ModelDot=Dot)
 
   !Run DMRG algorithm
   select case(DMRGtype)
@@ -46,13 +45,6 @@ program hubbard_1d
      call finite_DMRG()
   end select
 
-
-
-  ! !Post-processing and measure quantities:
-  ! !Measure <n(a)>
-  ! do iorb=1,Norb
-  !    call Measure_Op_DMRG(get_N(Dot,iorb),arange(1,Ldmrg/2),file="densVSj_l"//str(iorb))
-  ! enddo
 
 
   !Finalize DMRG
@@ -68,7 +60,7 @@ contains
     type(block)                           :: left
     type(block)                           :: right
     integer,dimension(:),optional         :: states
-    type(sparse_matrix),dimension(2) :: Cl,Cr
+    type(sparse_matrix),dimension(Norb,2) :: Cl,Cr
     type(sparse_matrix)                   :: P
     type(sparse_matrix)                   :: H2
     integer                               :: ispin,iorb,jorb,io,jo
@@ -76,47 +68,43 @@ contains
     character(len=:),allocatable          :: key
     !
     !>Retrieve operators:
-    P     = left%operators%op("P")
-    Cl(1) = left%operators%op("C"//left%okey(1,1))
-    Cl(2) = left%operators%op("C"//left%okey(1,2))
-    Cr(1) = right%operators%op("C"//right%okey(1,1))
-    Cr(2) = right%operators%op("C"//right%okey(1,2))
+    P = left%operators%op("P")
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          key = "C"//left%okey(iorb,ispin)
+          Cl(iorb,ispin) = left%operators%op(key)
+          key = "C"//right%okey(iorb,ispin)
+          Cr(iorb,ispin) = right%operators%op(key)
+       enddo
+    enddo
     !
-    !>Get H2 dimensions:
+    !> Get H2 dimensions:
     Hdims = shape(left%operators)*shape(right%operators)
     if(present(states))Hdims = [size(states),size(states)]
     !
-    !>Build H2
+    !>Build H2:
     call H2%init(Hdims(1),Hdims(2))
-    if(present(states))then
-       H2 = H2 + ts*sp_kron(matmul(Cl(1)%dgr(),P),Cr(1),states)
-       H2 = H2 + ts*sp_kron(matmul(Cl(2)%dgr(),P),Cr(2),states)
-    else
-       H2 = H2 + ts*(matmul(Cl(1)%dgr(),P).x.Cr(1))
-       H2 = H2 + ts*(matmul(Cl(2)%dgr(),P).x.Cr(2))
-    endif
+    do iorb=1,Norb
+       if(present(states))then
+          H2 = H2 + ts(iorb)*sp_kron(matmul(Cl(iorb,1)%dgr(),P),Cr(iorb,1),states)
+          H2 = H2 + ts(iorb)*sp_kron(matmul(Cl(iorb,2)%dgr(),P),Cr(iorb,2),states)
+       else
+          H2 = H2 + ts(iorb)*(matmul(Cl(iorb,1)%dgr(),P).x.Cr(iorb,1))
+          H2 = H2 + ts(iorb)*(matmul(Cl(iorb,2)%dgr(),P).x.Cr(iorb,2))
+       endif
+    enddo
     H2 = H2 + H2%dgr()
+    !
     !
     !> free memory
     call P%free
-    call Cl(1)%free
-    call Cl(2)%free
-    call Cr(1)%free
-    call Cr(2)%free
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          call Cl(iorb,ispin)%free
+          call Cr(iorb,ispin)%free
+       enddo
+    enddo
   end function hubbard_1d_model
-
-  
-  function get_N(dot,iorb) result(dens)
-    type(site)                            :: dot
-    integer                               :: iorb,ispin
-    type(sparse_matrix)                   :: dens
-    type(sparse_matrix)                   :: Cup,Cdw,P
-    P    = dot%operators%op("P")
-    Cup  = dot%operators%op("C"//dot%okey(iorb,1))
-    Cdw  = dot%operators%op("C"//dot%okey(iorb,2))
-    dens = matmul(Cup%dgr(),Cup) + matmul(Cdw%dgr(),Cdw)
-  end function get_N
-
 
 
   ! !H_lr = -t \sum_sigma[ (C^+_{l,sigma}@P_l) x C_{r,sigma}]  + H.c.

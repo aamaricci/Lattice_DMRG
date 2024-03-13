@@ -1,45 +1,7 @@
 MODULE SYSTEM
-  USE SCIFOR
-  USE INPUT_VARS
-  USE AUX_FUNCS
-  USE MATRIX_SPARSE, id=>sp_eye
-  USE MATRIX_BLOCKS
-  USE TUPLE_BASIS
-  USE LIST_OPERATORS
-  USE LIST_SECTORS
-  USE SITES
-  USE BLOCKS
+  USE GLOBAL
   implicit none
   private
-
-
-  abstract interface
-     function Hconnect(left,right,states)
-       USE BLOCKS
-       USE MATRIX_SPARSE
-       type(block)                   :: left
-       type(block)                   :: right
-       integer,dimension(:),optional :: states
-       type(sparse_matrix)           :: Hconnect
-     end function Hconnect
-  end interface
-  procedure(Hconnect),pointer,public    :: H2model=>null()
-  !
-  type(sparse_matrix)                   :: spHsb
-  !
-  type(site)                            :: dot
-  character(len=:),allocatable          :: suffix
-  real(8),dimension(:),allocatable      :: target_Qn,current_target_QN
-  type(block)                           :: init_sys,init_env
-  logical                               :: init_called=.false.
-  real(8),dimension(:),allocatable      :: energies
-  real(8),dimension(:),allocatable      :: rho_sys_evals
-  real(8),dimension(:),allocatable      :: rho_env_evals
-  type(blocks_matrix)                   :: psi_sys,rho_sys
-  type(blocks_matrix)                   :: psi_env,rho_env
-  !GLOBAL SYS & ENV 
-  type(block)                           :: sys,env
-
 
   public :: init_DMRG
   public :: finalize_DMRG
@@ -48,27 +10,19 @@ MODULE SYSTEM
   public :: infinite_DMRG
   public :: finite_DMRG
 
-  !Measuring:
-  public :: Measure_Op_DMRG
-  public :: Build_Op_DMRG
-  public :: Advance_Op_DMRG
-  public :: Advance_Corr_DMRG
-  public :: Average_Op_DMRG
-
-
-
 contains
 
 
 
-
-  subroutine init_dmrg(h2,QN,ModelDot)
-    procedure(Hconnect)          :: h2
-    real(8),dimension(:)         :: QN
-    type(site)                   :: ModelDot
+  !##################################################################
+  !              INIT/FINALIZE DMRG ALGORITHM
+  !##################################################################
+  subroutine init_dmrg(h2,ModelDot)
+    procedure(Hconnect) :: h2
+    type(site)          :: ModelDot
     if(associated(H2model))nullify(H2model)
     H2model => h2
-    allocate(target_qn, source=qn)
+    allocate(target_qn, source=DMRG_QN)
     dot        = ModelDot
     init_sys   = block(dot)
     init_env   = block(dot)
@@ -90,7 +44,9 @@ contains
 
 
 
-
+  !##################################################################
+  !              FINITE/INFINITE DMRG ALGORITHM
+  !##################################################################
   subroutine infinite_DMRG()
     !
     if(.not.init_called)stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
@@ -102,11 +58,10 @@ contains
     do while (2*sys%length <= Ldmrg)
        call step_dmrg()
        call write_energy()
+       call write_truncation()
        call write_entanglement()
     enddo
   end subroutine infinite_DMRG
-
-
 
 
 
@@ -185,7 +140,9 @@ contains
 
 
 
-
+  !##################################################################
+  !              WORKHORSE: STEP DMRG 
+  !##################################################################
   subroutine step_dmrg(label,isweep)
     integer,optional                      :: label,isweep
     integer                               :: iLabel
@@ -198,14 +155,13 @@ contains
     integer,dimension(:),allocatable      :: sys_map,env_map,sb_map
     real(8),dimension(:),allocatable      :: sb_qn,qn
     real(8),dimension(:),allocatable      :: evals
-    complex(8),dimension(:,:),allocatable :: Hsb
+    real(8),dimension(:,:),allocatable :: Hsb
     real(8),dimension(:),allocatable      :: eig_values
-    complex(8),dimension(:,:),allocatable :: eig_basis
+    real(8),dimension(:,:),allocatable :: eig_basis
     integer,dimension(:),allocatable      :: sb_states
     type(tbasis)                          :: sys_basis,env_basis
     type(sparse_matrix)                   :: trRho_sys,trRho_env
     type(sectors_list)                    :: sb_sector
-    real(8)                               :: truncation_error_sys,truncation_error_env
     logical                               :: exist
     !
     iLabel=0;if(present(label))iLabel=label
@@ -224,10 +180,16 @@ contains
     call start_timer()
     !
     current_L         = sys%length + env%length + 2
-    current_target_QN = int(target_qn*current_L/2d0)
-    write(LOGfile,"(A,I12)")"SuperBlock Length  =",current_L
-    write(LOGfile,"(A,"//str(size(current_target_QN))//"F12.7,2x,A,F12.7)")&
-         "Target_QN=",current_target_QN,"filling=",sum(current_target_QN)
+    current_target_QN = int(target_qn*current_L*Norb)
+    write(LOGfile,"(A22,I12)")"SuperBlock Length = ",current_L
+    write(LOGfile,"(A22,"//str(size(current_target_QN))//"F12.7)")&
+         "Target_QN = ",current_target_QN
+    write(LOGfile,"(A22,G12.7)")&
+         "Total         = ",sum(current_target_QN)
+    write(LOGfile,"(A22,G12.7)")&
+         "Filling       = ",sum(current_target_QN)/current_L
+    write(LOGfile,"(A22,G12.7)")&
+         "Filling/Norb  = ",sum(current_target_QN)/current_L/Norb
     !
     !Check if blocks are valid ones
     if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
@@ -255,8 +217,7 @@ contains
          "Enlarged Blocks dimensions           :", sys%dim,env%dim  
     write(LOGfile,"(A,I12,A1,I12,A1,F10.5,A1)")&
          "SuperBlock Dimension  (tot)          :", m_sb,"(",m_sys*m_env,")",100*dble(m_sb)/m_sys/m_env,"%"
-
-
+    !
     !Build SuperBLock Hamiltonian
     call start_timer()
     spHsb = sp_kron(sys%operators%op("H"),id(m_env),sb_states) + &
@@ -372,7 +333,7 @@ contains
     write(LOGfile,"(A,2ES24.15)")&
          "Truncation Errors                    :",truncation_error_sys,truncation_error_env
     write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-         "Energies/L                           :",energies/current_L
+         "Energies/L                           :",energies/current_L/Norb
     call stop_timer("dmrg_step")
     call wait(100)
     !
@@ -383,11 +344,8 @@ contains
     if(allocated(sb_map))deallocate(sb_map)
     if(allocated(sb_qn))deallocate(sb_qn)
     if(allocated(qn))deallocate(qn)
-    ! if(allocated(rho_vec))deallocate(rho_vec)
     if(allocated(eig_values))deallocate(eig_values)
     if(allocated(eig_basis))deallocate(eig_basis)
-    ! if(allocated(evals_sys))deallocate(evals_sys)
-    ! if(allocated(evals_env))deallocate(evals_env)
     call rho_sys%free()
     call rho_env%free()
     call sys_basis%free()
@@ -402,11 +360,10 @@ contains
 
 
 
-
-
-
-
-
+  !-----------------------------------------------------------------!
+  ! Purpose: enlarge a given BLOCK "SELF" growing it left/right with
+  ! a SITE "DOT" (specified in the init)
+  !-----------------------------------------------------------------!
   subroutine enlarge_block(self,dot,grow)
     type(block)                  :: self
     type(site)                   :: dot
@@ -437,7 +394,7 @@ contains
     end select
     call self%put_op("H", Hb +  Hd + H2)
     !
-    !> Update all the other operators in the list:
+    !> Update all the other operators in the list: 
     do i=1,size(self%operators)
        key = self%operators%key(index=i)
        if(str(key)=="H")cycle
@@ -477,13 +434,10 @@ contains
   end subroutine enlarge_block
 
 
-
-
-
-
-
-
-
+  !-----------------------------------------------------------------!
+  ! Purpose: build the list of states compatible with the specified
+  ! quantum numbers
+  !-----------------------------------------------------------------!
   subroutine get_sb_states(sb_states,sb_sector)
     integer,dimension(:),allocatable :: sb_states
     type(sectors_list)               :: sb_sector
@@ -493,6 +447,8 @@ contains
     integer,dimension(:),allocatable :: sys_map,env_map
     !
     if(allocated(sb_states))deallocate(sb_states)
+    !
+    call sb_sector%free()
     !
     do isys=1,size(sys%sectors(1))
        sys_qn  = sys%sectors(1)%qn(index=isys)
@@ -515,16 +471,117 @@ contains
 
 
 
+
+
+
+  !##################################################################
+  !              BUILD REDUCED DENSITY MATRIX 
+  !##################################################################
+  function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
+    integer                            :: Nsys,Nenv
+    real(8),dimension(:)               :: psi
+    integer,dimension(nsys*nenv)       :: map
+    character(len=*)                   :: direction
+    real(8),dimension(:,:),allocatable :: rho
+    real(8),dimension(nsys,nenv)       :: psi_tmp
+    !
+    if(allocated(rho))deallocate(rho)
+    !
+    psi_tmp = transpose(reshape(psi(map), [nenv,nsys]))
+    !
+    select case(to_lower(str(direction)))
+    case ('left','l')
+       allocate(rho(nsys,nsys));rho=zero
+       rho  = matmul(psi_tmp,  (transpose(psi_tmp)) )
+    case ('right','r')
+       allocate(rho(nenv,nenv));rho=zero
+       rho  = matmul((transpose(psi_tmp)), psi_tmp  )
+    end select
+  end function build_density_matrix
+
+
+
+
+
+  !##################################################################
+  !              RESHAPE GROUND STATE AS MATRIX 
+  !##################################################################
+  function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)
+    integer                            :: Nsys,Nenv
+    real(8),dimension(:)               :: psi
+    integer,dimension(nsys*nenv)       :: map
+    character(len=*)                   :: direction
+    real(8),dimension(:,:),allocatable :: psi_mat
+    if(allocated(psi_mat))deallocate(psi_mat)
+    select case(to_lower(str(direction)))
+    case ('left','l')
+       allocate(psi_mat(nsys,nenv));psi_mat=zero
+       psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
+    case ('right','r')
+       allocate(psi_mat(nenv,nsys));psi_mat=zero
+       psi_mat = reshape(psi(map), [nenv,nsys])
+    end select
+  end function build_psimat
+
+
+
+
+
+  !##################################################################
+  !              SuperBlock MATRIX-VECTOR PRODUCT 
+  !##################################################################
+  subroutine sb_HxV(Nloc,v,Hv)
+    integer                 :: Nloc
+    real(8),dimension(Nloc) :: v
+    real(8),dimension(Nloc) :: Hv
+    real(8)                 :: val
+    integer                 :: i,j,jcol
+    Hv=zero
+    do i=1,Nloc
+       matmul: do jcol=1, spHsb%row(i)%Size
+          val = spHsb%row(i)%vals(jcol)
+          j   = spHsb%row(i)%cols(jcol)
+          Hv(i) = Hv(i) + val*v(j)
+       end do matmul
+    end do
+  end subroutine sb_HxV
+
+
+
+
+
+  !##################################################################
+  !                 WRITE TO FILE
+  !##################################################################
+  !-----------------------------------------------------------------!
+  ! Purpose: write energy to file
+  !-----------------------------------------------------------------!
   subroutine write_energy()
     integer                   :: current_L
     integer                   :: Eunit
     current_L = sys%length + env%length
     Eunit     = fopen("energyVSsys.length_"//str(suffix),append=.true.)
-    write(Eunit,*)sys%length,energies/current_L
+    write(Eunit,*)sys%length,energies/current_L/Norb
     close(Eunit)
   end subroutine write_energy
 
 
+  !-----------------------------------------------------------------!
+  ! Purpose: write entanglement entropy to file
+  !-----------------------------------------------------------------!
+  subroutine write_truncation()
+    integer                   :: current_L
+    integer                   :: Eunit
+    current_L = sys%length + env%length
+    Eunit     = fopen("truncationVSsys.length_"//str(suffix),append=.true.)
+    write(Eunit,*)sys%length,truncation_error_sys/current_L/Norb,truncation_error_env/current_L/Norb
+    close(Eunit)
+  end subroutine write_truncation
+
+
+  !-----------------------------------------------------------------!
+  ! Purpose: write entanglement entropy to file
+  !-----------------------------------------------------------------!
   subroutine write_entanglement()
     integer :: Eunit,i
     real(8) :: entropy
@@ -538,341 +595,6 @@ contains
     write(Eunit,*)sys%length,entropy
     close(Eunit)
   end subroutine write_entanglement
-
-  subroutine write_user(file,vals,x)
-    character(len=*) :: file
-    real(8),optional :: x
-    real(8)          :: x_
-    real(8)          :: vals(:)
-    integer          :: Eunit
-    x_ = sys%length;if(present(x))x_=x
-    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
-    write(Eunit,*)x_,vals
-    close(Eunit)
-  end subroutine write_user
-
-
-
-
-
-
-
-
-
-  subroutine Measure_Op_dmrg(Op,ivec,file,avOp)
-    integer,dimension(:),intent(in)        :: ivec
-    type(sparse_matrix),intent(in)         :: Op
-    character(len=*)                       :: file
-    character(len=1)                       :: label
-    real(8),dimension(size(ivec)),optional :: avOp
-    real(8)                                :: val
-    integer                                :: it,i
-    type(sparse_matrix)                    :: Oi
-    !
-    suffix=label_DMRG('u')
-    do it=1,size(ivec)
-       i   = ivec(it)
-       label='l';if(i>sys%length)label='r'
-       Oi  = Build_Op_dmrg(Op,i)
-       Oi  = Advance_Op_dmrg(Oi,i)
-       val = Average_Op_dmrg(Oi,label)   
-       call write_user(trim(file),[val],x=dble(i))
-       call Oi%free()
-       if(present(avOp))avOp(it)=val
-    enddo
-  end subroutine Measure_Op_dmrg
-
-
-  !Return the Operator Oi at a site I of the chain given the operator O in the dot basis:
-  function Build_Op_dmrg(Op,i) result(Oi)
-    integer                        :: i
-    type(sparse_matrix),intent(in) :: Op
-    type(sparse_matrix)            :: Oi
-    !
-    character(len=1)               :: label
-    type(sparse_matrix)            :: U
-    integer                        :: L,R
-    integer                        :: pos
-    !
-    L = sys%length
-    R = env%length
-    if(i<1.OR.i>L+R)stop "construct_op_dmrg error: I not in [1,Lchain]"
-    !
-    label='l';if(i>L)label='r'
-    !
-    pos=i;if(i>L)pos=R+1-(i-L)
-    !
-    !Step 1: build the operator at the site pos
-    Oi  = Op
-    if(pos>1)then
-       select case(to_lower(str(label)))
-       case ("l")
-          U   = sys%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
-          Oi  = matmul(U%dgr(),U).x.Op          !build right-most Op of the block_I as Id(I-1)xOp_I
-          U   = sys%omatrices%op(index=pos)   !retrieve O_I 
-          Oi  = matmul(U%dgr(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
-       case ("r")
-          U   = env%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
-          Oi  = Op.x.matmul(U%dgr(),U)          !build right-most Op of the block_I as Id(I-1)xOp_I
-          U   = env%omatrices%op(index=pos)   !retrieve O_I 
-          Oi  = matmul(U%dgr(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
-       end select
-       call U%free()
-    end if
-  end function Build_Op_dmrg
-
-
-  function Advance_Op_dmrg(Op,i,nstep) result(Oi)
-    type(sparse_matrix),intent(in)   :: Op
-    integer                          :: i
-    integer,optional                 :: nstep
-    type(sparse_matrix)              :: Oi,U
-    character(len=1)                 :: label
-    integer                          :: L,R
-    integer                          :: istart,iend,it
-    !
-    L = sys%length
-    R = env%length
-    if(i<1.OR.i>L+R)stop "Advance_Op_DMRG error: I not in [1,Lchain]"
-    !
-    label ='l';if(i>L) label ='r'
-    select case(label)
-    case ("l")
-       istart = i         ; iend   = L ; if(present(nstep))iend=istart+nstep
-       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
-    case ("r") 
-       istart = R+1-(i-L) ; iend   = R ; if(present(nstep))iend=istart+nstep
-       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
-    end select
-    !
-    !Bring the operator to the L/R basis of the target states
-    !Here we try to reproduce the same strategy of the dmrg_step: increase and rotate 
-    Oi = Op
-    select case(label)
-    case ("l")
-       Oi = Oi.x.Id(dot%dim)
-       do it=istart+1,iend
-          U  = sys%omatrices%op(index=it)
-          Oi = matmul(U%dgr(),matmul(Oi,U))
-          Oi = Oi.x.Id(dot%dim)
-       enddo
-    case ("r")
-       Oi = Id(dot%dim).x.Oi
-       do it=istart+1,iend
-          U  = env%omatrices%op(index=it)
-          Oi = matmul(U%dgr(),matmul(Oi,U))
-          Oi = Id(dot%dim).x.Oi
-       enddo
-    end select
-    call U%free()
-  end function Advance_Op_dmrg
-
-
-  function Advance_Corr_dmrg(Op,i,nstep) result(Oi)
-    type(sparse_matrix),intent(in)   :: Op
-    integer                          :: i
-    integer,optional                 :: nstep
-    type(sparse_matrix)              :: Oi,U
-    character(len=1)                 :: label
-    integer                          :: L,R
-    integer                          :: istart,iend,it
-    !
-    L = sys%length
-    R = env%length
-    if(i<1.OR.i>L+R)stop "Advance_Op_DMRG error: I not in [1,Lchain]"
-    !
-    label ='l';if(i>L) label ='r'
-    select case(label)
-    case ("l")
-       istart = i         ; iend   = L ; if(present(nstep))iend=istart+nstep
-       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
-    case ("r") 
-       istart = R+1-(i-L) ; iend   = R ; if(present(nstep))iend=istart+nstep
-       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
-    end select
-    !
-    !Bring the operator to the L/R basis of the target states
-    !Here we try to reproduce the same strategy of the dmrg_step: increase and rotate 
-    Oi = Op
-    select case(label)
-    case ("l")
-       do it=istart+1,iend
-          U  = sys%omatrices%op(index=it)
-          Oi = matmul(U%dgr(),matmul(Oi,U))
-          Oi = Oi.x.Id(dot%dim)
-       enddo
-    case ("r")
-       do it=istart+1,iend
-          U  = env%omatrices%op(index=it)
-          Oi = matmul(U%dgr(),matmul(Oi,U))
-          Oi = Id(dot%dim).x.Oi
-       enddo
-    end select
-    call U%free()
-  end function Advance_Corr_dmrg
-
-  function Average_Op_dmrg(Op,label) result(avOp)
-    type(sparse_matrix),intent(in)   :: Op
-    character(len=1)                 :: label
-    real(8)                          :: avOp
-    type(sparse_matrix)              :: Psi
-    integer                          :: L,R,i,pos,dims(2)
-    real(8),dimension(:),allocatable :: psi_vec
-    integer,dimension(:),allocatable :: psi_map
-    !
-    !Measure using PSI matrix:
-    select case(label)
-    case ("l")
-       if(any(shape(psi_sys)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = as_sparse(psi_sys)
-       AvOp = trace(as_matrix(matmul(Psi%dgr(),matmul(Op,Psi))))
-    case ("r")
-       if(any(shape(psi_env)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = as_sparse(psi_env)
-       AvOp = trace(as_matrix(matmul(Psi%dgr(),matmul(Op,Psi))))
-    end select
-    call Psi%free()
-  end function Average_Op_dmrg
-
-
-
-
-
-
-
-
-
-
-
-  function build_PsiMat(Nsys,Nenv,psi,map,direction) result(psi_mat)
-    integer                            :: Nsys,Nenv
-    complex(8),dimension(:)               :: psi
-    integer,dimension(nsys*nenv)       :: map
-    character(len=*)                   :: direction
-    complex(8),dimension(:,:),allocatable :: psi_mat
-    if(allocated(psi_mat))deallocate(psi_mat)
-    select case(to_lower(str(direction)))
-    case ('left','l')
-       allocate(psi_mat(nsys,nenv));psi_mat=zero
-       psi_mat = transpose(reshape(psi(map), [nenv,nsys]))
-    case ('right','r')
-       allocate(psi_mat(nenv,nsys));psi_mat=zero
-       psi_mat = reshape(psi(map), [nenv,nsys])
-    end select
-  end function build_psimat
-
-
-  function build_density_matrix(Nsys,Nenv,psi,map,direction) result(rho)
-    integer                            :: Nsys,Nenv
-    complex(8),dimension(:)               :: psi
-    integer,dimension(nsys*nenv)       :: map
-    character(len=*)                   :: direction
-    complex(8),dimension(:,:),allocatable :: rho
-    complex(8),dimension(nsys,nenv)       :: psi_tmp
-    !
-    if(allocated(rho))deallocate(rho)
-    !
-    psi_tmp = transpose(reshape(psi(map), [nenv,nsys]))
-    !
-    select case(to_lower(str(direction)))
-    case ('left','l')
-       allocate(rho(nsys,nsys));rho=zero
-       rho  = matmul(psi_tmp,  conjg(transpose(psi_tmp)) )
-    case ('right','r')
-       allocate(rho(nenv,nenv));rho=zero
-       rho  = matmul(conjg(transpose(psi_tmp)), psi_tmp  )
-    end select
-  end function build_density_matrix
-
-
-
-  subroutine dmrg_graphic(label)
-    integer                  :: label
-    integer                  :: i,N,Msys,Menv,LMsys,LMenv,index,Ltot
-    character(:),allocatable :: Ldot,Rdot
-    real(8)                  :: eps=1d-6
-    integer                  :: M=50
-
-    call wait(50)
-    !call system("clear")
-    call execute_command_line("clear")
-    Ltot = Ldmrg/2
-    Ldot = bold_green('=')
-    Rdot = bold_red('-')
-    ! if(Ltot>M)then
-    !    Ldot = bg_green('=')
-    !    Rdot = bg_red('-')
-    ! endif
-    !
-    N = int(Ltot/(M+eps))+1
-    !
-    select case(label)
-    case default; stop "dmrg_graphic error: label != 1(L),2(R)"
-    case(0)
-       Msys = int(sys%length/(N+eps))+1
-       Menv = int(env%length/(N+eps))+1
-       LMsys= Ltot/N-Msys
-       LMenv= Ltot/N-Menv
-       index=nint(mod(dble(sys%length),N+eps))
-       write(LOGfile,*)""
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"sys; env=",sys%length,env%length,"|"
-       if(LMsys>0)write(LOGfile,"("//str(LMsys)//"A)",advance="no")(" ",i=1,LMsys)
-       write(LOGfile,"("//str(Msys)//"A)",advance="no")(trim(Ldot),i=1,Msys)
-       write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
-       write(LOGfile,"("//str(Menv)//"A)",advance="no")(trim(Rdot),i=1,Menv)
-       if(LMenv>0)write(LOGfile,"("//str(LMenv)//"A)",advance="no")(" ",i=1,LMenv)
-    case(1)
-       Msys = int(sys%length/(N+eps))+1
-       Menv = int(env%length/(N+eps))+1
-       LMsys= 0
-       LMenv= 0
-       index=nint(mod(dble(sys%length),N+eps))
-       write(LOGfile,*)""
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"sys; env=",sys%length,env%length,"|"
-       if(LMsys>0)write(LOGfile,"("//str(LMsys)//"A)",advance="no")(" ",i=1,LMsys)
-       write(LOGfile,"("//str(Msys)//"A)",advance="no")(trim(Ldot),i=1,Msys)
-       write(LOGfile,"(A)",advance="no")bg_green(">")//"|"//bold_red("*")
-       write(LOGfile,"("//str(Menv)//"A)",advance="no")(trim(Rdot),i=1,Menv)
-       if(LMenv>0)write(LOGfile,"("//str(LMenv)//"A)",advance="no")(" ",i=1,LMenv)
-    case(2)
-       Msys = int(env%length/(N+eps))+1
-       Menv = int(sys%length/(N+eps))+1
-       LMsys= 0
-       LMenv= 0
-       index=nint(mod(dble(env%length),N+eps))
-       write(LOGfile,*)""
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"sys; env=",sys%length,env%length,"|"
-       if(LMsys>0)write(LOGfile,"("//str(LMsys)//"A)",advance="no")(" ",i=1,LMsys)
-       write(LOGfile,"("//str(Msys)//"A)",advance="no")(trim(Ldot),i=1,Msys)
-       write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
-       write(LOGfile,"("//str(Menv)//"A)",advance="no")(trim(Rdot),i=1,Menv)
-       if(LMenv>0)write(LOGfile,"("//str(LMenv)//"A)",advance="no")(" ",i=1,LMenv)
-    end select
-    if(Ltot<=M)then
-       write(LOGfile,"(A1)",advance='yes')"|"
-    else
-       write(LOGfile,"(A1,I3,2x,A,1x,A)",advance='yes')"|",index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
-    endif
-    call wait(150)
-  end subroutine dmrg_graphic
-
-
-
-  subroutine sb_HxV(Nloc,v,Hv)
-    integer                 :: Nloc
-    complex(8),dimension(Nloc) :: v
-    complex(8),dimension(Nloc) :: Hv
-    real(8)                 :: val
-    integer                 :: i,j,jcol
-    Hv=zero
-    do i=1,Nloc
-       matmul: do jcol=1, spHsb%row(i)%Size
-          val = spHsb%row(i)%vals(jcol)
-          j   = spHsb%row(i)%cols(jcol)
-          Hv(i) = Hv(i) + val*v(j)
-       end do matmul
-    end do
-  end subroutine sb_HxV
 
 END MODULE SYSTEM
 

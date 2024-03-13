@@ -72,17 +72,9 @@ contains
     enddo
   end function cumulate
 
-  ! function KId(n) result(A)
-  !   integer, intent(in) :: n
-  !   real(8)             :: A(2**n, 2**n)
-  !   integer             :: i
-  !   A = 0d0
-  !   forall(i=1:2**n)A(i,i) = 1d0
-  ! end function KId
-
   recursive function KSz(n) result(A)
     integer, intent(in) :: n
-    complex(8)          :: A(2**n, 2**n)
+    real(8)          :: A(2**n, 2**n)
     integer             :: d(2**n)
     integer             :: i
     d = szvec(n)
