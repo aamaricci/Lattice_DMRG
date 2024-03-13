@@ -380,7 +380,7 @@ contains
     allocate(c%basis(Na*Nb))
     do i=1,Na
        do j=1,Nb
-          io = j + (i-1)*Nb          
+          io = j + (i-1)*Nb
           qn =  a%basis(i)%qn + b%basis(j)%qn
           allocate(c%basis(io)%qn, source=qn)
        enddo

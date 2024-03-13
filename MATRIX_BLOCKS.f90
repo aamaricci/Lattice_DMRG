@@ -11,7 +11,7 @@ MODULE MATRIX_BLOCKS
      real(8),dimension(:),allocatable      :: qn
      real(8),dimension(:),allocatable      :: E
      integer,dimension(:),allocatable      :: map
-     complex(8),dimension(:,:),allocatable :: M
+     real(8),dimension(:,:),allocatable :: M
      type(block_type),pointer              :: next=>null()
   end type block_type
 
@@ -123,7 +123,7 @@ contains
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
   function construct_blocks_matrix(matrix,qn,map) result(self)
-    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:,:),intent(in) :: matrix
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     type(blocks_matrix)                  :: self
@@ -140,7 +140,7 @@ contains
     class(blocks_matrix),intent(inout)   :: self
     real(8),dimension(:)                 :: qn
     integer,dimension(:)                 :: map
-    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:,:),intent(in) :: matrix
     call self%free()
     allocate(self%root)
     call self%append(matrix,qn,map)
@@ -193,7 +193,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine append_blocks_matrix(self,matrix,qn,map)
     class(blocks_matrix),intent(inout)   :: self
-    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:,:),intent(in) :: matrix
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     integer                              :: Dim
@@ -237,7 +237,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine push_blocks_matrix(self,matrix,qn,map)
     class(blocks_matrix),intent(inout)   :: self
-    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:,:),intent(in) :: matrix
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     logical                              :: iupdate
@@ -294,7 +294,7 @@ contains
   function get_block_blocks_matrix(self,index,m) result(matrix)
     class(blocks_matrix)                  :: self
     integer,optional                      :: index,m
-    complex(8),dimension(:,:),allocatable :: matrix
+    real(8),dimension(:,:),allocatable :: matrix
     integer                               :: index_,m_
     logical                               :: ifound
     type(block_type),pointer              :: c
@@ -453,7 +453,7 @@ contains
   !+------------------------------------------------------------------+
   function dump_blocks_matrix(self) result(matrix)
     class(blocks_matrix),intent(inout)    :: self
-    complex(8),dimension(:,:),allocatable :: matrix,mtmp
+    real(8),dimension(:,:),allocatable :: matrix,mtmp
     integer                               :: Offset1,Offset2
     integer                               :: N1,N2
     type(block_type),pointer              :: c
@@ -496,7 +496,7 @@ contains
     type(sparse_matrix)                 :: sparse
     integer,dimension(2)                :: dims
     integer                             :: i,it
-    complex(8),dimension(:),allocatable :: self_vec
+    real(8),dimension(:),allocatable :: self_vec
     integer,dimension(:),allocatable    :: self_map
     dims = self%shape()
     call sparse%init(dims(1),dims(2))
@@ -533,7 +533,7 @@ contains
     type(sparse_matrix)                 :: sparse
     integer,dimension(2)                :: dims
     integer                             :: i,it
-    complex(8),dimension(:),allocatable :: self_vec
+    real(8),dimension(:),allocatable :: self_vec
     integer,dimension(:),allocatable    :: self_map
     ! dims = shape(self)
     ! m_=dims(2);if(present(m))m_=m
@@ -652,7 +652,7 @@ contains
   function evec_blocks_matrix(self,m) result(vec)
     class(blocks_matrix)                :: self
     integer                             :: m
-    complex(8),dimension(:),allocatable :: vec
+    real(8),dimension(:),allocatable :: vec
     integer                             :: m_,i,q,pos
     type(block_type),pointer            :: c
     !
@@ -875,14 +875,15 @@ contains
     character(len=12)               :: fmt_
     integer                         :: i,j,unit_
     character(len=64)               :: format
-    complex(8)                      :: val
+    real(8)                      :: val
     type(block_type),pointer        :: c
     !
     unit_=6
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     if(present(file))open(free_unit(unit_),file=str(file))
     !
-    format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+    format='('//str(fmt_)//'1x)'
+    ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
     !
     write(*,"(A6,I12)")"Size :",size(self)
     write(*,"(A6,2I6)")"Shape:",shape(self)
@@ -899,7 +900,8 @@ contains
        do i=1,size(c%M,1)
           do j=1,size(c%M,2)
              val = c%M(i,j)
-             write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
+             write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')val
+             !write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
           enddo
           write(unit_,*)
        enddo
@@ -924,7 +926,7 @@ contains
     integer                          :: i    
     call adg%free()
     do i=1,size(a)
-       call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+       call adg%append( (transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
     enddo
   end function dgr_blocks_matrix
 
@@ -944,7 +946,7 @@ contains
     integer                          :: i    
     call adg%free()
     do i=1,size(a)
-       call adg%append(conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+       call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
     enddo
   end function hconjg_blocks_matrix
 
@@ -993,16 +995,16 @@ program testBLOCK_MATRICES
   type(tbasis)                          :: a_basis
   type(sectors_list)                    :: a_sector
   integer,dimension(:),allocatable      :: a_map
-  complex(8),dimension(:,:),allocatable :: Matrix
-  complex(8),dimension(:),allocatable   :: Vec
+  real(8),dimension(:,:),allocatable :: Matrix
+  real(8),dimension(:),allocatable   :: Vec
   real(8),dimension(:),allocatable      :: evals
   integer,dimension(:),allocatable      :: eorder,Dq
   integer                               :: i,j,q,N,count
-  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
-  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
-  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
-  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter   :: Sz=pauli_z
+  real(8),dimension(2,2),parameter   :: Sx=pauli_x
+  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)             :: Gamma13,Gamma03
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(zeye(2),Sz)

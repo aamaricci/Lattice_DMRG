@@ -207,9 +207,9 @@ contains
   !PURPOSE: 
   !+-------------------------------------------------------------------+
   function build_Hlocal_operator(H) result(Hmat)
-    complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
-    complex(8),dimension(:,:),allocatable :: Hmat
-    complex(8),dimension(Nspin,Ns,Ns)     :: Hloc
+    real(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
+    real(8),dimension(:,:),allocatable :: Hmat
+    real(8),dimension(Nspin,Ns,Ns)     :: Hloc
     type(local_fock_sector)               :: sectorI
     real(8)                               :: htmp
     integer                               :: isector,i,m,io,jo,iorb,ispin,jorb
@@ -223,9 +223,9 @@ contains
     !
     do ispin=1,Nspin
        do iorb=1,Norb
-          io = iorb+(ispin-1)*Nspin          
+          io = iorb+(ispin-1)*Norb      
           do jorb=1,Norb
-             jo = jorb + (ispin-1)*Nspin
+             jo = jorb + (ispin-1)*Norb
              Hloc(ispin,iorb,jorb) = H(io,jo)
           enddo
        enddo
@@ -305,7 +305,7 @@ contains
   function build_C_operator(iorb,ispin) result(Cmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
-    complex(8),dimension(:,:),allocatable :: Cmat
+    real(8),dimension(:,:),allocatable :: Cmat
     real(8)                               :: c_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -335,7 +335,7 @@ contains
   function build_Cdg_operator(iorb,ispin) result(CDGmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
-    complex(8),dimension(:,:),allocatable :: CDGmat
+    real(8),dimension(:,:),allocatable :: CDGmat
     real(8)                               :: cdg_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -367,7 +367,7 @@ contains
   function build_Dens_operator(iorb,ispin) result(Dmat)
     integer                               :: ispin,iorb
     type(local_fock_sector)               :: sectorI
-    complex(8),dimension(:,:),allocatable :: Dmat
+    real(8),dimension(:,:),allocatable :: Dmat
     real(8)                               :: dens
     integer                               :: imp,isector,i,m,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -399,32 +399,37 @@ contains
 
 
 
+
+
+
+
   !##################################################################
   !##################################################################
   !         BUILD and RETURN THE LOCAL FOCK BASIS QN
   !##################################################################
   !##################################################################
   function Build_BasisStates() result(Hvec)
-    type(local_fock_sector)          :: sectorI
     integer,dimension(:),allocatable :: Hvec
-    integer                          :: i,isector
+    integer                          :: i,iup,idw,Nup,Ndw,NN
     !
     if(allocated(Hvec))deallocate(Hvec)
     !
-    do isector=1,Nsectors
-       call Build_LocalFock_Sector(isector,SectorI)
-       do i=1,sectorI%Dim
-          call append(Hvec,sectorI%Nup)
-          call append(Hvec,sectorI%Ndw)
+    NN = 2**Ns
+    do idw = 0,NN-1
+       Ndw = popcnt(idw)
+       do iup = 0,NN-1
+          Nup = popcnt(iup)
+          i      = iup + idw*NN
+          call append(Hvec,nup)
+          call append(Hvec,ndw)
        enddo
-       call Delete_LocalFock_Sector(sectorI)
     enddo
   end function Build_BasisStates
 
 
 
 
-
+  
 
   !##################################################################
   !##################################################################
@@ -648,8 +653,8 @@ program testHLOCAL
   USE HLOCAL
   implicit none
   character(len=64)                     :: finput
-  complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
-  complex(8),dimension(:,:),allocatable :: hloc
+  real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
+  real(8),dimension(:,:),allocatable :: hloc
   integer,dimension(:),allocatable      :: Hvec
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')  
@@ -662,8 +667,8 @@ program testHLOCAL
   hloc=0d0
   if(Norb==2)then
      hloc=0.5d0*pauli_z
-  elseif(Norb==3)then
-     hloc=0.5d0*spin1_z
+  ! elseif(Norb==3)then
+  !    hloc=0.5d0*spin1_z
   endif
   print*,""
   print*,"H:"
@@ -728,10 +733,10 @@ contains
 
 
   subroutine print_mat(M)
-    complex(8),dimension(:,:) :: M
+    real(8),dimension(:,:) :: M
     integer                   :: i,j
     do i=1,size(M,1)
-       write(*,"("//str(size(M,2))//"(F4.1,1x))")(dreal(M(i,j)),j=1,size(M,2))
+       write(*,"("//str(size(M,2))//"(F4.1,1x))")((M(i,j)),j=1,size(M,2))
     enddo
   end subroutine print_mat
 
