@@ -25,7 +25,8 @@ program BHZ_1d
 
 
 
-  if(Nspin/=2.OR.Norb/=2)stop "Wrong setup from input file: Nspin=Norb=2 -> 4Spin-Orbitals"
+  if(Nspin/=2.OR.Norb/=2)&
+       stop "Wrong setup from input file: Nspin=Norb=2 -> 4Spin-Orbitals"
   Nso=Nspin*Norb
 
   gamma1=kron( pauli_sigma_z, pauli_tau_x)
@@ -41,7 +42,7 @@ program BHZ_1d
 
 
   !Init DMRG
-  call init_dmrg(bhz_1d_model,target_qn,ModelDot=hubbard_site())
+  call init_dmrg(bhz_1d_model,target_qn,ModelDot=hubbard_site(Hloc))
 
   !Run DMRG algorithm
   select case(DMRGtype)
@@ -91,9 +92,9 @@ contains
              jo = jorb + (ispin-1)*Norb
              if(Tx(io,jo)==0d0)cycle
              if(present(states))then
-                H2 =  H2 + Tx(io,jo)*sp_kron(matmul(Cl(io)%t(),P),Cr(jo),states)
+                H2 =  H2 + Tx(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
              else
-                H2 =  H2 + Tx(io,jo)*(matmul(Cl(io)%t(),P).x.Cr(jo))
+                H2 =  H2 + Tx(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
              endif
           enddo
        enddo

@@ -1,5 +1,5 @@
 MODULE MATRIX_SPARSE  
-  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye
+  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eye
   USE AUX_FUNCS
   implicit none
   private
@@ -7,9 +7,9 @@ MODULE MATRIX_SPARSE
 
   !SPARSE ROW OF THE SPARSE MATRIX: note this is dynamic array
   type sparse_row
-     integer                             :: size
-     complex(8),dimension(:),allocatable :: vals
-     integer,dimension(:),allocatable    :: cols
+     integer                          :: size
+     real(8),dimension(:),allocatable :: vals
+     integer,dimension(:),allocatable :: cols
   end type sparse_row
 
   !SPARSE MATRIX STRUCTURE
@@ -72,18 +72,18 @@ MODULE MATRIX_SPARSE
   interface operator(*)
      module procedure :: sp_left_product_matrix_i
      module procedure :: sp_left_product_matrix_d
-     module procedure :: sp_left_product_matrix_c
+     ! module procedure :: sp_left_product_matrix_c
      !
      module procedure :: sp_right_product_matrix_i
      module procedure :: sp_right_product_matrix_d
-     module procedure :: sp_right_product_matrix_c
+     ! module procedure :: sp_right_product_matrix_c
   end interface operator(*)
 
   !SCALAR DIVISION
   interface operator(/)
      module procedure :: sp_right_division_matrix_i
      module procedure :: sp_right_division_matrix_d
-     module procedure :: sp_right_division_matrix_c
+     ! module procedure :: sp_right_division_matrix_c
   end interface operator(/)
 
 
@@ -128,6 +128,7 @@ MODULE MATRIX_SPARSE
   end interface matmul
 
 
+
   public :: sparse_matrix
   public :: as_sparse
   public :: as_matrix
@@ -145,7 +146,6 @@ MODULE MATRIX_SPARSE
   public :: hconjg
   public :: matmul
   public :: sp_eye
-
 
 
 contains       
@@ -180,7 +180,7 @@ contains
   end subroutine sp_init_matrix
 
   function sp_construct_matrix(matrix) result(self)
-    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:,:),intent(in) :: matrix
     type(sparse_matrix)                  :: self
     call self%load(matrix)
   end function sp_construct_matrix
@@ -213,7 +213,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_load_matrix(sparse,matrix)
     class(sparse_matrix),intent(inout)   :: sparse
-    complex(8),dimension(:,:),intent(in) :: matrix
+    real(8),dimension(:,:),intent(in) :: matrix
     integer                              :: i,j,Ndim1,Ndim2
     !
     call sparse%free()
@@ -234,7 +234,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_dump_matrix(sparse,matrix)
     class(sparse_matrix),intent(in)         :: sparse
-    complex(8),dimension(:,:),intent(inout) :: matrix
+    real(8),dimension(:,:),intent(inout) :: matrix
     integer                                 :: i,j,Ndim1,Ndim2
     Ndim1=size(matrix,1)
     Ndim2=size(matrix,2)
@@ -253,7 +253,7 @@ contains
   !+------------------------------------------------------------------+
   function sp_as_matrix(sparse) result(matrix)
     class(sparse_matrix),intent(in)               :: sparse
-    complex(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
+    real(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
     integer                                       :: i,j
     matrix = zero
     do i=1,sparse%Nrow
@@ -269,7 +269,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
-    complex(8),intent(in)              :: value
+    real(8),intent(in)              :: value
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     logical                            :: iadd
@@ -297,7 +297,7 @@ contains
   !no addition
   subroutine sp_fast_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
-    complex(8),intent(in)              :: value
+    real(8),intent(in)              :: value
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     !
@@ -318,7 +318,7 @@ contains
   function sp_get_element(sparse,i,j) result(value)
     class(sparse_matrix),intent(inout) :: sparse    
     integer,intent(in)                 :: i,j
-    complex(8)                         :: value
+    real(8)                         :: value
     integer                            :: pos
     value=zero
     do pos=1,sparse%row(i)%size
@@ -360,16 +360,18 @@ contains
     integer                   :: unit_
     integer                   :: i,j,Ns,NN
     character(len=64)         :: format
-    complex(8)                :: val
+    real(8)                :: val
     unit_=6
     if(present(file))open(free_unit(unit_),file=str(file))
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
-    format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+    format='(A1,'//str(fmt_)//',1x)'
+    ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
-          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
+          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')val
+          ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
        enddo
        write(unit_,*)
     enddo
@@ -381,7 +383,7 @@ contains
     integer              :: unit_
     integer              :: i,j,Ns
     character(len=20)    :: fmtR,fmtI
-    complex(8)           :: val
+    real(8)           :: val
     unit_=6
     fmtI='(I10)'
     fmtR='(ES10.3)'
@@ -462,7 +464,7 @@ contains
     type(sparse_matrix)             :: AxB
     integer                         :: i,icol,j,k,kcol,l
     integer                         :: indx_row,indx_col
-    complex(8)                      :: value
+    real(8)                      :: value
     call AxB%free()
     call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
     do indx_row = 1,A%Nrow*B%Nrow
@@ -491,7 +493,7 @@ contains
     type(sparse_matrix)              :: AxB
     integer                          :: i,icol,j,k,kcol,l,istate,jstate
     integer                          :: indx_row,indx_col
-    complex(8)                       :: value
+    real(8)                       :: value
     integer,dimension(:),allocatable :: inv_states
     call AxB%free()
     call AxB%init(size(states),size(states))
@@ -528,7 +530,7 @@ contains
     type(sparse_matrix), intent(in) :: A,B
     type(sparse_matrix)             :: Bt,AxB
     integer                         :: i,icol,j,jcol,k
-    complex(8)                      :: value
+    real(8)                      :: value
     !
     call AxB%free
     call AxB%init(a%Nrow,b%Ncol)
@@ -557,10 +559,10 @@ contains
 
   function sp_matmul_vector(H,v) result(Hv)
     class(sparse_matrix), intent(in)    :: H
-    complex(8),dimension(:)             :: v
-    complex(8),dimension(:),allocatable :: Hv
+    real(8),dimension(:)             :: v
+    real(8),dimension(:),allocatable :: Hv
     integer                             :: Nloc
-    complex(8)                          :: val
+    real(8)                          :: val
     integer                             :: i,j,jcol
     if(allocated(Hv))deallocate(Hv)
     allocate(Hv(size(v)))
@@ -587,14 +589,15 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    complex(8)                       :: val
+    real(8)                       :: val
     integer                          :: i,j    
     call c%init(a%Ncol,a%Nrow)       !hconjg
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
-          call c%insert(conjg(val),col,i)
+          ! call c%insert(conjg(val),col,i)
+          call c%insert(val,col,i)
        enddo
     enddo
   end function sp_dgr_matrix
@@ -604,7 +607,7 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    complex(8)                       :: val
+    real(8)                       :: val
     integer                          :: i,j    
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
@@ -616,24 +619,25 @@ contains
     enddo
   end function sp_transpose_matrix
 
-  
+
   function sp_hconjg_matrix(a) result(c)
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    complex(8)                       :: val
+    real(8)                       :: val
     integer                          :: i,j    
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
-          call c%insert(conjg(val),col,i)
+          ! call c%insert(conjg(val),col,i)
+          call c%insert((val),col,i)
        enddo
     enddo
   end function sp_hconjg_matrix
 
-  
+
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix equality spA = spB. Deep copy
   !+------------------------------------------------------------------+
@@ -641,7 +645,7 @@ contains
     type(sparse_matrix),intent(inout) :: a
     type(sparse_matrix),intent(in)    :: b
     integer                           :: col
-    complex(8)                        :: val
+    real(8)                        :: val
     integer                           :: i,j    
     call a%free()
     call a%init(b%Nrow,b%Ncol)
@@ -660,7 +664,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_matrix_equal_scalar(a,c)
     type(sparse_matrix),intent(inout) :: a
-    complex(8),intent(in)             :: c
+    real(8),intent(in)             :: c
     integer                           :: i,j    
     ! if(.not.a%status)stop "sp_matrix_equal_scalar error: a is not allocated"
     do i=1,a%Nrow
@@ -679,7 +683,7 @@ contains
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
     integer                         :: col
-    complex(8)                      :: val
+    real(8)                      :: val
     integer                         :: i,j    
     ! if(.not.a%status)stop "sp_plus_matrix error: a is not allocated"
     ! if(.not.b%status)stop "sp_plus_matrix error: b is not allocated"
@@ -696,7 +700,6 @@ contains
   end function sp_plus_matrix
 
 
-
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix difference spA - spB = spC
   !+------------------------------------------------------------------+
@@ -704,7 +707,7 @@ contains
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
     integer                         :: col
-    complex(8)                      :: val
+    real(8)                      :: val
     integer                         :: i,j    
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
@@ -730,7 +733,7 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    complex(8)                     :: val
+    real(8)                     :: val
     integer                        :: i,j   
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -748,7 +751,7 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    complex(8)                     :: val
+    real(8)                     :: val
     integer                        :: i,j   
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -761,23 +764,23 @@ contains
     enddo
   end function sp_left_product_matrix_d
 
-  function sp_left_product_matrix_c(C,A) result(B)
-    complex(8),intent(in)          :: C
-    type(sparse_matrix),intent(in) :: A
-    type(sparse_matrix)            :: B
-    integer                        :: col
-    complex(8)                     :: val
-    integer                        :: i,j   
-    call b%free()
-    call b%init(a%Nrow,a%Ncol)
-    do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
-    enddo
-  end function sp_left_product_matrix_c
+  ! function sp_left_product_matrix_c(C,A) result(B)
+  !   real(8),intent(in)          :: C
+  !   type(sparse_matrix),intent(in) :: A
+  !   type(sparse_matrix)            :: B
+  !   integer                        :: col
+  !   real(8)                     :: val
+  !   integer                        :: i,j   
+  !   call b%free()
+  !   call b%init(a%Nrow,a%Ncol)
+  !   do i=1,a%Nrow
+  !      do j=1,a%row(i)%size
+  !         col = a%row(i)%cols(j)
+  !         val = a%row(i)%vals(j)*C
+  !         call b%insert(val,i,col)
+  !      enddo
+  !   enddo
+  ! end function sp_left_product_matrix_c
 
 
 
@@ -791,7 +794,7 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    complex(8)                     :: val
+    real(8)                     :: val
     integer                        :: i,j   
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -809,7 +812,7 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    complex(8)                     :: val
+    real(8)                     :: val
     integer                        :: i,j   
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -822,23 +825,23 @@ contains
     enddo
   end function sp_right_product_matrix_d
 
-  function sp_right_product_matrix_c(A,C) result(B)
-    complex(8),intent(in)          :: C
-    type(sparse_matrix),intent(in) :: A
-    type(sparse_matrix)            :: B
-    integer                        :: col
-    complex(8)                     :: val
-    integer                        :: i,j   
-    call b%free()
-    call b%init(a%Nrow,a%Ncol)
-    do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
-    enddo
-  end function sp_right_product_matrix_c
+  ! function sp_right_product_matrix_c(A,C) result(B)
+  !   real(8),intent(in)          :: C
+  !   type(sparse_matrix),intent(in) :: A
+  !   type(sparse_matrix)            :: B
+  !   integer                        :: col
+  !   real(8)                     :: val
+  !   integer                        :: i,j   
+  !   call b%free()
+  !   call b%init(a%Nrow,a%Ncol)
+  !   do i=1,a%Nrow
+  !      do j=1,a%row(i)%size
+  !         col = a%row(i)%cols(j)
+  !         val = a%row(i)%vals(j)*C
+  !         call b%insert(val,i,col)
+  !      enddo
+  !   enddo
+  ! end function sp_right_product_matrix_c
 
 
 
@@ -852,7 +855,7 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    complex(8)                     :: val
+    real(8)                     :: val
     integer                        :: i,j   
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -870,7 +873,7 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    complex(8)                     :: val
+    real(8)                     :: val
     integer                        :: i,j   
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -883,23 +886,23 @@ contains
     enddo
   end function sp_right_division_matrix_d
 
-  function sp_right_division_matrix_c(A,C) result(B)
-    complex(8),intent(in)          :: C
-    type(sparse_matrix),intent(in) :: A
-    type(sparse_matrix)            :: B
-    integer                        :: col
-    complex(8)                     :: val
-    integer                        :: i,j   
-    call b%free()
-    call b%init(a%Nrow,a%Ncol)
-    do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)/C
-          call b%insert(val,i,col)
-       enddo
-    enddo
-  end function sp_right_division_matrix_c
+  ! function sp_right_division_matrix_c(A,C) result(B)
+  !   real(8),intent(in)          :: C
+  !   type(sparse_matrix),intent(in) :: A
+  !   type(sparse_matrix)            :: B
+  !   integer                        :: col
+  !   real(8)                     :: val
+  !   integer                        :: i,j   
+  !   call b%free()
+  !   call b%init(a%Nrow,a%Ncol)
+  !   do i=1,a%Nrow
+  !      do j=1,a%row(i)%size
+  !         col = a%row(i)%cols(j)
+  !         val = a%row(i)%vals(j)/C
+  !         call b%insert(val,i,col)
+  !      enddo
+  !   enddo
+  ! end function sp_right_division_matrix_c
 
 
 
@@ -920,7 +923,7 @@ contains
   function sp_eye(ndim) result(self)
     type(sparse_matrix) :: self
     integer             :: ndim
-    call self%load(zeye(ndim))
+    call self%load(eye(ndim))
   end function sp_eye
 
 end module MATRIX_SPARSE
@@ -953,21 +956,21 @@ program testSPARSE_MATRICES
 
   integer                                      :: i,j
   type(sparse_matrix)                          :: spH,spK,a,b,c,avec(2)
-  complex(8),dimension(4,4)                    :: GammaX
-  complex(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
+  real(8),dimension(4,4)                    :: GammaX
+  real(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
 
-  complex(8),dimension(2,2),parameter          :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  complex(8),dimension(2,2),parameter          :: Sz=pauli_z
-  complex(8),dimension(2,2),parameter          :: Sx=pauli_x
-  complex(8),dimension(2,2),parameter          :: Splus=reshape([zero,zero,one,zero],[2,2])
-  complex(8),dimension(4,4)                    :: Gamma13,Gamma03
+  real(8),dimension(2,2),parameter          :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter          :: Sz=pauli_z
+  real(8),dimension(2,2),parameter          :: Sx=pauli_x
+  real(8),dimension(2,2),parameter          :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)                    :: Gamma13,Gamma03
 
   type(sparse_matrix),dimension(:),allocatable :: Olist
 
   !
 
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(zeye(2),Sz)
+  Gamma03=kron(eye(2),Sz)
 
   print*,"test INIT"
   call spH%init(2,2)
@@ -1078,7 +1081,7 @@ program testSPARSE_MATRICES
   print*,"test ADDITION a+b=c"
   print*,"a=sigma_0"
   call a%init(2,2)
-  call a%load(zeye(2))
+  call a%load(eye(2))
   call a%show()
 
   print*,"b=sigma_X"  
@@ -1099,7 +1102,7 @@ program testSPARSE_MATRICES
   print*,"test SUBTRACTION a-b=c"
   print*,"a=sigma_0"
   call a%init(2,2)
-  call a%load(zeye(2))
+  call a%load(eye(2))
   call a%show()
 
   print*,"b=sigma_Z"  
@@ -1122,7 +1125,7 @@ program testSPARSE_MATRICES
   print*,"test LEFT SCALAR PRODUCT b=a*const"
   print*,"a=sigma_0"
   call a%init(2,2)
-  call a%load(zeye(2))
+  call a%load(eye(2))
   call a%show()
 
   print*,"b=2*a"  
@@ -1362,7 +1365,7 @@ contains
 
   subroutine append_matrix(self,matrix)
     type(sparse_matrix),dimension(:),allocatable,intent(inout) :: self
-    complex(8),dimension(:,:)                                     :: matrix
+    real(8),dimension(:,:)                                     :: matrix
     type(sparse_matrix),dimension(:),allocatable               :: tmp
     integer                                                    :: N
     if(allocated(self))then
@@ -1391,7 +1394,7 @@ end program testSPARSE_MATRICES
 !   type(sparse_matrix)             :: AxB
 !   integer                         :: i,icol,j,k,kcol,l
 !   integer                         :: indx_row,indx_col
-!   complex(8)                      :: value
+!   real(8)                      :: value
 !   call AxB%free()
 !   call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
 !   do i=1,A%Nrow

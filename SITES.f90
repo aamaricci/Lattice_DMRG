@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one
+  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one,print_matrix
   USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
@@ -40,7 +40,7 @@ MODULE SITES
   interface spin_onehalf_site
      module procedure :: pauli_site
   end interface spin_onehalf_site
-  
+
   public :: site
   public :: pauli_site
   public :: spin_onehalf_site
@@ -48,7 +48,7 @@ MODULE SITES
   public :: hubbard_site
   public :: assignment(=)
 
-  
+
   integer :: i
 
 contains
@@ -122,7 +122,7 @@ contains
   subroutine load_op_site(self,key,op)
     class(site)                          :: self
     character(len=*),intent(in)          :: key
-    complex(8),dimension(:,:),intent(in) :: op
+    real(8),dimension(:,:),intent(in) :: op
     call self%operators%load(str(key),op)
   end subroutine load_op_site
 
@@ -232,15 +232,15 @@ contains
 
   !##################################################################
   !##################################################################
-  !              PRESET
+  !           SPIN PRESET
   !##################################################################
   !##################################################################
   function pauli_site(hvec) result(self)
-    complex(8),dimension(3),optional :: hvec
+    real(8),dimension(3),optional :: hvec
     type(site)                       :: self
-    complex(8),dimension(2,2)        :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-    complex(8),dimension(2,2)        :: Szeta=reshape([one,zero,zero,-one]/2,[2,2])
-    complex(8),dimension(2,2)        :: Splus=reshape([zero,zero,one,zero],[2,2])
+    real(8),dimension(2,2)        :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+    real(8),dimension(2,2)        :: Szeta=reshape([one,zero,zero,-one]/2,[2,2])
+    real(8),dimension(2,2)        :: Splus=reshape([zero,zero,one,zero],[2,2])
     call self%free()
     self%Dim = 2
     if(present(hvec))then
@@ -255,12 +255,12 @@ contains
 
 
   function spin_one_site(hvec) result(self)
-    complex(8),dimension(3),optional :: hvec
+    real(8),dimension(3),optional :: hvec
     type(site)                        :: self
-    complex(8),dimension(3,3)            :: Hzero
-    complex(8),dimension(3,3)            :: Szeta
-    complex(8),dimension(3,3)            :: Splus
-    complex(8),dimension(3,3)            :: Sx=&
+    real(8),dimension(3,3)            :: Hzero
+    real(8),dimension(3,3)            :: Szeta
+    real(8),dimension(3,3)            :: Splus
+    real(8),dimension(3,3)            :: Sx=&
          reshape([zero,one,zero,one,zero,one,zero,one,zero],[3,3])/sqrt(2d0)
     Hzero = zero
     Szeta = diag([one,zero,-one])
@@ -282,14 +282,21 @@ contains
   end function spin_one_site
 
 
+
+
+  !##################################################################
+  !##################################################################
+  !           FERMION SU(2) PRESET
+  !##################################################################
+  !##################################################################
   !Fock = [|0,0>,|1,0>,|0,1>,|1,1>] <- |up,dw> <- cycle UP first 1_dw x 1_up
   function hubbard_site(hloc) result(self)
-    complex(8),dimension(Nspin*Norb,Nspin*Norb),optional :: hloc  
-    complex(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
+    real(8),dimension(Nspin*Norb,Nspin*Norb),optional :: hloc  
+    real(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
     type(site)                                           :: self
     integer,dimension(:),allocatable                     :: Basis
-    complex(8),dimension(:,:),allocatable                :: H
-    complex(8),dimension(:,:),allocatable                :: Op
+    real(8),dimension(:,:),allocatable                :: H
+    real(8),dimension(:,:),allocatable                :: Op
     integer                                              :: iorb,ispin
     character(len=:),allocatable                         :: key
     !
@@ -300,13 +307,17 @@ contains
     call self%free()
     self%Dim = 4**Norb
     !Set local H operator
+    write(LOGfile,"(A,I3,A1,I3,A)")"Using Hloc, shape=[",Nspin*Norb,",",Nspin*Norb,"]"
+    call print_matrix(Hloc_)
+    write(LOGfile,"(A)")""
+    !
     H   = build_Hlocal_operator(hloc_)
     call self%put("H",sparse(H))
     !Set all the other C operators (Cdg obtained by H.C.)
     do ispin=1,2
        do iorb=1,Norb
           Op = build_C_operator(iorb,ispin)
-          Key= "C"//self%okey(1,iorb,ispin)
+          Key= "C"//self%okey(iorb,ispin)
           call self%put(Key,sparse(Op))
        enddo
     enddo
@@ -320,6 +331,7 @@ contains
 
 
 
+  
 END MODULE SITES
 
 
@@ -355,11 +367,11 @@ program testSITES
 
   type(site)                          :: my_site,a,b
   type(tbasis)                        :: sz_basis
-  complex(8),dimension(2,2),parameter :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  complex(8),dimension(2,2),parameter :: Sz=pauli_z
-  complex(8),dimension(2,2),parameter :: Sx=pauli_x
-  complex(8),dimension(2,2),parameter :: Splus=reshape([zero,zero,one,zero],[2,2])
-  complex(8),dimension(4,4)           :: Gamma13,Gamma03
+  real(8),dimension(2,2),parameter :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter :: Sz=pauli_z
+  real(8),dimension(2,2),parameter :: Sx=pauli_x
+  real(8),dimension(2,2),parameter :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)           :: Gamma13,Gamma03
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(id(2),Sz)
