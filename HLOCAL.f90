@@ -5,7 +5,7 @@ MODULE HLOCAL
   implicit none
   private
 
-  integer,save                          :: Ns       !Number of levels per spin
+  integer,save                          :: Ns       !Number of levels per spin == Norb
   integer,save                          :: Ns_Ud
   integer,save                          :: Ns_Orb
   integer,dimension(:),allocatable,save :: Nfocks    !Dim of the local Fock space per channel
@@ -53,7 +53,7 @@ MODULE HLOCAL
   public :: Build_Dens_Operator
 
   public :: Build_BasisStates
-
+  public :: Build_FermionicSign
 contains
 
 
@@ -64,8 +64,7 @@ contains
   !               CREATE THE LOCAL FOCK SPACE
   !##################################################################
   !##################################################################
-  subroutine Init_LocalFock_Space(Norb)
-    integer :: Norb
+  subroutine Init_LocalFock_Space()
     integer :: DimUp,DimDw
     integer :: DimUps(1),DimDws(1)
     integer :: Nups(1),Ndws(1)
@@ -99,6 +98,9 @@ contains
        DimDw = product(DimDws)  
        getDim(isector)  = DimUp*DimDw
     enddo
+    !
+    !
+    call Write_FockStates()
     !
     return
   end subroutine Init_LocalFock_Space
@@ -210,11 +212,13 @@ contains
     real(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
     real(8),dimension(:,:),allocatable :: Hmat
     real(8),dimension(Nspin,Ns,Ns)     :: Hloc
-    type(local_fock_sector)               :: sectorI
-    real(8)                               :: htmp
-    integer                               :: isector,i,m,io,jo,iorb,ispin,jorb
-    integer                               :: iup,idw,mup,mdw
-    integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
+    type(local_fock_sector)            :: sectorI
+    real(8)                            :: htmp
+    integer                            :: isector,i,m,io,jo,iorb,ispin,jorb,ii,jj
+    integer                            :: iup,idw,mup,mdw,k1,k2
+    real(8)                            :: sg1,sg2
+    integer                            :: nup(Ns),ndw(Ns),nvec(2*Ns)
+    logical                            :: Jcondition
     !
     if(allocated(Hmat))deallocate(Hmat)
     allocate(Hmat(Nfock,Nfock))
@@ -241,7 +245,7 @@ contains
           nvec = bdecomp(m,2*Ns)
           nup  = nvec(1:Ns)
           ndw  = nvec(Ns+1:2*Ns)
-          m    = m+1
+          ii   = m+1
           !
           htmp = 0d0
           !LOCAL HAMILTONIAN PART:
@@ -250,8 +254,8 @@ contains
              htmp = htmp + Hloc(1,io,io)*nup(io)
              htmp = htmp + Hloc(Nspin,io,io)*ndw(io)
           enddo
-          !        
-          Hmat(m,m)=Hmat(m,m) + htmp
+          Hmat(ii,ii)=Hmat(ii,ii) + htmp
+          !
           !
           !Density-density interaction: same orbital, opposite spins
           !Euloc=\sum=i U_i*(n_u*n_d)_i
@@ -292,7 +296,37 @@ contains
              endif
           endif
           !
-          Hmat(m,m)=Hmat(m,m) + htmp
+          Hmat(ii,ii)=Hmat(ii,ii) + htmp
+          !
+          !UP electrons
+          do io=1,Ns
+             do jo=1,Ns
+                Jcondition = (Hloc(1,io,jo)/=0d0) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
+                if (Jcondition) then
+                   call c(jo,m,k1,sg1)
+                   call cdg(io,k1,k2,sg2)
+                   jj    = binary_search(sectorI%H(1)%map,k2)
+                   htmp = Hloc(1,io,jo)*sg1*sg2
+                   Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                endif
+             enddo
+          enddo
+          !
+          !DW electrons
+          do io=1,Ns
+             do jo=1,Ns
+                Jcondition = (Hloc(Nspin,io,jo)/=zero) .AND. (Ndw(jo)==1) .AND. (Ndw(io)==0)
+                if (Jcondition) then
+                   call c(jo+Ns,m,k1,sg1)
+                   call cdg(io+Ns,k1,k2,sg2)
+                   jj    = binary_search(sectorI%H(1)%map,k2)
+                   htmp = Hloc(Nspin,io,jo)*sg1*sg2
+                   Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                endif
+             enddo
+          enddo
+          !
+          !
        enddo
        call Delete_LocalFock_Sector(sectorI)
     enddo
@@ -396,6 +430,28 @@ contains
 
 
 
+  !##################################################################
+  !##################################################################
+  !         WRITE OUT THE STATES OF THE LOCAL FOCK SPACE
+  !##################################################################
+  !##################################################################
+  subroutine Write_FockStates()
+    integer,dimension(:),allocatable :: Hvec
+    integer                          :: i,iup,idw,Nup,Ndw,NN
+    !
+    if(allocated(Hvec))deallocate(Hvec)
+    !
+    NN = 2**Ns
+    do idw = 0,NN-1
+       Ndw = popcnt(idw)
+       do iup = 0,NN-1
+          Nup = popcnt(iup)
+          i      = iup + idw*NN
+          call print_conf(iup,Ns,.false.)
+          call print_conf(idw,Ns,.true.)
+       enddo
+    enddo
+  end subroutine Write_FockStates
 
 
 
@@ -429,7 +485,32 @@ contains
 
 
 
-  
+  !##################################################################
+  !##################################################################
+  !         BUILD and RETURN FERMIONIC SIGN MATRIX
+  !##################################################################
+  !##################################################################
+  function Build_FermionicSign() result(P)
+    real(8),dimension(:,:),allocatable :: P
+    integer,dimension(:),allocatable   :: Hvec
+    integer                            :: i,iup,idw,Nup,Ndw,NN
+    !
+    if(allocated(Hvec))deallocate(Hvec)
+    !
+    NN = 2**Ns
+    do idw = 0,NN-1
+       Ndw = popcnt(idw)
+       do iup = 0,NN-1
+          Nup = popcnt(iup)
+          i = (-1)**(Nup+Ndw)
+          call append(Hvec,i)
+       enddo
+    enddo
+    P = diag(1d0*Hvec)
+  end function Build_FermionicSign
+
+
+
 
   !##################################################################
   !##################################################################
@@ -587,7 +668,6 @@ contains
   end function binomial
 
 
-
   !##################################################################
   !##################################################################
   !               MAP ALLOCATION/DESTRUCTION
@@ -630,6 +710,29 @@ contains
   end subroutine map_deallocate_vector
 
 
+
+
+
+  !##################################################################
+  !##################################################################
+  !               PRINT LOCAL STATE
+  !##################################################################
+  !##################################################################  
+  subroutine print_conf(i,Ntot,advance)
+    integer :: dim,i,j,Ntot
+    logical :: advance
+    integer :: ivec(Ntot)
+    ivec = bdecomp(i,Ntot)
+    write(LOGfile,"(A1)",advance="no")"|"
+    write(LOGfile,"(10I1)",advance="no")(ivec(j),j=1,Ntot)
+    if(advance)then
+       write(LOGfile,"(A1)",advance="yes")">"
+    else
+       write(LOGfile,"(A1)",advance="no")">"
+    endif
+  end subroutine print_conf
+
+
 END MODULE HLOCAL
 
 
@@ -650,10 +753,11 @@ END MODULE HLOCAL
 program testHLOCAL
   USE SCIFOR
   USE INPUT_VARS
+  USE AUX_FUNCS
   USE HLOCAL
   implicit none
   character(len=64)                     :: finput
-  real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
+  real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   real(8),dimension(:,:),allocatable :: hloc
   integer,dimension(:),allocatable      :: Hvec
 
@@ -661,15 +765,16 @@ program testHLOCAL
   call read_input(finput)
 
 
+
+
+
   print*,"Imp Fock space"  
-  call Init_LocalFock_Space(Norb)
-  allocate(hloc(nspin*norb,nspin*norb))
-  hloc=0d0
-  if(Norb==2)then
-     hloc=0.5d0*pauli_z
-  ! elseif(Norb==3)then
-  !    hloc=0.5d0*spin1_z
-  endif
+  call Init_LocalFock_Space()
+
+  allocate(hloc(Nspin*Norb,Nspin*Norb))
+  hloc=0d0;if(Norb==2)hloc=0.5d0*kron(pauli_0,pauli_z)
+  call print_mat(Hloc)
+
   print*,""
   print*,"H:"
   Hlocal = build_Hlocal_operator(hloc)
@@ -724,6 +829,16 @@ program testHLOCAL
   print*,size(Hvec)
   print*,Hvec
 
+
+
+
+  Hvec = Build_FermionicSign()
+  print*,size(Hvec)
+  call print_mat(diag(1d0*Hvec))
+  print*,""
+  call print_mat(kSz(2*Norb))
+
+  print*,1d0*Hvec-diagonal(kSz(2*Norb))
   call Delete_LocalFock_space()
 
 
@@ -739,6 +854,28 @@ contains
        write(*,"("//str(size(M,2))//"(F4.1,1x))")((M(i,j)),j=1,size(M,2))
     enddo
   end subroutine print_mat
+
+
+  recursive function KSz(n) result(A)
+    integer, intent(in) :: n
+    real(8)          :: A(2**n, 2**n)
+    integer             :: d(2**n)
+    integer             :: i
+    d = szvec(n)
+    A = zero
+    forall(i=1:2**n)A(i,i) = one*d(i)
+  end function KSz
+
+  recursive function szvec(n) result(vec)
+    integer,intent(in)      :: n
+    integer,dimension(2**n) :: vec
+    if(n==1)then
+       vec = [1,-1]
+    else
+       vec = [szvec(n-1),-szvec(n-1)]
+    endif
+  end function szvec
+
 
 end program testHLOCAL
 #endif

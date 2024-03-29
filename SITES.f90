@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one,print_matrix
+  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one,print_matrix,diag
   USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
@@ -295,14 +295,14 @@ contains
     real(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
     type(site)                                           :: self
     integer,dimension(:),allocatable                     :: Basis
-    real(8),dimension(:,:),allocatable                :: H
+    real(8),dimension(:,:),allocatable                :: H,P
     real(8),dimension(:,:),allocatable                :: Op
     integer                                              :: iorb,ispin
     character(len=:),allocatable                         :: key
     !
     hloc_ = zeros(Nspin*Norb,Nspin*Norb);if(present(hloc))hloc_=hloc
     !
-    call Init_LocalFock_Space(Norb)
+    call Init_LocalFock_Space()
     !
     call self%free()
     self%Dim = 4**Norb
@@ -311,9 +311,11 @@ contains
     call print_matrix(Hloc_)
     write(LOGfile,"(A)")""
     !
+    !> Build local Hamiltonian:
     H   = build_Hlocal_operator(hloc_)
     call self%put("H",sparse(H))
-    !Set all the other C operators (Cdg obtained by H.C.)
+    !
+    !> Build all the C operators (Cdg is obtained by H.C.)
     do ispin=1,2
        do iorb=1,Norb
           Op = build_C_operator(iorb,ispin)
@@ -321,12 +323,16 @@ contains
           call self%put(Key,sparse(Op))
        enddo
     enddo
-    call self%put("P",sparse(kSz(2*Norb)))
     !
-    !Build QN for the local basis:
+    !> Build fermionic sign operator
+    P = Build_FermionicSign()
+    call self%put("P",sparse(P))
+    !
+    !> Build QN for the local basis:
     allocate(self%sectors(1))
     Basis = Build_BasisStates()
     self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
+    !
   end function hubbard_site
 
 
