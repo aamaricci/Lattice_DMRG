@@ -399,7 +399,7 @@ contains
           j=Jstates(jstate)
           val = A%get(i,j)
           if(val==0d0)cycle
-          print*,istate,jstate,i,j,val
+          ! print*,istate,jstate,i,j,val
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -435,7 +435,7 @@ contains
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
-          write(unit_,"("//str(sparse%Ncol)//"F9.3)",advance='no')val
+          write(unit_,"("//str(sparse%Ncol)//"F5.1)",advance='no')val
           ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
        enddo
        write(unit_,*)
@@ -613,7 +613,7 @@ contains
           Bval = B%get(k,l)
           val  = Aval*Bval
           !
-          print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
+          ! print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
           !
           call append(AxB%row(istate)%vals,val)
           call append(AxB%row(istate)%cols,jstate)
@@ -621,7 +621,7 @@ contains
        enddo
        !
     enddo
-    print*,""
+    ! print*,""
   end function sp_restricted_kron_matrix
 
 
