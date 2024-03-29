@@ -1,6 +1,6 @@
 MODULE MATRIX_SPARSE  
-  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eye
-  USE AUX_FUNCS
+  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eye,arange
+  USE AUX_FUNCS, only: show_fmt,append
   implicit none
   private
 
@@ -17,6 +17,7 @@ MODULE MATRIX_SPARSE
      type(sparse_row),dimension(:),allocatable :: row
      integer                                   :: Nrow=0
      integer                                   :: Ncol=0
+     logical                                   :: status=.false.
    contains
      procedure,pass :: init      => sp_init_matrix
      procedure,pass :: free      => sp_free_matrix
@@ -120,14 +121,16 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_hconjg_matrix
   end interface hconjg
 
-
   intrinsic :: matmul
   interface matmul
      module procedure :: sp_matmul_matrix
      module procedure :: sp_matmul_vector
   end interface matmul
 
-
+  interface sp_filter
+     module procedure :: sp_filter_matrix_1
+     module procedure :: sp_filter_matrix_2
+  end interface sp_filter
 
   public :: sparse_matrix
   public :: as_sparse
@@ -146,6 +149,7 @@ MODULE MATRIX_SPARSE
   public :: hconjg
   public :: matmul
   public :: sp_eye
+  public :: sp_filter
 
 
 contains       
@@ -164,7 +168,7 @@ contains
     integer,intent(in)                 :: Nrow,Ncol
     integer                            :: i
     !
-    call sparse%free()
+    if(sparse%status)call sparse%free()
     ! 
     sparse%Nrow=Nrow
     sparse%Ncol=Ncol
@@ -176,9 +180,10 @@ contains
        allocate(sparse%row(i)%vals(0)) !empty array
        allocate(sparse%row(i)%cols(0)) !empty array
     end do
-    !
+    sparse%status=.true.
   end subroutine sp_init_matrix
 
+  
   function sp_construct_matrix(matrix) result(self)
     real(8),dimension(:,:),intent(in) :: matrix
     type(sparse_matrix)                  :: self
@@ -203,6 +208,7 @@ contains
     !
     sparse%Nrow=0
     sparse%Ncol=0
+    sparse%status=.false.
   end subroutine sp_free_matrix
 
 
@@ -220,12 +226,12 @@ contains
     Ndim1=size(matrix,1)
     Ndim2=size(matrix,2)
     !
-    call sparse%init(Ndim1,Ndim2)
+    call sparse%init(Ndim1,Ndim2) !set status=T
     do i=1,Ndim1
        do j=1,Ndim2
           if(matrix(i,j)/=zero)call sp_insert_element(sparse,matrix(i,j),i,j)
        enddo
-    enddo
+    enddo    
   end subroutine sp_load_matrix
 
 
@@ -256,6 +262,7 @@ contains
     real(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
     integer                                       :: i,j
     matrix = zero
+    if(.not.sparse%status)return
     do i=1,sparse%Nrow
        do j=1,sparse%row(i)%Size
           matrix(i,sparse%row(i)%cols(j)) = sparse%row(i)%vals(j)
@@ -274,6 +281,7 @@ contains
     integer                            :: column,pos
     logical                            :: iadd
     !
+    if(.not.sparse%status)stop "sp_insert_element: sparse.status=F"
     column = j
     !
     iadd = .false.                          !check if column already exist
@@ -315,15 +323,19 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE: get the element value at position (i,j) in the sparse matrix
   !+------------------------------------------------------------------+
-  function sp_get_element(sparse,i,j) result(value)
-    class(sparse_matrix),intent(inout) :: sparse    
+  function sp_get_element(sparse,i,j) result(val)
+    class(sparse_matrix),intent(in) :: sparse    
     integer,intent(in)                 :: i,j
-    real(8)                         :: value
+    real(8)                         :: val
     integer                            :: pos
-    value=zero
-    do pos=1,sparse%row(i)%size
-       if(j==sparse%row(i)%cols(pos))value=sparse%row(i)%vals(pos)
-    enddo
+    if(.not.sparse%status)stop "sp_get_element: sparse.status=F"
+    val=zero
+    if(.not.any(sparse%row(i)%cols==j))return
+    pos=binary_search(sparse%row(i)%cols,j)
+    val=sparse%row(i)%vals(pos)
+    ! do pos=1,sparse%row(i)%size
+    !    if(j==sparse%row(i)%cols(pos))value=sparse%row(i)%vals(pos)
+    ! enddo
   end function sp_get_element
 
 
@@ -335,7 +347,7 @@ contains
     integer :: nnz
     integer :: i
     nnz=0
-    if(.not.allocated(sparse%row))return
+    if(.not.sparse%status)return
     do i=1,sparse%Nrow
        nnz=nnz + sparse%row(i)%size
     enddo
@@ -343,6 +355,58 @@ contains
 
 
 
+  function sp_filter_matrix_1(A,states) result(Ak)
+    class(sparse_matrix), intent(in) :: A
+    integer,dimension(:),intent(in)     :: states
+    type(sparse_matrix)                 :: Ak
+    integer                             :: i,j,istate,jstate
+    real(8)                             :: val
+    !
+    if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
+    !
+    call Ak%free()
+    call Ak%init(size(states),size(states))
+    !
+    do istate = 1,size(states)
+       i=states(istate)
+       do jstate=1,size(states)
+          j=states(jstate)
+          val = A%get(i,j)
+          if(val==0d0)cycle
+          call append(Ak%row(istate)%vals,val)
+          call append(Ak%row(istate)%cols,jstate)
+          Ak%row(istate)%Size = Ak%row(istate)%Size + 1
+          !
+       enddo
+    enddo
+  end function sp_filter_matrix_1
+
+  function sp_filter_matrix_2(A,Istates,Jstates) result(Ak)
+    class(sparse_matrix), intent(in) :: A
+    integer,dimension(:),intent(in)     :: Istates,Jstates
+    type(sparse_matrix)                 :: Ak
+    integer                             :: i,j,istate,jstate
+    real(8)                             :: val
+    !
+    if(.not.A%status)stop "sp_filter_matrix_2: A.status=F"
+    !
+    call Ak%free()
+    call Ak%init(size(Istates),size(Jstates))
+    !
+    do istate = 1,size(Istates)
+       i=Istates(istate)
+       do jstate=1,size(Jstates)
+          j=Jstates(jstate)
+          val = A%get(i,j)
+          if(val==0d0)cycle
+          print*,istate,jstate,i,j,val
+          call append(Ak%row(istate)%vals,val)
+          call append(Ak%row(istate)%cols,jstate)
+          Ak%row(istate)%Size = Ak%row(istate)%Size + 1
+          !
+       enddo
+    enddo
+  end function sp_filter_matrix_2
 
 
   !##################################################################
@@ -366,11 +430,12 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
     format='(A1,'//str(fmt_)//',1x)'
     ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+    if(.not.sparse%status)return
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
-          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')val
+          write(unit_,"("//str(sparse%Ncol)//"F9.3)",advance='no')val
           ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
        enddo
        write(unit_,*)
@@ -387,11 +452,16 @@ contains
     unit_=6
     fmtI='(I10)'
     fmtR='(ES10.3)'
+    if(.not.sparse%status)return
     do i=1,sparse%Nrow
        Ns = size(sparse%row(i)%cols)
        if(Ns==0)cycle
-       write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
-       write(unit_,"("//str(Ns)//"(2F10.3))",advance='yes')sparse%row(i)%vals
+       do j=1,Ns
+          write(unit_,"(A1,2I5,A1,F7.3)",advance='no')"[",i,sparse%row(i)%cols(j),"]",sparse%row(i)%vals(j)
+       enddo
+       write(unit_,"(A1)",advance='yes')""
+       ! write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
+       ! write(unit_,"("//str(Ns)//"(2F10.3))",advance='yes')sparse%row(i)%vals
        write(unit_,*)
     enddo
   end subroutine sp_display_matrix
@@ -414,6 +484,7 @@ contains
     !
     !  Create data file.
     !
+    if(.not.sparse%status)return
     !
     N1 = sparse%Nrow
     N2 = sparse%Ncol
@@ -465,6 +536,8 @@ contains
     integer                         :: i,icol,j,k,kcol,l
     integer                         :: indx_row,indx_col
     real(8)                      :: value
+    if(.not.A%status)stop "sp_kron_matrix: A.status=F"
+    if(.not.B%status)stop "sp_kron_matrix: B.status=F"
     call AxB%free()
     call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
     do indx_row = 1,A%Nrow*B%Nrow
@@ -493,35 +566,62 @@ contains
     type(sparse_matrix)              :: AxB
     integer                          :: i,icol,j,k,kcol,l,istate,jstate
     integer                          :: indx_row,indx_col
-    real(8)                       :: value
-    integer,dimension(:),allocatable :: inv_states
+    real(8)                       :: val,Aval,Bval
+    ! integer,dimension(:),allocatable :: inv_states
+    !
+    if(.not.A%status)stop "sp_restricted_kron_matrix: A.status=F"
+    if(.not.B%status)stop "sp_restricted_kron_matrix: B.status=F"
+    !
     call AxB%free()
     call AxB%init(size(states),size(states))
-    allocate(inv_states(A%Ncol*B%Ncol))
-    inv_states=0
-    do i=1,size(states)
-       inv_states(states(i)) = i
-    enddo
+    ! allocate(inv_states(A%Ncol*B%Ncol))
+    ! inv_states=0
+    ! do i=1,size(states)
+    !    inv_states(states(i)) = i
+    ! enddo
+
     do istate = 1,size(states)
        indx_row=states(istate)
-       k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
        i = (indx_row-1)/B%Nrow+1
-       do icol=1,A%row(i)%size
-          j = A%row(i)%cols(icol)
-          do kcol=1,B%row(k)%size
-             l = B%row(k)%cols(kcol)
-             indx_col = l + (j-1)*B%Ncol
-             jstate   = inv_states(indx_col)
-             if(jstate==0)cycle
-             value    = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
-             !
-             call append(AxB%row(istate)%vals,value)
-             call append(AxB%row(istate)%cols,jstate)
-             AxB%row(istate)%Size = AxB%row(istate)%Size + 1
-             !
-          enddo
+       k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
+       !
+       ! do icol=1,A%row(i)%size
+       !    j = A%row(i)%cols(icol)
+       !    do kcol=1,B%row(k)%size
+       !       l = B%row(k)%cols(kcol)
+       !       indx_col = l + (j-1)*B%Ncol
+       !       jstate   = inv_states(indx_col)
+       !       if(jstate==0)cycle
+       !       val      = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
+       !       !
+       !       call append(AxB%row(istate)%vals,val)
+       !       call append(AxB%row(istate)%cols,jstate)
+       !       AxB%row(istate)%Size = AxB%row(istate)%Size + 1
+       !       !
+       !    enddo
+       ! enddo
+       !
+       do jstate=1,size(states)
+          indx_col=states(jstate)
+          j = (indx_col-1)/B%Ncol+1
+          l = mod(indx_col,B%Ncol);if(l==0)l=B%Ncol
+          if(&
+               (.not.any(A%row(i)%cols==j))&
+               .OR. &
+               (.not.any(B%row(k)%cols==l)) )cycle
+          Aval = A%get(i,j)
+          Bval = B%get(k,l)
+          val  = Aval*Bval
+          !
+          print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
+          !
+          call append(AxB%row(istate)%vals,val)
+          call append(AxB%row(istate)%cols,jstate)
+          AxB%row(istate)%Size = AxB%row(istate)%Size + 1
        enddo
+       !
     enddo
+    print*,""
   end function sp_restricted_kron_matrix
 
 
@@ -531,6 +631,9 @@ contains
     type(sparse_matrix)             :: Bt,AxB
     integer                         :: i,icol,j,jcol,k
     real(8)                      :: value
+    !
+    if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
+    if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
     !
     call AxB%free
     call AxB%init(a%Nrow,b%Ncol)
@@ -564,6 +667,9 @@ contains
     integer                             :: Nloc
     real(8)                          :: val
     integer                             :: i,j,jcol
+    !
+    if(.not.H%status)stop "sp_matmul_vector: H.status=F"
+    !
     if(allocated(Hv))deallocate(Hv)
     allocate(Hv(size(v)))
     Hv=zero
@@ -590,7 +696,8 @@ contains
     type(sparse_matrix)              :: c
     integer                          :: col
     real(8)                       :: val
-    integer                          :: i,j    
+    integer                          :: i,j
+    if(.not.a%status)stop "sp_dgr_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !hconjg
     do i=1,a%Nrow
        do j=1,a%row(i)%size
@@ -608,7 +715,8 @@ contains
     type(sparse_matrix)              :: c
     integer                          :: col
     real(8)                       :: val
-    integer                          :: i,j    
+    integer                          :: i,j
+    if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
@@ -625,7 +733,8 @@ contains
     type(sparse_matrix)              :: c
     integer                          :: col
     real(8)                       :: val
-    integer                          :: i,j    
+    integer                          :: i,j
+    if(.not.a%status)stop "sp_hconjg_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
@@ -646,7 +755,8 @@ contains
     type(sparse_matrix),intent(in)    :: b
     integer                           :: col
     real(8)                        :: val
-    integer                           :: i,j    
+    integer                           :: i,j
+    if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
     call a%free()
     call a%init(b%Nrow,b%Ncol)
     do i=1,b%Nrow
@@ -665,8 +775,8 @@ contains
   subroutine sp_matrix_equal_scalar(a,c)
     type(sparse_matrix),intent(inout) :: a
     real(8),intent(in)             :: c
-    integer                           :: i,j    
-    ! if(.not.a%status)stop "sp_matrix_equal_scalar error: a is not allocated"
+    integer                           :: i,j
+    if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           a%row(i)%vals(j) = c
@@ -685,8 +795,8 @@ contains
     integer                         :: col
     real(8)                      :: val
     integer                         :: i,j    
-    ! if(.not.a%status)stop "sp_plus_matrix error: a is not allocated"
-    ! if(.not.b%status)stop "sp_plus_matrix error: b is not allocated"
+    if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
+    if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
     c=a                         !copy a into c
@@ -708,9 +818,11 @@ contains
     type(sparse_matrix)             :: c
     integer                         :: col
     real(8)                      :: val
-    integer                         :: i,j    
-    if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
-    if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
+    integer                         :: i,j
+    if(.not.a%status)stop "sp_minus_matrix error: a.status=F"
+    if(.not.b%status)stop "sp_minus_matrix error: b.status=F"
+    if(a%Nrow/=b%Nrow)stop "sp_minus_matrix error: a.Nrow != b.Nrow"
+    if(a%Ncol/=b%Ncol)stop "sp_minus_matrix error: a.Ncol != b.Ncol"
     c=a                         !copy a into c
     do i=1,b%Nrow
        do j=1,b%row(i)%size
@@ -734,7 +846,8 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
     real(8)                     :: val
-    integer                        :: i,j   
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -752,7 +865,8 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
     real(8)                     :: val
-    integer                        :: i,j   
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -770,7 +884,8 @@ contains
   !   type(sparse_matrix)            :: B
   !   integer                        :: col
   !   real(8)                     :: val
-  !   integer                        :: i,j   
+  !   integer                        :: i,j
+  !   if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
   !   call b%free()
   !   call b%init(a%Nrow,a%Ncol)
   !   do i=1,a%Nrow
@@ -795,7 +910,8 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
     real(8)                     :: val
-    integer                        :: i,j   
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -813,7 +929,8 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
     real(8)                     :: val
-    integer                        :: i,j   
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -831,7 +948,8 @@ contains
   !   type(sparse_matrix)            :: B
   !   integer                        :: col
   !   real(8)                     :: val
-  !   integer                        :: i,j   
+  !   integer                        :: i,j
+  !   if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
   !   call b%free()
   !   call b%init(a%Nrow,a%Ncol)
   !   do i=1,a%Nrow
@@ -856,7 +974,8 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
     real(8)                     :: val
-    integer                        :: i,j   
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -874,7 +993,8 @@ contains
     type(sparse_matrix)            :: B
     integer                        :: col
     real(8)                     :: val
-    integer                        :: i,j   
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -892,7 +1012,8 @@ contains
   !   type(sparse_matrix)            :: B
   !   integer                        :: col
   !   real(8)                     :: val
-  !   integer                        :: i,j   
+  !   integer                        :: i,j
+  !   if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
   !   call b%free()
   !   call b%init(a%Nrow,a%Ncol)
   !   do i=1,a%Nrow
@@ -925,6 +1046,112 @@ contains
     integer             :: ndim
     call self%load(eye(ndim))
   end function sp_eye
+
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE  : Sort an array, gives the new ordering of the label.
+  !+------------------------------------------------------------------+
+  recursive function binary_search(Ain,value) result(bsresult)
+    integer,intent(in)           :: Ain(:), value
+    integer                      :: bsresult, mid
+    integer,dimension(size(Ain)) :: A,Order
+    !
+    a = ain
+    call sort_array(a,Order)
+    !
+    mid = size(a)/2 + 1
+    if (size(a) == 0) then
+       bsresult = 0        ! not found
+       stop "binary_search error: value not found"
+    else if (a(mid) > value) then
+       bsresult= binary_search(a(:mid-1), value)
+    else if (a(mid) < value) then
+       bsresult = binary_search(a(mid+1:), value)
+       if (bsresult /= 0) then
+          bsresult = mid + bsresult
+       end if
+    else
+       bsresult = mid      ! SUCCESS!!
+    end if
+    !
+    bsresult = Order(bsresult)
+    !
+  end function binary_search
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE  : Sort an array, gives the new ordering of the label.
+  !+------------------------------------------------------------------+
+  subroutine sort_array(array,order)
+    implicit none
+    integer,dimension(:)                    :: array
+    integer,dimension(size(array))          :: order
+    integer,dimension(size(array))          :: backup
+    integer                                 :: i
+    forall(i=1:size(array))order(i)=i
+    call qsort_sort(array, order,1, size(array))
+    do i=1,size(array)
+       backup(i)=array(order(i))
+    enddo
+    array=backup
+  contains
+    recursive subroutine qsort_sort( array, order, left, right )
+      integer, dimension(:) :: array
+      integer, dimension(:) :: order
+      integer               :: left
+      integer               :: right
+      integer               :: i
+      integer               :: last
+      if ( left .ge. right ) return
+      call qsort_swap( order, left, qsort_rand(left,right) )
+      last = left
+      do i = left+1, right
+         if ( compare(array(order(i)), array(order(left)) ) .lt. 0 ) then
+            last = last + 1
+            call qsort_swap( order, last, i )
+         endif
+      enddo
+      call qsort_swap( order, left, last )
+      call qsort_sort( array, order, left, last-1 )
+      call qsort_sort( array, order, last+1, right )
+    end subroutine qsort_sort
+    !---------------------------------------------!
+    subroutine qsort_swap( order, first, second )
+      integer, dimension(:) :: order
+      integer               :: first, second
+      integer               :: tmp
+      tmp           = order(first)
+      order(first)  = order(second)
+      order(second) = tmp
+    end subroutine qsort_swap
+    !---------------------------------------------!
+    integer function qsort_rand( lower, upper )
+      integer               :: lower, upper
+      real(8)               :: r
+      call random_number(r)
+      qsort_rand =  lower + nint(r * (upper-lower))
+    end function qsort_rand
+    !---------------------------------------------!
+    function compare(f,g)
+      implicit none
+      integer               :: f,g
+      integer               :: compare
+      if(f<g) then
+         compare=-1
+      else
+         compare=1
+      endif
+    end function compare
+  end subroutine sort_array
+
+
+
+
+
+
 
 end module MATRIX_SPARSE
 

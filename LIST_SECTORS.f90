@@ -33,6 +33,7 @@ MODULE LIST_SECTORS
      procedure,pass      :: get      => get_sectors_list      !get qn and map for a given index
      procedure,pass      :: map      => get_map_sectors_list  !get map for a given qn/index
      procedure,pass      :: qn       => get_qn_sectors_list   !return qn for a given index
+     procedure,pass      :: index    => get_index_sectors_list   !return index for a given qn
      procedure,pass      :: basis    => basis_sectors_list    !return the basis of the sector list
      procedure,pass      :: has_qn   => has_qn_sectors_list   !True if qn exists
      procedure,pass      :: show     => show_sectors_list     !show sectors_list to screen
@@ -74,12 +75,12 @@ MODULE LIST_SECTORS
   public :: assignment(=)
 
 
-  
-  
+
+
 contains
 
 
-  
+
 
 
   !##################################################################
@@ -395,6 +396,35 @@ contains
     !
     c=>null()
   end function get_qn_sectors_list
+
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE: Return key of the sectors_list  corresponding to a given index
+  !+------------------------------------------------------------------+  
+  function get_index_sectors_list(self,qn) result(index)
+    class(sectors_list),intent(inout) :: self
+    real(8),dimension(:),intent(in)   :: qn
+    integer                           :: index
+    real(8),dimension(:),allocatable  :: qn_
+    integer                           :: i
+    type(qtype),pointer               :: c
+    logical                           :: ifound=.false.
+    !
+    index=0
+    if(.not. self%has_qn(qn) )return
+    !
+    do i=1,size(self)
+       qn_ = self%qn(index=i)
+       if(all(qn == qn_))then
+          ifound=.true.
+          index = i
+          exit
+       endif
+    end do
+    if(.not.ifound)stop "get_index error: QN not found"
+  end function get_index_sectors_list
 
 
 

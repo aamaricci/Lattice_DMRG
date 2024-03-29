@@ -25,7 +25,7 @@ MODULE INPUT_VARS
   integer,allocatable  :: Msweep(:)
   !list of states to optimize at each sweep in the finite DMRG algorithm.
 
-  integer              :: Norb=1
+  integer              :: Norb
   !# of orbitals
   integer              :: Nspin=2
   !Nspin=# spins 

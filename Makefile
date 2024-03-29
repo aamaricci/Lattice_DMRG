@@ -1,5 +1,6 @@
 FC=mpif90
 EXE=dmrg_hm_1d
+#EXE=kron_hm_1d
 #EXE=Hubbard1d
 
 SF_INC:=$(shell pkg-config --cflags scifor)
