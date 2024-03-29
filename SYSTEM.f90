@@ -146,12 +146,12 @@ contains
   subroutine step_dmrg(label,isweep)
     integer,optional                      :: label,isweep
     integer                               :: iLabel
-    integer                               :: Mstates
-    real(8)                               :: Estates
+    integer                               :: Mstates,j_
+    real(8)                               :: Estates,e_,err
     integer                               :: m_sb,m_s,m_e
     integer                               :: m_sys,m_env,Nsys,Nenv
     integer                               :: isys,ienv,isb,m_err(1),m_threshold
-    integer                               :: i,j,iqn,Ncv,im,unit,current_L    
+    integer                               :: i,j,r,l,iqn,Ncv,im,unit,current_L,istate
     integer,dimension(:),allocatable      :: sys_map,env_map,sb_map
     real(8),dimension(:),allocatable      :: sb_qn,qn
     real(8),dimension(:),allocatable      :: evals
@@ -181,15 +181,14 @@ contains
     !
     current_L         = sys%length + env%length + 2
     current_target_QN = int(target_qn*current_L*Norb)
-    write(LOGfile,"(A22,I12)")"SuperBlock Length = ",current_L
-    write(LOGfile,"(A22,"//str(size(current_target_QN))//"F12.7)")&
-         "Target_QN = ",current_target_QN
-    write(LOGfile,"(A22,G12.7)")&
-         "Total         = ",sum(current_target_QN)
-    write(LOGfile,"(A22,G12.7)")&
-         "Filling       = ",sum(current_target_QN)/current_L
-    write(LOGfile,"(A22,G12.7)")&
-         "Filling/Norb  = ",sum(current_target_QN)/current_L/Norb
+    write(LOGfile,"(A20,I12)")&
+         "SuperBlock Length = ",current_L
+    write(LOGfile,"(A20,"//str(size(current_target_QN))//"G12.7)")&
+         "Target_QN         = ",current_target_QN
+    write(LOGfile,"(A20,G12.7)")&
+         "Total Occupation  = ",sum(current_target_QN)
+    write(LOGfile,"(A20,2G12.7)")&
+         "Filling (1/Norb)  = ",sum(current_target_QN)/current_L,sum(current_target_QN)/current_L/Norb
     !
     !Check if blocks are valid ones
     if(.not.sys%is_valid(.true.))stop "single_dmrg_step error: sys is not a valid block"
@@ -208,18 +207,18 @@ contains
     m_env = env%dim
     !
     !Build SuperBLock Sector
-    call start_timer()
+    call start_timer("Get SB states")
     call get_sb_states(sb_states,sb_sector)
-    call stop_timer("Get SB states")
+    call stop_timer("")
     m_sb = size(sb_states)
-    !
+    !    
     write(LOGfile,"(A,I12,I12))")&
          "Enlarged Blocks dimensions           :", sys%dim,env%dim  
     write(LOGfile,"(A,I12,A1,I12,A1,F10.5,A1)")&
          "SuperBlock Dimension  (tot)          :", m_sb,"(",m_sys*m_env,")",100*dble(m_sb)/m_sys/m_env,"%"
     !
     !Build SuperBLock Hamiltonian
-    call start_timer()
+    call start_timer("get H_sb")
     spHsb = sp_kron(sys%operators%op("H"),id(m_env),sb_states) + &
          sp_kron(id(m_sys),env%operators%op("H"),sb_states)    + &
          H2model(sys,env,sb_states)
@@ -252,6 +251,8 @@ contains
     if(allocated(energies))deallocate(energies)
     allocate(energies, source=eig_values)
     !
+
+
     !BUILD RHO and PSI:
     call start_timer()
     call rho_sys%free()
@@ -264,6 +265,17 @@ contains
        Nsys   = size(sys%sectors(1)%map(qn=sb_qn))
        Nenv   = size(env%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nsys*Nenv==0)cycle
+       ! print*,sb_qn,size(sb_map)
+       ! print*,sb_map
+       ! print*,"=="
+       ! print*,sb_states(sb_map)
+       ! do i=1,size(sb_map)
+       !    istate = sb_states(sb_map(i))
+       !    l = (istate-1)/env%Dim+1
+       !    r = mod(istate,env%Dim);if(r==0)r=env%Dim
+       !    print*,l,r,istate
+       ! enddo
+       ! print*,""
        !SYSTEM
        qn = sb_qn
        call rho_sys%append(&
@@ -281,25 +293,39 @@ contains
             build_PsiMat(Nsys,Nenv,eig_basis(:,1),sb_map,'right'),&
             qn=qn,map=env%sectors(1)%map(qn=qn))
     enddo
-    !
+
+
     !Build Truncated Density Matrices:
     call rho_sys%eigh(sort=.true.,reverse=.true.)
-    call rho_env%eigh(sort=.true.,reverse=.true.)
-    !>truncation errors
+    call rho_env%eigh(sort=.true.,reverse=.true.)    
     rho_sys_evals = rho_sys%evals()
     rho_env_evals = rho_env%evals()
-    m_s = min(Mstates,m_sys,size(rho_sys_evals))
-    m_e = min(Mstates,m_env,size(rho_env_evals))
-    !< ACTHUNG: treatment of degenerate rho-eigenvalues is recommended
-    if(Estates/=0d0)then
-       !find the value of m such that 1-sum_i lambda_i < Edmrg
+    if(Mstates/=0)then
+       m_s = min(Mstates,m_sys,size(rho_sys_evals))
+       m_e = min(Mstates,m_env,size(rho_env_evals))       
+    elseif(Estates/=0d0)then
        m_err = minloc(abs(1d0-cumulate(rho_sys_evals)-Estates))
        m_s   = m_err(1)
        m_err = minloc(abs(1d0-cumulate(rho_env_evals)-Estates))
        m_e   = m_err(1)
+    else
+       stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
     endif
+    e_=rho_sys_evals(m_s)
+    j_=m_s
+    do i=j_+1,size(rho_sys_evals)
+       err=abs(rho_sys_evals(i)-e_)/e_
+       if(err<=1d-1)m_s=m_s+1
+    enddo
+    e_=rho_env_evals(m_e)
+    j_=m_e
+    do i=j_+1,size(rho_env_evals)
+       err=abs(rho_env_evals(i)-e_)/e_
+       if(err<=1d-1)m_e=m_e+1
+    enddo
     truncation_error_sys = 1d0 - sum(rho_sys_evals(1:m_s))
     truncation_error_env = 1d0 - sum(rho_env_evals(1:m_e))
+    !
     !
     !>truncation-rotation matrices:
     trRho_sys = rho_sys%sparse(m_sys,m_s)
@@ -333,9 +359,8 @@ contains
     write(LOGfile,"(A,2ES24.15)")&
          "Truncation Errors                    :",truncation_error_sys,truncation_error_env
     write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-         "Energies/L                           :",energies/current_L/Norb
+         "Energies/L                           :",energies/sum(current_target_QN)
     call stop_timer("dmrg_step")
-    call wait(100)
     !
     !Clean memory:
     if(allocated(sb_states))deallocate(sb_states)
@@ -466,6 +491,7 @@ contains
           enddo
        enddo
     enddo
+
     !
   end subroutine get_sb_states
 
@@ -498,7 +524,6 @@ contains
        rho  = matmul((transpose(psi_tmp)), psi_tmp  )
     end select
   end function build_density_matrix
-
 
 
 

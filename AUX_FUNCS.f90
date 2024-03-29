@@ -22,7 +22,6 @@ MODULE AUX_FUNCS
   public :: append
   public :: add_to
   public :: binary_search
-  public :: KSz
   public :: fopen
   public :: cumulate
   public :: label_dmrg
@@ -71,26 +70,6 @@ contains
        B(i) = sum(A(1:i))
     enddo
   end function cumulate
-
-  recursive function KSz(n) result(A)
-    integer, intent(in) :: n
-    real(8)          :: A(2**n, 2**n)
-    integer             :: d(2**n)
-    integer             :: i
-    d = szvec(n)
-    A = zero
-    forall(i=1:2**n)A(i,i) = one*d(i)
-  end function KSz
-
-  recursive function szvec(n) result(vec)
-    integer,intent(in)      :: n
-    integer,dimension(2**n) :: vec
-    if(n==1)then
-       vec = [1,-1]
-    else
-       vec = [szvec(n-1),-szvec(n-1)]
-    endif
-  end function szvec
 
 
   function label_dmrg(type,im) result(label)

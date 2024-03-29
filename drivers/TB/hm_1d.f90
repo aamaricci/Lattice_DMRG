@@ -3,7 +3,7 @@ program hm_1d
   USE DMFT_TOOLS
   implicit none
   integer                                   :: Norb,Nspin=1,Nso
-  integer                                   :: Nk,Nktot,Nkpath,Nkx
+  integer                                   :: Nk,Nkpath,Nkx
   integer                                   :: Nlat,Nx,Nup,Ndw
   integer                                   :: i,j,k,ik,iorb,jorb,ispin,io,jo
   integer                                   :: ilat,jlat
@@ -22,7 +22,7 @@ program hm_1d
   logical                                   :: pbc
   complex(8),dimension(:,:),allocatable     :: GammaX,Gamma0,GammaZ
 
-  call parse_input_variable(nkx,"NKX","input.conf",default=25)
+  call parse_input_variable(nkx,"NKX","input.conf",default=100)
   call parse_input_variable(mh,"MH","input.conf",default=0d0)
   call parse_input_variable(lambda,"LAMBDA","input.conf",default=0d0)
   call parse_input_variable(ts,"ts","input.conf",default=-1d0)
@@ -32,12 +32,6 @@ program hm_1d
 
 
   Nso = Nspin*Norb
-
-  Nktot= Nkx
-  !
-  Nx   = Nkx
-  Nlat = Nx
-
   if(Norb>2)stop "This code is for Norb<=2. STOP"
 
   !SETUP THE GAMMA MATRICES:
@@ -58,64 +52,77 @@ program hm_1d
   call TB_set_ei([1d0,0d0])
   call TB_set_bk([pi2,0d0])
 
-
-  !SOLVE AND PLOT THE FULLY HOMOGENOUS PROBLEM:  
-  write(*,*) "Using Nk_total="//txtfy(Nktot)
-  allocate(Hk(Nso,Nso,Nktot))
-  call TB_build_model(Hk,hk_model,Nso,[Nkx])
-
-
-  !GET LOCAL PART OF THE HAMILTONIAN
-  Hloc=sum(Hk,dim=3)/Nktot
-  where(abs(Hloc)<1d-6)Hloc=zero
-  call TB_write_Hloc(Hloc)
-
-
-  ! !Kinetic Energy
-  ! call dmft_kinetic_energy(Hk,zeros(Nspin,Nspin,Norb,Norb,L))
-
-
-
-  !##################################################################
-
-  allocate(Hlat(Nso,Nso,Nlat,Nlat))
-  Hlat=zero
-
-  !>Build direct Lattice Hamiltonian
   allocate(Links(2,1))          !Links: right,left
   Links(1,:) = [1]
   Links(2,:) =-[1]
-  call TB_build_model(Hlat,ts_model,Nso,[Nlat],Links,pbc=pbc)
 
-  allocate(Hij(Nlat*Nso,Nlat*Nso))
-  allocate(Eij(Nlat*Nso))
-  print*,Nlat,Nso,Nlat*Nso
-  Hij = zero
-  do ilat=1,Nlat
-     do io=1,Nso
-        i = io + (ilat-1)*Nso
-        do jlat=1,Nlat
-           do jo=1,Nso
-              j = jo + (jlat-1)*Nso
-              Hij(i,j) = Hlat(io,jo,ilat,jlat)
+
+  do Nx=1,Nkx
+     Nlat = Nx
+
+
+     !SOLVE AND PLOT THE FULLY HOMOGENOUS PROBLEM:  
+     write(*,*) "Using Nk_total="//txtfy(Nx)
+     if(allocated(Hk))deallocate(Hk)
+     allocate(Hk(Nso,Nso,Nx))
+     call TB_build_model(Hk,hk_model,Nso,[Nx])
+
+
+     !GET LOCAL PART OF THE HAMILTONIAN
+     Hloc=sum(Hk,dim=3)/Nx
+     where(abs(Hloc)<1d-6)Hloc=zero
+     call TB_write_Hloc(Hloc)
+
+
+     ! !Kinetic Energy
+     ! call dmft_kinetic_energy(Hk,zeros(Nspin,Nspin,Norb,Norb,L))
+
+
+
+     !##################################################################
+     if(allocated(Hlat))deallocate(Hlat)
+     allocate(Hlat(Nso,Nso,Nlat,Nlat))
+     Hlat=zero
+
+     !>Build direct Lattice Hamiltonian
+
+     call TB_build_model(Hlat,ts_model,Nso,[Nlat],Links,pbc=pbc)
+
+
+     if(allocated(Hij))deallocate(Hij)
+     if(allocated(Eij))deallocate(Eij)
+     allocate(Hij(Nlat*Nso,Nlat*Nso))
+     allocate(Eij(Nlat*Nso))
+     print*,Nlat,Nso,Nlat*Nso
+     Hij = zero
+     do ilat=1,Nlat
+        do io=1,Nso
+           i = io + (ilat-1)*Nso
+           do jlat=1,Nlat
+              do jo=1,Nso
+                 j = jo + (jlat-1)*Nso
+                 Hij(i,j) = Hlat(io,jo,ilat,jlat)
+              enddo
            enddo
+           !
         enddo
-        !
      enddo
+
+     if(Nlat<10)call print_matrix(Hij)
+
+     call eigh(Hij,Eij)
+
+     Nup = Nlat*Nso/2
+     Ndw = Nlat*Nso-Nup
+     print*,Nso,Nup,Ndw
+
+     E0 = sum(Eij(:Nup)) + sum(Eij(:Ndw))
+     E0 = E0/Nlat/Nso
+     write(*,*)Nlat,E0,E0/2
+     write(100,*)Nlat,E0,E0/2
   enddo
 
-  if(Nlat<12)call print_matrix(Hij)
 
-  call eigh(Hij,Eij)
-
-  Nup = Nlat*Nso/2
-  Ndw = Nlat*Nso-Nup
-  print*,Nso,Nup,Ndw
-
-  E0 = sum(Eij(:Nup)) + sum(Eij(:Ndw))
-  E0 = E0/Nlat/Nso
-  write(*,*)Nlat,E0
-  write(100,*)Nlat,E0
 
 contains
 
