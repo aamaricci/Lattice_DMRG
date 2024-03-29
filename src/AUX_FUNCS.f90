@@ -27,9 +27,12 @@ MODULE AUX_FUNCS
   public :: add_to
   public :: binary_search
 <<<<<<< HEAD:src/AUX_FUNCS.f90
+<<<<<<< HEAD:src/AUX_FUNCS.f90
 =======
   public :: KSz
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
+=======
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
   public :: fopen
   public :: cumulate
   public :: label_dmrg
@@ -120,6 +123,7 @@ contains
 
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 <<<<<<< HEAD:src/AUX_FUNCS.f90
+<<<<<<< HEAD:src/AUX_FUNCS.f90
 =======
   ! function KId(n) result(A)
   !   integer, intent(in) :: n
@@ -152,6 +156,8 @@ contains
   end function szvec
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
 
+=======
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
 
   
   function label_dmrg(type,im) result(label)

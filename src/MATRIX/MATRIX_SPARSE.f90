@@ -1,6 +1,7 @@
 MODULE MATRIX_SPARSE  
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
   USE AUX_FUNCS, only: show_fmt,append
 =======
@@ -10,6 +11,10 @@ MODULE MATRIX_SPARSE
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
   USE AUX_FUNCS
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eye,arange
+  USE AUX_FUNCS, only: show_fmt,append
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
   implicit none
   private
 
@@ -185,9 +190,12 @@ MODULE MATRIX_SPARSE
   end interface hconjg
 
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
+=======
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
   intrinsic :: matmul
   interface matmul
      module procedure :: sp_matmul_matrix
@@ -198,7 +206,10 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_filter_matrix_1
      module procedure :: sp_filter_matrix_2
   end interface sp_filter
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 
+=======
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 
   public :: sparse_matrix
   public :: as_sparse
@@ -218,6 +229,10 @@ MODULE MATRIX_SPARSE
   public :: matmul
   public :: sp_eye
   public :: sp_filter
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 
 contains       
 
@@ -250,7 +265,11 @@ contains
     sparse%status=.true.
   end subroutine sp_init_matrix
 
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 
+=======
+  
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
   function sp_construct_matrix(matrix) result(self)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -323,7 +342,7 @@ contains
        do j=1,Ndim2
           if(matrix(i,j)/=zero)call sp_insert_element(sparse,matrix(i,j),i,j)
        enddo
-    enddo
+    enddo    
   end subroutine sp_load_matrix
 
 
@@ -380,7 +399,11 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                                       :: i,j
     matrix = zero
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    if(.not.sparse%status)return
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     do i=1,sparse%Nrow
        do j=1,sparse%row(i)%Size
           matrix(i,sparse%row(i)%cols(j)) = sparse%row(i)%vals(j)
@@ -466,6 +489,7 @@ contains
   !PURPOSE: get the element value at position (i,j) in the sparse matrix
   !+------------------------------------------------------------------+
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   function sp_get_element(sparse,i,j) result(val)
     class(sparse_matrix),intent(in) :: sparse    
     integer,intent(in)              :: i,j
@@ -483,14 +507,29 @@ contains
 =======
   function sp_get_element(sparse,i,j) result(value)
     class(sparse_matrix),intent(inout) :: sparse    
+=======
+  function sp_get_element(sparse,i,j) result(val)
+    class(sparse_matrix),intent(in) :: sparse    
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     integer,intent(in)                 :: i,j
-    real(8)                         :: value
+    real(8)                         :: val
     integer                            :: pos
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     value=zero
     do pos=1,sparse%row(i)%size
        if(j==sparse%row(i)%cols(pos))value=sparse%row(i)%vals(pos)
     enddo
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    if(.not.sparse%status)stop "sp_get_element: sparse.status=F"
+    val=zero
+    if(.not.any(sparse%row(i)%cols==j))return
+    pos=binary_search(sparse%row(i)%cols,j)
+    val=sparse%row(i)%vals(pos)
+    ! do pos=1,sparse%row(i)%size
+    !    if(j==sparse%row(i)%cols(pos))value=sparse%row(i)%vals(pos)
+    ! enddo
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
   end function sp_get_element
 
 
@@ -512,6 +551,7 @@ contains
 
   function sp_filter_matrix_1(A,states) result(Ak)
     class(sparse_matrix), intent(in) :: A
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     integer,dimension(:),intent(in)  :: states
     type(sparse_matrix)              :: Ak
     integer                          :: istate,jstate
@@ -520,6 +560,12 @@ contains
 #else
     real(8)                          :: val
 #endif
+=======
+    integer,dimension(:),intent(in)     :: states
+    type(sparse_matrix)                 :: Ak
+    integer                             :: i,j,istate,jstate
+    real(8)                             :: val
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     !
     if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
     !
@@ -531,7 +577,11 @@ contains
        do jstate=1,size(states)
           j=states(jstate)
           val = A%get(i,j)
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           if(val==zero)cycle
+=======
+          if(val==0d0)cycle
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -542,6 +592,7 @@ contains
 
   function sp_filter_matrix_2(A,Istates,Jstates) result(Ak)
     class(sparse_matrix), intent(in) :: A
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     integer,dimension(:),intent(in)  :: Istates,Jstates
     type(sparse_matrix)              :: Ak
     integer                          :: istate,jstate
@@ -550,6 +601,14 @@ contains
 #else
     real(8)                          :: val
 #endif
+=======
+    integer,dimension(:),intent(in)     :: Istates,Jstates
+    type(sparse_matrix)                 :: Ak
+    integer                             :: i,j,istate,jstate
+    real(8)                             :: val
+    !
+    if(.not.A%status)stop "sp_filter_matrix_2: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     !
     call Ak%free()
     call Ak%init(size(Istates),size(Jstates))
@@ -559,7 +618,12 @@ contains
        do jstate=1,size(Jstates)
           j=Jstates(jstate)
           val = A%get(i,j)
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           if(val==zero)cycle
+=======
+          if(val==0d0)cycle
+          print*,istate,jstate,i,j,val
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -614,11 +678,16 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
     format='(A1,'//str(fmt_)//',1x)'
     ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
+=======
+    if(.not.sparse%status)return
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
@@ -631,6 +700,9 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 =======
           write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')val
+=======
+          write(unit_,"("//str(sparse%Ncol)//"F9.3)",advance='no')val
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
           ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
        enddo
@@ -665,6 +737,7 @@ contains
        Ns = size(sparse%row(i)%cols)
        if(Ns==0)cycle
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
        do j=1,Ns
           write(unit_,"(A1,2I5,A1,2F8.3)",advance='no')"[",i,sparse%row(i)%cols(j),"]",sparse%row(i)%vals(j)
        enddo
@@ -673,6 +746,14 @@ contains
        write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
        write(unit_,"("//str(Ns)//"(2F10.3))",advance='yes')sparse%row(i)%vals
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+       do j=1,Ns
+          write(unit_,"(A1,2I5,A1,F7.3)",advance='no')"[",i,sparse%row(i)%cols(j),"]",sparse%row(i)%vals(j)
+       enddo
+       write(unit_,"(A1)",advance='yes')""
+       ! write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
+       ! write(unit_,"("//str(Ns)//"(2F10.3))",advance='yes')sparse%row(i)%vals
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
        write(unit_,*)
     enddo
   end subroutine sp_display_matrix
@@ -760,7 +841,12 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 =======
     real(8)                      :: value
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_kron_matrix: A.status=F"
+    if(.not.B%status)stop "sp_kron_matrix: B.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call AxB%free()
     call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
     do indx_row = 1,A%Nrow*B%Nrow
@@ -801,16 +887,53 @@ contains
     type(sparse_matrix)              :: AxB
     integer                          :: i,icol,j,k,kcol,l,istate,jstate
     integer                          :: indx_row,indx_col
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     real(8)                       :: value
     integer,dimension(:),allocatable :: inv_states
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
     call AxB%free()
     call AxB%init(size(states),size(states))
     !
+=======
+    real(8)                       :: val,Aval,Bval
+    ! integer,dimension(:),allocatable :: inv_states
+    !
+    if(.not.A%status)stop "sp_restricted_kron_matrix: A.status=F"
+    if(.not.B%status)stop "sp_restricted_kron_matrix: B.status=F"
+    !
+    call AxB%free()
+    call AxB%init(size(states),size(states))
+    ! allocate(inv_states(A%Ncol*B%Ncol))
+    ! inv_states=0
+    ! do i=1,size(states)
+    !    inv_states(states(i)) = i
+    ! enddo
+
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     do istate = 1,size(states)
        indx_row=states(istate)
        i = (indx_row-1)/B%Nrow+1
        k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+       !
+       ! do icol=1,A%row(i)%size
+       !    j = A%row(i)%cols(icol)
+       !    do kcol=1,B%row(k)%size
+       !       l = B%row(k)%cols(kcol)
+       !       indx_col = l + (j-1)*B%Ncol
+       !       jstate   = inv_states(indx_col)
+       !       if(jstate==0)cycle
+       !       val      = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
+       !       !
+       !       call append(AxB%row(istate)%vals,val)
+       !       call append(AxB%row(istate)%cols,jstate)
+       !       AxB%row(istate)%Size = AxB%row(istate)%Size + 1
+       !       !
+       !    enddo
+       ! enddo
+       !
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
        do jstate=1,size(states)
           indx_col=states(jstate)
           j = (indx_col-1)/B%Ncol+1
@@ -821,11 +944,21 @@ contains
                (.not.any(B%row(k)%cols==l)) )cycle
           Aval = A%get(i,j)
           Bval = B%get(k,l)
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           call append(AxB%row(istate)%vals,Aval*Bval)
+=======
+          val  = Aval*Bval
+          !
+          print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
+          !
+          call append(AxB%row(istate)%vals,val)
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
           call append(AxB%row(istate)%cols,jstate)
           AxB%row(istate)%Size = AxB%row(istate)%Size + 1
        enddo
+       !
     enddo
+    print*,""
   end function sp_restricted_kron_matrix
 
 
@@ -851,6 +984,9 @@ contains
 =======
     real(8)                      :: value
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
+    !
+    if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
+    if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
     !
     call AxB%free
     call AxB%init(a%Nrow,b%Ncol)
@@ -905,7 +1041,13 @@ contains
     integer                             :: Nloc
     real(8)                          :: val
     integer                             :: i,j,jcol
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    !
+    if(.not.H%status)stop "sp_matmul_vector: H.status=F"
+    !
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     if(allocated(Hv))deallocate(Hv)
     allocate(Hv(size(v)))
     Hv=zero
@@ -933,11 +1075,16 @@ contains
     integer                          :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
     real(8)                          :: val
 #endif
+=======
+    real(8)                       :: val
+    integer                          :: i,j
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     if(.not.a%status)stop "sp_dgr_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !hconjg
 =======
@@ -981,11 +1128,16 @@ contains
     integer                          :: col
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
     real(8)                          :: val
 #endif
+=======
+    real(8)                       :: val
+    integer                          :: i,j
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
 =======
@@ -1015,7 +1167,8 @@ contains
     type(sparse_matrix)              :: c
     integer                          :: col
     real(8)                       :: val
-    integer                          :: i,j    
+    integer                          :: i,j
+    if(.not.a%status)stop "sp_hconjg_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
@@ -1079,9 +1232,14 @@ contains
     complex(8)                        :: val
 =======
     real(8)                        :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                           :: i,j    
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                           :: i,j
+    if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call a%free()
     call a%init(b%Nrow,b%Ncol)
     do i=1,b%Nrow
@@ -1113,10 +1271,15 @@ contains
     complex(8),intent(in)             :: c
 =======
     real(8),intent(in)             :: c
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                           :: i,j    
     ! if(.not.a%status)stop "sp_matrix_equal_scalar error: a is not allocated"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                           :: i,j
+    if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           a%row(i)%vals(j) = c
@@ -1148,9 +1311,14 @@ contains
     real(8)                      :: val
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                         :: i,j    
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     ! if(.not.a%status)stop "sp_plus_matrix error: a is not allocated"
     ! if(.not.b%status)stop "sp_plus_matrix error: b is not allocated"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
+    if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
     c=a                         !copy a into c
@@ -1186,11 +1354,19 @@ contains
     complex(8)                      :: val
 =======
     real(8)                      :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                         :: i,j    
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                         :: i,j
+    if(.not.a%status)stop "sp_minus_matrix error: a.status=F"
+    if(.not.b%status)stop "sp_minus_matrix error: b.status=F"
+    if(a%Nrow/=b%Nrow)stop "sp_minus_matrix error: a.Nrow != b.Nrow"
+    if(a%Ncol/=b%Ncol)stop "sp_minus_matrix error: a.Ncol != b.Ncol"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     c=a                         !copy a into c
     do i=1,b%Nrow
        do j=1,b%row(i)%size
@@ -1225,9 +1401,14 @@ contains
     complex(8)                     :: val
 =======
     real(8)                     :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1256,9 +1437,14 @@ contains
     complex(8)                     :: val
 =======
     real(8)                     :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1306,7 +1492,8 @@ contains
   !   type(sparse_matrix)            :: B
   !   integer                        :: col
   !   real(8)                     :: val
-  !   integer                        :: i,j   
+  !   integer                        :: i,j
+  !   if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
   !   call b%free()
   !   call b%init(a%Nrow,a%Ncol)
   !   do i=1,a%Nrow
@@ -1344,9 +1531,14 @@ contains
     complex(8)                     :: val
 =======
     real(8)                     :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1375,9 +1567,14 @@ contains
     complex(8)                     :: val
 =======
     real(8)                     :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1425,7 +1622,8 @@ contains
   !   type(sparse_matrix)            :: B
   !   integer                        :: col
   !   real(8)                     :: val
-  !   integer                        :: i,j   
+  !   integer                        :: i,j
+  !   if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
   !   call b%free()
   !   call b%init(a%Nrow,a%Ncol)
   !   do i=1,a%Nrow
@@ -1463,9 +1661,14 @@ contains
     complex(8)                     :: val
 =======
     real(8)                     :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1494,9 +1697,14 @@ contains
     complex(8)                     :: val
 =======
     real(8)                     :: val
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
     integer                        :: i,j   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
+=======
+    integer                        :: i,j
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1544,7 +1752,8 @@ contains
   !   type(sparse_matrix)            :: B
   !   integer                        :: col
   !   real(8)                     :: val
-  !   integer                        :: i,j   
+  !   integer                        :: i,j
+  !   if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
   !   call b%free()
   !   call b%init(a%Nrow,a%Ncol)
   !   do i=1,a%Nrow

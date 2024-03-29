@@ -26,6 +26,7 @@ MODULE LIST_SECTORS
      integer             :: size=0
      type(qtype),pointer :: root=>null()
    contains
+<<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
      procedure,pass :: free   => free_sectors_list     !destructor
      procedure,pass :: put    => put_sectors_list      !put sectors_list qn array
      procedure,pass :: load   => load_sectors_list     !load=sequential put=constructor
@@ -37,6 +38,19 @@ MODULE LIST_SECTORS
      procedure,pass :: basis  => basis_sectors_list    !return the basis of the sector list
      procedure,pass :: has_qn => has_qn_sectors_list   !True if qn exists
      procedure,pass :: show   => show_sectors_list     !show sectors_list to screen
+=======
+     procedure,pass      :: free     => free_sectors_list     !destructor
+     procedure,pass      :: put      => put_sectors_list      !put sectors_list qn array
+     procedure,pass      :: load     => load_sectors_list     !load=sequential put=constructor
+     procedure,pass      :: append   => append_sectors_list   !append map state given a QN
+     procedure,pass      :: get      => get_sectors_list      !get qn and map for a given index
+     procedure,pass      :: map      => get_map_sectors_list  !get map for a given qn/index
+     procedure,pass      :: qn       => get_qn_sectors_list   !return qn for a given index
+     procedure,pass      :: index    => get_index_sectors_list   !return index for a given qn
+     procedure,pass      :: basis    => basis_sectors_list    !return the basis of the sector list
+     procedure,pass      :: has_qn   => has_qn_sectors_list   !True if qn exists
+     procedure,pass      :: show     => show_sectors_list     !show sectors_list to screen
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):LIST_SECTORS.f90
   end type sectors_list
 
 
@@ -76,16 +90,21 @@ MODULE LIST_SECTORS
 
 
 <<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
+<<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
 
 
 =======
   
   
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_SECTORS.f90
+=======
+
+
+>>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):LIST_SECTORS.f90
 contains
 
 
-  
+
 
 
   !##################################################################
