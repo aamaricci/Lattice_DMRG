@@ -622,8 +622,12 @@ contains
           if(val==zero)cycle
 =======
           if(val==0d0)cycle
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           print*,istate,jstate,i,j,val
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+          ! print*,istate,jstate,i,j,val
+>>>>>>> a3c79a0 (Intermediate commit.):MATRIX_SPARSE.f90
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -690,6 +694,7 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
           write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 #else
@@ -703,6 +708,9 @@ contains
 =======
           write(unit_,"("//str(sparse%Ncol)//"F9.3)",advance='no')val
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+          write(unit_,"("//str(sparse%Ncol)//"F5.1)",advance='no')val
+>>>>>>> a3c79a0 (Intermediate commit.):MATRIX_SPARSE.f90
           ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
        enddo
@@ -949,7 +957,7 @@ contains
 =======
           val  = Aval*Bval
           !
-          print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
+          ! print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
           !
           call append(AxB%row(istate)%vals,val)
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
@@ -958,7 +966,7 @@ contains
        enddo
        !
     enddo
-    print*,""
+    ! print*,""
   end function sp_restricted_kron_matrix
 
 
