@@ -183,7 +183,7 @@ contains
     sparse%status=.true.
   end subroutine sp_init_matrix
 
-  
+
   function sp_construct_matrix(matrix) result(self)
     real(8),dimension(:,:),intent(in) :: matrix
     type(sparse_matrix)                  :: self
@@ -231,7 +231,7 @@ contains
        do j=1,Ndim2
           if(matrix(i,j)/=zero)call sp_insert_element(sparse,matrix(i,j),i,j)
        enddo
-    enddo    
+    enddo
   end subroutine sp_load_matrix
 
 
@@ -387,8 +387,6 @@ contains
     type(sparse_matrix)                 :: Ak
     integer                             :: i,j,istate,jstate
     real(8)                             :: val
-    !
-    if(.not.A%status)stop "sp_filter_matrix_2: A.status=F"
     !
     call Ak%free()
     call Ak%init(size(Istates),size(Jstates))
@@ -559,48 +557,21 @@ contains
     enddo
   end function sp_kron_matrix
 
-
   function sp_restricted_kron_matrix(A,B,states) result(AxB)
-    type(sparse_matrix), intent(in)  :: A,B
-    integer,dimension(:),intent(in)  :: states
-    type(sparse_matrix)              :: AxB
-    integer                          :: i,icol,j,k,kcol,l,istate,jstate
-    integer                          :: indx_row,indx_col
-    real(8)                       :: val,Aval,Bval
-    ! integer,dimension(:),allocatable :: inv_states
-    !
-    if(.not.A%status)stop "sp_restricted_kron_matrix: A.status=F"
-    if(.not.B%status)stop "sp_restricted_kron_matrix: B.status=F"
+    type(sparse_matrix), intent(in) :: A,B
+    integer,dimension(:),intent(in) :: states
+    type(sparse_matrix)             :: AxB,Ap,Bp
+    integer                         :: i,icol,j,k,kcol,l,istate,jstate
+    integer                         :: indx_row,indx_col
+    real(8)                         :: val,Aval,Bval
     !
     call AxB%free()
     call AxB%init(size(states),size(states))
-    ! allocate(inv_states(A%Ncol*B%Ncol))
-    ! inv_states=0
-    ! do i=1,size(states)
-    !    inv_states(states(i)) = i
-    ! enddo
-
+    !
     do istate = 1,size(states)
        indx_row=states(istate)
        i = (indx_row-1)/B%Nrow+1
        k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
-       !
-       ! do icol=1,A%row(i)%size
-       !    j = A%row(i)%cols(icol)
-       !    do kcol=1,B%row(k)%size
-       !       l = B%row(k)%cols(kcol)
-       !       indx_col = l + (j-1)*B%Ncol
-       !       jstate   = inv_states(indx_col)
-       !       if(jstate==0)cycle
-       !       val      = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
-       !       !
-       !       call append(AxB%row(istate)%vals,val)
-       !       call append(AxB%row(istate)%cols,jstate)
-       !       AxB%row(istate)%Size = AxB%row(istate)%Size + 1
-       !       !
-       !    enddo
-       ! enddo
-       !
        do jstate=1,size(states)
           indx_col=states(jstate)
           j = (indx_col-1)/B%Ncol+1
@@ -611,18 +582,13 @@ contains
                (.not.any(B%row(k)%cols==l)) )cycle
           Aval = A%get(i,j)
           Bval = B%get(k,l)
-          val  = Aval*Bval
-          !
-          ! print*,indx_row," > ", indx_col,"  -  A,B row:",i,k," - A,B col:",j,l, " < ", istate, jstate 
-          !
-          call append(AxB%row(istate)%vals,val)
+          call append(AxB%row(istate)%vals,Aval*Bval)
           call append(AxB%row(istate)%cols,jstate)
           AxB%row(istate)%Size = AxB%row(istate)%Size + 1
        enddo
-       !
     enddo
-    ! print*,""
   end function sp_restricted_kron_matrix
+
 
 
 
