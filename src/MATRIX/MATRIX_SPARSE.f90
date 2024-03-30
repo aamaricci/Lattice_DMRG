@@ -266,10 +266,14 @@ contains
   end subroutine sp_init_matrix
 
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 
 =======
   
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+
+>>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
   function sp_construct_matrix(matrix) result(self)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -342,7 +346,7 @@ contains
        do j=1,Ndim2
           if(matrix(i,j)/=zero)call sp_insert_element(sparse,matrix(i,j),i,j)
        enddo
-    enddo    
+    enddo
   end subroutine sp_load_matrix
 
 
@@ -607,9 +611,12 @@ contains
     integer                             :: i,j,istate,jstate
     real(8)                             :: val
     !
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_filter_matrix_2: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
     !
+=======
+>>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
     call Ak%free()
     call Ak%init(size(Istates),size(Jstates))
     !
@@ -878,11 +885,15 @@ contains
 
   function sp_restricted_kron_matrix(A,B,states) result(AxB)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
     type(sparse_matrix), intent(in) :: A,B
     integer,dimension(:),intent(in) :: states
     type(sparse_matrix)             :: AxB,Ap,Bp
     integer                         :: i,icol,j,k,kcol,l,istate,jstate
     integer                         :: indx_row,indx_col
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #ifdef _CMPLX
     complex(8)                      :: val,Aval,Bval
 #else
@@ -918,10 +929,18 @@ contains
     ! enddo
 
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    real(8)                         :: val,Aval,Bval
+    !
+    call AxB%free()
+    call AxB%init(size(states),size(states))
+    !
+>>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
     do istate = 1,size(states)
        indx_row=states(istate)
        i = (indx_row-1)/B%Nrow+1
        k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
        !
@@ -942,6 +961,8 @@ contains
        ! enddo
        !
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
        do jstate=1,size(states)
           indx_col=states(jstate)
           j = (indx_col-1)/B%Ncol+1
@@ -953,6 +974,7 @@ contains
           Aval = A%get(i,j)
           Bval = B%get(k,l)
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           call append(AxB%row(istate)%vals,Aval*Bval)
 =======
           val  = Aval*Bval
@@ -961,12 +983,13 @@ contains
           !
           call append(AxB%row(istate)%vals,val)
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+          call append(AxB%row(istate)%vals,Aval*Bval)
+>>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
           call append(AxB%row(istate)%cols,jstate)
           AxB%row(istate)%Size = AxB%row(istate)%Size + 1
        enddo
-       !
     enddo
-    ! print*,""
   end function sp_restricted_kron_matrix
 
 
