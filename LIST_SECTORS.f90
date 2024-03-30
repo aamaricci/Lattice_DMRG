@@ -239,7 +239,7 @@ contains
   !PURPOSE:  Append a state in the map of a given QN if existing.
   ! If not, create it and append there.
   !+------------------------------------------------------------------+
-  subroutine append_sectors_list(self,qn,istate)
+  pure subroutine append_sectors_list(self,qn,istate)
     class(sectors_list),intent(inout) :: self
     integer,intent(in)                :: istate
     real(8),dimension(:),intent(in)   :: qn
