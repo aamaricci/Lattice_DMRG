@@ -5,13 +5,15 @@ program testEDkron
 
   integer                                        :: Nso,tNso
   character(len=64)                              :: finput
-  integer                                        :: i,j,unit,iorb,Nsb,k,l,r,m,arow,acol,brow,bcol
+  integer                                        :: i,j,unit,iorb,Nsb,k,l,r,m,arow,acol,brow,bcol,jorb,ispin,it,ip
   character(len=1)                               :: DMRGtype
   real(8)                                        :: ts(2),Mh,target_qn(2),suml,lambda,vh,aval,bval
   type(site)                                     :: Dot
   type(sparse_matrix)                            :: C,N,Cl,Cr,P
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright,Hsb
-  type(sparse_matrix),allocatable,dimension(:) :: A,B ![nz{Nspin*Norb*Norb},Nsb]
+  type(sparse_matrix),allocatable,dimension(:,:) :: A,B ![nz{Nspin*Norb*Norb},Nsb]
+  integer,dimension(:,:),allocatable               :: bOffset,aOffset
+  integer,dimension(:,:),allocatable               :: RowOffset,ColOffset
   real(8),dimension(:,:),allocatable             :: Hloc,Hij
   real(8),dimension(:),allocatable               :: sb_qn,qn,qm
   type(block)                                    :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR,left,right,sys
@@ -21,13 +23,13 @@ program testEDkron
   integer                                        :: model_d=4
   real(8),dimension(:,:),allocatable             :: Hmatrix,Evecs,Rho
   real(8),dimension(:),allocatable               :: Evals,Vec,Hvec,Hvec_
-  integer,dimension(:),allocatable               :: sb_states,sb_map,lstates,rstates,Dls,Drs,Istates,Jstates,Offset,bOffset,aOffset
+  integer,dimension(:),allocatable               :: sb_states,sb_map,lstates,rstates,Dls,Drs,Istates,Jstates,Offset
   type(sectors_list)                             :: sb_sector
   integer                                        :: Neigen=2
   integer                                        :: current_L
   real(8),dimension(:),allocatable               :: current_target_QN
-  real(8),dimension(2),parameter                 :: qnup=[1,0],qndw=[0,1]
-
+  real(8),dimension(2),parameter                 :: qnup=[1d0,0d0],qndw=[0d0,1d0]
+  real(8),dimension(2)                 :: qk
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"TS",finput,default=(/( -1d0,i=1,2 )/),&
        comment="Hopping amplitudes")
@@ -57,14 +59,12 @@ program testEDkron
   Hij = diag(ts(1:Norb))
   if(Norb==2)Hij = Hij + lambda*pauli_x
 
-  
-  tNso = Nspin*count(Hij/=0d0)
+
+
 
   call init_dmrg(hubbard_1d_model,ModelDot=Dot)
   target_qn = DMRG_qn
   !
-
-
 
   ! !Init block from single dot
   ! my_block=block(dot)
@@ -126,27 +126,29 @@ program testEDkron
 
 
 
-  ! print*,"_o+o_: with QN"
-  ! left = block(dot)
-  ! right = block(dot)
-  ! call get_sb_states_(left,right,sb_states,sb_sector)
+  print*,"_o+o_: with QN"
+  left = block(dot)
+  right = block(dot)
+  call get_sb_states_(left,right,sb_states,sb_sector)
 
-  ! spHsb  =  hubbard_1d_model(left,right,sb_states) + &
-  !      sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
-  !      sp_kron(id(left%dim),right%operators%op("H"),sb_states)
+  spHsb  =  hubbard_1d_model(left,right,sb_states)  + &
+       sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
+       sp_kron(id(left%dim),right%operators%op("H"),sb_states)
 
-  ! allocate(Evals(Neigen))
-  ! allocate(Evecs(size(sb_states),Neigen))
-  ! call sp_eigh(sb_HxV,evals,evecs,&
-  !      5*Neigen,&
-  !      500,&
-  !      tol=1d-12,&
-  !      iverbose=.false.)
-  ! do i=1,2
-  !    print*,i,Evals(i)/2/left%length/Norb
-  ! enddo
-  ! deallocate(evals,evecs)
-  ! print*,""
+
+  allocate(Evals(Neigen))
+  allocate(Evecs(size(sb_states),Neigen))
+  call sp_eigh(sb_HxV,evals,evecs,&
+       5*Neigen,&
+       500,&
+       tol=1d-12,&
+       iverbose=.false.)
+  do i=1,2
+     print*,i,Evals(i)/2/left%length/Norb
+  enddo
+  deallocate(evals,evecs)
+  print*,""
+
 
 
 
@@ -164,41 +166,41 @@ program testEDkron
 
 
 
-  print*,"o->o++o<-o: no QN"
-  left = block(dot)
-  right = block(dot)
-  call enlarge_block_(left,dot,grow='left')
-  call enlarge_block_(right,dot,grow='right')
-  spHsb  = (left%operators%op("H").x.id(right%dim)) + (id(left%dim).x.right%operators%op("H")) +  hubbard_1d_model(left,right)
-  allocate(Evals(Neigen))
-  allocate(Evecs(4**(4*Norb),Neigen))
-  call sp_eigh(sb_HxV,evals,evecs,&
-       Neigen*3,&
-       500,&
-       tol=1d-12,&
-       iverbose=.false.)
-  print*,"Arpack Evals:"
-  do i=1,Neigen
-     print*,i,Evals(i)/2/left%length/Norb
-  enddo
-  deallocate(Evals)
-  rho = build_density_matrix_(left%dim,right%dim,evecs(:,1),'left')
-  allocate(Evals(size(rho,1)))
-  print*,"\rho Lambdas:"
-  call eigh(rho,Evals)
-  suml=0d0
-  do i=size(evals),1,-1
-     suml=suml+evals(i)
-     write(*,*)size(evals)-i+1,evals(i),suml
-     write(400,*)size(evals)-i+1,evals(i),suml
-  enddo
-  deallocate(evals,evecs)
-  print*,""
+  ! print*,"o->o++o<-o: no QN"
+  ! left = block(dot)
+  ! right = block(dot)
+  ! call enlarge_block_(left,dot,grow='left')
+  ! call enlarge_block_(right,dot,grow='right')
+  ! spHsb  = (left%operators%op("H").x.id(right%dim)) + (id(left%dim).x.right%operators%op("H")) +  hubbard_1d_model(left,right)
+  ! allocate(Evals(Neigen))
+  ! allocate(Evecs(4**(4*Norb),Neigen))
+  ! call sp_eigh(sb_HxV,evals,evecs,&
+  !      Neigen*3,&
+  !      500,&
+  !      tol=1d-12,&
+  !      iverbose=.false.)
+  ! print*,"Arpack Evals:"
+  ! do i=1,Neigen
+  !    print*,i,Evals(i)/2/left%length/Norb
+  ! enddo
+  ! deallocate(Evals)
+  ! rho = build_density_matrix_(left%dim,right%dim,evecs(:,1),'left')
+  ! allocate(Evals(size(rho,1)))
+  ! print*,"\rho Lambdas:"
+  ! call eigh(rho,Evals)
+  ! suml=0d0
+  ! do i=size(evals),1,-1
+  !    suml=suml+evals(i)
+  !    write(*,*)size(evals)-i+1,evals(i),suml
+  !    write(400,*)size(evals)-i+1,evals(i),suml
+  ! enddo
+  ! deallocate(evals,evecs)
+  ! print*,""
 
 
 
 
-  
+
 
 
 
@@ -210,27 +212,45 @@ program testEDkron
   call get_sb_states_(left,right,sb_states,sb_sector)
 
 
+  !Old Style solution:
+  spHsb  =  hubbard_1d_model(left,right,sb_states)   + &
+       sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
+       sp_kron(id(left%dim),right%operators%op("H"),sb_states)
+
+  allocate(Evals(Neigen))
+  allocate(Evecs(size(sb_states),Neigen))
+  call sp_eigh(sb_HxV,evals,evecs,&
+       3*Neigen,&
+       500,&
+       tol=1d-12,&
+       iverbose=.false.)
+  do i=1,Neigen
+     print*,i,Evals(i)/2/left%length/Norb
+  enddo
+  deallocate(evals,evecs)
+  print*,""
 
 
+
+
+
+  !Build filterd H*_L, H*_R 
   Nsb = size(sb_sector)
-
   allocate(Hleft(Nsb),Hright(Nsb))
   allocate(Dls(Nsb),Drs(Nsb))
   do isb=1,size(sb_sector)
      sb_qn   = sb_sector%qn(index=isb)
-     ! sb_map  = sb_sector%map(index=isb)
-     !> save Dimensions of left and right blocks (Nsys, Nenv)
-     Dls(isb)= dim_sector(left%sectors(1),sb_qn)!size(left%sectors(1)%map(qn=sb_qn))
-     Drs(isb)= dim_sector(right%sectors(1),current_target_qn - sb_qn)!size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
+     !
+     Dls(isb)= dim_sector(left%sectors(1),sb_qn)
+     Drs(isb)= dim_sector(right%sectors(1),current_target_qn - sb_qn)
      !     
      lstates= sb2lr_states(left,right,sb_states,sb_sector%map(qn=sb_qn),'left')
      rstates= sb2lr_states(left,right,sb_states,sb_sector%map(qn=sb_qn),'right')
      Hleft(isb) = sp_filter(left%operators%op("H"),lstates)
      Hright(isb)= sp_filter(right%operators%op("H"),rstates)
-     print*,isb,shape(Hleft(isb))," - ",shape(Hright(isb)),">",shape(Hleft(isb))*shape(Hright(isb))
   enddo
-  !
 
+  !Build Offsets
   allocate(Offset(Nsb))
   Offset=0
   do isb=2,Nsb
@@ -244,10 +264,22 @@ program testEDkron
   !where .x*. is the restricted kron product.
   !It shows that a given set of Aij and Bkl, named A*_ij and B*_kl, contribute
   !to the determination of C*: 
-  print*,"Cl^+ x Cr sb_states full:"
-  Cl = matmul(left%operators%op("C_l1_s1"),left%operators%op("P"))
+  ! print*,"Cl^+@P x Cr sb_states full:"
+  Cl = matmul(hconjg(left%operators%op("C_l1_s1")),left%operators%op("P"))
   Cr = right%operators%op("C_l1_s1")
-  P = sp_restricted_kron(Cl%dgr(),Cr,sb_states)
+  P = sp_restricted_kron(Cl,Cr,sb_states)
+  call P%display()
+  print*,"shape:",shape(P)
+  print*,"nnz  :",P%nnz()
+  print*,""
+  print*,""
+  print*,""
+  print*,""
+
+  print*,"P@Cl x Cr^+ sb_states full:"
+  Cl = matmul(left%operators%op("P"),left%operators%op("C_l1_s1"))
+  Cr = right%operators%op("C_l1_s1")
+  P = sp_restricted_kron(Cl,Cr%dgr(),sb_states)
   call P%display()
   print*,"shape:",shape(P)
   print*,"nnz  :",P%nnz()
@@ -257,134 +289,192 @@ program testEDkron
   print*,""
 
 
-  ! do i=1,size(sb_states)
-  !    do j=1,size(sb_states)
-  !       write(*,"(I2)",advance='no')int(P%get(i,j))
-  !    enddo
-  !    write(*,*)""
-  ! enddo
-  ! write(*,*)""
-  ! write(*,*)""
-  ! do isb=1,size(sb_sector)     
-  !    do i=1,Dls(isb)
-  !       do j=1,Drs(isb)
-  !          k = (j+(i-1)*Drs(isb))
-  !          do l=1,Dls(isb)
-  !             do r=1,Drs(isb)
-  !                m = (r+(l-1)*Drs(isb))
-  !                write(*,"(I2)",advance='no')int(P%get(k,m))
-  !             enddo
-  !          enddo
-  !          write(*,*)""
-  !       enddo
-  !    enddo
-  !    write(*,*)""
-  ! enddo
-
-
-  !UP
-
-  allocate(A(Nsb),B(Nsb),aOffset(Nsb),bOffset(Nsb))
-  do isb=1,size(sb_sector)
-     qn   = sb_sector%qn(index=isb)
-     qm   = qn - qnup
-     if(.not.sb_sector%has_qn(qm))cycle
-     print*,"Index=",isb
-     ! print*,"Dims L,R:",dim_sector(left%sectors(1),qn),dim_sector(right%sectors(1),qn)
-     ! print*,"Dims SB :",dim_sector(sb_sector,qn),dim_sector(sb_sector,qn)
-
-
-     print*,"q` --> q':",qm,"->",qn
-
-     !C_l --> C^+
-     print*,"A = [Cl@P]^+(q,q`) <- Cl[q`,q]"
-     print*,left%sectors(1)%index(qn=qm)
-     print*,"Dims Dl[q`=q-1up], Dl[q]",dim_sector(left%sectors(1),qm),dim_sector(left%sectors(1),qn)
-     Istates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
-     Jstates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
-     print*,"Size Istates[q`=q-1up],Jstates[q]",size(Istates),size(Jstates)
-     print*,"Istates:",Istates
-     print*,"Jstates:",Jstates
-     Cl = matmul(left%operators%op("C_l1_s1"),left%operators%op("P"))
-     print*,"shape Cl@P:",shape(Cl)
-     print*,"filter [Cl@P] between q` & q,"
-     P = sp_filter_2(Cl,Istates,Jstates)
-     print*,"shape filterd [Cl@P]",shape(P)
-     print*,"^+"
-     A(isb) = P%dgr()
-     print*,"shape filterd [Cl@P]^+",shape(A(isb))
-     call A(isb)%display()
-     aOffset(isb)=Offset(left%sectors(1)%index(qn=qm))
-
-
-     print*,"B = Cr <- Cr[q,q`]"
-     print*,qm,right%sectors(1)%index(qn=qm)
-     print*,"Dims Dl[q], Dl[q`]",dim_sector(right%sectors(1),qn),dim_sector(right%sectors(1),qm)
-     Istates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
-     Jstates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
-     print*,"Size Istates[q`=q-1up],Jstates[q]",size(Istates),size(Jstates)
-     print*,"Istates:",Istates
-     print*,"Jstates:",Jstates
-     P = right%operators%op("C_l1_s1")
-     print*,"shape Cr:",shape(P)
-     print*,"filter Cr between q & q`,"
-     B(isb) = sp_filter_2(P,Istates,Jstates)
-     print*,"shape filterd Cr",shape(B(isb))
-     call B(isb)%display()
-     bOffset(isb)=Offset(left%sectors(1)%index(qn=qm))
-
-     print*,""
-     print*,""
-     print*,""
-     print*,""
-  enddo
+  !Workout the A*_L(\a,k), B*_R(\a,k) for each \a=1,tNso and k=1,Nsb
 
 
 
-  k=0
-  do isb=1,size(sb_sector)
-     if(A(isb)%status.AND.B(isb)%status)then
-        print*,"Index:",isb!,offset(isb),offset(isb-1)
-        ! print*,shape(A(isb)),shape(B(isb)),shape(A(isb))*shape(B(isb))
-        P=A(isb).x.B(isb)
-        k = k + P%nnz()
-        call P%display()
-        ! print*,A(isb)%Nrow*B(isb)%Nrow
-        ! do i=1,A(isb)%Nrow*B(isb)%Nrow
-        !    arow = (i-1)/B(isb)%Nrow+1
-        !    brow = mod(i,B(isb)%Nrow);if(brow==0)brow=B(isb)%Nrow
-        !    print*,"i,i'=",arow,brow
-        ! enddo
-        !
-        do m=1,A(isb)%Nrow*B(isb)%Nrow
-           arow = (m-1)/B(isb)%Nrow+1
-           brow = mod(m,B(isb)%Nrow);if(brow==0)brow=B(isb)%Nrow
-           ! do arow=1,A(isb)%Nrow
-           if(A(isb)%row(arow)%Size==0)cycle
-           ! do brow=1,B(isb)%Nrow
-           if(B(isb)%row(brow)%Size==0)cycle
 
-           do i=1,A(isb)%row(arow)%Size
-              acol = A(isb)%row(arow)%cols(i)
-              aval = A(isb)%row(arow)%vals(i)
-              do j=1,B(isb)%row(brow)%Size
-                 bcol = B(isb)%row(brow)%cols(j)
-                 bval = B(isb)%row(brow)%vals(j)
-                 !print*,arow,acol," - ",brow,bcol," -- ",aval*bval
-                 !it is not just that isb-->isb-1 one needs to get the connected sub-sector for the column.
-                 !for instance isb=5 (2,0) goes to isb=1 (1,0). 
-                 ! print*,brow + (arow-1)*B(isb)%Nrow + Offset(isb), bcol+(acol-1)*B(isb)%Ncol+Offset(isb-1)
-                 print*,m+Offset(isb),brow + (arow-1)*B(isb)%Nrow + Offset(isb), bcol+(acol-1)*B(isb)%Ncol + bOffset(isb),aval*bval
-              enddo
+  tNso = 2*Nspin*count(Hij/=0d0)
+
+  allocate(A(tNso,Nsb),B(tNso,Nsb))
+  allocate(aOffset(tNso,Nsb),bOffset(tNso,Nsb))
+  allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
+  P = left%operators%op("P")
+
+
+  it=0
+  do ispin=1,2
+     do iorb=1,Norb
+        Cl = left%operators%op("C"//left%okey(iorb,ispin))
+        do jorb=1,Norb
+           if(Hij(iorb,jorb)==0d0)cycle
+           Cr = right%operators%op("C"//left%okey(jorb,ispin))
+           !
+           qk = qnup
+           if(ispin==2)qk=qndw
+
+           ! Direct Hopping: A.x.B
+           !A = Hij(iorb,jorb)*[Cl(a,s)^+.@.P] .x. B = Cr(b,s) 
+           it=it+1
+           do isb=1,size(sb_sector)
+              qn   = sb_sector%qn(index=isb)
+              qm   = qn - qk
+              if(.not.sb_sector%has_qn(qm))cycle
+              !Get A(\a,k)
+              Istates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
+              Jstates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
+              A(it,isb) = Hij(iorb,jorb)*sp_filter_2(matmul(Cl%dgr(),P),Istates,Jstates)
+              !Get B(\a,k)
+              Istates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
+              Jstates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
+              B(it,isb) = sp_filter_2(Cr,Istates,Jstates)
+              !
+              RowOffset(it,isb)=Offset(isb)           
+              ColOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
            enddo
 
-           ! enddo
+           ! Hermitian conjugate: A.x.B
+           !A = Hij(iorb,jorb)*[P.@.Cl(a,s)] .x. B = Cr(b,s)^+
+           it=it+1
+           do isb=1,size(sb_sector)
+              qn   = sb_sector%qn(index=isb)
+              qm   = qn - qk
+              if(.not.sb_sector%has_qn(qm))cycle
+              !Get A(\a,k)
+              Istates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
+              Jstates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
+              A(it,isb) = Hij(iorb,jorb)*sp_filter_2(matmul(P,Cl),Istates,Jstates)
+              !Get B(\a,k)
+              Istates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
+              Jstates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
+              B(it,isb) = sp_filter_2(Cr%dgr(),Istates,Jstates)
+              !
+              RowOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
+              ColOffset(it,isb)=Offset(isb)
+           enddo
         enddo
-        ! write(*,*)""
-     endif
+     enddo
   enddo
-  print*,k
 
+  ! k=0
+  ! do ip=1,tNso
+  !    do isb=1,size(sb_sector)
+  !       if(A(ip,isb)%status.AND.B(ip,isb)%status)then
+  !          print*,"Index:",isb!,offset(isb),offset(isb-1)
+  !          P=A(ip,isb).x.B(ip,isb)
+  !          k = k + P%nnz()
+  !          call P%display()
+  !          do m=1,A(ip,isb)%Nrow*B(ip,isb)%Nrow
+  !             arow = (m-1)/B(ip,isb)%Nrow+1
+  !             brow = mod(m,B(ip,isb)%Nrow);if(brow==0)brow=B(ip,isb)%Nrow
+  !             if(A(ip,isb)%row(arow)%Size==0)cycle
+  !             if(B(ip,isb)%row(brow)%Size==0)cycle
+  !             do i=1,A(ip,isb)%row(arow)%Size
+  !                acol = A(ip,isb)%row(arow)%cols(i)
+  !                aval = A(ip,isb)%row(arow)%vals(i)
+  !                do j=1,B(ip,isb)%row(brow)%Size
+  !                   bcol = B(ip,isb)%row(brow)%cols(j)
+  !                   bval = B(ip,isb)%row(brow)%vals(j)
+  !                   !print*,arow,acol," - ",brow,bcol," -- ",aval*bval
+  !                   !ip is not just that isb-->isb-1 one needs to get the connected sub-sector for the column.
+  !                   !for instance isb=5 (2,0) goes to isb=1 (1,0). 
+  !                   ! print*,brow + (arow-1)*B(isb)%Nrow + Offset(isb), bcol+(acol-1)*B(isb)%Ncol+Offset(isb-1)
+  !                   ! print*,m+Offset(isb),brow + (arow-1)*B(ip,isb)%Nrow + Offset(isb), bcol+(acol-1)*B(ip,isb)%Ncol + bOffset(ip,isb),aval*bval
+  !                   print*,m+RowOffset(ip,isb),&
+  !                        brow + (arow-1)*B(ip,isb)%Nrow + RowOffset(ip,isb), &
+  !                        bcol + (acol-1)*B(ip,isb)%Ncol + ColOffset(ip,isb), &
+  !                        aval*bval
+  !                enddo
+  !             enddo
+  !          enddo
+  !       endif
+  !    enddo
+  ! enddo
+  ! print*,k
+
+
+  ! !Continue counting:
+  ! !A = Hij(iorb,jorb)*[P.@.Cl(a,s)]
+  ! !B = Cr(b,s)^+
+  ! do ispin=1,1
+  !    do iorb=1,Norb
+  !       Cl = left%operators%op("C"//left%okey(iorb,ispin))
+  !       do jorb=1,Norb
+  !          if(Hij(iorb,jorb)==0d0)cycle
+  !          Cr = right%operators%op("C"//left%okey(jorb,ispin))
+  !          !
+  !          qk = qnup
+  !          if(ispin==2)qk=qndw
+  !          !
+  !          it=it+1
+  !          do isb=1,size(sb_sector)
+  !             qn   = sb_sector%qn(index=isb)
+  !             qm   = qn - qk
+  !             if(.not.sb_sector%has_qn(qm))cycle
+  !             !Get A(\a,k)
+  !             Istates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
+  !             Jstates   = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
+  !             A(it,isb) = Hij(iorb,jorb)*sp_filter_2(matmul(P,Cl),Istates,Jstates)
+  !             ! print*,"Size Istates[qn-1up],Jstates[qn]",size(Istates),size(Jstates)
+  !             ! print*,"Istates:",Istates
+  !             ! print*,"Jstates:",Jstates
+  !             ! print*,'Shape(Cl^+)',shape(A(it,isb))
+  !             ! call A(it,isb)%show()
+  !             !Get B(\a,k)
+  !             Istates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
+  !             Jstates = sb2lr_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
+  !             B(it,isb) = sp_filter_2(Cr%dgr(),Istates,Jstates)
+  !             ! print*,"Size Istates[qn-1up],Jstates[qn]",size(Istates),size(Jstates)
+  !             ! print*,"Istates:",Istates
+  !             ! print*,"Jstates:",Jstates
+  !             ! print*,'Shape(Cl^+)',shape(B(it,isb))
+  !             ! call B(it,isb)%show()
+  !             !
+  !             ! aOffset(it,isb)=Offset(left%sectors(1)%index(qn=qm))
+  !             ! bOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
+  !             RowOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
+  !             ColOffset(it,isb)=Offset(isb)
+  !          enddo
+  !       enddo
+  !    enddo
+  ! enddo
+
+
+  ! k=0
+  ! do ip=1,tNso
+  !    do isb=1,size(sb_sector)
+  !       if(A(ip,isb)%status.AND.B(ip,isb)%status)then
+  !          print*,"Index:",isb!,offset(isb),offset(isb-1)
+  !          P=A(ip,isb).x.B(ip,isb)
+  !          k = k + P%nnz()
+  !          call P%display()
+  !          do m=1,A(ip,isb)%Nrow*B(ip,isb)%Nrow
+  !             arow = (m-1)/B(ip,isb)%Nrow+1
+  !             brow = mod(m,B(ip,isb)%Nrow);if(brow==0)brow=B(ip,isb)%Nrow
+  !             if(A(ip,isb)%row(arow)%Size==0)cycle
+  !             if(B(ip,isb)%row(brow)%Size==0)cycle
+  !             do i=1,A(ip,isb)%row(arow)%Size
+  !                acol = A(ip,isb)%row(arow)%cols(i)
+  !                aval = A(ip,isb)%row(arow)%vals(i)
+  !                do j=1,B(ip,isb)%row(brow)%Size
+  !                   bcol = B(ip,isb)%row(brow)%cols(j)
+  !                   bval = B(ip,isb)%row(brow)%vals(j)
+  !                   ! print*,m+bOffset(ip,isb),&
+  !                   !      brow + (arow-1)*B(ip,isb)%Nrow + bOffset(ip,isb), &
+  !                   !      bcol + (acol-1)*B(ip,isb)%Ncol + Offset(isb),&
+  !                   !      aval*bval
+  !                   print*,m+RowOffset(ip,isb),&
+  !                        brow + (arow-1)*B(ip,isb)%Nrow + RowOffset(ip,isb), &
+  !                        bcol + (acol-1)*B(ip,isb)%Ncol + ColOffset(ip,isb),&
+  !                        aval*bval
+  !                enddo
+  !             enddo
+
+  !          enddo
+  !       endif
+  !    enddo
+  ! enddo
+  ! print*,k
 
 
   ! stop
@@ -392,9 +482,11 @@ program testEDkron
 
 
 
-  spHsb  =  hubbard_1d_model(left,right,sb_states)!  + &
-  ! sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
-  ! sp_kron(id(left%dim),right%operators%op("H"),sb_states)
+
+  !Old Style solution:
+  spHsb  =  hubbard_1d_model(left,right,sb_states)   + &
+       sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
+       sp_kron(id(left%dim),right%operators%op("H"),sb_states)
 
   allocate(Evals(Neigen))
   allocate(Evecs(size(sb_states),Neigen))
@@ -412,10 +504,7 @@ program testEDkron
 
   !
   !Using _new to get energy:
-  !spHsb  =  hubbard_1d_model(left,right,sb_states) !+ &
-  !sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
-  !sp_kron(id(left%dim),right%operators%op("H"),sb_states)
-
+  spHsb  =  hubbard_1d_model(left,right,sb_states) 
   allocate(Evals(Neigen))
   allocate(Evecs(size(sb_states),Neigen))
   call sp_eigh(sb_HxV_new,evals,evecs,&
@@ -433,30 +522,28 @@ program testEDkron
 
 
 
-
-
+  !test
   allocate(Vec(size(sb_states)))
 
   call random_number(vec)
   allocate(Hvec, source=vec)
   allocate(Hvec_, source=vec)
 
-  !This is just to init:
-  ! print*,"Get H_1d: Cdg.C"
-  ! spHsb  =  hubbard_1d_model(left,right,sb_states) !+ &
-  ! print*,"done"
-  ! !
-  ! spHsb = 0d0 !set this to zero so to have only H^L x 1^R used in spHx_new
-  call sb_HxV_new(size(sb_states),vec,Hvec)
 
+  print*,"Test HxV OLD"
 
-  !Set spHsb to H^Lx1^R to be used in the default spHv (which only uses spHsb)
-  print*,"Hx1 + 1xH"
-  spHsb  =  hubbard_1d_model(left,right,sb_states)
-  ! sp_kron(left%operators%op("H"),id(right%dim),sb_states)+&
-  !      sp_kron(id(left%dim),right%operators%op("H"),sb_states) + 
-  print*,"done"
+  ! !Set spHsb to H^Lx1^R to be used in the default spHv (which only uses spHsb)
+  spHsb  =  hubbard_1d_model_(left,right,sb_states) + &
+       sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
+       sp_kron(id(left%dim),right%operators%op("H"),sb_states)
   call sb_HxV(size(sb_states),vec,Hvec_)
+
+
+  print*,"Test HxV NEW"
+
+  !Apply H to v new style
+  ! spHsb  =  hubbard_1d_model_(left,right,sb_states)
+  call sb_HxV_new(size(sb_states),vec,Hvec)
 
 
   j=0
@@ -468,12 +555,6 @@ program testEDkron
      j=j+Dls(isb)*Drs(isb)
   enddo
   !
-  ! allocate(Evecs(spHsb%Nrow,Neigen))
-  ! call sp_eigh(sb_HxV,evals,evecs,&
-  !      3*Neigen,&
-  !      500,&
-  !      tol=1d-12,&
-  !      iverbose=.false.)
 
 
 
@@ -668,7 +749,7 @@ contains
     type(block)                           :: right
     integer,dimension(:),optional         :: states
     type(sparse_matrix),dimension(Norb,2) :: Cl,Cr
-    type(sparse_matrix)                   :: P
+    type(sparse_matrix)                   :: P,A
     type(sparse_matrix)                   :: H2
     integer                               :: ispin,iorb,jorb,io,jo
     integer,dimension(2)                  :: Hdims
@@ -696,13 +777,15 @@ contains
              if(Hij(iorb,jorb)==0d0)cycle
              if(present(states))then
                 H2 = H2 + Hij(iorb,jorb)*sp_kron(matmul(Cl(iorb,ispin)%dgr(),P),Cr(jorb,ispin),states)
+                H2 = H2 + Hij(iorb,jorb)*sp_kron(matmul(P,Cl(iorb,ispin)),Cr(jorb,ispin)%dgr(),states)
              else
                 H2 = H2 + Hij(iorb,jorb)*(matmul(Cl(iorb,ispin)%dgr(),P).x.Cr(jorb,ispin))
+                H2 = H2 + Hij(iorb,jorb)*(matmul(P,Cl(iorb,ispin)).x.Cr(jorb,ispin)%dgr())
              endif
           enddo
        enddo
     enddo
-    !H2 = H2 + H2%dgr()
+    ! H2 = H2 + H2%dgr()
     !
     !
     !> free memory
@@ -715,6 +798,63 @@ contains
     enddo
   end function hubbard_1d_model
 
+
+
+
+
+  !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
+  function hubbard_1d_model_(left,right,states) result(H2)
+    type(block)                           :: left
+    type(block)                           :: right
+    integer,dimension(:),optional         :: states
+    type(sparse_matrix),dimension(Norb,2) :: Cl,Cr
+    type(sparse_matrix)                   :: P,A
+    type(sparse_matrix)                   :: H2
+    integer                               :: ispin,iorb,jorb,io,jo
+    integer,dimension(2)                  :: Hdims
+    character(len=:),allocatable          :: key
+    !
+    !>Retrieve operators:
+    P = left%operators%op("P")
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          key = "C"//left%okey(iorb,ispin)
+          Cl(iorb,ispin) = left%operators%op(key)
+          Cr(iorb,ispin) = right%operators%op(key)
+       enddo
+    enddo
+    !
+    !> Get H2 dimensions:
+    Hdims = shape(left%operators)*shape(right%operators)
+    if(present(states))Hdims = [size(states),size(states)]
+    !
+    !>Build H2:
+    call H2%init(Hdims(1),Hdims(2))
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          do jorb=1,Norb
+             if(Hij(iorb,jorb)==0d0)cycle
+             if(present(states))then
+                H2 = H2 + Hij(iorb,jorb)*sp_kron(matmul(Cl(iorb,ispin)%dgr(),P),Cr(jorb,ispin),states)
+                H2 = H2 + Hij(iorb,jorb)*sp_kron(matmul(P,Cl(iorb,ispin)),Cr(jorb,ispin)%dgr(),states)
+             else
+                H2 = H2 + Hij(iorb,jorb)*(matmul(Cl(iorb,ispin)%dgr(),P).x.Cr(jorb,ispin))
+                H2 = H2 + Hij(iorb,jorb)*(matmul(P,Cl(iorb,ispin)).x.Cr(jorb,ispin)%dgr())
+             endif
+          enddo
+       enddo
+    enddo
+    !
+    !
+    !> free memory
+    call P%free
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          call Cl(iorb,ispin)%free
+          call Cr(iorb,ispin)%free
+       enddo
+    enddo
+  end function hubbard_1d_model_
 
 
 
@@ -751,53 +891,66 @@ contains
 
     do k=1,size(sb_sector)
 
-       ! !> apply the H^L x 1^r: need to T v and Hv
-       ! do ir=1,Drs(k)!< fix the column: iterate the row:
-       !    do il=1,Dls(k)
-       !       i = ir + (il-1)*Drs(k) + offset(k)
-       !       do jcol=1,Hleft(k)%row(il)%Size
-       !          val = Hleft(k)%row(il)%vals(jcol)
-       !          jl  = Hleft(k)%row(il)%cols(jcol)
-       !          j   = ir + (jl-1)*Drs(k) + offset(k)
-       !          Hv(i) = Hv(i) + val*v(j)
-       !       end do
-       !    enddo
-       ! enddo
-
-       ! !
-       ! !> apply the 1^L x H^r
-       ! do il=1,Dls(k)!< fix teh row: iterate the column:
-       !    do ir=1,Drs(k)
-       !       i = il + (ir-1)*Dls(k) + offset(k)           
-       !       do jcol=1,Hright(k)%row(il)%Size
-       !          val = Hright(k)%row(il)%vals(jcol)
-       !          jl  = Hright(k)%row(il)%cols(jcol)
-       !          j   = jl + (ir-1)*Dls(k) + offset(k)
-       !          Hv(i) = Hv(i) + val*v(j)
-       !       end do
-       !    enddo
-       ! enddo
+       !> apply the H^L x 1^r: need to T v and Hv
+       do ir=1,Drs(k)!< fix the column: iterate the row:
+          do il=1,Dls(k)
+             i = ir + (il-1)*Drs(k) + offset(k)
+             do jcol=1,Hleft(k)%row(il)%Size
+                val = Hleft(k)%row(il)%vals(jcol)
+                jl  = Hleft(k)%row(il)%cols(jcol)
+                j   = ir + (jl-1)*Drs(k) + offset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+       enddo
 
        !
-       if(.not.A(k)%status.OR..not.B(k)%status)cycle
-       do ic=1,A(k)%Nrow*B(k)%Nrow
-          arow = (ic-1)/B(k)%Nrow+1
-          brow = mod(ic,B(k)%Nrow);if(brow==0)brow=B(k)%Nrow
-          if(A(k)%row(arow)%Size==0.OR.B(k)%row(brow)%Size==0)cycle
-          i = ic + Offset(k)
-          do ja=1,A(k)%row(arow)%Size
-             acol = A(k)%row(arow)%cols(ja)
-             aval = A(k)%row(arow)%vals(ja)
-             do jb=1,B(k)%row(brow)%Size
-                bcol = B(k)%row(brow)%cols(jb)
-                bval = B(k)%row(brow)%vals(jb)
-                j = bcol+(acol-1)*B(k)%Ncol + bOffset(k)
-                Hv(i) = Hv(i) - aval*bval*v(j)
+       !> apply the 1^L x H^r
+       do il=1,Dls(k)!< fix teh row: iterate the column:
+          do ir=1,Drs(k)
+             i = il + (ir-1)*Dls(k) + offset(k)           
+             do jcol=1,Hright(k)%row(il)%Size
+                val = Hright(k)%row(il)%vals(jcol)
+                jl  = Hright(k)%row(il)%cols(jcol)
+                j   = jl + (ir-1)*Dls(k) + offset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+       enddo
+
+
+       do it=1,tNso
+          if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+          do ic=1,A(it,k)%Nrow*B(it,k)%Nrow
+             arow = (ic-1)/B(it,k)%Nrow+1
+             brow = mod(ic,B(it,k)%Nrow);if(brow==0)brow=B(it,k)%Nrow
+             if(A(it,k)%row(arow)%Size==0.OR.B(it,k)%row(brow)%Size==0)cycle
+             i = ic + RowOffset(it,k)
+             do ja=1,A(it,k)%row(arow)%Size
+                acol = A(it,k)%row(arow)%cols(ja)
+                aval = A(it,k)%row(arow)%vals(ja)
+                do jb=1,B(it,k)%row(brow)%Size
+                   bcol = B(it,k)%row(brow)%cols(jb)
+                   bval = B(it,k)%row(brow)%vals(jb)
+                   j = bcol+(acol-1)*B(it,k)%Ncol + ColOffset(it,k)
+                   Hv(i) = Hv(i) + aval*bval*v(j)
+                enddo
              enddo
           enddo
        enddo
 
     enddo
+
+
+
+    ! do i=1,Nloc
+    !    matmul: do jcol=1, spHsb%row(i)%Size
+    !       val = spHsb%row(i)%vals(jcol)
+    !       j   = spHsb%row(i)%cols(jcol)
+    !       Hv(i) = Hv(i) + val*v(j)
+    !    end do matmul
+    ! end do
+
 
   end subroutine sb_HxV_new
 
