@@ -12,7 +12,7 @@ program testEDkron
   type(site)                                     :: Dot
   type(sparse_matrix)                            :: C,N,Cl,Cr,P
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright,Hsb
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B ![nz{Nspin*Norb*Norb},Nsb]
+  type(sparse_matrix),allocatable,dimension(:,:) :: A,B,Cleft,Cright ![nz{Nspin*Norb*Norb},Nsb]
   integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
   real(8),dimension(:,:),allocatable             :: Hloc,Hij
   real(8),dimension(:),allocatable               :: sb_qn,qn,qm
@@ -56,7 +56,9 @@ program testEDkron
   allocate(Hloc(Nso,Nso))
   Hloc = 0d0
   if(Norb==2)Hloc = Mh*kron(pauli_0,pauli_z) + vh*kron(pauli_0,pauli_x)
-  Dot  = hubbard_site(Hloc)
+
+
+  Dot  = electron_site(Hloc)
   call dot%show()
 
   allocate(Hij(Norb,Norb))
@@ -118,7 +120,9 @@ program testEDkron
   print*,"Enlarge Blocks:"
   t0 = omp_get_wtime()
   call enlarge_block_(left,dot,grow='left')
+  ! call enlarge_block_(left,dot,grow='left')
   call enlarge_block_(right,dot,grow='right')
+  ! call enlarge_block_(right,dot,grow='right')
   print*,omp_get_wtime() - t0
   print*,"Get SB states"
   t0 = omp_get_wtime()
@@ -176,12 +180,21 @@ program testEDkron
 
   print*,"There are tNso non-zero elements ",tNso
   allocate(A(tNso,Nsb),B(tNso,Nsb))
+
   allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
   !
   P = left%operators%op("P")
   !
+  allocate(Cleft(Nspin,Norb),Cright(Nspin,Norb))
+  do ispin=1,Nspin
+     do iorb=1,Norb
+        Cleft(ispin,iorb) = left%operators%op("C"//left%okey(iorb,ispin))
+        Cright(ispin,iorb) = right%operators%op("C"//right%okey(iorb,ispin))
+     enddo
+  enddo
+
   t0 = omp_get_wtime()
-  do ispin=1,2
+  do ispin=1,Nspin
      dq = qnup ; if(ispin==2)dq=qndw
 
      do isb=1,size(sb_sector)
@@ -189,41 +202,27 @@ program testEDkron
         qm   = qn - dq
         if(.not.sb_sector%has_qn(qm))cycle
         !
-        ! Direct Hopping: A.x.B
-        !A = Hij(iorb,jorb)*[Cl(a,s)^+.@.P] .x. B = Cr(b,s) 
         AIstates = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
         AJstates = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
         BIstates = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
         BJstates = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
+        !
+
         do iorb=1,Norb
            do jorb=1,Norb
               if(Hij(iorb,jorb)==0d0)cycle
-              it=tMap(1,ispin,iorb,jorb)
-              print*,iorb,jorb,ispin,it
-              A(it,isb) = Hij(iorb,jorb)*&
-                   sp_filter(matmul(hconjg(left%operators%op("C"//left%okey(iorb,ispin))),P),AIstates,AJstates)
-              B(it,isb) = sp_filter(right%operators%op("C"//left%okey(jorb,ispin)),BIstates,BJstates)
               !
+              ! Direct Hopping: A = Hij(iorb,jorb)*[Cl(a,s)^+.@.P] .x. B = Cr(b,s) 
+              it=tMap(1,ispin,iorb,jorb)
+              A(it,isb) = Hij(iorb,jorb)*sp_filter(matmul(Cleft(ispin,iorb)%dgr(),P),AIstates,AJstates)
+              B(it,isb) = sp_filter(Cright(ispin,jorb),BIstates,BJstates)
               RowOffset(it,isb)=Offset(isb)           
               ColOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
-           enddo
-        enddo
 
-        ! Hermitian conjugate: A.x.B
-        !A = Hij(iorb,jorb)*[P.@.Cl(a,s)] .x. B = Cr(b,s)^+
-        AIstates   = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
-        AJstates   = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
-        BIstates   = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
-        BJstates   = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
-        do iorb=1,Norb
-           do jorb=1,Norb
-              if(Hij(iorb,jorb)==0d0)cycle
+              ! Hermitian conjugate: A = Hij(iorb,jorb)*[P.@.Cl(a,s)] .x. B = Cr(b,s)^+
               it=tMap(2,ispin,iorb,jorb)
-              print*,iorb,jorb,ispin,it
-              A(it,isb) = Hij(iorb,jorb)*&
-                   sp_filter(matmul(P,left%operators%op("C"//left%okey(iorb,ispin))),AIstates,AJstates)
-              B(it,isb) = sp_filter(hconjg(right%operators%op("C"//left%okey(jorb,ispin))),BIstates,BJstates)
-              !
+              A(it,isb) = Hij(iorb,jorb)*sp_filter(matmul(P,Cleft(ispin,iorb)),AJstates,AIstates)
+              B(it,isb) = sp_filter(Cright(ispin,jorb)%dgr(),BJstates,BIstates)
               RowOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
               ColOffset(it,isb)=Offset(isb)
            enddo
@@ -376,11 +375,11 @@ contains
     case ("left","l")
        Hb = self%operators%op("H").x.id(dot%dim)
        Hd = id(self%dim).x.dot%operators%op("H")
-       H2 = hubbard_1d_model(self,as_block(dot))       
+       H2 = h2_model(self,as_block(dot))       
     case ("right","r")
        Hb = id(dot%dim).x.self%operators%op("H")
        Hd = dot%operators%op("H").x.id(self%dim)
-       H2 = hubbard_1d_model(as_block(dot),self)
+       H2 = h2_model(as_block(dot),self)
     end select
     call self%put_op("H", Hb +  Hd + H2)
     !
@@ -424,6 +423,54 @@ contains
   end subroutine enlarge_block_
 
 
+
+  !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
+  function h2_model(left,right) result(H2)
+    type(block)                           :: left
+    type(block)                           :: right
+    type(sparse_matrix),dimension(Norb,2) :: Cl,Cr
+    type(sparse_matrix)                   :: P,A
+    type(sparse_matrix)                   :: H2
+    integer                               :: ispin,iorb,jorb,io,jo
+    integer,dimension(2)                  :: Hdims
+    character(len=:),allocatable          :: key
+    !
+    !>Retrieve operators:
+
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          key = "C"//left%okey(iorb,ispin)
+          Cl(iorb,ispin) = left%operators%op(key)
+          Cr(iorb,ispin) = right%operators%op(key)
+       enddo
+    enddo
+    !
+    !> Get H2 dimensions:
+    Hdims = shape(left%operators)*shape(right%operators)
+    !
+    !>Build H2:
+    call H2%init(Hdims(1),Hdims(2))
+    P = left%operators%op("P")  !always acts on the Left Block
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          do jorb=1,Norb
+             if(Hij(iorb,jorb)==0d0)cycle
+             H2 = H2 + Hij(iorb,jorb)*(matmul(Cl(iorb,ispin)%dgr(),P).x.Cr(jorb,ispin))
+             H2 = H2 + Hij(iorb,jorb)*(matmul(P,Cl(iorb,ispin)).x.Cr(jorb,ispin)%dgr())
+          enddo
+       enddo
+    enddo
+    !
+    !
+    !> free memory
+    call P%free
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          call Cl(iorb,ispin)%free
+          call Cr(iorb,ispin)%free
+       enddo
+    enddo
+  end function h2_model
 
 
 

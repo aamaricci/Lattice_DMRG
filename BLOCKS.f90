@@ -16,6 +16,8 @@ MODULE BLOCKS
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
      type(operators_list)                        :: omatrices
+     character(len=:),allocatable                :: KeyLink
+     character(len=:),allocatable                :: SiteType
    contains
      procedure,pass :: free        => free_block
      procedure,pass :: put_op      => put_op_block
@@ -26,6 +28,8 @@ MODULE BLOCKS
      procedure,pass :: is_valid    => is_valid_block
      procedure,pass :: renormalize => rotate_operators_block
      procedure,pass :: okey        => okey_block
+     procedure,pass :: name        => KeyLink_block
+     procedure,pass :: type        => SiteType_block
   end type block
 
 
@@ -74,6 +78,8 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
+    if(allocated(self%KeyLink))deallocate(self%KeyLink)
+    if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_block
 
 
@@ -81,12 +87,13 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_from_scrath(length,Dim,sectors,operators,omatrices) result(self)
+  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,key,type) result(self)
     integer,intent(in)              :: length
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(operators_list),intent(in) :: omatrices
+    character(len=:),allocatable    :: key,type
     type(block)                     :: self
     self%length    = length
     self%Dim       = Dim
@@ -96,6 +103,8 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = sectors(i)
     enddo
+    allocate(self%KeyLink, source=key)
+    allocate(self%SiteType, source=type)
   end function constructor_from_scrath
 
 
@@ -110,6 +119,8 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
     enddo
+    allocate(self%KeyLink, source=ssite%KeyLink)
+    allocate(self%SiteType, source=ssite%SiteType)
   end function constructor_from_site
 
 
@@ -169,8 +180,6 @@ contains
     if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
     self%sectors(indx_) = sectors_list( basis )
   end subroutine set_basis_block
-
-
 
 
 
@@ -236,6 +245,8 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i) = B%sectors(i)
     enddo
+    allocate(A%KeyLink, source=B%KeyLink)
+    allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_block
 
 
@@ -267,17 +278,32 @@ contains
 
   function okey_block(self,iorb,ispin,isite) result(string)
     class(block)                 :: self
-    integer                      :: iorb
-    integer,optional             :: ispin,isite
-    integer                      :: isite_,ispin_
+    integer,optional             :: iorb,isite,ispin
+    integer                      :: iorb_,isite_,ispin_
     character(len=:),allocatable :: string
+    iorb_ =0;if(present(iorb))iorb_=iorb
     ispin_=0;if(present(ispin))ispin_=ispin
     isite_=0;if(present(isite))isite_=isite
     !
-    string = okey(iorb,ispin_,isite_)
+    if(iorb_==0.AND.ispin_==0)stop "Okey_Block ERROR: iorb == ispin == 0"
+    string = okey(iorb_,ispin_,isite_)
+    !
     !
   end function okey_block
 
+
+  function KeyLink_block(self) result(string)
+    class(block)                  :: self
+    character(len=:),allocatable :: string
+    allocate(string, source=self%KeyLink)
+  end function KeyLink_block
+
+
+  function SiteType_block(self) result(string)
+    class(block)                  :: self
+    character(len=:),allocatable :: string
+    allocate(string, source=self%SiteType)
+  end function SiteType_block
 
 
 
@@ -297,17 +323,19 @@ contains
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
     write(*,"(A15,I6)")"Block Length  =",self%length
     write(*,"(A15,I6)")"Block Dim     =",self%Dim
+    write(*,"(A16,A)") "Block Type    = ",self%SiteType
     write(*,"(A15,I6)")"Block Sectors =",size(self%sectors)
     do i=1,size(self%sectors)
        write(*,"(A14,I6)")"Block Sector  =",i
        call self%sectors(i)%show()
     enddo
     if(wOP_)then
-       write(*,"(A14)")"Block Ops     ="
+       write(*,"(A15,A)")"Link Name    = ",self%KeyLink
+       write(*,"(A14)")"Block Ops     :"
        call self%operators%show(fmt=fmt_)
     endif
     if(wOMAT_)then
-       write(*,"(A14)")"Block Omats   ="
+       write(*,"(A14)")"Block Omats   :"
        call self%omatrices%show(fmt=fmt_)
     endif
   end subroutine show_block
@@ -361,7 +389,7 @@ program testBLOCKS
   real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
   real(8),dimension(4,4)             :: Gamma13,Gamma03
 
-  
+
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(id(2),Sz)
 
