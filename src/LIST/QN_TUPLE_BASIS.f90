@@ -66,7 +66,10 @@ MODULE TUPLE_BASIS
   end interface tsum
 
   public :: tuple
+<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
   public :: tstates
+=======
+>>>>>>> 7f27ed5 (Intermediate commit.):TUPLE_BASIS.f90
   public :: tbasis
   public :: shape
   public :: tsum

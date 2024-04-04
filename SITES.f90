@@ -15,6 +15,9 @@ MODULE SITES
      integer                                     :: Dim=1
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
+     character(len=:),allocatable                :: KeyLink
+     character(len=:),allocatable                :: SiteType
+     type(tuple),dimension(:),allocatable        :: dQ
    contains
      procedure,pass     :: free        => free_site
      procedure,pass     :: put         => put_op_site
@@ -24,6 +27,8 @@ MODULE SITES
      procedure,pass     :: show        => show_site
      procedure,pass     :: is_valid    => is_valid_site
      procedure,pass     :: okey        => okey_site
+     procedure,pass     :: name        => KeyLink_site
+     procedure,pass     :: type        => SiteType_site
   end type site
 
 
@@ -37,19 +42,13 @@ MODULE SITES
      module procedure :: equality_site
   end interface assignment(=)
 
-  interface spin_onehalf_site
-     module procedure :: pauli_site
-  end interface spin_onehalf_site
 
   public :: site
-  public :: pauli_site
-  public :: spin_onehalf_site
-  public :: spin_one_site
-  public :: hubbard_site
   public :: assignment(=)
+  !TEMPLATES:
+  public :: spin_site
+  public :: electron_site
 
-
-  integer :: i
 
 contains
 
@@ -72,6 +71,9 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
+    if(allocated(self%dQ))deallocate(self%dQ)
+    if(allocated(self%KeyLink))deallocate(self%KeyLink)
+    if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_site
 
 
@@ -79,16 +81,25 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_site(Dim,sectors,operators) result(self)
+  function constructor_site(Dim,sectors,operators,key,type,dQ) result(self)
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
+    character(len=:),allocatable    :: key,type
+    type(tuple),dimension(:)        :: dQ
     type(site)                      :: self
+    integer                         :: i
     self%Dim       = Dim
     self%operators = operators
     allocate(self%sectors(size(sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = sectors(i)
+    enddo
+    allocate(self%KeyLink, source=key)
+    allocate(self%SiteType, source=type)
+    allocate(self%dQ(size(dQ)))
+    do i=1,size(self%dQ)
+       allocate(self%dQ(i)%qn, source=dQ(i)%qn)
     enddo
   end function constructor_site
 
@@ -142,6 +153,7 @@ contains
   end subroutine get_basis_site
 
 
+
   !+------------------------------------------------------------------+
   !PURPOSE:  Put a QN array in the site
   !+------------------------------------------------------------------+
@@ -156,6 +168,44 @@ contains
   end subroutine set_basis_site
 
 
+  function okey_site(self,iorb,ispin,isite) result(string)
+    class(site)                  :: self
+    integer,optional             :: iorb,isite,ispin
+    integer                      :: iorb_,isite_,ispin_
+    character(len=:),allocatable :: string
+    iorb_ =0;if(present(iorb))iorb_=iorb
+    ispin_=0;if(present(ispin))ispin_=ispin
+    isite_=0;if(present(isite))isite_=isite
+    !
+    if(iorb_==0.AND.ispin_==0)stop "Okey_Site ERROR: iorb == ispin == 0"
+    string = okey(iorb_,ispin_,isite_)
+    !
+  end function okey_site
+
+
+  function KeyLink_site(self) result(string)
+    class(site)                  :: self
+    character(len=:),allocatable :: string
+    allocate(string, source=self%KeyLink)
+  end function KeyLink_site
+
+
+  function SiteType_site(self) result(string)
+    class(site)                  :: self
+    character(len=:),allocatable :: string
+    allocate(string, source=self%SiteType)
+  end function SiteType_site
+
+
+  function dQ_site(self,index) result(dq)
+    class(site)                      :: self
+    integer                          :: index
+    real(8),dimension(:),allocatable :: dq
+    if(allocated(dq))deallocate(dq)
+    if(index<1.OR.index>size(self%dQ))stop "dQ_SITE ERROR: index out of range"
+    allocate(dq, source=self%dQ(index)%qn)
+  end function dQ_site
+
 
   !##################################################################
   !##################################################################
@@ -168,12 +218,19 @@ contains
   subroutine equality_site(A,B)
     type(site),intent(inout) :: A
     type(site),intent(in)    :: B
+    integer                  :: i
     call A%free
     A%Dim       = B%Dim
     A%operators = B%operators
     allocate(A%sectors(size(B%sectors)))
     do i=1,size(A%sectors)
        A%sectors(i)   = B%sectors(i)
+    enddo
+    allocate(A%KeyLink, source=B%KeyLink)
+    allocate(A%SiteType, source=B%SiteType)
+    allocate(A%dQ(size(B%dQ)))
+    do i=1,size(a%dQ)
+       allocate(A%dQ(i)%qn, source=B%dQ(i)%qn)
     enddo
   end subroutine equality_site
 
@@ -182,6 +239,7 @@ contains
     class(site)                           :: self
     logical                               :: bool
     integer,dimension(size(self%sectors)) :: Dims
+    integer                               :: i
     bool = self%operators%is_valid(self%Dim)
     do i=1,size(self%sectors)
        Dims = dim(self%sectors(i))
@@ -190,18 +248,6 @@ contains
   end function is_valid_site
 
 
-  function okey_site(self,iorb,ispin,isite) result(string)
-    class(site)                  :: self
-    integer                      :: iorb
-    integer,optional             :: isite,ispin
-    integer                      :: isite_,ispin_
-    character(len=:),allocatable :: string
-    ispin_=0;if(present(ispin))ispin_=ispin
-    isite_=0;if(present(isite))isite_=isite
-    !
-    string = okey(iorb,ispin_,isite_)
-    !
-  end function okey_site
 
 
   !##################################################################
@@ -216,13 +262,20 @@ contains
     class(site)               :: self
     character(len=*),optional :: fmt
     character(len=32)         :: fmt_
+    integer                   :: i
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,"(A14,I6)")"Site Dim     =",self%Dim
+    write(*,"(A15,A)")"Site Type    = ",self%SiteType
+    do i=1,size(self%dQ)
+       write(*,"(A14,I6)")"Site dQ =",i
+       write(*,"(10F6.1)") self%dQ(i)%qn
+    enddo
     do i=1,size(self%sectors)
        write(*,"(A14,I6)")"Site Sectors =",i
        call self%sectors(i)%show()
     enddo
-    write(*,"(A14)")"Site Ops     ="
+    write(*,"(A15,A)")"Link Name    = ",self%KeyLink
+    write(*,"(A14)")"Site Ops     :"
     call self%operators%show(fmt=fmt_)
   end subroutine show_site
 
@@ -235,91 +288,109 @@ contains
   !           SPIN PRESET
   !##################################################################
   !##################################################################
-  function pauli_site(hvec) result(self)
-    real(8),dimension(3),optional :: hvec
-    type(site)                       :: self
-    real(8),dimension(2,2)        :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-    real(8),dimension(2,2)        :: Szeta=reshape([one,zero,zero,-one]/2,[2,2])
-    real(8),dimension(2,2)        :: Splus=reshape([zero,zero,one,zero],[2,2])
-    call self%free()
-    self%Dim = 2
-    if(present(hvec))then
-       Hzero = Hzero+hvec(1)*pauli_x+hvec(3)*pauli_z
-    endif
-    call self%put("H",sparse(Hzero))
-    call self%put("Sz",sparse(Szeta))
-    call self%put("Sp",sparse(Splus))
-    allocate(self%sectors(1))
-    self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
-  end function pauli_site
-
-
-  function spin_one_site(hvec) result(self)
-    real(8),dimension(3),optional :: hvec
-    type(site)                        :: self
-    real(8),dimension(3,3)            :: Hzero
-    real(8),dimension(3,3)            :: Szeta
-    real(8),dimension(3,3)            :: Splus
-    real(8),dimension(3,3)            :: Sx=&
-         reshape([zero,one,zero,one,zero,one,zero,one,zero],[3,3])/sqrt(2d0)
-    Hzero = zero
-    Szeta = diag([one,zero,-one])
-    if(present(hvec))then
-       Hzero = Hzero+hvec(1)*Sx+hvec(3)*Szeta
-    endif
-    !
-    Splus = zero
-    Splus(1,2) = sqrt(2d0)
-    Splus(2,3) = sqrt(2d0)
+  function spin_site(sun,hvec) result(self)
+    integer                            :: sun
+    real(8),dimension(3),optional      :: hvec
+    type(site)                         :: self
+    real(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
+    character(len=:),allocatable       :: key
+    integer :: ispin
     !
     call self%free()
-    self%Dim = 3
-    call self%put("H",sparse(Hzero))
-    call self%put("Sz",sparse(Szeta))
-    call self%put("Sp",sparse(Splus))
-    allocate(self%sectors(1))
-    self%sectors(1) = sectors_list( tbasis([1d0,0d0,-1d0],qdim=1) )
-  end function spin_one_site
+    self%SiteType="SPIN"
+    self%KeyLink="S"
+    !
+    !> Set dQ
+    allocate(self%dQ(Nspin))    ![0,1]
+    allocate(self%dQ(1)%qn(1))    ;self%dQ(1)%qn(1)=0d0
+    allocate(self%dQ(Nspin)%qn(1));self%dQ(1)%qn(1)=1d0
+    !
+    select case(sun)
+    case default;stop "spin_site ERROR: SU(N) value not supported"
+    case (2)
+       self%Dim = 2
+       !
+       allocate(H(2,2));H=0d0
+       if(present(hvec))H=H+hvec(1)*pauli_x+hvec(3)*pauli_z
+       call self%put("H",sparse(H))
+       !
+       !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
+       allocate(Sz(2,2));Sz=reshape([one,zero,zero,-one]/2,[2,2])
+       allocate(Sp(2,2));Sp=reshape([zero,zero,one,zero],[2,2])
+       call self%put(self%KeyLink//self%okey(0,1),sparse(Sz))
+       call self%put(self%KeyLink//self%okey(0,2),sparse(Sp))
+       !
+       !> Build Sectors:
+       allocate(self%sectors(1))
+       self%sectors(1) = sectors_list( tbasis([0.5d0,-0.5d0],qdim=1) )
+       !
+    case(3)
+       self%Dim = 3
+       !
+       allocate(Sx(3,3))
+       Sx=reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
+       allocate(H(3,3));H=0d0
+       if(present(hvec))H=H+hvec(1)*Sx+hvec(3)*Sz
+       call self%put("H",sparse(H))
+       !
+       !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
+       allocate(Sz(3,3));Sz=diag([1d0,0d0,-1d0])
+       allocate(Sp(3,3));Sp=0d0;Sp(1,2)=sqrt(2d0);Sp(2,3)=sqrt(2d0)
+       call self%put(self%KeyLink//self%okey(0,1),sparse(Sz))
+       call self%put(self%KeyLink//self%okey(0,2),sparse(Sp))
+       !
+       !> Build Sectors:       
+       allocate(self%sectors(1))
+       self%sectors(1) = sectors_list( tbasis([1d0,0d0,-1d0],qdim=1) )
+       !
+    end select
+  end function spin_site
+
+
+
 
 
 
 
   !##################################################################
   !##################################################################
-  !           FERMION SU(2) PRESET
+  !           ELECTRON = FERMION SU(2) PRESET
   !##################################################################
   !##################################################################
   !Fock = [|0,0>,|1,0>,|0,1>,|1,1>] <- |up,dw> <- cycle UP first 1_dw x 1_up
-  function hubbard_site(hloc) result(self)
+  function electron_site(hloc) result(self)
     real(8),dimension(Nspin*Norb,Nspin*Norb),optional :: hloc  
     real(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
-    type(site)                                           :: self
-    integer,dimension(:),allocatable                     :: Basis
+    type(site)                                        :: self
+    integer,dimension(:),allocatable                  :: Basis
     real(8),dimension(:,:),allocatable                :: H,P
     real(8),dimension(:,:),allocatable                :: Op
-    integer                                              :: iorb,ispin
-    character(len=:),allocatable                         :: key
-    !
-    hloc_ = zeros(Nspin*Norb,Nspin*Norb);if(present(hloc))hloc_=hloc
-    !
-    call Init_LocalFock_Space()
+    integer                                           :: iorb,ispin
+    character(len=:),allocatable                      :: key
     !
     call self%free()
+    self%SiteType="FERMION"
+    self%KeyLink="C"
+    !
+    hloc_ = zeros(Nspin*Norb,Nspin*Norb);if(present(hloc))hloc_=hloc
+    call Init_LocalFock_Space()
+    !
     self%Dim = 4**Norb
+    !
     !Set local H operator
     write(LOGfile,"(A,I3,A1,I3,A)")"Using Hloc, shape=[",Nspin*Norb,",",Nspin*Norb,"]"
     call print_matrix(Hloc_)
     write(LOGfile,"(A)")""
     !
     !> Build local Hamiltonian:
-    H   = build_Hlocal_operator(hloc_)
+    H = build_Hlocal_operator(hloc_)
     call self%put("H",sparse(H))
     !
     !> Build all the C operators (Cdg is obtained by H.C.)
     do ispin=1,2
        do iorb=1,Norb
           Op = build_C_operator(iorb,ispin)
-          Key= "C"//self%okey(iorb,ispin)
+          Key= self%KeyLink//self%okey(iorb,ispin)
           call self%put(Key,sparse(Op))
        enddo
     enddo
@@ -333,11 +404,11 @@ contains
     Basis = Build_BasisStates()
     self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
     !
-  end function hubbard_site
+  end function electron_site
 
 
 
-  
+
 END MODULE SITES
 
 
