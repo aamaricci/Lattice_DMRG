@@ -4,35 +4,38 @@ program testEDkron
   USE OMP_LIB, only: omp_get_wtime
   implicit none
 
-  integer                                        :: Nso,tNso
+  integer                                        :: Nso
   character(len=64)                              :: finput
-  integer                                        :: i,j,unit,iorb,Nsb,k,l,r,m,arow,acol,brow,bcol,jorb,ispin,it,ip,SUN,jsb
+  integer                                        :: i,j,Nsb,SUN
   character(len=1)                               :: DMRGtype
   real(8)                                        :: target_qn(1)
-  real(8)                                        :: aval,bval
   type(site)                                     :: Dot
-  type(sparse_matrix)                            :: C,N,Cl,Cr,P
-  type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright,Hsb
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B ![nz{Nspin*Norb*Norb},Nsb]
-  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
+  type(sparse_matrix),allocatable,dimension(:)   :: Hsb
   real(8),dimension(:,:),allocatable             :: Hloc,Hij
-  real(8),dimension(:),allocatable               :: sb_qn,qn,qm
-  type(block)                                    :: my_block,dimer,trimer,dimerL,dimerR,trimerL,trimerR,left,right,sys
+  real(8),dimension(:),allocatable               :: sb_qn
+  type(block)                                    :: left,right
   type(sparse_matrix)                            :: spHsb,spH
   real(8)                                        :: gs_energy
-  integer                                        :: m_sb,isb,Ncv
-  integer                                        :: model_d=4
-  real(8),dimension(:,:),allocatable             :: Hmatrix,Evecs,Rho
-  real(8),dimension(:),allocatable               :: Evals,Vec,Hvec,Hvec_
-  integer,dimension(:),allocatable               :: sb_states,sb_map,Dls,Drs,Offset
-  type(tstates),dimension(:),allocatable         :: Ai,Aj,Bi,Bj
+  integer                                        :: m_sb,Ncv
+  real(8),dimension(:,:),allocatable             :: Evecs
+  real(8),dimension(:),allocatable               :: Evals
+  real(8),dimension(:),allocatable               :: Vec,Hvec,Hvec_
+  integer,dimension(:),allocatable               :: sb_states,sb_map
   type(sectors_list)                             :: sb_sector
   integer                                        :: Neigen=2
   integer                                        :: current_L
   real(8),dimension(:),allocatable               :: current_target_QN
-  real(8),dimension(1)                           :: dq=1d0
+  !
+  !TO BE MOVED TO SUPERBLOCK
+  !
+  integer                                        :: tNso
+  integer                                        :: isb,jsb
+  type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
+  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
+  integer,dimension(:),allocatable               :: Dls,Drs,Offset
+  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
   real                                           :: t0
-  integer,dimension(:,:,:),allocatable           :: tMap
+
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(SUN,"SUN",finput,default=2,&
@@ -56,49 +59,11 @@ program testEDkron
   print*,""
   print*,""
   print*,"######################################"
-  print*,"   o + o"
-  print*,"######################################"
-  print*,""
-  print*,""
-
-  print*,"_o+o_: with QN"
-  left = block(dot)
-  right = block(dot)
-  call get_sb_states_(left,right,sb_states,sb_sector)
-  print*,size(sb_states)
-  spHsb  =  heisenberg_1d_model(left,right,sb_states)  + &
-       sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
-       sp_kron(id(left%dim),right%operators%op("H"),sb_states)
-
-  Neigen=1
-  Ncv = min(size(sb_states),5*Neigen)
-  allocate(Evals(Neigen))
-  allocate(Evecs(size(sb_states),Neigen))
-  call sp_eigh(sb_HxV,evals,evecs,&
-       Ncv,&
-       500,&
-       tol=1d-12,&
-       iverbose=.false.)
-  do i=1,Neigen
-     print*,i,Evals(i)/2/left%length
-  enddo
-  deallocate(evals,evecs)
-  print*,""
-
-
-
-
-
-
-  print*,""
-  print*,""
-  print*,"######################################"
   print*,"   o->o + o<-o"
   print*,"######################################"
   print*,""
   print*,""
 
-  print*,"_o->o++o<-o_: with QN"
   left  = block(dot)
   call enlarge_block_(left,dot,grow='left')
   right = block(dot)
@@ -112,97 +77,7 @@ program testEDkron
 
 
 
-
-
-  print*,"######################################"
-  print*,"Set up new solution method: [H*].v --> \psi"
-  Nsb = size(sb_sector)
-  print*,"There are Nsb_states:",Nsb
-
-  Hij = hmodel_user(left,right)
-  dq = 1d0
-
-
-  print*,"Constructing \sum_a=1,tNso A*.B*"
-  tNso = 3
-  allocate(tMap(3,1,1))
-  it = 0
-  do i=1,tNso
-     it = it+1
-     tMap(i,1,1)=it
-  enddo
-  print*,"There are tNso non-zero elements ",tNso
-
-
-  print*,"Constructing Offset and D_l,r"
-  allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
-  Offset=0
-  do isb=1,Nsb
-     sb_qn   = sb_sector%qn(index=isb)
-     Dls(isb)= dim_sector(left%sectors(1),sb_qn)
-     Drs(isb)= dim_sector(right%sectors(1),current_target_qn - sb_qn)
-     if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-  enddo
-
-
-  print*,"Constructing filtered SB States"  
-  allocate(AI(Nsb),BI(Nsb))
-  allocate(AJ(Nsb),BJ(Nsb))
-  do isb=1,size(sb_sector)
-     qn   = sb_sector%qn(index=isb)
-     AI(isb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
-     BI(isb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
-     qm   = qn - dq
-     if(.not.sb_sector%has_qn(qm))cycle
-     jsb = sb_sector%index(qn=qm)
-     AJ(jsb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
-     BJ(jsb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
-  enddo
-
-  !
-
-
-  allocate(A(tNso,Nsb),B(tNso,Nsb))
-  allocate(Hleft(Nsb),Hright(Nsb))
-  allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
-  print*,"Constructing H^{L,R}*: the filtered block Hamiltonians"
-  t0 = omp_get_wtime()
-  do isb=1,size(sb_sector)
-     qn   = sb_sector%qn(index=isb)
-     !
-     !> get: H*^L  and H*^R
-     Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-     Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
-     !
-     !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets
-     it=tMap(1,1,1)
-     A(it,isb) = Hij(1,1)*sp_filter(left%operators%op("S_z"),AI(isb)%states,AI(isb)%states)
-     B(it,isb) = sp_filter(right%operators%op("S_z"),BI(isb)%states,BI(isb)%states)
-     RowOffset(it,isb)=Offset(isb)           
-     ColOffset(it,isb)=Offset(isb)
-     !
-     qm   = qn - dq
-     if(.not.sb_sector%has_qn(qm))cycle
-     jsb = sb_sector%index(qn=qm)
-     !> get: A = Jp*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
-     it=tMap(2,1,1)
-     A(it,isb) = Hij(2,2)*sp_filter(left%operators%op("S_p"),AI(isb)%states,AJ(jsb)%states)
-     B(it,isb) = sp_filter(hconjg(right%operators%op("S_p")),BI(isb)%states,BJ(jsb)%states)
-     RowOffset(it,isb)=Offset(isb)
-     ColOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
-     !> get H.c. + Row/Col Offsets
-     it=tMap(3,1,1)
-     A(it,isb) = hconjg(A(tMap(2,1,1),isb))
-     B(it,isb) = hconjg(B(tMap(2,1,1),isb))
-     RowOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
-     ColOffset(it,isb)=Offset(isb)
-  enddo
-  print*,"Done:",omp_get_wtime() - t0
-  print*,"######################################"
-  print*,""
-
-
-
+  call build_superblock(left,right,sb_states,sb_sector)
 
 
   !> ONE STEP TEST:
@@ -231,8 +106,8 @@ program testEDkron
      print*,"Sector Dim:",Dls(isb)*Drs(isb)
      print*,"       Hv_old             ","       Hv_new             ","       Error              "
      do i=1,Dls(isb)*Drs(isb)
-        k = i + Offset(isb)
-        print*,Hvec_(k),Hvec(k),abs(Hvec(k)-Hvec_(k))
+        j = i + Offset(isb)
+        print*,Hvec_(j),Hvec(j),abs(Hvec(j)-Hvec_(j))
      enddo
   enddo
   print*,"Any error:",any(abs(Hvec-Hvec_)>1d-12)
@@ -302,6 +177,106 @@ program testEDkron
 
 
 contains
+
+
+
+  subroutine build_superblock(left,right,sb_states,sb_sector)
+    type(block)                            :: left,right
+    integer,dimension(:),intent(in)        :: sb_states
+    type(sectors_list)                     :: sb_sector
+    integer                                :: it,isb,jsb
+    real(8),dimension(:),allocatable       :: qn,qm
+    type(tstates),dimension(:),allocatable :: Ai,Aj,Bi,Bj
+    real(8),dimension(1)                   :: dq=1d0
+    real                                   :: t0
+    integer,dimension(:,:,:),allocatable   :: tMap
+
+
+    print*,"######################################"
+    print*,"Set up new solution method: [H*].v --> \psi"
+    Nsb = size(sb_sector)
+    print*,"There are Nsb_states:",Nsb
+
+    Hij = hmodel_user(left,right)
+    dq = 1d0
+
+
+    print*,"Constructing \sum_a=1,tNso A*.B*"
+    tNso = 3
+    allocate(tMap(3,1,1))
+    it = 0
+    do i=1,tNso
+       it = it+1
+       tMap(i,1,1)=it
+    enddo
+    print*,"There are tNso non-zero elements ",tNso
+
+
+    print*,"Constructing Offset and D_l,r"
+    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
+    Offset=0
+    do isb=1,Nsb
+       qn   = sb_sector%qn(index=isb)
+       Dls(isb)= dim_sector(left%sectors(1),qn)
+       Drs(isb)= dim_sector(right%sectors(1),current_target_qn - qn)
+       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+    enddo
+
+
+    print*,"Constructing filtered SB States"  
+    allocate(AI(Nsb),BI(Nsb))
+    allocate(AJ(Nsb),BJ(Nsb))
+    do isb=1,size(sb_sector)
+       qn   = sb_sector%qn(index=isb)
+       AI(isb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
+       BI(isb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
+       qm   = qn - dq
+       if(.not.sb_sector%has_qn(qm))cycle
+       jsb = sb_sector%index(qn=qm)
+       AJ(jsb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
+       BJ(jsb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
+    enddo
+    !
+
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(Hleft(Nsb),Hright(Nsb))
+    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
+    print*,"Constructing H^{L,R}*: the filtered block Hamiltonians"
+    t0 = omp_get_wtime()
+    do isb=1,size(sb_sector)
+       qn   = sb_sector%qn(index=isb)
+       !
+       !> get: H*^L  and H*^R
+       Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
+       Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       !
+       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets
+       it=tMap(1,1,1)
+       A(it,isb) = Hij(1,1)*sp_filter(left%operators%op("S_z"),AI(isb)%states,AI(isb)%states)
+       B(it,isb) = sp_filter(right%operators%op("S_z"),BI(isb)%states,BI(isb)%states)
+       RowOffset(it,isb)=Offset(isb)           
+       ColOffset(it,isb)=Offset(isb)
+       !
+       qm   = qn - dq
+       if(.not.sb_sector%has_qn(qm))cycle
+       jsb = sb_sector%index(qn=qm)
+       !> get: A = Jp*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
+       it=tMap(2,1,1)
+       A(it,isb) = Hij(2,2)*sp_filter(left%operators%op("S_p"),AI(isb)%states,AJ(jsb)%states)
+       B(it,isb) = sp_filter(hconjg(right%operators%op("S_p")),BI(isb)%states,BJ(jsb)%states)
+       RowOffset(it,isb)=Offset(isb)
+       ColOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
+       !> get H.c. + Row/Col Offsets
+       it=tMap(3,1,1)
+       A(it,isb) = hconjg(A(tMap(2,1,1),isb))
+       B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+       RowOffset(it,isb)=Offset(right%sectors(1)%index(qn=qm))
+       ColOffset(it,isb)=Offset(isb)
+    enddo
+    print*,"Done:",omp_get_wtime() - t0
+    print*,"######################################"
+    print*,""
+  end subroutine build_superblock
 
 
 
@@ -407,13 +382,13 @@ contains
 
 
   function h2_model(left,right) result(H2)
-    type(block)              :: left
-    type(block)              :: right
-    type(sparse_matrix)      :: Sl(Nspin)![Sz,Sp]
-    type(sparse_matrix)      :: Sr(Nspin)![Sz,Sp]
-    type(sparse_matrix)      :: H2
-    integer,dimension(2)     :: Hdims
-    real(8),dimension(Nspin) :: g
+    type(block)          :: left
+    type(block)          :: right
+    type(sparse_matrix)  :: Sl(Nspin)![Sz,Sp]
+    type(sparse_matrix)  :: Sr(Nspin)![Sz,Sp]
+    type(sparse_matrix)  :: H2
+    integer,dimension(2) :: Hdims
+    integer              :: ispin
     !
     !Hij is shared:
     Hij = hmodel_user(left,right)
@@ -577,7 +552,8 @@ contains
     real(8),dimension(Nloc) :: v
     real(8),dimension(Nloc) :: Hv
     real(8)                 :: val
-    integer                 :: i,j,jcol,k,ir,il,jr,jl,n,arow,brow,acol,bcol,ia,ib,ic,ja,jb,jc
+    integer                 :: i,j,it,jcol,k,ir,il,jr,jl,n,arow,brow,acol,bcol,ia,ib,ic,ja,jb,jc
+    real(8) :: aval,bval
     real(8),dimension(:,:),allocatable :: psi,Hpsi
     Hv=zero
 
@@ -692,3 +668,38 @@ end program testEDkron
 
 
 
+
+
+
+
+! print*,""
+! print*,""
+! print*,"######################################"
+! print*,"   o + o"
+! print*,"######################################"
+! print*,""
+! print*,""
+
+! print*,"_o+o_: with QN"
+! left = block(dot)
+! right = block(dot)
+! call get_sb_states_(left,right,sb_states,sb_sector)
+! print*,size(sb_states)
+! spHsb  =  heisenberg_1d_model(left,right,sb_states)  + &
+!      sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
+!      sp_kron(id(left%dim),right%operators%op("H"),sb_states)
+
+! Neigen=1
+! Ncv = min(size(sb_states),5*Neigen)
+! allocate(Evals(Neigen))
+! allocate(Evecs(size(sb_states),Neigen))
+! call sp_eigh(sb_HxV,evals,evecs,&
+!      Ncv,&
+!      500,&
+!      tol=1d-12,&
+!      iverbose=.false.)
+! do i=1,Neigen
+!    print*,i,Evals(i)/2/left%length
+! enddo
+! deallocate(evals,evecs)
+! print*,""
