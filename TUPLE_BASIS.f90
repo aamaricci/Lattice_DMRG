@@ -9,6 +9,10 @@ MODULE TUPLE_BASIS
   implicit none
   private
 
+  type tstates
+     integer,dimension(:),allocatable :: states
+  end type tstates
+
   type tuple
      real(8),dimension(:),allocatable     :: qn
   end type tuple
@@ -62,6 +66,7 @@ MODULE TUPLE_BASIS
   end interface tsum
 
   public :: tuple
+  public :: tstates
   public :: tbasis
   public :: shape
   public :: tsum

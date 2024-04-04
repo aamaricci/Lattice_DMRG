@@ -17,7 +17,6 @@ MODULE SITES
      type(operators_list)                        :: operators
      character(len=:),allocatable                :: KeyLink
      character(len=:),allocatable                :: SiteType
-     type(tuple),dimension(:),allocatable        :: dQ
    contains
      procedure,pass     :: free        => free_site
      procedure,pass     :: put         => put_op_site
@@ -71,7 +70,6 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
-    if(allocated(self%dQ))deallocate(self%dQ)
     if(allocated(self%KeyLink))deallocate(self%KeyLink)
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_site
@@ -81,12 +79,11 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_site(Dim,sectors,operators,key,type,dQ) result(self)
+  function constructor_site(Dim,sectors,operators,key,type) result(self)
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     character(len=:),allocatable    :: key,type
-    type(tuple),dimension(:)        :: dQ
     type(site)                      :: self
     integer                         :: i
     self%Dim       = Dim
@@ -97,10 +94,6 @@ contains
     enddo
     allocate(self%KeyLink, source=key)
     allocate(self%SiteType, source=type)
-    allocate(self%dQ(size(dQ)))
-    do i=1,size(self%dQ)
-       allocate(self%dQ(i)%qn, source=dQ(i)%qn)
-    enddo
   end function constructor_site
 
 
@@ -197,15 +190,6 @@ contains
   end function SiteType_site
 
 
-  function dQ_site(self,index) result(dq)
-    class(site)                      :: self
-    integer                          :: index
-    real(8),dimension(:),allocatable :: dq
-    if(allocated(dq))deallocate(dq)
-    if(index<1.OR.index>size(self%dQ))stop "dQ_SITE ERROR: index out of range"
-    allocate(dq, source=self%dQ(index)%qn)
-  end function dQ_site
-
 
   !##################################################################
   !##################################################################
@@ -228,10 +212,6 @@ contains
     enddo
     allocate(A%KeyLink, source=B%KeyLink)
     allocate(A%SiteType, source=B%SiteType)
-    allocate(A%dQ(size(B%dQ)))
-    do i=1,size(a%dQ)
-       allocate(A%dQ(i)%qn, source=B%dQ(i)%qn)
-    enddo
   end subroutine equality_site
 
 
@@ -266,10 +246,6 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     write(*,"(A14,I6)")"Site Dim     =",self%Dim
     write(*,"(A15,A)")"Site Type    = ",self%SiteType
-    do i=1,size(self%dQ)
-       write(*,"(A14,I6)")"Site dQ =",i
-       write(*,"(10F6.1)") self%dQ(i)%qn
-    enddo
     do i=1,size(self%sectors)
        write(*,"(A14,I6)")"Site Sectors =",i
        call self%sectors(i)%show()
@@ -299,11 +275,6 @@ contains
     call self%free()
     self%SiteType="SPIN"
     self%KeyLink="S"
-    !
-    !> Set dQ
-    allocate(self%dQ(Nspin))    ![0,1]
-    allocate(self%dQ(1)%qn(1))    ;self%dQ(1)%qn(1)=0d0
-    allocate(self%dQ(Nspin)%qn(1));self%dQ(1)%qn(1)=1d0
     !
     select case(sun)
     case default;stop "spin_site ERROR: SU(N) value not supported"
@@ -371,6 +342,7 @@ contains
     call self%free()
     self%SiteType="FERMION"
     self%KeyLink="C"
+    !
     !
     hloc_ = zeros(Nspin*Norb,Nspin*Norb);if(present(hloc))hloc_=hloc
     call Init_LocalFock_Space()
