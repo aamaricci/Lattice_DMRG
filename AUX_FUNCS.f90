@@ -36,24 +36,42 @@ contains
 
 
   function okey(iorb,ispin,isite) result(string)
-    integer                      :: iorb
-    integer,optional             :: isite,ispin
-    integer                      :: isite_,ispin_
+    integer,optional             :: iorb,isite,ispin
+    integer                      :: iorb_,isite_,ispin_
     character(len=:),allocatable :: string,str_orb,str_spin,str_site
+    !
+    iorb_ =0;if(present(iorb))iorb_=iorb
     ispin_=0;if(present(ispin))ispin_=ispin
     isite_=0;if(present(isite))isite_=isite
-    str_orb ="_l"//str(iorb)
     !
-    select case(ispin_)
-    case default;str_spin = "_s"//str(ispin_)
-    case (0)    ;str_spin=""
-    end select
-    !
-    select case(isite_)
-    case default;str_site = "_i"//str(isite_,npad=4)
-    case (0)    ;str_site=""
-    end select
-    !
+    if(iorb_==0.AND.ispin_==0)stop "Okey ERROR: iorb = ispin = 0"
+    if(iorb_==0)then
+       str_orb =""
+       !
+       select case(ispin_)
+       case (1)    ;str_spin="_z"
+       case (2)    ;str_spin="_p"
+       case default;str_spin=""
+       end select
+       !
+       select case(isite_)
+       case default;str_site = "_i"//str(isite_,npad=4)
+       case (0)    ;str_site=""
+       end select
+    else
+       str_orb ="_l"//str(iorb)
+       !
+       select case(ispin_)
+       case default;str_spin = "_s"//str(ispin_)
+       case (0)    ;str_spin=""
+       end select
+       !
+       select case(isite_)
+       case default;str_site = "_i"//str(isite_,npad=4)
+       case (0)    ;str_site=""
+       end select
+    endif
+
     string = trim(str_orb)//trim(str_spin)//trim(str_site)
   end function okey
 

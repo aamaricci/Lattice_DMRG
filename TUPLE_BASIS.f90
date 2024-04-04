@@ -61,6 +61,7 @@ MODULE TUPLE_BASIS
      module procedure :: outsum_tbasis
   end interface tsum
 
+  public :: tuple
   public :: tbasis
   public :: shape
   public :: tsum
