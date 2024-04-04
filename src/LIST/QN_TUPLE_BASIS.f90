@@ -10,7 +10,11 @@ MODULE TUPLE_BASIS
   private
 
   type tstates
+<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
      integer,dimension(:),allocatable     :: states
+=======
+     integer,dimension(:),allocatable :: states
+>>>>>>> e213c0c (Intermediate commit.):TUPLE_BASIS.f90
   end type tstates
 
   type tuple
@@ -67,9 +71,13 @@ MODULE TUPLE_BASIS
 
   public :: tuple
 <<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
+<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
   public :: tstates
 =======
 >>>>>>> 7f27ed5 (Intermediate commit.):TUPLE_BASIS.f90
+=======
+  public :: tstates
+>>>>>>> e213c0c (Intermediate commit.):TUPLE_BASIS.f90
   public :: tbasis
   public :: shape
   public :: tsum
