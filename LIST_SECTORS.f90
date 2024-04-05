@@ -514,7 +514,7 @@ contains
   !PURPOSE:  Returns True is qn exists, False otherwise
   !+------------------------------------------------------------------+
   function has_qn_sectors_list(self, qn) result(bool)
-    class(sectors_list),intent(inout) :: self
+    class(sectors_list),intent(in) :: self
     real(8),dimension(:),intent(in)   :: qn
     type(qtype),pointer               :: c
     logical                           :: bool
