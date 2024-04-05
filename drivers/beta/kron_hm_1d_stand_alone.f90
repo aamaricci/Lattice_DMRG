@@ -8,7 +8,7 @@ program testEDkron
   character(len=64)                              :: finput
   integer                                        :: i,j,Nsb,k,l,r,m,iorb,jorb,ispin,it,ip,io,jo
   character(len=1)                               :: DMRGtype
-  real(8)                                        :: ts(5),Mh,target_qn(2),suml,lambda,vh
+  real(8)                                        :: ts(2),Mh,target_qn(2),suml,lambda,vh
   type(site)                                     :: Dot
   type(sparse_matrix)                            :: C,N,Cl,Cr,P
   type(sparse_matrix),allocatable,dimension(:)   :: Hsb
@@ -36,7 +36,6 @@ program testEDkron
   integer                                        :: tNso
   integer                                        :: isb,jsb
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
-  type(sparse_matrix),allocatable,dimension(:)   :: Cleft,Cright
   type(sparse_matrix),allocatable,dimension(:,:) :: A,B
   integer,dimension(:),allocatable               :: Dls,Drs,Offset
   integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
@@ -44,7 +43,7 @@ program testEDkron
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
-  call parse_input_variable(ts,"TS",finput,default=(/( -1d0,i=1,5 )/),&
+  call parse_input_variable(ts,"TS",finput,default=(/( -0.5d0,i=1,2 )/),&
        comment="Hopping amplitudes")
   call parse_input_variable(lambda,"lambda",finput,default=0d0,&
        comment="Hybridization")
@@ -69,7 +68,7 @@ program testEDkron
   call dot%show()
 
 
-  call init_dmrg(hubbard_1d_model,ModelDot=Dot)
+  call init_dmrg(hm_1d_model,ModelDot=Dot)
   target_qn = DMRG_qn
   !
 
@@ -102,41 +101,41 @@ program testEDkron
 
   call build_superblock(left,right,sb_states,sb_sector)
 
-  
 
-  !> ONE STEP TEST:
-  allocate(Vec(size(sb_states)))
-  call random_number(vec)
-  allocate(Hvec, source=vec)
-  allocate(Hvec_, source=vec)
-  !
-  print*,"######################################"
-  print*,"Test H.v OLD vs NEW method random vector v:"
-  ! !Set spHsb to H^Lx1^R to be used in the default spHv (which only uses spHsb)
-  t0 = omp_get_wtime()
-  spHsb  =  hubbard_1d_model(left,right,sb_states) + &
-       sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
-       sp_kron(id(left%dim),right%operators%op("H"),sb_states)
-  call sb_HxV(size(sb_states),vec,Hvec_)
-  print*,omp_get_wtime() - t0
-  !
-  !Apply H to v new style
-  t0 = omp_get_wtime()
-  call sb_HxV_new(size(sb_states),vec,Hvec)
-  print*,omp_get_wtime() - t0
-  !
-  do isb=1,size(sb_sector)
-     print*,"Sector Dim:",Dls(isb)*Drs(isb)
-     print*,"       Hv_old             ","       Hv_new             ","       Error              "
-     do i=1,Dls(isb)*Drs(isb)
-        k = i + Offset(isb)
-        print*,Hvec_(k),Hvec(k),abs(Hvec(k)-Hvec_(k))
-     enddo
-  enddo
-  print*,"Any error:",any(abs(Hvec-Hvec_)>1d-12)
-  print*,"######################################"
-  print*,""
-  print*,""
+
+  ! !> ONE STEP TEST:
+  ! allocate(Vec(size(sb_states)))
+  ! call random_number(vec)
+  ! allocate(Hvec, source=vec)
+  ! allocate(Hvec_, source=vec)
+  ! !
+  ! print*,"######################################"
+  ! print*,"Test H.v OLD vs NEW method random vector v:"
+  ! ! !Set spHsb to H^Lx1^R to be used in the default spHv (which only uses spHsb)
+  ! t0 = omp_get_wtime()
+  ! spHsb  =  h2_model(left,right,sb_states) + &
+  !      sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
+  !      sp_kron(id(left%dim),right%operators%op("H"),sb_states)
+  ! call sb_HxV(size(sb_states),vec,Hvec_)
+  ! print*,omp_get_wtime() - t0
+  ! !
+  ! !Apply H to v new style
+  ! t0 = omp_get_wtime()
+  ! call sb_HxV_new(size(sb_states),vec,Hvec)
+  ! print*,omp_get_wtime() - t0
+  ! !
+  ! do isb=1,size(sb_sector)
+  !    print*,"Sector Dim:",Dls(isb)*Drs(isb)
+  !    print*,"       Hv_old             ","       Hv_new             ","       Error              "
+  !    do i=1,Dls(isb)*Drs(isb)
+  !       k = i + Offset(isb)
+  !       print*,Hvec_(k),Hvec(k),abs(Hvec(k)-Hvec_(k))
+  !    enddo
+  ! enddo
+  ! print*,"Any error:",any(abs(Hvec-Hvec_)>1d-12)
+  ! print*,"######################################"
+  ! print*,""
+  ! print*,""
 
 
 
@@ -145,7 +144,7 @@ program testEDkron
   print*,"Old style solution: spH --> H.v --> \psi"
   print*,"######################################"
   t0 = omp_get_wtime()
-  spHsb  =  hubbard_1d_model(left,right,sb_states)   + &
+  spHsb  =  h2_model(left,right,sb_states)   + &
        sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
        sp_kron(id(left%dim),right%operators%op("H"),sb_states)
   allocate(Evals(Neigen))
@@ -202,19 +201,36 @@ program testEDkron
 contains
 
 
+  !This is user defined Function to be passed to the SYSTEM
+  function hm_1d_model(left,right) result(Hlr)
+    type(block)                        :: left
+    type(block)                        :: right
+    real(8),dimension(:,:),allocatable :: Hlr
+    !
+    if(allocated(Hlr))deallocate(Hlr)
+    allocate(Hlr(Nspin*Norb,Nspin*Norb))
+    !
+    !workout local part, like random local field
+    !if(left%Dim==1 AND right%Dim==1) then operate over local H
+    !if(left%Dim==1 OR right%Dim==1) then operate over local H
+    Hlr = diag([ts(1:Norb),ts(1:Norb)])
+    if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
+  end function hm_1d_model
+
 
 
   subroutine build_superblock(left,right,sb_states,sb_sector)
-    type(block)                            :: left,right
-    integer,dimension(:),intent(in)        :: sb_states
-    type(sectors_list)                     :: sb_sector
-    integer                                :: it,isb,jsb
-    real(8),dimension(:),allocatable       :: qn,qm
-    type(tstates),dimension(:),allocatable :: Ai,Aj,Bi,Bj
-    real(8),dimension(2)                   :: dq
-    real(8),dimension(2),parameter         :: qnup=[1d0,0d0],qndw=[0d0,1d0]
-    real                                   :: t0
-    integer,dimension(:,:,:),allocatable   :: tMap
+    type(block)                                  :: left,right
+    integer,dimension(:),intent(in)              :: sb_states
+    type(sectors_list)                           :: sb_sector
+    integer                                      :: it,isb,jsb
+    real(8),dimension(:),allocatable             :: qn,qm
+    type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
+    real(8),dimension(2)                         :: dq
+    type(sparse_matrix),allocatable,dimension(:) :: Cleft,Cright
+    real(8),dimension(2),parameter               :: qnup=[1d0,0d0],qndw=[0d0,1d0]
+    real                                         :: t0
+    integer,dimension(:,:,:),allocatable         :: tMap
 
 
 
@@ -224,7 +240,7 @@ contains
     Nsb = size(sb_sector)
     print*,"There are Nsb_states:",Nsb
 
-    Hij = hmodel_user(left,right)
+    Hij = hm_1d_model(left,right)
 
 
     !Creating the sequence of operators A*_q, B*_q which decompose the term H^LR of the
@@ -250,21 +266,38 @@ contains
     Offset=0
     do isb=1,Nsb
        sb_qn   = sb_sector%qn(index=isb)
-       !
        Dls(isb)= dim_sector(left%sectors(1),sb_qn)
        Drs(isb)= dim_sector(right%sectors(1),current_target_qn - sb_qn)
-       !
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
     enddo
 
 
-    allocate(A(tNso,Nsb),B(tNso,Nsb))
-    allocate(Hleft(Nsb),Hright(Nsb))
-    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
     !
+    print*,"Constructing filtered SB States"  
+    allocate(AI(Nsb),BI(Nsb))
+    allocate(AJ(Nsb),BJ(Nsb))
+    do isb=1,size(sb_sector)
+       qn   = sb_sector%qn(index=isb)
+       AI(isb)%states = sb2block_states(qn,'left')
+       BI(isb)%states = sb2block_states(qn,'right')
+       do ispin=1,Nspin
+          dq = qnup ; if(ispin==2)dq=qndw
+          qm = qn - dq
+          if(.not.sb_sector%has_qn(qm))cycle
+          jsb = sb_sector%index(qn=qm)
+          AJ(jsb)%states = sb2block_states(qm,'left')
+          BJ(jsb)%states = sb2block_states(qm,'right')
+       enddo
+    enddo
+
+
     !> Retrieve Fermions operators to speed up the process below:
-    P = left%operators%op("P")
+    allocate(Hleft(Nsb),Hright(Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
     allocate(Cleft(Nso),Cright(Nso))
+
+    P = left%operators%op("P")
     do ispin=1,Nspin
        do iorb=1,Norb
           io = iorb+(ispin-1)*Norb
@@ -272,27 +305,8 @@ contains
           Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
        enddo
     enddo
-
-
-    print*,"Constructing filtered SB States"  
-    allocate(AI(Nsb),BI(Nsb))
-    allocate(AJ(Nsb),BJ(Nsb))
-    do isb=1,size(sb_sector)
-       qn   = sb_sector%qn(index=isb)
-       AI(isb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'left')
-       BI(isb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qn),'right')
-       do ispin=1,Nspin
-          dq = qnup ; if(ispin==2)dq=qndw
-          qm = qn - dq
-          if(.not.sb_sector%has_qn(qm))cycle
-          jsb = sb_sector%index(qn=qm)
-          AJ(jsb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'left')
-          BJ(jsb)%states = sb2block_states(left,right,sb_states,sb_sector%map(qn=qm),'right')
-       enddo
-    enddo
-
+    !
     print*,"Constructing H^{L,R}*: the filtered block Hamiltonians"
-    t0 = omp_get_wtime()
     do isb=1,size(sb_sector)
        qn   = sb_sector%qn(index=isb)
        !
@@ -331,7 +345,7 @@ contains
           !
        enddo
     enddo
-    print*,"Done:",omp_get_wtime() - t0
+    print*,"Done:"
     print*,"######################################"
     print*,""
   end subroutine build_superblock
@@ -352,21 +366,6 @@ contains
 
 
 
-
-  !This is user defined Function to be passed to the SYSTEM
-  function hmodel_user(left,right) result(Hlr)
-    type(block)                        :: left,right
-    real(8),dimension(:,:),allocatable :: Hlr
-    !
-    if(allocated(Hlr))deallocate(Hlr)
-    allocate(Hlr(Nspin*Norb,Nspin*Norb))
-    !
-    !workout local part, like random local field
-    !if(left%Dim==1 AND right%Dim==1) then operate over local H
-    !if(left%Dim==1 OR right%Dim==1) then operate over local H
-    Hlr = diag([ts(1:Norb),ts(1:Norb)])
-    if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
-  end function hmodel_user
 
 
 
@@ -447,9 +446,10 @@ contains
 
 
   !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
-  function h2_model(left,right) result(H2)
+  function h2_model(left,right,states) result(H2)
     type(block)                           :: left
     type(block)                           :: right
+    integer,dimension(:),optional         :: states
     type(sparse_matrix),dimension(Nspin*Norb) :: Cl,Cr
     type(sparse_matrix)                   :: P,A
     type(sparse_matrix)                   :: H2
@@ -459,11 +459,12 @@ contains
     !
     !Hij is shared:
     print*,"Hij:"
-    Hij = hmodel_user(left,right)
+    Hij = hm_1d_model(left,right)
     print*,shape(Hij)
     !
     !> Get H2 dimensions:
     Hdims = shape(left%operators)*shape(right%operators)
+    if(present(states))Hdims = [size(states),size(states)]
     call H2%init(Hdims(1),Hdims(2))
     !
     !FERMION SPECIFIC:
@@ -483,8 +484,13 @@ contains
     do io=1,Nspin*Norb
        do jo=1,Nspin*Norb
           if(Hij(io,jo)==0d0)cycle
-          H2 = H2 + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
-          H2 = H2 + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
+          if(present(states))then
+             H2 = H2 + Hij(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
+             H2 = H2 + Hij(io,jo)*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
+          else
+             H2 = H2 + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
+             H2 = H2 + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
+          endif
        enddo
     enddo
     !
@@ -503,17 +509,17 @@ contains
   ! Purpose: build the list of states compatible with the specified
   ! quantum numbers
   !-----------------------------------------------------------------!
-  subroutine get_sb_states_(sys,env,sb_states,sb_sector)
-    type(block)                      :: sys,env    
+  subroutine get_sb_states_(left,right,sb_states,sb_sector)
+    type(block)                      :: left,right    
     integer,dimension(:),allocatable :: sb_states
     type(sectors_list)               :: sb_sector
-    integer                          :: isys,ienv
+    integer                          :: ileft,iright
     integer                          :: i,j,istate
-    real(8),dimension(:),allocatable :: sys_qn,env_qn
-    integer,dimension(:),allocatable :: sys_map,env_map
+    real(8),dimension(:),allocatable :: left_qn,right_qn
+    integer,dimension(:),allocatable :: left_map,right_map
 
     !
-    current_L         = sys%length + env%length
+    current_L         = left%length + right%length
     current_target_QN = int(target_qn*current_L*Norb)
     write(LOGfile,"(A22,I12)")"SuperBlock Length = ",current_L
     write(LOGfile,"(A22,"//str(size(current_target_QN))//"F12.7)")"Target_QN = ",current_target_QN
@@ -523,19 +529,19 @@ contains
     if(allocated(sb_states))deallocate(sb_states)
     !
     call sb_sector%free()
-    do isys=1,size(sys%sectors(1))
-       sys_qn  = sys%sectors(1)%qn(index=isys)
-       env_qn  = current_target_qn - sys_qn
-       if(.not.env%sectors(1)%has_qn(env_qn))cycle
+    do ileft=1,size(left%sectors(1))
+       left_qn  = left%sectors(1)%qn(index=ileft)
+       right_qn  = current_target_qn - left_qn
+       if(.not.right%sectors(1)%has_qn(right_qn))cycle
        !
-       sys_map = sys%sectors(1)%map(qn=sys_qn)
-       env_map = env%sectors(1)%map(qn=env_qn)
+       left_map = left%sectors(1)%map(qn=left_qn)
+       right_map = right%sectors(1)%map(qn=right_qn)
        !
-       do i=1,size(sys_map)
-          do j=1,size(env_map)
-             istate=env_map(j) + (sys_map(i)-1)*env%Dim
+       do i=1,size(left_map)
+          do j=1,size(right_map)
+             istate=right_map(j) + (left_map(i)-1)*right%Dim
              call append(sb_states, istate)
-             call sb_sector%append(qn=sys_qn,istate=size(sb_states))
+             call sb_sector%append(qn=left_qn,istate=size(sb_states))
           enddo
        enddo
     enddo
@@ -546,26 +552,33 @@ contains
 
 
 
-  function sb2block_states(sys,env,sb_states,sb_map,label) result(states)
-    type(block)                      :: sys,env    
-    integer,dimension(:)             :: sb_states,sb_map
+  ! function sb2block_states(left,right,sb_states,sb_map,label) result(states)
+  function sb2block_states(q,label) result(states)
+    ! type(block)                      :: left,right    
+    ! integer,dimension(:)             :: sb_states,sb_map
+    real(8),dimension(:)             :: q
     character(len=*)                 :: label
-    integer,dimension(:),allocatable :: tmp,states
-    integer :: i,istate,l,r,isb
+    integer,dimension(:),allocatable :: tmp,states,sb_map
+    integer                          :: i,istate,l,r,isb
     !
     if(allocated(states))deallocate(states)
+    !
+    !> get the map from the QN of the sector:
+    sb_map = sb_sector%map(qn=q)
+    !> left,right, sb_sector and sb_states have to be known at this time:
+    ! add a check
     !
     select case(to_lower(str(label)))
     case("left","l","sys","s")
        do i=1,size(sb_map)
           istate = sb_states(sb_map(i))
-          l = (istate-1)/env%Dim+1
+          l = (istate-1)/right%Dim+1
           call append(tmp,l)
        enddo
     case("right","r","env","e")
        do i=1,size(sb_map)
           istate = sb_states(sb_map(i))
-          r = mod(istate,env%Dim);if(r==0)r=env%Dim
+          r = mod(istate,right%Dim);if(r==0)r=right%Dim
           call append(tmp,r)
        enddo
     end select
@@ -574,64 +587,6 @@ contains
 
 
 
-  !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
-  function hubbard_1d_model(left,right,states) result(H2)
-    type(block)                           :: left
-    type(block)                           :: right
-    integer,dimension(:),optional         :: states
-    type(sparse_matrix),dimension(Norb,2) :: Cl,Cr
-    type(sparse_matrix)                   :: P,A
-    type(sparse_matrix)                   :: H2
-    integer                               :: ispin,iorb,jorb,io,jo
-    integer,dimension(2)                  :: Hdims
-    character(len=:),allocatable          :: key
-    real(8),dimension(Norb,Norb) :: Hlr
-
-    Hlr = diag(ts(1:Norb))
-    if(Norb==2)Hlr = Hlr + lambda*pauli_x
-
-    !
-    !>Retrieve operators:
-    P = left%operators%op("P")
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          key = "C"//left%okey(iorb,ispin)
-          Cl(iorb,ispin) = left%operators%op(key)
-          Cr(iorb,ispin) = right%operators%op(key)
-       enddo
-    enddo
-    !
-    !> Get H2 dimensions:
-    Hdims = shape(left%operators)*shape(right%operators)
-    if(present(states))Hdims = [size(states),size(states)]
-    !
-    !>Build H2:
-    call H2%init(Hdims(1),Hdims(2))
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          do jorb=1,Norb
-             if(Hlr(iorb,jorb)==0d0)cycle
-             if(present(states))then
-                H2 = H2 + Hlr(iorb,jorb)*sp_kron(matmul(Cl(iorb,ispin)%dgr(),P),Cr(jorb,ispin),states)
-                H2 = H2 + Hlr(iorb,jorb)*sp_kron(matmul(P,Cl(iorb,ispin)),Cr(jorb,ispin)%dgr(),states)
-             else
-                H2 = H2 + Hlr(iorb,jorb)*(matmul(Cl(iorb,ispin)%dgr(),P).x.Cr(jorb,ispin))
-                H2 = H2 + Hlr(iorb,jorb)*(matmul(P,Cl(iorb,ispin)).x.Cr(jorb,ispin)%dgr())
-             endif
-          enddo
-       enddo
-    enddo
-    !
-    !
-    !> free memory
-    call P%free
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          call Cl(iorb,ispin)%free
-          call Cr(iorb,ispin)%free
-       enddo
-    enddo
-  end function hubbard_1d_model
 
 
 
@@ -747,7 +702,7 @@ end program testEDkron
 ! Nsb = size(sb_sector)
 ! print*,"There are Nsb_states:",Nsb
 
-! Hij = hmodel_user(left,right)
+! Hij = hm_1d_model(left,right)
 
 
 ! !Creating the sequence of operators A*_q, B*_q which decompose the term H^LR of the
@@ -924,7 +879,7 @@ end program testEDkron
 ! left = block(dot)
 ! right = block(dot)
 ! call get_sb_states_(left,right,sb_states,sb_sector)
-! spHsb  =  hubbard_1d_model(left,right,sb_states)  + &
+! spHsb  =  h2_model(left,right,sb_states)  + &
 !      sp_kron(left%operators%op("H"),id(right%dim),sb_states) + &
 !      sp_kron(id(left%dim),right%operators%op("H"),sb_states)
 
