@@ -161,12 +161,12 @@ contains
 
     !>Interaction parameters:
     allocate(Uloc(Norb))
-    call parse_input_variable(uloc,"ULOC",INPUTunit,default=(/( 2d0,i=1,size(Uloc) )/),&
+    call parse_input_variable(uloc,"ULOC",INPUTunit,default=(/( 0d0,i=1,size(Uloc) )/),&
          comment="Values of the local interaction per orbital")
-    call parse_input_variable(ust,"UST",INPUTunit,default=0.d0,comment="Value of the inter-orbital interaction term")
-    call parse_input_variable(Jh,"JH",INPUTunit,default=0.d0,comment="Hunds coupling")
-    call parse_input_variable(Jx,"JX",INPUTunit,default=0.d0,comment="S-E coupling, Jxy Heisenberg")
-    call parse_input_variable(Jp,"JP",INPUTunit,default=0.d0,comment="P-H coupling, Jz  Heisenberg")
+    call parse_input_variable(ust,"UST",INPUTunit,default=0d0,comment="Value of the inter-orbital interaction term")
+    call parse_input_variable(Jh,"JH",INPUTunit,default=0d0,comment="Hunds coupling")
+    call parse_input_variable(Jx,"JX",INPUTunit,default=0d0,comment="S-E coupling, Jxy Heisenberg")
+    call parse_input_variable(Jp,"JP",INPUTunit,default=0d0,comment="P-H coupling, Jz  Heisenberg")
     call parse_input_variable(hfmode,"HFMODE",INPUTunit,default=.true.,&
          comment="Flag to set the Hartree form of the interaction (n-1/2). see xmu.")
     !
@@ -194,6 +194,8 @@ contains
     !
     ! call parse_input_variable(verbose,"VERBOSE",INPUTunit,default=3,comment="Verbosity level: 0=almost nothing --> 5:all. Really: all")
     !
+    call parse_input_variable(sparse_H,"SPARSE_H",INPUTunit,default=.true.,&
+         comment="Select sparse storage for H*v: True = allocate sparse; False=direct product using QN decomposition")
     !> Lanczos parameters:
     call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",&
          comment="select the lanczos method: ARPACK (default), LANCZOS (T=0 only)")

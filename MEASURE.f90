@@ -32,7 +32,7 @@ contains
     suffix=label_DMRG('u')
     do it=1,size(ivec)
        i   = ivec(it)
-       label='l';if(i>sys%length)label='r'
+       label='l';if(i>left%length)label='r'
        Oi  = Build_Op_dmrg(Op,i)
        Oi  = Advance_Op_dmrg(Oi,i)
        val = Average_Op_dmrg(Oi,label)   
@@ -58,8 +58,8 @@ contains
     integer                        :: L,R
     integer                        :: pos
     !
-    L = sys%length
-    R = env%length
+    L = left%length
+    R = right%length
     if(i<1.OR.i>L+R)stop "construct_op_dmrg error: I not in [1,Lchain]"
     !
     label='l';if(i>L)label='r'
@@ -71,14 +71,14 @@ contains
     if(pos>1)then
        select case(to_lower(str(label)))
        case ("l")
-          U   = sys%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
+          U   = left%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
           Oi  = matmul(U%dgr(),U).x.Op          !build right-most Op of the block_I as Id(I-1)xOp_I
-          U   = sys%omatrices%op(index=pos)   !retrieve O_I 
+          U   = left%omatrices%op(index=pos)   !retrieve O_I 
           Oi  = matmul(U%dgr(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
        case ("r")
-          U   = env%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
+          U   = right%omatrices%op(index=pos-1) !get Id of the block_{I-1} 
           Oi  = Op.x.matmul(U%dgr(),U)          !build right-most Op of the block_I as Id(I-1)xOp_I
-          U   = env%omatrices%op(index=pos)   !retrieve O_I 
+          U   = right%omatrices%op(index=pos)   !retrieve O_I 
           Oi  = matmul(U%dgr(),matmul(Oi,U))    !rotate+truncate Oi at the basis of Block_I 
        end select
        call U%free()
@@ -100,8 +100,8 @@ contains
     integer                          :: L,R
     integer                          :: istart,iend,it
     !
-    L = sys%length
-    R = env%length
+    L = left%length
+    R = right%length
     if(i<1.OR.i>L+R)stop "Advance_Op_DMRG error: I not in [1,Lchain]"
     !
     label ='l';if(i>L) label ='r'
@@ -121,14 +121,14 @@ contains
     case ("l")
        Oi = Oi.x.Id(dot%dim)
        do it=istart+1,iend
-          U  = sys%omatrices%op(index=it)
+          U  = left%omatrices%op(index=it)
           Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
        Oi = Id(dot%dim).x.Oi
        do it=istart+1,iend
-          U  = env%omatrices%op(index=it)
+          U  = right%omatrices%op(index=it)
           Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Id(dot%dim).x.Oi
        enddo
@@ -150,8 +150,8 @@ contains
     integer                          :: L,R
     integer                          :: istart,iend,it
     !
-    L = sys%length
-    R = env%length
+    L = left%length
+    R = right%length
     if(i<1.OR.i>L+R)stop "Advance_Op_DMRG error: I not in [1,Lchain]"
     !
     label ='l';if(i>L) label ='r'
@@ -170,13 +170,13 @@ contains
     select case(label)
     case ("l")
        do it=istart+1,iend
-          U  = sys%omatrices%op(index=it)
+          U  = left%omatrices%op(index=it)
           Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
        do it=istart+1,iend
-          U  = env%omatrices%op(index=it)
+          U  = right%omatrices%op(index=it)
           Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Id(dot%dim).x.Oi
        enddo
@@ -202,12 +202,12 @@ contains
     !Measure using PSI matrix:
     select case(label)
     case ("l")
-       if(any(shape(psi_sys)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = as_sparse(psi_sys)
+       if(any(shape(psi_left)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
+       Psi  = as_sparse(psi_left)
        AvOp = trace(as_matrix(matmul(Psi%dgr(),matmul(Op,Psi))))
     case ("r")
-       if(any(shape(psi_env)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
-       Psi  = as_sparse(psi_env)
+       if(any(shape(psi_right)/=shape(Op)))stop "average_op_dmrg ERROR: shape(psi) != shape(Op)"
+       Psi  = as_sparse(psi_right)
        AvOp = trace(as_matrix(matmul(Psi%dgr(),matmul(Op,Psi))))
     end select
     call Psi%free()
@@ -224,7 +224,7 @@ contains
     real(8)          :: x_
     real(8)          :: vals(:)
     integer          :: Eunit
-    x_ = sys%length;if(present(x))x_=x
+    x_ = left%length;if(present(x))x_=x
     Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
     write(Eunit,*)x_,vals
     close(Eunit)

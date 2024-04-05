@@ -1,6 +1,7 @@
 MODULE BLOCKS
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
 =======
   USE SCIFOR, only: str,assert_shape,zeye
@@ -8,6 +9,9 @@ MODULE BLOCKS
 =======
   USE SCIFOR, only: str,assert_shape,zeye,eye
 >>>>>>> f63915b (Testing the code.):BLOCKS.f90
+=======
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower
+>>>>>>> ad31530 (Almost final commit.):BLOCKS.f90
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -443,6 +447,7 @@ contains
     class(block)                  :: self
     character(len=:),allocatable :: string
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     string = to_lower(str(self%SiteType))
   end function SiteType_block
 
@@ -450,6 +455,9 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 =======
     allocate(string, source=self%SiteType)
+=======
+    string = to_lower(str(self%SiteType))
+>>>>>>> ad31530 (Almost final commit.):BLOCKS.f90
   end function SiteType_block
 
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
