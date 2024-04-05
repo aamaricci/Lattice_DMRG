@@ -1,5 +1,5 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,zeye,eye
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -302,7 +302,7 @@ contains
   function SiteType_block(self) result(string)
     class(block)                  :: self
     character(len=:),allocatable :: string
-    allocate(string, source=self%SiteType)
+    string = to_lower(str(self%SiteType))
   end function SiteType_block
 
 

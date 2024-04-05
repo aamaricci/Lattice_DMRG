@@ -1,5 +1,5 @@
 MODULE SITES
-  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one,print_matrix,diag
+  USE SCIFOR, only: str,diag,zeros,kron,pauli_x,pauli_y,pauli_z,xi,operator(.kx.),zero,one,print_matrix,diag,to_lower
   USE INPUT_VARS
   USE AUX_FUNCS
   USE MATRIX_SPARSE
@@ -186,7 +186,8 @@ contains
   function SiteType_site(self) result(string)
     class(site)                  :: self
     character(len=:),allocatable :: string
-    allocate(string, source=self%SiteType)
+    ! allocate(string, source=self%SiteType)
+    string = to_lower(str(self%SiteType))
   end function SiteType_site
 
 
