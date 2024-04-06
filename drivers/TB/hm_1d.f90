@@ -57,7 +57,7 @@ program hm_1d
   Links(2,:) =-[1]
 
 
-  do Nx=1,Nkx
+  do Nx=4,Nkx,2
      Nlat = Nx
 
 
@@ -118,8 +118,8 @@ program hm_1d
 
      E0 = sum(Eij(:Nup)) + sum(Eij(:Ndw))
      E0 = E0/Nlat/Nso
-     write(*,*)Nlat,E0,E0/2
-     write(100,*)Nlat,E0,E0/2
+     write(*,*)Nlat/2,E0,E0/2
+     write(100,*)Nlat/2,E0,E0/2
   enddo
 
 
