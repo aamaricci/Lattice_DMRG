@@ -116,6 +116,17 @@ In the top-left panel we compare the energy per site $E(j)$ with respect to the 
 =======
 >>>>>>> f63915b (Testing the code.)
 
+
+
+Results for the Hubbard model $H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{i+1\sigma} + 
+U \sum_{i} n_{i\uparrow} n_{i\downarrow}$
+are available here: 
+
+![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/figH.png)
+
+For sake of simplicity we compare the energy per site of the non-interacting case $U=0$ at one electron per site $\langle N\rangle=1$ obtained from the two available Matrix-Vector methods (see above Milestone 5) against the exact Tight Binding and the exact solution $E_0 = -4t/\pi$. We used $M=100$ states which, as evident from the plot, are not enough to observe a decent convergence to the exact result but demonstrate the correct behavior of the DMRG algorithm. 
+
+
 ### Known issues
 There are a number of known issues with this code which, mostly for time reasons, we did not solve completely. Please report to any of the authors.
     
