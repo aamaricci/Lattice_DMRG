@@ -3,25 +3,25 @@ program hubbard_1d
   USE DMRG
   implicit none
 
-  integer                               :: Nso
-  character(len=64)                     :: finput
-  integer                               :: i,unit,iorb
-  character(len=1)                      :: DMRGtype
-  real(8)                               :: ts(2),Mh(2)
-  type(site)                            :: Dot
-  type(sparse_matrix)                   :: C,N
-  real(8),dimension(:,:),allocatable :: Hloc,Hij
+  integer                            :: Nso
+  character(len=64)                  :: finput
+  integer                            :: i,unit,iorb
+  character(len=1)                   :: DMRGtype
+  real(8)                            :: ts(2),Mh(2),lambda
+  type(site)                         :: Dot
+  real(8),dimension(:,:),allocatable :: Hloc
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
-  call parse_input_variable(ts,"TS",finput,default=(/( -1d0,i=1,2 )/),&
+  call parse_input_variable(ts,"TS",finput,default=(/( -0.5d0,i=1,2 )/),&
        comment="Hopping amplitudes")
   call parse_input_variable(Mh,"MH",finput,default=(/(0d0,i=1,2 )/),&
-       comment="Crystal field splittings")  
+       comment="Crystal field splittings")
+  call parse_input_variable(lambda,"LAMBDA",finput,default=0d0,&
+       comment="off-diagonal amplitude")  
   call parse_input_variable(DMRGtype,"DMRGtype",finput,default="infinite",&
        comment="DMRG algorithm: Infinite, Finite")
   call read_input(finput)
 
-  
 
   if(Norb>2)stop "This code is for Norb<=2. STOP"
   Nso = Nspin*Norb
@@ -29,12 +29,12 @@ program hubbard_1d
 
   !>Local Hamiltonian:
   allocate(Hloc(Nso,Nso))
-  Hloc = one*diag([Mh,Mh])
-  Dot  = hubbard_site(Hloc)
+  Hloc = diag([Mh(1:Norb),Mh(1:Norb)])
+  Dot  = electron_site(Hloc)
 
 
   !Init DMRG
-  call init_dmrg(hubbard_1d_model,ModelDot=Dot)
+  call init_dmrg(hm_1d_model,ModelDot=Dot)
 
   !Run DMRG algorithm
   select case(DMRGtype)
@@ -55,85 +55,21 @@ contains
 
 
 
-  !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
-  function hubbard_1d_model(left,right,states) result(H2)
-    type(block)                           :: left
-    type(block)                           :: right
-    integer,dimension(:),optional         :: states
-    type(sparse_matrix),dimension(Norb,2) :: Cl,Cr
-    type(sparse_matrix)                   :: P
-    type(sparse_matrix)                   :: H2
-    integer                               :: ispin,iorb,jorb,io,jo
-    integer,dimension(2)                  :: Hdims
-    character(len=:),allocatable          :: key
+  !This is user defined Function to be passed to the SYSTEM
+  function hm_1d_model(left,right) result(Hlr)
+    type(block)                        :: left
+    type(block)                        :: right
+    real(8),dimension(:,:),allocatable :: Hlr
     !
-    !>Retrieve operators:
-    P = left%operators%op("P")
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          key = "C"//left%okey(iorb,ispin)
-          Cl(iorb,ispin) = left%operators%op(key)
-          key = "C"//right%okey(iorb,ispin)
-          Cr(iorb,ispin) = right%operators%op(key)
-       enddo
-    enddo
+    if(allocated(Hlr))deallocate(Hlr)
+    allocate(Hlr(Nspin*Norb,Nspin*Norb))
     !
-    !> Get H2 dimensions:
-    Hdims = shape(left%operators)*shape(right%operators)
-    if(present(states))Hdims = [size(states),size(states)]
-    !
-    !>Build H2:
-    call H2%init(Hdims(1),Hdims(2))
-    do iorb=1,Norb
-       if(present(states))then
-          H2 = H2 + ts(iorb)*sp_kron(matmul(Cl(iorb,1)%dgr(),P),Cr(iorb,1),states)
-          H2 = H2 + ts(iorb)*sp_kron(matmul(Cl(iorb,2)%dgr(),P),Cr(iorb,2),states)
-       else
-          H2 = H2 + ts(iorb)*(matmul(Cl(iorb,1)%dgr(),P).x.Cr(iorb,1))
-          H2 = H2 + ts(iorb)*(matmul(Cl(iorb,2)%dgr(),P).x.Cr(iorb,2))
-       endif
-    enddo
-    H2 = H2 + H2%dgr()
-    !
-    !
-    !> free memory
-    call P%free
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          call Cl(iorb,ispin)%free
-          call Cr(iorb,ispin)%free
-       enddo
-    enddo
-  end function hubbard_1d_model
-
-
-  ! !H_lr = -t \sum_sigma[ (C^+_{l,sigma}@P_l) x C_{r,sigma}]  + H.c.
-  ! function hubbard_1d_model_(left,right,states) result(H2)
-  !   type(block)                           :: left
-  !   type(block)                           :: right
-  !   integer,dimension(:),optional         :: states
-  !   type(sparse_matrix)                   :: CupL,CdwL
-  !   type(sparse_matrix)                   :: CupR,CdwR
-  !   type(sparse_matrix)                   :: P
-  !   type(sparse_matrix)                   :: H2
-  !   P    = left%operators%op("P")
-  !   CupL = left%operators%op("C_l1_s1")
-  !   CdwL = left%operators%op("C_l1_s2")
-  !   CupR = right%operators%op("C_l1_s1")
-  !   CdwR = right%operators%op("C_l1_s2")
-  !   if(present(states))then
-  !      H2   = ts(1)*sp_kron(matmul(CupL%dgr(),P),CupR,states)  + ts(1)*sp_kron(matmul(CdwL%dgr(),P),CdwR,states)
-  !      H2   = H2 + H2%dgr()
-  !   else
-  !      H2   = ts(1)*(matmul(CupL%dgr(),P).x.CupR)  + ts(1)*(matmul(CdwL%dgr(),P).x.CdwR)
-  !      H2   = H2 + H2%dgr()
-  !   endif
-  !   call P%free
-  !   call CupL%free
-  !   call CdwL%free
-  !   call CupR%free
-  !   call CdwR%free
-  ! end function hubbard_1d_model_
+    !workout local part, like random local field
+    !if(left%Dim==1 AND right%Dim==1) then operate over local H
+    !if(left%Dim==1 OR right%Dim==1) then operate over local H
+    Hlr = diag([ts(1:Norb),ts(1:Norb)])
+    if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
+  end function hm_1d_model
 
 
 end program hubbard_1d

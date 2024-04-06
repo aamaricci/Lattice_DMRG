@@ -1,0 +1,1371 @@
+SCIFOR VERSION (GIT): b5ac685a5f51c83924498a36c3085f55c6cd024c
+Timestamp: + 6 April 2024  14:43:27.763
+ 
+code VERSION: 70e2ed37f1bef2b38a963ad7c21048f123cb1fa2
+Timestamp: + 6 April 2024  14:43:27.763
+ 
+Init Local Fock space:
+# of levels           =               1
+Hilbert dim per spin  =               2              2
+Fock space dimension  =               4
+Number of sectors     =               4
+--------------------------------------------
+[41mWarning: DIAGONAL HAMILTONIAN OPERATORS only[0m
+|0>|0>
+|1>|0>
+|0>|1>
+|1>|1>
+Using Hloc, shape=[  2,  2]
+ 0.00  0.00
+ 0.00  0.00
+
+ 
+left; right=   1   1  |                                                 [1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m                                                 |
+Blocks Length (L-R) =            1           1
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.003 :Enlarge blocks
+  SuperBlock Length =            4
+          Target_QN =    2.0000000   2.0000000
+      Total         = 4.000000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.000 :Get SB states
+Enlarged Blocks dimensions           :          16          16
+SuperBlock Dimension  (tot)          :          36(         256)  14.06250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.001 :Done H_sb
+Total time [h:m:s.ms]:   0:00:00.001 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.003 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           F                       F
+Truncation Dim                       :          16                      16
+Truncation Errors                    :   1.332267629550188E-15   1.332267629550188E-15
+Energies/N                           :      -1.118033988749896      -0.809016994374947
+Total time [h:m:s.ms]:   0:00:00.007 :dmrg_step
+ 
+left; right=   2   2  |                                                [1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m                                                |
+Blocks Length (L-R) =            2           2
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.012 :Enlarge blocks
+  SuperBlock Length =            6
+          Target_QN =    3.0000000   3.0000000
+      Total         = 6.000000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.000 :Get SB states
+Enlarged Blocks dimensions           :          64          64
+SuperBlock Dimension  (tot)          :         400(        4096)   9.76562%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.010 :Done H_sb
+Total time [h:m:s.ms]:   0:00:00.044 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.010 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           F                       F
+Truncation Dim                       :          64                      64
+Truncation Errors                    :   0.000000000000000E+00  -4.440892098500626E-16
+Energies/N                           :      -1.164653069144978      -1.016305779840770
+Total time [h:m:s.ms]:   0:00:00.067 :dmrg_step
+ 
+left; right=   3   3  |                                               [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                               |
+Blocks Length (L-R) =            3           3
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.038 :Enlarge blocks
+  SuperBlock Length =            8
+          Target_QN =    4.0000000   4.0000000
+      Total         = 8.000000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.002 :Get SB states
+Enlarged Blocks dimensions           :         256         256
+SuperBlock Dimension  (tot)          :        4900(       65536)   7.47681%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.816 :Done H_sb
+Total time [h:m:s.ms]:   0:00:00.938 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.033 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         110                     110
+Truncation Errors                    :   3.861352348977221E-10   3.861356789869319E-10
+Energies/N                           :      -1.189692620785910      -1.102868531952448
+Total time [h:m:s.ms]:   0:00:01.018 :dmrg_step
+ 
+left; right=   4   4  |                                              [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                              |
+Blocks Length (L-R) =            4           4
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.070 :Enlarge blocks
+  SuperBlock Length =           10
+          Target_QN =    5.0000000   5.0000000
+      Total         = 10.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         440         440
+SuperBlock Dimension  (tot)          :       12176(      193600)   6.28926%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.924 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.444 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.071 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         137                     137
+Truncation Errors                    :   3.110657842420039E-09   3.110657842420039E-09
+Energies/N                           :      -1.205100186806504      -1.147713046676985
+Total time [h:m:s.ms]:   0:00:05.611 :dmrg_step
+ 
+left; right=   5   5  |                                             [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                             |
+Blocks Length (L-R) =            5           5
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.095 :Enlarge blocks
+  SuperBlock Length =           12
+          Target_QN =    6.0000000   6.0000000
+      Total         = 12.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.014 :Get SB states
+Enlarged Blocks dimensions           :         548         548
+SuperBlock Dimension  (tot)          :       18182(      300304)   6.05453%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:11.361 :Done H_sb
+Total time [h:m:s.ms]:   0:00:12.134 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.077 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         106                     106
+Truncation Errors                    :   2.852214819881738E-08   2.852214697757205E-08
+Energies/N                           :      -1.215606877579734      -1.174235258520327
+Total time [h:m:s.ms]:   0:00:12.350 :dmrg_step
+ 
+left; right=   6   6  |                                            [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                            |
+Blocks Length (L-R) =            6           6
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.070 :Enlarge blocks
+  SuperBlock Length =           14
+          Target_QN =    7.0000000   7.0000000
+      Total         = 14.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         424         424
+SuperBlock Dimension  (tot)          :       11520(      179776)   6.40797%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.391 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.978 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.056 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         108                     108
+Truncation Errors                    :   1.703849241696531E-07   1.703849243916977E-07
+Energies/N                           :      -1.222611602911896      -1.191254939359954
+Total time [h:m:s.ms]:   0:00:05.129 :dmrg_step
+ 
+left; right=   7   7  |                                           [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                           |
+Blocks Length (L-R) =            7           7
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.072 :Enlarge blocks
+  SuperBlock Length =           16
+          Target_QN =    8.0000000   8.0000000
+      Total         = 16.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         432         432
+SuperBlock Dimension  (tot)          :       12164(      186624)   6.51792%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.942 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.568 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.056 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   1.281931405472392E-07   1.281931398811054E-07
+Energies/N                           :      -1.227661798156325      -1.202810001195574
+Total time [h:m:s.ms]:   0:00:05.722 :dmrg_step
+ 
+left; right=   8   8  |                                          [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                          |
+Blocks Length (L-R) =            8           8
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           18
+          Target_QN =    9.0000000   9.0000000
+      Total         = 18.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       11026(      173056)   6.37135%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.988 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.532 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.055 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         108                     108
+Truncation Errors                    :   4.429342750356113E-07   4.429342745915221E-07
+Energies/N                           :      -1.231536330430598      -1.211144475860302
+Total time [h:m:s.ms]:   0:00:04.677 :dmrg_step
+ 
+left; right=   9   9  |                                         [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                         |
+Blocks Length (L-R) =            9           9
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.072 :Enlarge blocks
+  SuperBlock Length =           20
+          Target_QN =   10.0000000  10.0000000
+      Total         = 20.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         432         432
+SuperBlock Dimension  (tot)          :       12164(      186624)   6.51792%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.906 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.584 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.056 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   3.168463340585959E-07   3.168463340585959E-07
+Energies/N                           :      -1.234476521311955      -1.217330365538431
+Total time [h:m:s.ms]:   0:00:05.739 :dmrg_step
+ 
+left; right=  10  10  |                                        [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                        |
+Blocks Length (L-R) =           10          10
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.067 :Enlarge blocks
+  SuperBlock Length =           22
+          Target_QN =   11.0000000  11.0000000
+      Total         = 22.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10516(      166464)   6.31728%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.588 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.173 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         108                     108
+Truncation Errors                    :   7.417452496660815E-07   7.417452497771038E-07
+Energies/N                           :      -1.236834668576348      -1.222066515104810
+Total time [h:m:s.ms]:   0:00:04.315 :dmrg_step
+ 
+left; right=  11  11  |                                       [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                       |
+Blocks Length (L-R) =           11          11
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.074 :Enlarge blocks
+  SuperBlock Length =           24
+          Target_QN =   12.0000000  12.0000000
+      Total         = 24.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.007 :Get SB states
+Enlarged Blocks dimensions           :         432         432
+SuperBlock Dimension  (tot)          :       12164(      186624)   6.51792%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.916 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.568 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.055 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   4.957515593595474E-07   4.957515593595474E-07
+Energies/N                           :      -1.238727555468422      -1.225828045092203
+Total time [h:m:s.ms]:   0:00:05.725 :dmrg_step
+ 
+left; right=  12  12  |                                      [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                      |
+Blocks Length (L-R) =           12          12
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.064 :Enlarge blocks
+  SuperBlock Length =           26
+          Target_QN =   13.0000000  13.0000000
+      Total         = 26.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10516(      166464)   6.31728%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.579 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.194 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.054 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         112                     112
+Truncation Errors                    :   8.665974211563565E-07   8.665974201571558E-07
+Energies/N                           :      -1.240322978194552      -1.228850796194629
+Total time [h:m:s.ms]:   0:00:04.335 :dmrg_step
+ 
+left; right=  13  13  |                                     [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                     |
+Blocks Length (L-R) =           13          13
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.073 :Enlarge blocks
+  SuperBlock Length =           28
+          Target_QN =   14.0000000  14.0000000
+      Total         = 28.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.007 :Get SB states
+Enlarged Blocks dimensions           :         448         448
+SuperBlock Dimension  (tot)          :       12526(      200704)   6.24103%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:05.151 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.937 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.058 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   6.508133141291950E-07   6.508133142402173E-07
+Energies/N                           :      -1.241635184353966      -1.231357728426470
+Total time [h:m:s.ms]:   0:00:06.096 :dmrg_step
+ 
+left; right=  14  14  |                                    [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                    |
+Blocks Length (L-R) =           14          14
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           30
+          Target_QN =   15.0000000  15.0000000
+      Total         = 30.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10516(      166464)   6.31728%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.577 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.168 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.058 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         118                     118
+Truncation Errors                    :   7.801017177788694E-07   7.801017176678471E-07
+Energies/N                           :      -1.242784407525914      -1.233439444633099
+Total time [h:m:s.ms]:   0:00:04.315 :dmrg_step
+ 
+left; right=  15  15  |                                   [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                   |
+Blocks Length (L-R) =           15          15
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.080 :Enlarge blocks
+  SuperBlock Length =           32
+          Target_QN =   16.0000000  16.0000000
+      Total         = 32.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.008 :Get SB states
+Enlarged Blocks dimensions           :         472         472
+SuperBlock Dimension  (tot)          :       13318(      222784)   5.97799%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:05.778 :Done H_sb
+Total time [h:m:s.ms]:   0:00:06.551 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.062 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   7.351600906924105E-07   7.351600911364997E-07
+Energies/N                           :      -1.243757550940914      -1.235255703133246
+Total time [h:m:s.ms]:   0:00:06.724 :dmrg_step
+ 
+left; right=  16  16  |                                  [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                  |
+Blocks Length (L-R) =           16          16
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           34
+          Target_QN =   17.0000000  17.0000000
+      Total         = 34.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       10650(      173056)   6.15408%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.642 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.238 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   1.680672848225484E-06   1.680672848558551E-06
+Energies/N                           :      -1.244625175545651      -1.236763083915889
+Total time [h:m:s.ms]:   0:00:04.380 :dmrg_step
+ 
+left; right=  17  17  |                                 [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                 |
+Blocks Length (L-R) =           17          17
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.065 :Enlarge blocks
+  SuperBlock Length =           36
+          Target_QN =   18.0000000  18.0000000
+      Total         = 36.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       11304(      173056)   6.53199%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.304 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.938 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.054 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   7.628591357500270E-07   7.628591356390046E-07
+Energies/N                           :      -1.245112539968301      -1.237896511526973
+Total time [h:m:s.ms]:   0:00:05.083 :dmrg_step
+ 
+left; right=  18  18  |                                [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                                |
+Blocks Length (L-R) =           18          18
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.064 :Enlarge blocks
+  SuperBlock Length =           38
+          Target_QN =   19.0000000  19.0000000
+      Total         = 38.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       10650(      173056)   6.15408%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.640 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.289 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.055 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         109                     109
+Truncation Errors                    :   1.465569393954702E-06   1.465569394398791E-06
+Energies/N                           :      -1.245820987892868      -1.239048467838112
+Total time [h:m:s.ms]:   0:00:04.431 :dmrg_step
+ 
+left; right=  19  19  |                               [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                               |
+Blocks Length (L-R) =           19          19
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.072 :Enlarge blocks
+  SuperBlock Length =           40
+          Target_QN =   20.0000000  20.0000000
+      Total         = 40.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.007 :Get SB states
+Enlarged Blocks dimensions           :         436         436
+SuperBlock Dimension  (tot)          :       12276(      190096)   6.45779%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:05.019 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.657 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.058 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   8.527887453979588E-07   8.527887456200034E-07
+Energies/N                           :      -1.246207017662085      -1.239934039418248
+Total time [h:m:s.ms]:   0:00:05.814 :dmrg_step
+ 
+left; right=  20  20  |                              [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                              |
+Blocks Length (L-R) =           20          20
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.069 :Enlarge blocks
+  SuperBlock Length =           42
+          Target_QN =   21.0000000  21.0000000
+      Total         = 42.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       11006(      173056)   6.35979%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.947 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.615 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.054 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   1.809152145870740E-06   1.809152146092785E-06
+Energies/N                           :      -1.246792512453674      -1.240844410915346
+Total time [h:m:s.ms]:   0:00:04.762 :dmrg_step
+ 
+left; right=  21  21  |                             [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                             |
+Blocks Length (L-R) =           21          21
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.075 :Enlarge blocks
+  SuperBlock Length =           44
+          Target_QN =   22.0000000  22.0000000
+      Total         = 44.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       11374(      173056)   6.57244%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.310 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.928 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.051 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.004589234687714E-06   1.004589235464870E-06
+Energies/N                           :      -1.247078431388025      -1.241479975631825
+Total time [h:m:s.ms]:   0:00:05.079 :dmrg_step
+ 
+left; right=  22  22  |                            [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                            |
+Blocks Length (L-R) =           22          22
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           46
+          Target_QN =   23.0000000  23.0000000
+      Total         = 46.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10380(      160000)   6.48750%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.521 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.153 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.051 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   1.884333604595945E-06   1.884333603929811E-06
+Energies/N                           :      -1.247588730243649      -1.242240123307831
+Total time [h:m:s.ms]:   0:00:04.293 :dmrg_step
+ 
+left; right=  23  23  |                           [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                           |
+Blocks Length (L-R) =           23          23
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.064 :Enlarge blocks
+  SuperBlock Length =           48
+          Target_QN =   24.0000000  24.0000000
+      Total         = 48.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10904(      166464)   6.55037%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.957 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.618 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   8.699550124724453E-07   8.699550113622223E-07
+Energies/N                           :      -1.247798260362425      -1.242731366523283
+Total time [h:m:s.ms]:   0:00:04.758 :dmrg_step
+ 
+left; right=  24  24  |                          [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                          |
+Blocks Length (L-R) =           24          24
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.065 :Enlarge blocks
+  SuperBlock Length =           50
+          Target_QN =   25.0000000  25.0000000
+      Total         = 50.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10890(      166464)   6.54196%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.910 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.651 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   1.788905606758817E-06   1.788905606314728E-06
+Energies/N                           :      -1.248271479157512      -1.243442134952930
+Total time [h:m:s.ms]:   0:00:04.791 :dmrg_step
+ 
+left; right=  25  25  |                         [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                         |
+Blocks Length (L-R) =           25          25
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.067 :Enlarge blocks
+  SuperBlock Length =           52
+          Target_QN =   26.0000000  26.0000000
+      Total         = 52.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       11274(      173056)   6.51465%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.199 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.885 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.021721825811284E-06   1.021721826255373E-06
+Energies/N                           :      -1.248414632971821      -1.243800793587982
+Total time [h:m:s.ms]:   0:00:05.029 :dmrg_step
+ 
+left; right=  26  26  |                        [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                        |
+Blocks Length (L-R) =           26          26
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           54
+          Target_QN =   27.0000000  27.0000000
+      Total         = 54.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.578 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.187 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.051 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         104                     104
+Truncation Errors                    :   1.777711460260178E-06   1.777711460482223E-06
+Energies/N                           :      -1.248826689785783      -1.244409338195725
+Total time [h:m:s.ms]:   0:00:04.327 :dmrg_step
+ 
+left; right=  27  27  |                       [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                       |
+Blocks Length (L-R) =           27          27
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.069 :Enlarge blocks
+  SuperBlock Length =           56
+          Target_QN =   28.0000000  28.0000000
+      Total         = 56.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         416         416
+SuperBlock Dimension  (tot)          :       11274(      173056)   6.51465%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.180 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.913 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.051 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.045412469147244E-06   1.045412468703155E-06
+Energies/N                           :      -1.248946239933567      -1.244703209815941
+Total time [h:m:s.ms]:   0:00:05.058 :dmrg_step
+ 
+left; right=  28  28  |                      [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                      |
+Blocks Length (L-R) =           28          28
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           58
+          Target_QN =   29.0000000  29.0000000
+      Total         = 58.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.589 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.270 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.053 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.716226180392688E-06   1.716226180725755E-06
+Energies/N                           :      -1.249316315938270      -1.245242734506427
+Total time [h:m:s.ms]:   0:00:04.412 :dmrg_step
+ 
+left; right=  29  29  |                     [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                     |
+Blocks Length (L-R) =           29          29
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.067 :Enlarge blocks
+  SuperBlock Length =           60
+          Target_QN =   30.0000000  30.0000000
+      Total         = 60.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.489 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.224 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.105617899677114E-06   1.105617900121203E-06
+Energies/N                           :      -1.249410263941483      -1.245480295473954
+Total time [h:m:s.ms]:   0:00:05.369 :dmrg_step
+ 
+left; right=  30  30  |                    [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                    |
+Blocks Length (L-R) =           30          30
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.064 :Enlarge blocks
+  SuperBlock Length =           62
+          Target_QN =   31.0000000  31.0000000
+      Total         = 62.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.585 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.174 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.721930408593586E-06   1.721930408926653E-06
+Energies/N                           :      -1.249740658192985      -1.245958649211487
+Total time [h:m:s.ms]:   0:00:04.314 :dmrg_step
+ 
+left; right=  31  31  |                   [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                   |
+Blocks Length (L-R) =           31          31
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.070 :Enlarge blocks
+  SuperBlock Length =           64
+          Target_QN =   32.0000000  32.0000000
+      Total         = 64.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.492 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.223 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.134353231124763E-06   1.134353231124763E-06
+Energies/N                           :      -1.249812277507410      -1.246149957509599
+Total time [h:m:s.ms]:   0:00:05.371 :dmrg_step
+ 
+left; right=  32  32  |                  [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                  |
+Blocks Length (L-R) =           32          32
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.063 :Enlarge blocks
+  SuperBlock Length =           66
+          Target_QN =   33.0000000  33.0000000
+      Total         = 66.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.581 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.193 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.050 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.725523080975400E-06   1.725523080975400E-06
+Energies/N                           :      -1.250110780773126      -1.246578100766310
+Total time [h:m:s.ms]:   0:00:04.330 :dmrg_step
+ 
+left; right=  33  33  |                 [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                 |
+Blocks Length (L-R) =           33          33
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.065 :Enlarge blocks
+  SuperBlock Length =           68
+          Target_QN =   34.0000000  34.0000000
+      Total         = 68.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.494 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.184 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.157423924036394E-06   1.157423924036394E-06
+Energies/N                           :      -1.250164505640950      -1.246732670104688
+Total time [h:m:s.ms]:   0:00:05.328 :dmrg_step
+ 
+left; right=  34  34  |                [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m                |
+Blocks Length (L-R) =           34          34
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.061 :Enlarge blocks
+  SuperBlock Length =           70
+          Target_QN =   35.0000000  35.0000000
+      Total         = 70.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.582 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.243 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.050 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.726674134894246E-06   1.726674134894246E-06
+Energies/N                           :      -1.250435988132895      -1.247118850157738
+Total time [h:m:s.ms]:   0:00:04.377 :dmrg_step
+ 
+left; right=  35  35  |               [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m               |
+Blocks Length (L-R) =           35          35
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.075 :Enlarge blocks
+  SuperBlock Length =           72
+          Target_QN =   36.0000000  36.0000000
+      Total         = 72.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.618 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.396 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.175550023879701E-06   1.175550023768679E-06
+Energies/N                           :      -1.250475588970581      -1.247244531975557
+Total time [h:m:s.ms]:   0:00:05.549 :dmrg_step
+ 
+left; right=  36  36  |              [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m              |
+Blocks Length (L-R) =           36          36
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.061 :Enlarge blocks
+  SuperBlock Length =           74
+          Target_QN =   37.0000000  37.0000000
+      Total         = 74.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.640 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.203 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.725484936709876E-06   1.725484937153965E-06
+Energies/N                           :      -1.250724112420633      -1.247595485197136
+Total time [h:m:s.ms]:   0:00:04.339 :dmrg_step
+ 
+left; right=  37  37  |             [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m             |
+Blocks Length (L-R) =           37          37
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.068 :Enlarge blocks
+  SuperBlock Length =           76
+          Target_QN =   38.0000000  38.0000000
+      Total         = 76.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.608 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.327 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.055 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.189750483798768E-06   1.189750483243657E-06
+Energies/N                           :      -1.250752601271430      -1.247698296218302
+Total time [h:m:s.ms]:   0:00:05.476 :dmrg_step
+ 
+left; right=  38  38  |            [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m            |
+Blocks Length (L-R) =           38          38
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.064 :Enlarge blocks
+  SuperBlock Length =           78
+          Target_QN =   39.0000000  39.0000000
+      Total         = 78.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.618 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.212 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.722448470076188E-06   1.722448470742322E-06
+Energies/N                           :      -1.250981457746069      -1.248019406932820
+Total time [h:m:s.ms]:   0:00:04.352 :dmrg_step
+ 
+left; right=  39  39  |           [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m           |
+Blocks Length (L-R) =           39          39
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.072 :Enlarge blocks
+  SuperBlock Length =           80
+          Target_QN =   40.0000000  40.0000000
+      Total         = 80.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.505 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.191 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.053 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.200992156280556E-06   1.200992155947489E-06
+Energies/N                           :      -1.251001124967320      -1.248103866809948
+Total time [h:m:s.ms]:   0:00:05.342 :dmrg_step
+ 
+left; right=  40  40  |          [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m          |
+Blocks Length (L-R) =           40          40
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           82
+          Target_QN =   41.0000000  41.0000000
+      Total         = 82.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.630 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.263 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.718120258398237E-06   1.718120259064371E-06
+Energies/N                           :      -1.251212974257600      -1.248399430530156
+Total time [h:m:s.ms]:   0:00:04.405 :dmrg_step
+ 
+left; right=  41  41  |         [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m         |
+Blocks Length (L-R) =           41          41
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.068 :Enlarge blocks
+  SuperBlock Length =           84
+          Target_QN =   42.0000000  42.0000000
+      Total         = 84.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.499 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.208 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         100                     100
+Truncation Errors                    :   1.210043230392976E-06   1.210043230281954E-06
+Energies/N                           :      -1.251225552056176      -1.248468960156956
+Total time [h:m:s.ms]:   0:00:05.353 :dmrg_step
+ 
+left; right=  42  42  |        [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m        |
+Blocks Length (L-R) =           42          42
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.067 :Enlarge blocks
+  SuperBlock Length =           86
+          Target_QN =   43.0000000  43.0000000
+      Total         = 86.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         400         400
+SuperBlock Dimension  (tot)          :       10420(      160000)   6.51250%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.624 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.190 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.051 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.712968064504494E-06   1.712968064171427E-06
+Energies/N                           :      -1.251422560507595      -1.248742431603949
+Total time [h:m:s.ms]:   0:00:04.332 :dmrg_step
+ 
+left; right=  43  43  |       [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m       |
+Blocks Length (L-R) =           43          43
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.068 :Enlarge blocks
+  SuperBlock Length =           88
+          Target_QN =   44.0000000  44.0000000
+      Total         = 88.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.503 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.243 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.053 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         101                     101
+Truncation Errors                    :   1.161693214735138E-06   1.161693214957182E-06
+Energies/N                           :      -1.251429375369435      -1.248799662078976
+Total time [h:m:s.ms]:   0:00:05.389 :dmrg_step
+ 
+left; right=  44  44  |      [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m      |
+Blocks Length (L-R) =           44          44
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           90
+          Target_QN =   45.0000000  45.0000000
+      Total         = 90.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         404         404
+SuperBlock Dimension  (tot)          :       10620(      163216)   6.50672%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.697 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.255 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.710369183616223E-06   1.710369183838267E-06
+Energies/N                           :      -1.251613483417193      -1.249054413224807
+Total time [h:m:s.ms]:   0:00:04.396 :dmrg_step
+ 
+left; right=  45  45  |     [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m     |
+Blocks Length (L-R) =           45          45
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.070 :Enlarge blocks
+  SuperBlock Length =           92
+          Target_QN =   46.0000000  46.0000000
+      Total         = 92.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.557 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.226 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.054 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         101                     101
+Truncation Errors                    :   1.171953999401509E-06   1.171953999179465E-06
+Energies/N                           :      -1.251615210202848      -1.249100745641361
+Total time [h:m:s.ms]:   0:00:05.376 :dmrg_step
+ 
+left; right=  46  46  |    [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m    |
+Blocks Length (L-R) =           46          46
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.064 :Enlarge blocks
+  SuperBlock Length =           94
+          Target_QN =   47.0000000  47.0000000
+      Total         = 94.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         404         404
+SuperBlock Dimension  (tot)          :       10620(      163216)   6.50672%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.724 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.380 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.054 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.705718785438570E-06   1.705718785771637E-06
+Energies/N                           :      -1.251787411500082      -1.249338100374517
+Total time [h:m:s.ms]:   0:00:04.521 :dmrg_step
+ 
+left; right=  47  47  |   [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m   |
+Blocks Length (L-R) =           47          47
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.069 :Enlarge blocks
+  SuperBlock Length =           96
+          Target_QN =   48.0000000  48.0000000
+      Total         = 96.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.529 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.219 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   1.124509349970104E-06   1.124509349970104E-06
+Energies/N                           :      -1.251784962672854      -1.249375508517384
+Total time [h:m:s.ms]:   0:00:05.367 :dmrg_step
+ 
+left; right=  48  48  |  [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m  |
+Blocks Length (L-R) =           48          48
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.066 :Enlarge blocks
+  SuperBlock Length =           98
+          Target_QN =   49.0000000  49.0000000
+      Total         = 98.00000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10654(      166464)   6.40018%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.766 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.465 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.052 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.701468974046882E-06   1.701468974268927E-06
+Energies/N                           :      -1.251946757102948      -1.249597665160778
+Total time [h:m:s.ms]:   0:00:04.607 :dmrg_step
+ 
+left; right=  49  49  | [1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m |
+Blocks Length (L-R) =           49          49
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.068 :Enlarge blocks
+  SuperBlock Length =          100
+          Target_QN =   50.0000000  50.0000000
+      Total         = 100.0000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.006 :Get SB states
+Enlarged Blocks dimensions           :         420         420
+SuperBlock Dimension  (tot)          :       11594(      176400)   6.57256%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:04.500 :Done H_sb
+Total time [h:m:s.ms]:   0:00:05.158 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.054 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         102                     102
+Truncation Errors                    :   1.128222234636489E-06   1.128222233859333E-06
+Energies/N                           :      -1.251940934070738      -1.249627684006285
+Total time [h:m:s.ms]:   0:00:05.305 :dmrg_step
+ 
+left; right=  50  50  |[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m=[0m[1;92m*[0m[1m|[0m[1;91m*[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m[1;91m-[0m|
+Blocks Length (L-R) =           50          50
+ Hij:
+           2           2
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:00.065 :Enlarge blocks
+  SuperBlock Length =          102
+          Target_QN =   51.0000000  51.0000000
+      Total         = 102.0000    
+      Filling       = 1.000000    
+      Filling/Norb  = 1.000000    
+Total time [h:m:s.ms]:   0:00:00.005 :Get SB states
+Enlarged Blocks dimensions           :         408         408
+SuperBlock Dimension  (tot)          :       10654(      166464)   6.40018%
+get H_sb:
+ Hij:
+           2           2
+Total time [h:m:s.ms]:   0:00:03.755 :Done H_sb
+Total time [h:m:s.ms]:   0:00:04.386 :Diag H_sb
+Total time [h:m:s.ms]:   0:00:00.053 :Get Rho, U->Renormalize, Setup New Basis
+Truncating                           :           T                       T
+Truncation Dim                       :         105                     105
+Truncation Errors                    :   1.696530428918486E-06   1.696530429362575E-06
+Energies/N                           :      -1.252093431953182      -1.249836352263932
+Total time [h:m:s.ms]:   0:00:04.527 :dmrg_step
