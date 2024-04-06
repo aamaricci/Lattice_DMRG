@@ -1,5 +1,5 @@
-MODULE MEASURE
-  USE GLOBAL
+MODULE DMRG_MEASURE
+  USE VARS_GLOBAL
   implicit none
   private
 
@@ -185,7 +185,7 @@ contains
   end function Advance_Corr_dmrg
 
 
-  
+
   !##################################################################
   !                   AVERAGE OPERATOR 
   !Purpose: take the average of an operator O on the last step basis 
@@ -216,7 +216,7 @@ contains
 
 
 
-  
+
 
   subroutine write_user(file,vals,x)
     character(len=*) :: file
@@ -240,7 +240,7 @@ contains
 
 
 
-END MODULE MEASURE
+END MODULE DMRG_MEASURE
 
 
 
