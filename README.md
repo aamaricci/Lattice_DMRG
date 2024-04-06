@@ -71,11 +71,26 @@ create an issue in this repo.
 - [x] Measure nearest neighbor correlations
 
 #### Milestone 5
-- [ ] Implement a better strategy for the SuperBlock matrix-vector product $H_{sb}|\psi\rangle$, exploiting the tensor product structure of $H_{sb}= H_L\otimes 1_R + 1_L\otimes H_R + H_{LR}$. 
-- [ ] Implement parallel tensor product, see [Large-Scale Implementation of the Density Matrix Renormalization Group Algorithm](https://iris.sissa.it/handle/20.500.11767/68070). 
+- [x] Implement a better strategy for the SuperBlock matrix-vector product $H_{sb}|\psi\rangle$, exploiting the tensor product structure of $H_{sb}= H_L\otimes 1_R + 1_L\otimes H_R + H_{LR}$. 
 
-#### Future developemnts
-- [ ] Development of a iDMRG algorithm for fermions exploiting the spin separability of the Hamiltonian. See [https://doi.org/10.1016/j.cpc.2021.108261](https://doi.org/10.1016/j.cpc.2021.108261)
+With this update we introduce two distinct method to evaluate and diagonalize the SuperBlock (SB) Hamiltonian $H_{sb}$, according to 
+the value of the parameter `sparse_H=T,F`.  
+If `T` the matrix $H_{sb}$ is evaluated as a sparse matrix performing the kroenecker products above.  
+If `F` each non-trivial part of the the matrix $H_{sb}$, i.e. $H_L$, $H_R$ and $H_{LR}$ are directly applied to the SB vector $|\psi\rangle$.To improve execution each term is decomposed into its  blocks structure corresponding to conserved quantum numbers $\vec{Q}=[Q_1,\dots,Q_N]$. In addition, exploiting the fact that each SB vector can be decomposed into a matrix form of Left and Right states, $|\psi\rangle = \sum_{lr} c_{lr} |l\rangle|r\rangle$, we can operate directly as follows:  
+$[H_L\otimes 1_R] \circ |\psi\rangle \rightarrow H_L \circ \sum_l c_{lr}|l\rangle$  
+$[1_L\otimes H_R] \circ |\psi\rangle \rightarrow H_R \circ \sum_r c_{lr}|r\rangle$   
+and  
+$H_{LR} \circ |\psi\rangle \rightarrow  \sum_p \sum_{Q_i} A_p(Q_i)\otimes B_p(Q_i) |\psi\rangle$  
+where the matrices $A_p$, $B_p$ are the connecting operators (i.e. $c_{i\sigma}$ or $S_a(i)$) restricted between two blocks with quantum numbers $Q_i$ and $Q_j=Q_i-1_{\sigma/a}$.   
+
+
+#### Milestone 6
+- [ ] Implement parallel strategies. Different ideas can be followed:  
+i) parallel execution of the tensor product for $H_{sb}$ for `sparse_H=T`, see [Large-Scale Implementation of the Density Matrix Renormalization Group Algorithm](https://iris.sissa.it/handle/20.500.11767/68070).  
+ii) parallel execution of the little matrix-vector and matrix-matrix products for `sparse_H=F`. We can also profit of the matrix structure of the SB vector as done in massively parallel Exact Diagonalization algorithm, see  [EDIpack: A parallel exact diagonalization package for quantum impurity problems](https://doi.org/10.1016/j.cpc.2021.108261).   
+iii) distributed storage of the vectors and sparse matrices. 
+
+
 
 
 ### Results
@@ -88,6 +103,17 @@ In the top panels we show the groundstate energy $E(j)$ and the entanglement ent
 Finally, in the bottom-right panel we report the spatial distribution of the local magnetization for a Spin 1 chain with open boundary conditions, showing Spin 1/2 edge modes.
 
 ![gif](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/DMRG_record.gif)
+
+
+
+Results for the Hubbard model $H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{i+1\sigma} + 
+U \sum_{i} n_{i\uparrow} n_{i\downarrow}$
+are available here: 
+
+![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/figH.png)
+
+For sake of simplicity we compare the energy per site of the non-interacting case $U=0$ at one electron per site $\langle N\rangle=1$ obtained from the two available Matrix-Vector methods (see above Milestone 5) against the exact Tight Binding and the exact solution $E_0 = -4t/\pi$. We used $M=100$ states which, as evident from the plot, are not enough to observe a decent convergence to the exact result but demonstrate the correct behavior of the DMRG algorithm. 
+
 
 ### Known issues
 There are a number of known issues with this code which, mostly for time reasons, we did not solve completely. Please report to any of the authors.
