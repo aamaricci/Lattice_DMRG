@@ -299,15 +299,16 @@ contains
     case(3)
        self%Dim = 3
        !
+       allocate(H(3,3));H=0d0
+       allocate(Sz(3,3));Sz=diag([1d0,0d0,-1d0])
+       allocate(Sp(3,3));Sp=0d0;Sp(1,2)=sqrt(2d0);Sp(2,3)=sqrt(2d0)
        allocate(Sx(3,3))
        Sx=reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
-       allocate(H(3,3));H=0d0
+       !
        if(present(hvec))H=H+hvec(1)*Sx+hvec(3)*Sz
        call self%put("H",sparse(H))
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
-       allocate(Sz(3,3));Sz=diag([1d0,0d0,-1d0])
-       allocate(Sp(3,3));Sp=0d0;Sp(1,2)=sqrt(2d0);Sp(2,3)=sqrt(2d0)
        call self%put(self%KeyLink//self%okey(0,1),sparse(Sz))
        call self%put(self%KeyLink//self%okey(0,2),sparse(Sp))
        !
