@@ -1,4 +1,4 @@
-MODULE GLOBAL
+MODULE VARS_GLOBAL
   USE SCIFOR
   USE INPUT_VARS
   USE AUX_FUNCS
@@ -56,14 +56,6 @@ MODULE GLOBAL
   !SUPERBLOCK SHARED THINGS
   integer,dimension(:),allocatable               :: sb_states
   type(sectors_list)                             :: sb_sector
-  !TO BE MOVED TO SUPERBLOCK
-  !
-  integer                                        :: tNso
-  integer                                        :: isb,jsb
-  type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
-  integer,dimension(:),allocatable               :: Dls,Drs,Offset
-  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
 
 
 
@@ -154,7 +146,7 @@ contains
   end subroutine dmrg_graphic
 
 
-END MODULE GLOBAL
+END MODULE VARS_GLOBAL
 
 
 
