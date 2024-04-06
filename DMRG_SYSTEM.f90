@@ -1,8 +1,8 @@
-MODULE SYSTEM
-  USE GLOBAL
-  USE CONNECT
-  USE SUPERBLOCK
-  !USE RDM_DMRG
+MODULE DMRG_SYSTEM
+  USE VARS_GLOBAL
+  USE DMRG_CONNECT
+  USE DMRG_SUPERBLOCK
+  !USE DMRG_RDM
   implicit none
   private
 
@@ -13,9 +13,6 @@ MODULE SYSTEM
   public :: infinite_DMRG
   public :: finite_DMRG
 
-
-
-  public :: enlarge_block
 
 contains
 
@@ -230,7 +227,6 @@ contains
          m_sb,"(",m_left*m_right,")",100*dble(m_sb)/m_left/m_right,"%"
 
 
-
     !#################################
     !       DIAG SUPER-BLOCK
     !#################################
@@ -249,8 +245,9 @@ contains
        sb_qn  = sb_sector%qn(index=isb)
        sb_map = sb_sector%map(index=isb)
        Nleft   = size(left%sectors(1)%map(qn=sb_qn))
-       Nright   = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
+       Nright  = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nleft*Nright==0)cycle
+       !
        qn = sb_qn
        call rho_left%append(&
             build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
@@ -258,6 +255,7 @@ contains
        call psi_left%append(&
             build_PsiMat(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
             qn=qn,map=left%sectors(1)%map(qn=qn))
+       !
        qn = current_target_qn-sb_qn
        call rho_right%append(&
             build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
@@ -266,13 +264,13 @@ contains
             build_PsiMat(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
             qn=qn,map=right%sectors(1)%map(qn=qn))
     enddo
-
-
+    !
     !Build Truncated Density Matrices:
     call rho_left%eigh(sort=.true.,reverse=.true.)
     call rho_right%eigh(sort=.true.,reverse=.true.)    
-    rho_left_evals = rho_left%evals()
+    rho_left_evals  = rho_left%evals()
     rho_right_evals = rho_right%evals()
+    !
     if(Mstates/=0)then
        m_s = min(Mstates,m_left,size(rho_left_evals))
        m_e = min(Mstates,m_right,size(rho_right_evals))       
@@ -284,6 +282,7 @@ contains
     else
        stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
     endif
+    !
     e_=rho_left_evals(m_s)
     j_=m_s
     do i=j_+1,size(rho_left_evals)
@@ -296,12 +295,13 @@ contains
        err=abs(rho_right_evals(i)-e_)/e_
        if(err<=1d-1)m_e=m_e+1
     enddo
-    truncation_error_left = 1d0 - sum(rho_left_evals(1:m_s))
+    !
+    truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
     truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
     !
     !
     !>truncation-rotation matrices:
-    trRho_left = rho_left%sparse(m_left,m_s)
+    trRho_left  = rho_left%sparse(m_left,m_s)
     trRho_right = rho_right%sparse(m_right,m_e)
     !
     !>Store all the rotation/truncation matrices:
@@ -325,16 +325,20 @@ contains
     !
     !
     !
-
-
     write(LOGfile,"(A,L12,12X,L12)")&
          "Truncating                           :",Mstates<=m_left,Mstates<=m_right
     write(LOGfile,"(A,I12,12X,I12)")&
          "Truncation Dim                       :",m_s,m_e
     write(LOGfile,"(A,2ES24.15)")&
          "Truncation Errors                    :",truncation_error_left,truncation_error_right
-    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-         "Energies/L                           :",gs_energy/sum(current_target_QN)
+    select case(left%type())
+    case ("fermion","f")
+       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+            "Energies/N                           :",gs_energy/sum(current_target_QN)
+    case ("spin","s")
+       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+            "Energies/L                           :",gs_energy/current_L
+    end select
     call stop_timer("dmrg_step")
     !
     !Clean memory:
@@ -450,205 +454,6 @@ contains
   end subroutine enlarge_block
 
 
-!!!
-
-
-
-  ! !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
-  ! function connect_fermion_blocks(left,right,states) result(H2)
-  !   type(block)                               :: left
-  !   type(block)                               :: right
-  !   integer,dimension(:),optional             :: states
-  !   type(sparse_matrix),dimension(Nspin*Norb) :: Cl,Cr
-  !   type(sparse_matrix)                       :: P,A
-  !   type(sparse_matrix)                       :: H2
-  !   integer                                   :: ispin,iorb,jorb,io,jo
-  !   integer,dimension(2)                      :: Hdims
-  !   character(len=:),allocatable              :: key
-  !   real(8),dimension(:,:),allocatable        :: Hij
-  !   !
-  !   !Hij is shared:
-  !   print*,"Hij:"
-  !   Hij = Hmodel(left,right)
-  !   print*,shape(Hij)
-  !   !
-  !   !> Get H2 dimensions:
-  !   Hdims = shape(left%operators)*shape(right%operators)
-  !   if(present(states))Hdims = [size(states),size(states)]
-  !   call H2%init(Hdims(1),Hdims(2))
-  !   !
-  !   !FERMION SPECIFIC:
-  !   !>Retrieve operators:
-  !   do ispin=1,Nspin
-  !      do iorb=1,Norb
-  !         key = "C"//left%okey(iorb,ispin)
-  !         io = iorb + (ispin-1)*Norb
-  !         Cl(io) = left%operators%op(key)
-  !         Cr(io) = right%operators%op(key)
-  !      enddo
-  !   enddo
-  !   !
-  !   !
-  !   !>Build H2:
-  !   P = left%operators%op("P")  !always acts on the Left Block
-  !   do io=1,Nspin*Norb
-  !      do jo=1,Nspin*Norb
-  !         if(Hij(io,jo)==0d0)cycle
-  !         if(present(states))then
-  !            H2 = H2 + Hij(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
-  !            H2 = H2 + Hij(io,jo)*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
-  !         else
-  !            H2 = H2 + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
-  !            H2 = H2 + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
-  !         endif
-
-  !      enddo
-  !   enddo
-  !   !
-  !   !
-  !   !> free memory
-  !   call P%free
-  !   do io=1,Nspin*Norb
-  !      call Cl(io)%free
-  !      call Cr(io)%free
-  !   enddo
-  ! end function connect_fermion_blocks
-
-  ! function connect_spin_blocks(left,right,states) result(H2)
-  !   type(block)                        :: left
-  !   type(block)                        :: right
-  !   integer,dimension(:),optional      :: states
-  !   type(sparse_matrix)                :: Sl(Nspin)![Sz,Sp]
-  !   type(sparse_matrix)                :: Sr(Nspin)![Sz,Sp]
-  !   type(sparse_matrix)                :: H2
-  !   integer,dimension(2)               :: Hdims
-  !   integer                            :: ispin
-  !   real(8),dimension(:,:),allocatable :: Hij
-  !   !
-  !   !Hij is shared:
-  !   Hij = Hmodel(left,right)
-  !   !
-  !   !> Get H2 dimensions:
-  !   Hdims = shape(left%operators)*shape(right%operators)
-  !   if(present(states))Hdims = [size(states),size(states)]
-  !   call H2%init(Hdims(1),Hdims(2))
-  !   !
-  !   !>Retrieve operators:
-  !   do ispin=1,Nspin
-  !      Sl(ispin) = left%operators%op("S"//left%okey(0,ispin))
-  !      Sr(ispin) = right%operators%op("S"//right%okey(0,ispin))
-  !   enddo
-  !   !
-  !   !
-  !   !>Build H2:
-  !   if(present(states))then
-  !      H2 = H2 + Hij(1,1)*sp_kron(Sl(1),Sr(1),states) + &
-  !           Hij(2,2)*sp_kron(Sl(2),Sr(2)%dgr(),states)+ &
-  !           Hij(2,2)*sp_kron(Sl(2)%dgr(),Sr(2),states)
-  !   else
-  !      H2 = H2 + Hij(1,1)*(Sl(1).x.Sr(1)) + &
-  !           Hij(2,2)*(Sl(2).x.Sr(2)%dgr())+ &
-  !           Hij(2,2)*(Sl(2)%dgr().x.Sr(2))
-  !   endif
-  !   !
-  !   !> Free memory
-  !   do ispin=1,Nspin
-  !      call Sl(ispin)%free
-  !      call Sr(ispin)%free
-  !   enddo
-  ! end function connect_spin_blocks
-
-
-
-
-
-  ! subroutine build_Hv_superblock(Hmat)
-  !   real(8),dimension(:,:),allocatable,optional :: Hmat
-  !   integer                                     :: m_sb
-
-  !   if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
-  !   m_sb = size(sb_states)
-
-  !   if(present(Hmat))then
-  !      if(allocated(Hmat))deallocate(Hmat)
-  !      allocate(Hmat(m_sb,m_sb));Hmat=0d0
-
-  !      !Nullify HxV function pointer:
-  !      spHtimesV_p => null()
-  !      !
-  !      !>Build Sparse Hsb:
-  !      call start_timer("get H_sb")
-  !      call get_SuperBlock_Sparse()
-  !      call stop_timer("Done H_sb")
-  !      !
-  !      !Dump Hsb to dense matrix as required:
-  !      call spHsb%dump(Hmat)
-  !      return
-  !   endif
-
-  !   !Build SuperBLock HxV operation: stored or direct
-  !   select case(sparse_H)
-  !   case(.true.)
-  !      call start_timer("get H_sb")
-  !      call get_SuperBlock_Sparse()
-  !      call stop_timer("Done H_sb")
-  !      !
-  !      !Set HxV function pointer:
-  !      spHtimesV_p => spMatVec_sparse_main
-  !      !
-  !   case(.false.)
-  !      call start_timer("get H_sb")
-  !      call Setup_SuperBlock()
-  !      call stop_timer("Done H_sb")
-  !      !
-  !      !Set HxV function pointer:
-  !      stop "ERROR "
-  !      ! spHtimesV_p => spMatVec_direct_main
-  !      !
-  !   end select
-
-  ! end subroutine build_Hv_superblock
-
-
-
-
-  ! !-----------------------------------------------------------------!
-  ! ! Purpose: build the list of states compatible with the specified
-  ! ! quantum numbers
-  ! !-----------------------------------------------------------------!
-  ! subroutine get_sb_states(sb_states,sb_sector)
-  !   integer,dimension(:),allocatable :: sb_states
-  !   type(sectors_list)               :: sb_sector
-  !   integer                          :: ileft,iright
-  !   integer                          :: i,j,istate
-  !   real(8),dimension(:),allocatable :: left_qn,right_qn
-  !   integer,dimension(:),allocatable :: left_map,right_map
-  !   !
-  !   if(allocated(sb_states))deallocate(sb_states)
-  !   !
-  !   call sb_sector%free()
-  !   !
-  !   do ileft=1,size(left%sectors(1))
-  !      left_qn  = left%sectors(1)%qn(index=ileft)
-  !      right_qn  = current_target_qn - left_qn
-  !      if(.not.right%sectors(1)%has_qn(right_qn))cycle
-  !      !
-  !      left_map = left%sectors(1)%map(qn=left_qn)
-  !      right_map = right%sectors(1)%map(qn=right_qn)
-  !      !
-  !      do i=1,size(left_map)
-  !         do j=1,size(right_map)
-  !            istate=right_map(j) + (left_map(i)-1)*right%Dim
-  !            call append(sb_states, istate)
-  !            call sb_sector%append(qn=left_qn,istate=size(sb_states))
-  !         enddo
-  !      enddo
-  !   enddo
-
-  !   !
-  ! end subroutine get_sb_states
-
-
 
 
 
@@ -705,28 +510,6 @@ contains
 
 
 
-  ! !##################################################################
-  ! !              SuperBlock MATRIX-VECTOR PRODUCTS
-  ! !##################################################################
-  ! subroutine spMatVec_sparse_main(Nloc,v,Hv)
-  !   integer                 :: Nloc
-  !   real(8),dimension(Nloc) :: v
-  !   real(8),dimension(Nloc) :: Hv
-  !   real(8)                 :: val
-  !   integer                 :: i,j,jcol
-  !   Hv=zero
-  !   do i=1,Nloc
-  !      matmul: do jcol=1, spHsb%row(i)%Size
-  !         val = spHsb%row(i)%vals(jcol)
-  !         j   = spHsb%row(i)%cols(jcol)
-  !         Hv(i) = Hv(i) + val*v(j)
-  !      end do matmul
-  !   end do
-  ! end subroutine spMatVec_sparse_main
-
-
-
-
 
   !##################################################################
   !                 WRITE TO FILE
@@ -774,7 +557,7 @@ contains
     close(Eunit)
   end subroutine write_entanglement
 
-END MODULE SYSTEM
+END MODULE DMRG_SYSTEM
 
 
 
