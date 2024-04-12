@@ -26,20 +26,75 @@ contains
     character(len=1)                       :: label
     real(8),dimension(size(ivec)),optional :: avOp
     real(8)                                :: val
-    integer                                :: it,i
-    type(sparse_matrix)                    :: Oi
+    integer                                :: it,i,L
+    type(sparse_matrix)                    :: Oi,O1,O2,U,Psi,I_R
     !
-    suffix=label_DMRG('u')
-    do it=1,size(ivec)
-       i   = ivec(it)
-       label='l';if(i>left%length)label='r'
-       Oi  = Build_Op_dmrg(Op,i)
-       Oi  = Advance_Op_dmrg(Oi,i)
-       val = Average_Op_dmrg(Oi,label)   
-       call write_user(trim(file),[val],x=dble(i))
-       call Oi%free()
-       if(present(avOp))avOp(it)=val
+    ! suffix=label_DMRG('u')
+    ! do it=1,size(ivec)
+    !    i   = ivec(it)
+    !    label='l';if(i>left%length)label='r'
+    !    Oi  = Build_Op_dmrg(Op,i)
+    !    Oi  = Advance_Op_dmrg(Oi,i)
+    !    val = Average_Op_dmrg(Oi,label)   
+    !    call write_user(trim(file),[val],x=dble(i))
+    !    call Oi%free()
+    !    if(present(avOp))avOp(it)=val
+    ! enddo
+
+    
+    L = left%length           !the len of the last block used to create the SB->\psi
+
+    Oi = Op
+    do it=1,L-1
+       U  = left%omatrices%op(index=it)
+       Oi = (matmul(matmul(U%dgr(),Oi),U)).x.Id(dot%dim)
     enddo
+    Psi = as_sparse(psi_left)
+    val = trace(as_matrix(matmul(matmul(Psi%t(),Oi),Psi)))
+    print*,val
+    write(99,*)1,val
+
+    ! ! U   = right%omatrices%op(index=right%length-1)
+    ! ! I_R = Id(dot%dim).x.matmul(U%dgr(),U)
+    ! ! Oi = sp_kron(Oi,I_R,sb_states)
+    ! ! val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
+    ! ! print*,val
+
+    ! U  = left%omatrices%op(index=1)
+    ! Oi = matmul(U%dgr(),U).x.Op
+    ! do it=2,L-1
+    !    U  = left%omatrices%op(index=it)
+    !    Oi = (matmul(matmul(U%dgr(),Oi),U)).x.Id(dot%dim)
+    ! enddo
+    ! Psi = as_sparse(psi_left)
+    ! val = trace(as_matrix(matmul(matmul(Psi%dgr(),Oi),Psi)))
+    ! print*,val
+
+    ! Oi = Id(dot%dim).x.Op
+    ! do it=2,L-1
+    !    U  = left%omatrices%op(index=it)
+    !    Oi = (matmul(matmul(U%dgr(),Oi),U)).x.Id(dot%dim)
+    ! enddo
+    ! Psi = as_sparse(psi_left)
+    ! val = trace(as_matrix(matmul(matmul(Psi%dgr(),Oi),Psi)))
+    ! print*,val
+    ! write(99,*)2,val
+
+
+    do i=2,L-1
+       U  = left%omatrices%op(index=i-1)
+       Oi = matmul(U%dgr(),U).x.Op
+       do it=i,L-1
+          U  = left%omatrices%op(index=it)
+          Oi = (matmul(matmul(U%dgr(),Oi),U)).x.Id(dot%dim)
+       enddo
+       Psi = as_sparse(psi_left)
+       val = trace(as_matrix(matmul(matmul(Psi%dgr(),Oi),Psi)))
+       print*,val
+       write(99,*)i,val
+    enddo
+
+
   end subroutine Measure_Op_dmrg
 
 
@@ -100,8 +155,8 @@ contains
     integer                          :: L,R
     integer                          :: istart,iend,it
     !
-    L = left%length
-    R = right%length
+    L = left%length-1
+    R = right%length-1
     if(i<1.OR.i>L+R)stop "Advance_Op_DMRG error: I not in [1,Lchain]"
     !
     label ='l';if(i>L) label ='r'
@@ -120,14 +175,14 @@ contains
     select case(label)
     case ("l")
        Oi = Oi.x.Id(dot%dim)
-       do it=istart+1,iend
+       do it=istart,iend
           U  = left%omatrices%op(index=it)
           Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
        Oi = Id(dot%dim).x.Oi
-       do it=istart+1,iend
+       do it=istart,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Id(dot%dim).x.Oi

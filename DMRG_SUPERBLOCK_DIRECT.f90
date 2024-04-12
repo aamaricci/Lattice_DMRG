@@ -139,7 +139,7 @@ contains
        qm = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
        jsb = sb_sector%index(qn=qm)
-       !> get: A = Jp*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
+       !> get: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
        it=tMap(2,1,1)
        A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
        B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)

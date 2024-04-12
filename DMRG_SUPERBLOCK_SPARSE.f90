@@ -46,7 +46,7 @@ contains
     !
     spHsb = H2 + &
          sp_kron(left%operators%op("H"),id(m_right),sb_states) + &
-         sp_kron(id(m_left),right%operators%op("H"),sb_states)  
+         sp_kron(id(m_left),right%operators%op("H"),sb_states)
     !
   end subroutine Setup_SuperBlock_Sparse
 

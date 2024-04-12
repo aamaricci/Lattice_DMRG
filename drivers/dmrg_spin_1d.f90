@@ -5,7 +5,7 @@ program dmrg_spin_1d
   character(len=64)   :: finput
   character(len=1)    :: DMRGtype
   integer             :: i,SUN,Unit
-  real(8)             :: target_Sz(1),Hvec(3)
+  real(8)             :: Hvec(3)
   type(site)          :: Dot
   type(sparse_matrix) :: bSz,bSp,SiSj
 
@@ -13,8 +13,6 @@ program dmrg_spin_1d
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(SUN,"SUN",finput,default=2,&
        comment="Spin SU(N) value. 2=> spin 1/2, 3=> spin 1")
-  call parse_input_variable(target_Sz,"target_Sz",finput,default=[0d0],&
-       comment="Target Sector MagnetizationSz in units [-1:1]")
   call parse_input_variable(Hvec,"Hvec",finput,default=[0d0,0d0,0d0],&
        comment="Magnetization Vector field")
   call parse_input_variable(DMRGtype,"DMRGtype",finput,default="infinite",&
@@ -23,6 +21,7 @@ program dmrg_spin_1d
 
 
   !Init DMRG
+  print*,hvec
   Dot = spin_site(sun=SUN,Hvec=Hvec)
   call Dot%show()
 
@@ -38,25 +37,29 @@ program dmrg_spin_1d
      call finite_DMRG()
   end select
 
-  ! !Post-processing and measure quantities:
-  ! !Measure <Sz(i)>
-  ! call Measure_Op_DMRG(dot%operators%op(key='Sz'),arange(1,Ldmrg/2),file="SzVSj")
+  !Post-processing and measure quantities:
+  !Measure <Sz(i)>
+
+  bSz=dot%operators%op(key="S_z")
+  call bSz%show()
+  call Measure_Op_DMRG(bSz,arange(1,Ldmrg/2),file="SzVSj")
 
 
-  ! unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
-  ! !Measure <S(i).S(i+1)>
-  ! do i=1,Ldmrg/2-1
-  !    !Get Block Operators at the site I 
-  !    bSz = Build_Op_DMRG(dot%operators%op("Sz"),i)
-  !    bSp = Build_Op_DMRG(dot%operators%op("Sp"),i)
-  !    !Build the correlation:
-  !    SiSj= get_SiSj(bSz,bSp,dot%operators%op("Sz"),dot%operators%op("Sp"))
-  !    !Advance correlation to Psi + measure
-  !    SiSj= Advance_Corr_DMRG(SiSj,i)
-  !    write(unit,*)i,Average_Op_DMRG(SiSj,'l')
-  ! enddo
-  ! close(unit)
-
+  if(SUN==2)then
+     !Measure <S(i).S(i+1)>
+     unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
+     do i=1,Ldmrg/2!-1
+        !Get Block Operators at the site I 
+        bSz = Build_Op_DMRG(dot%operators%op("S_z"),i)
+        bSp = Build_Op_DMRG(dot%operators%op("S_p"),i)
+        !Build the correlation:
+        SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
+        !Advance correlation to Psi + measure
+        SiSj= Advance_Corr_DMRG(SiSj,i)
+        write(unit,*)i,Average_Op_DMRG(SiSj,'l')
+     enddo
+     close(unit)
+  endif
   !Finalize DMRG
   call finalize_dmrg()
 
