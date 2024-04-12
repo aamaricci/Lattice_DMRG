@@ -63,7 +63,6 @@ contains
        enddo
     enddo
     !
-    !
     !> free memory
     call P%free
     do io=1,Nspin*Norb

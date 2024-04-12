@@ -268,10 +268,13 @@ contains
   function spin_site(sun,hvec) result(self)
     integer                            :: sun
     real(8),dimension(3),optional      :: hvec
+    real(8),dimension(3)               :: h_
     type(site)                         :: self
     real(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
     character(len=:),allocatable       :: key
     integer :: ispin
+    !
+    h_ = 0d0; if(present(hvec))h_=hvec
     !
     call self%free()
     self%SiteType="SPIN"
@@ -282,8 +285,7 @@ contains
     case (2)
        self%Dim = 2
        !
-       allocate(H(2,2));H=0d0
-       if(present(hvec))H=H+hvec(1)*pauli_x+hvec(3)*pauli_z
+       allocate(H(2,2));H=h_(1)*pauli_x+h_(3)*pauli_z
        call self%put("H",sparse(H))
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
@@ -299,13 +301,12 @@ contains
     case(3)
        self%Dim = 3
        !
-       allocate(H(3,3));H=0d0
+
        allocate(Sz(3,3));Sz=diag([1d0,0d0,-1d0])
        allocate(Sp(3,3));Sp=0d0;Sp(1,2)=sqrt(2d0);Sp(2,3)=sqrt(2d0)
-       allocate(Sx(3,3))
-       Sx=reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
+       allocate(Sx(3,3));Sx=reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
        !
-       if(present(hvec))H=H+hvec(1)*Sx+hvec(3)*Sz
+       allocate(H(3,3));H=h_(1)*Sx+h_(3)*Sz
        call self%put("H",sparse(H))
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
