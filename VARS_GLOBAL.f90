@@ -47,7 +47,7 @@ MODULE VARS_GLOBAL
   real(8),dimension(:,:),allocatable             :: gs_vector
   real(8),dimension(:),allocatable               :: rho_left_evals
   real(8),dimension(:),allocatable               :: rho_right_evals
-  type(blocks_matrix)                            :: psi_left,rho_left
+  type(blocks_matrix)                            :: psi_left,rho_left,rho_L
   type(blocks_matrix)                            :: psi_right,rho_right
   !GLOBAL LEFT & RIGHT & DOT 
   type(block)                                    :: left,right
@@ -103,8 +103,8 @@ contains
        LMleft= Ltot/N-Mleft
        LMright= Ltot/N-Mright
        index=nint(mod(dble(left%length),N+eps))
-       write(LOGfile,*)""
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"left; right=",left%length,right%length,"|"
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+            "left; right=",left%length,right%length,"|"
        if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
        write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
        write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
@@ -116,8 +116,8 @@ contains
        LMleft= 0
        LMright= 0
        index=nint(mod(dble(left%length),N+eps))
-       write(LOGfile,*)""
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"left; right=",left%length,right%length,"|"
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+            "left; right=",left%length,right%length,"|"
        if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
        write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
        write(LOGfile,"(A)",advance="no")bg_green(">")//"|"//bold_red("*")
@@ -129,8 +129,8 @@ contains
        LMleft= 0
        LMright= 0
        index=nint(mod(dble(right%length),N+eps))
-       write(LOGfile,*)""
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")"left; right=",left%length,right%length,"|"
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+            "left; right=",left%length,right%length,"|"
        if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
        write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
        write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
@@ -142,6 +142,8 @@ contains
     else
        write(LOGfile,"(A1,I3,2x,A,1x,A)",advance='yes')"|",index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
     endif
+    write(LOGfile,*)""
+    write(LOGfile,*)""
     call wait(150)
   end subroutine dmrg_graphic
 

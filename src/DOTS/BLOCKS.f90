@@ -327,7 +327,7 @@ contains
     if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
     OpMat= Op%as_matrix()
     ! Umat = matmul( conjg(transpose(trRho)), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
-    Umat = matmul( (transpose(trRho)), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
+    Umat = matmul( matmul(transpose(trRho),OpMat),trRho) ![M,N].[N,N].[N,M]=[M,M]
     call RotOp%load( Umat )
   end function rotate_and_truncate
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
