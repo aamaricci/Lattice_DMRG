@@ -39,27 +39,21 @@ program dmrg_spin_1d
 
   !Post-processing and measure quantities:
   !Measure <Sz(i)>
+  call Measure_Op_DMRG(dot%operators%op(key="S_z"),file="SzVSj")
+  call Measure_Corr_DMRG("SiSjVSj")
+  
+  ! !Measure <S(i).S(i+1)>
+  ! unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
+  ! do i=1,Ldmrg/2-1
+  !    bSz = Build_Op_DMRG(dot%operators%op("S_z"),i)
+  !    bSp = Build_Op_DMRG(dot%operators%op("S_p"),i)
+  !    SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
+  !    SiSj= Advance_Corr_DMRG(SiSj,i)
+  !    write(unit,*)i,Average_Op_DMRG(SiSj,i)
+  ! enddo
+  ! close(unit)
 
-  bSz=dot%operators%op(key="S_z")
-  call bSz%show()
-  call Measure_Op_DMRG(bSz,arange(1,Ldmrg/2),file="SzVSj")
 
-
-  if(SUN==2)then
-     !Measure <S(i).S(i+1)>
-     unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
-     do i=1,Ldmrg/2!-1
-        !Get Block Operators at the site I 
-        bSz = Build_Op_DMRG(dot%operators%op("S_z"),i)
-        bSp = Build_Op_DMRG(dot%operators%op("S_p"),i)
-        !Build the correlation:
-        SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
-        !Advance correlation to Psi + measure
-        SiSj= Advance_Corr_DMRG(SiSj,i)
-        write(unit,*)i,Average_Op_DMRG(SiSj,'l')
-     enddo
-     close(unit)
-  endif
   !Finalize DMRG
   call finalize_dmrg()
 
