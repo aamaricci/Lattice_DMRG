@@ -3,13 +3,15 @@ program hubbard_1d
   USE DMRG
   implicit none
 
-  integer                            :: Nso
-  character(len=64)                  :: finput
-  integer                            :: i,unit,iorb
-  character(len=1)                   :: DMRGtype
-  real(8)                            :: ts(2),Mh(2),lambda
-  type(site)                         :: Dot
-  real(8),dimension(:,:),allocatable :: Hloc
+  integer                                        :: Nso
+  character(len=64)                              :: finput
+  integer                                        :: i,unit,iorb,ispin
+  character(len=1)                               :: DMRGtype
+  real(8)                                        :: ts(2),Mh(2),lambda
+  type(site)                                     :: Dot
+  real(8),dimension(:,:),allocatable             :: Hloc
+  type(sparse_matrix),dimension(:,:),allocatable :: Dens,C
+  type(sparse_matrix) :: n,docc
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"TS",finput,default=(/( -0.5d0,i=1,2 )/),&
@@ -32,6 +34,16 @@ program hubbard_1d
   Hloc = diag([Mh(1:Norb),Mh(1:Norb)])
   Dot  = electron_site(Hloc)
 
+  !Post-processing and measure quantities:
+  !Measure <Sz(i)>
+  allocate(C(Norb,Nspin),Dens(Norb,Nspin))
+  do ispin=1,Nspin
+     do iorb=1,Norb
+        C(iorb,ispin) = dot%operators%op(key="C"//dot%okey(iorb,ispin))
+        Dens(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
+     enddo
+  enddo
+
 
   !Init DMRG
   call init_dmrg(hm_1d_model,ModelDot=Dot)
@@ -46,7 +58,13 @@ program hubbard_1d
   end select
 
 
+  docc = matmul(Dens(1,1),Dens(1,2))
+  n = Dens(1,1)+Dens(1,2)
+  call Measure_Op_DMRG(n,file="n_l1VSj")
 
+  call Measure_Op_DMRG(docc,file="docc_l1VSj")
+
+  
   !Finalize DMRG
   call finalize_dmrg()
 
