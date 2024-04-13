@@ -64,7 +64,7 @@ contains
     !
     suffix = label_DMRG('i',1)
     !
-    do while (2*left%length < Ldmrg)
+    do while (2*left%length <= Ldmrg)
        call step_dmrg()
        call write_energy()
        call write_truncation()
