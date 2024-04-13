@@ -1,5 +1,5 @@
 FC=mpif90
-EXE=dmrg_spin_1d
+EXE=dmrg_hm_1d
 
 
 SF_INC:=$(shell pkg-config --cflags scifor)

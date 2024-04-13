@@ -4,7 +4,7 @@ program dmrg_spin_1d
   implicit none
   character(len=64)   :: finput
   character(len=1)    :: DMRGtype
-  integer             :: i,SUN,Unit
+  integer             :: i,SUN,Unit,pos
   real(8)             :: Hvec(3)
   type(site)          :: Dot
   type(sparse_matrix) :: bSz,bSp,SiSj
@@ -40,18 +40,17 @@ program dmrg_spin_1d
   !Post-processing and measure quantities:
   !Measure <Sz(i)>
   call Measure_Op_DMRG(dot%operators%op(key="S_z"),file="SzVSj")
-  call Measure_Corr_DMRG("SiSjVSj")
   
-  ! !Measure <S(i).S(i+1)>
-  ! unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
-  ! do i=1,Ldmrg/2-1
-  !    bSz = Build_Op_DMRG(dot%operators%op("S_z"),i)
-  !    bSp = Build_Op_DMRG(dot%operators%op("S_p"),i)
-  !    SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
-  !    SiSj= Advance_Corr_DMRG(SiSj,i)
-  !    write(unit,*)i,Average_Op_DMRG(SiSj,i)
-  ! enddo
-  ! close(unit)
+  !Measure <S(i).S(i+1)>
+  unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
+  do pos=1,Ldmrg/2-1
+     bSz = Build_Op_DMRG(dot%operators%op("S_z"),pos,set_basis=.true.)
+     bSp = Build_Op_DMRG(dot%operators%op("S_p"),pos,set_basis=.true.)
+     SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
+     SiSj= Advance_Corr_DMRG(SiSj,pos)
+     write(unit,*)pos,Average_Op_DMRG(SiSj,pos)
+  enddo
+  close(unit)
 
 
   !Finalize DMRG
