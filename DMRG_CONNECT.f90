@@ -26,9 +26,7 @@ contains
     real(8),dimension(:,:),allocatable        :: Hij
     !
     !Hij is shared:
-    print*,"Hij:"
     Hij = Hmodel(left,right)
-    print*,shape(Hij)
     !
     !> Get H2 dimensions:
     Hdims = shape(left%operators)*shape(right%operators)

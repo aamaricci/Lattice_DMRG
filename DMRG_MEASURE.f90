@@ -6,7 +6,6 @@ MODULE DMRG_MEASURE
 
   !Measuring:
   public :: Measure_Op_DMRG
-  public :: Measure_Corr_dmrg
   public :: Build_Op_DMRG
   public :: Advance_Op_DMRG
   public :: Advance_Corr_DMRG
@@ -58,82 +57,46 @@ contains
 
 
 
-  subroutine Measure_Corr_dmrg(file)
-    character(len=*)                          :: file
-    character(len=1)                          :: label
-    real(8)                                   :: val
-    integer                                   :: it,i,L,R,N,j,pos
-    type(sparse_matrix)                       :: Oi,U,Psi,PsiL,PsiR,Sz,Sp,Sz0,Sp0,SzL,SpL,SzR,SpR,U1,U2
-    !
-    suffix=label_DMRG('u')
-    !
-    L = left%length-1           !the len of the last block used to create the SB->\psi
-    R = right%length-1
-    N = L+R
-    !
-    Sz0  = dot%operators%op("S_z")
-    Sp0  = dot%operators%op("S_p")
-    !
-    !
-    !Get index in the block from the position pos in the chain:
-    do pos=1,L-1
-       Sz = Build_Op_dmrg(Sz0,pos,set_basis=.true.)
-       Sp = Build_Op_dmrg(Sp0,pos,set_basis=.true.)
-       !
-       Oi = Jp*(Sz.x.Sz0) + Jx/2d0*(Sp.x.Sp0%dgr())+ Jx/2d0*(Sp%dgr().x.Sp0)
-       !
-       Oi = Advance_Corr_DMRG(Oi,pos)
-       !
-       val= Average_Op_dmrg(Oi,pos)
-       write(100,*)pos,val
-    enddo
-
-
-
-    do pos=L+2,N
-       i = N+1-pos
-       Sz = Build_Op_dmrg(Sz0,pos,set_basis=.true.)
-       Sp = Build_Op_dmrg(Sp0,pos,set_basis=.true.)
-       !
-       Oi   = Jp*(Sz0.x.Sz) + Jx/2d0*(Sp0.x.Sp%dgr())+ Jx/2d0*(Sp0%dgr().x.Sp)
-       !
-       Oi = Advance_Corr_DMRG(Oi,pos)
-       !
-       val= Average_Op_dmrg(Oi,pos)
-       write(200,*)pos,val
-    enddo
-
-
-
-
-
-    !Get index in the block from the position pos in the chain:
-    do pos=1,N
-       if(pos==L.OR.pos==L+1)cycle
-       !
-       !Get label of the block holding the site at position pos:
-       label='l'; if(pos>L)label='r'
-
-       !
-       Sz = Build_Op_dmrg(Sz0,pos,set_basis=.true.)
-       Sp = Build_Op_dmrg(Sp0,pos,set_basis=.true.)
-       !
-       select case(label)
-       case("l")
-          Oi = Jp*(Sz.x.Sz0) + Jx/2d0*(Sp.x.Sp0%dgr())+ Jx/2d0*(Sp%dgr().x.Sp0)
-       case("r")
-          Oi = Jp*(Sz0.x.Sz) + Jx/2d0*(Sp0.x.Sp%dgr())+ Jx/2d0*(Sp0%dgr().x.Sp)
-       end select
-       !
-       Oi = Advance_Corr_DMRG(Oi,pos)
-       !
-       val= Average_Op_dmrg(Oi,pos)
-
-       print*,pos,val
-       write(300,*)pos,val
-    enddo
-
-  end subroutine Measure_Corr_dmrg
+  ! subroutine Measure_Corr_dmrg(file)
+  !   character(len=*)                          :: file
+  !   character(len=1)                          :: label
+  !   real(8)                                   :: val
+  !   integer                                   :: it,i,L,R,N,j,pos
+  !   type(sparse_matrix)                       :: Oi,U,Psi,PsiL,PsiR,Sz,Sp,Sz0,Sp0,SzL,SpL,SzR,SpR,U1,U2
+  !   !
+  !   suffix=label_DMRG('u')
+  !   !
+  !   L = left%length-1           !the len of the last block used to create the SB->\psi
+  !   R = right%length-1
+  !   N = L+R
+  !   !
+  !   Sz0  = dot%operators%op("S_z")
+  !   Sp0  = dot%operators%op("S_p")
+  !   !
+  !   !
+  !   !Get index in the block from the position pos in the chain:
+  !   do pos=1,N
+  !      if(pos==L.OR.pos==L+1)cycle
+  !      !
+  !      !Get label of the block holding the site at position pos:
+  !      label='l'; if(pos>L)label='r'
+  !      !
+  !      Sz = Build_Op_dmrg(Sz0,pos,set_basis=.true.)
+  !      Sp = Build_Op_dmrg(Sp0,pos,set_basis=.true.)
+  !      !
+  !      select case(label)
+  !      case("l")
+  !         Oi = Jp*(Sz.x.Sz0) + Jx/2d0*(Sp.x.Sp0%dgr())+ Jx/2d0*(Sp%dgr().x.Sp0)
+  !      case("r")
+  !         Oi = Jp*(Sz0.x.Sz) + Jx/2d0*(Sp0.x.Sp%dgr())+ Jx/2d0*(Sp0%dgr().x.Sp)
+  !      end select
+  !      !
+  !      Oi = Advance_Corr_DMRG(Oi,pos)
+  !      !
+  !      val= Average_Op_dmrg(Oi,pos)
+  !      call write_user(trim(file),[val],x=pos)
+  !   enddo
+  ! end subroutine Measure_Corr_dmrg
 
 
 
