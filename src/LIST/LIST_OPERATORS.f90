@@ -34,10 +34,14 @@ MODULE LIST_OPERATORS
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
      procedure,pass :: shape    => shape_operators_list 
 =======
      procedure,pass :: shaope   => shape_operators_list !True if operators_list is valid
 >>>>>>> f63915b (Testing the code.):LIST_OPERATORS.f90
+=======
+     procedure,pass :: shape   => shape_operators_list 
+>>>>>>> 370d791 (Intermediate commit.):LIST_OPERATORS.f90
   end type operators_list
 
 

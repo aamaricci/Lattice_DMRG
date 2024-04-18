@@ -21,7 +21,7 @@ contains
     type(sparse_matrix)                       :: P,A
     type(sparse_matrix)                       :: H2
     integer                                   :: ispin,iorb,jorb,io,jo
-    integer,dimension(2)                      :: Hdims
+    integer,dimension(2)                      :: Hdims,dleft,dright
     character(len=:),allocatable              :: key
     real(8),dimension(:,:),allocatable        :: Hij
     !
@@ -29,7 +29,9 @@ contains
     Hij = Hmodel(left,right)
     !
     !> Get H2 dimensions:
-    Hdims = shape(left%operators)*shape(right%operators)
+    dleft = shape(left%operators)
+    dright= shape(right%operators)
+    Hdims = dleft*dright
     if(present(states))Hdims = [size(states),size(states)]
     call H2%init(Hdims(1),Hdims(2))
     !
