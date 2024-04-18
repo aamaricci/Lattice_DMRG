@@ -30,7 +30,7 @@ MODULE LIST_OPERATORS
      procedure,pass :: keys     => keys_operators_list     !return all the keys
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
-     procedure,pass :: shaope   => shape_operators_list !True if operators_list is valid
+     procedure,pass :: shape   => shape_operators_list 
   end type operators_list
 
 

@@ -10,8 +10,8 @@ program hubbard_1d
   real(8)                                        :: ts(2),Mh(2),lambda
   type(site)                                     :: Dot
   real(8),dimension(:,:),allocatable             :: Hloc
-  type(sparse_matrix),dimension(:,:),allocatable :: Dens,C
-  type(sparse_matrix) :: n,docc
+  type(sparse_matrix),dimension(:,:),allocatable :: N,C
+  type(sparse_matrix) :: dens,docc,P
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"TS",finput,default=(/( -0.5d0,i=1,2 )/),&
@@ -36,14 +36,21 @@ program hubbard_1d
 
   !Post-processing and measure quantities:
   !Measure <Sz(i)>
-  allocate(C(Norb,Nspin),Dens(Norb,Nspin))
+  P = dot%operators%op(key="P")
+  allocate(C(Norb,Nspin),N(Norb,Nspin))
   do ispin=1,Nspin
      do iorb=1,Norb
         C(iorb,ispin) = dot%operators%op(key="C"//dot%okey(iorb,ispin))
-        Dens(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
+        n(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
      enddo
   enddo
 
+  docc = matmul(n(1,1),n(1,2))
+  dens = n(1,1)!+n(1,2)
+
+  call dens%show()
+  
+  call docc%show()
 
   !Init DMRG
   call init_dmrg(hm_1d_model,ModelDot=Dot)
@@ -58,13 +65,12 @@ program hubbard_1d
   end select
 
 
-  docc = matmul(Dens(1,1),Dens(1,2))
-  n = Dens(1,1)+Dens(1,2)
-  call Measure_Op_DMRG(n,file="n_l1VSj")
 
-  call Measure_Op_DMRG(docc,file="docc_l1VSj")
+  call Measure_Op_DMRG(dens,file="n_l1VSj",ref=0.5d0)
 
+   ! call Measure_Op_DMRG(docc,file="docc_l1VSj",ref=0.25d0)
   
+
   !Finalize DMRG
   call finalize_dmrg()
 
