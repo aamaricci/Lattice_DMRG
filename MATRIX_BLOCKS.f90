@@ -507,6 +507,7 @@ contains
           call sparse%insert(self_vec(i),self_map(i),it)
        enddo
     enddo
+    
   end function as_sparse_blocks_matrix
 
 
@@ -641,7 +642,7 @@ contains
     integer                          :: m
     real(8)                          :: eval
     if(.not.self%diag)stop "Evals_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
-    if(m>self%Nrow.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
+    if(m>self%Nrow.OR.m<=0)stop "eval_block_matrix warning: m !in [1,self.Ndim]"
     eval = self%evalues(m)
   end function eval_blocks_matrix
 
@@ -658,7 +659,7 @@ contains
     !
     ! if(.not.self%diag)stop "Evec_blocks_matrix error: self.diag=F, call self.eigh() before trying to get an eigenvector"
     !
-    if(m>self%Nrow.OR.m<=0)stop "evals_block_matrix warning: m !in [1,self.Ndim]"
+    if(m>self%Ncol.OR.m<=0)stop "evec_block_matrix warning: m !in [1,self.Ncol]"
     m_=m
     if(self%diag)m_=self%eorder(m)
     call self%find(m_,q,pos)
@@ -900,15 +901,15 @@ contains
        do i=1,size(c%M,1)
           do j=1,size(c%M,2)
              val = c%M(i,j)
-             write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')val
+             write(unit_,"("//str(self%Ncol)//"(F12.4,1X))",advance='no')val
              !write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
           enddo
           write(unit_,*)
        enddo
        write(unit_,*)
-       if(present(file))close(unit_)
        c => c%next
     enddo
+    if(present(file))close(unit_)
   end subroutine show_blocks_matrix
 
 

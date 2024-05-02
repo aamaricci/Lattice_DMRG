@@ -1,24 +1,115 @@
 MODULE DMRG_MEASURE
+  USE SCIFOR, only: to_lower
   USE VARS_GLOBAL
+  USE DMRG_CONNECT
+  USE DMRG_SUPERBLOCK_COMMON
   implicit none
   private
 
 
   !Measuring:
+  public :: Init_Measure_DMRG
   public :: Measure_Op_DMRG
+  public :: NuMeasure_Op_DMRG
   public :: Build_Op_DMRG
   public :: Advance_Op_DMRG
   public :: Advance_Corr_DMRG
   public :: Average_Op_DMRG
+  public :: NuAverage_Op_DMRG
+  public :: dmrg_write
 
 
+  integer                                      :: Nso,Nsb
+  real(8),dimension(:),allocatable             :: qn,qm
+  real(8),dimension(:),allocatable             :: dq
+  type(sparse_matrix),allocatable,dimension(:) :: Oleft,Oright,Olist
+  type(tstates),dimension(:),allocatable       :: Ai,Bi
+
+  logical ::     measure_status=.false.
 
 contains
+
+  subroutine Init_Measure_dmrg
+    !
+    print*,"Initialize DMRG measure:"
+    !
+    Nsb  = size(sb_sector)
+    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
+    allocate(AI(Nsb),BI(Nsb))
+    Offset=0
+    do isb=1,Nsb
+       qn   = sb_sector%qn(index=isb)
+       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
+       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
+       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+       AI(isb)%states = sb2block_states(qn,'left')
+       BI(isb)%states = sb2block_states(qn,'right')
+    enddo
+    !
+    measure_status=.true.
+  end subroutine Init_Measure_dmrg
+
+
+
+  subroutine End_measure_DMRG
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(Offset))deallocate(Offset)
+    if(allocated(Olist))deallocate(Olist)
+    if(allocated(Ai))deallocate(Ai)
+    if(allocated(Bi))deallocate(Bi)
+    measure_status=.false.
+  end subroutine End_measure_DMRG
+
 
 
   !##################################################################
   !              MEASURE LOCAL OPERATOR
   !##################################################################
+  subroutine NuMeasure_Op_dmrg(Op,pos,file,avOp)
+    type(sparse_matrix),intent(in)            :: Op
+    integer,dimension(:)                      :: pos
+    character(len=*)                          :: file
+    real(8),dimension(:),allocatable,optional :: avOp
+    !
+    real(8)                                   :: val
+    character(len=1)                          :: label
+    integer                                   :: i,ipos,L,R,N,Np
+    type(sparse_matrix)                       :: Oi
+    !
+    !
+    suffix=label_DMRG('u')
+    !
+    Np= size(pos)
+    !
+    L = left%length-1           !the len of the last block used to create the SB->\psi
+    R = right%length-1
+    N = L+R
+    !
+    if(present(avOp))then
+       if(allocated(avOp))deallocate(avOp)
+       allocate(avOp(Np))
+    endif
+
+    !
+    call Init_measure_dmrg()
+    call start_timer()
+    do i=1,Np
+       ipos=pos(i)
+       Oi = Build_Op_dmrg(Op,ipos)
+       Oi = Advance_Op_dmrg(Oi,ipos)
+       val= NuAverage_Op_dmrg(Oi,ipos)
+       print*,ipos,val
+       if(present(avOp))avOp(i)=val
+       call write_user(trim(file),[val],x=ipos)
+       ! call progress(i,Np)
+       call Oi%free()
+    enddo
+    call stop_timer("Done "//str(file))
+    call End_measure_dmrg()
+  end subroutine NuMeasure_Op_dmrg
+
+
   subroutine Measure_Op_dmrg(Op,file,ref,avOp)
     type(sparse_matrix),intent(in)            :: Op
     character(len=*)                          :: file
@@ -26,9 +117,10 @@ contains
     real(8) :: ref
     real(8),dimension(:),allocatable,optional :: avOp
     real(8)                                   :: val
-    integer                                   :: it,i,L,R,N,j,pos
+    integer                                   :: it,i,L,R,N,j,pos,dims(2)
     type(sparse_matrix)                       :: Oi,U,Psi,Ok,I_R,I_L
     !
+
     suffix=label_DMRG('u')
     !
     L = left%length-1           !the len of the last block used to create the SB->\psi
@@ -52,31 +144,97 @@ contains
     enddo
     call stop_timer("Done "//str(file))
 
+
+
+
     U =  right%omatrices%op(index=R)
-    I_R = Id(dot%dim).x.(matmul(U%t(),U))
-
+    dims=shape(U)
+    ! I_R = Id(dot%dim).x.Id(dims(2))!(matmul(U%t(),U))
+    I_R = Id(dot%dim*dims(2))
     U =  left%omatrices%op(index=R)
-    I_L = (matmul(U%t(),U)).x.Id(dot%dim)
+    dims=shape(U)
+    ! I_L = Id(dims(2)).x.Id(dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
+    I_L = Id(dims(2)*dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
 
+
+    print*,"size(GSpsi)",size(gs_vector(:,1))
+
+
+
+    print*,""
+    print*,"- - - - - - - - - - - - - - - - -"
+    print*," METHOD 1: O.x.I - I.x.O full"
+    print*,"- - - - - - - - - - - - - - - - -"
+    print*,""
+
+
+    print*,""
+    print*,"pos=1"
+    print*,""
+    print*,"Method <psi|O.x.I_R|psi>"
+    print*,shape(I_R)
+    pos=1
+    Oi = Build_Op_Dmrg(Op,pos)
+    do it=1,L
+       U  = left%omatrices%op(index=it)
+       Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
+    enddo
+    Oi = sp_kron(Oi,I_R,sb_states)
+    print*,shape(Oi)
+    val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
+    print*,pos,val    
+
+
+    print*,""
+    print*,"pos=N"
+    print*,""
+    print*,"Method <psi|I_L.x.O|psi>"
+    pos=N
+    print*,shape(I_L)
+    Oi = Build_Op_Dmrg(Op,pos)
+    do it=1,R
+       U  = right%omatrices%op(index=it)
+       Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
+    enddo
+    Oi = sp_kron(I_L,Oi,sb_states)
+    print*,shape(Oi)
+    val = dot_product(gs_vector(:,1),OI%dot(gs_vector(:,1)))
+    print*,pos,val    
+
+
+
+    print*,""
+    print*,"- - - - - - - - - - - - - - - - -"
+    print*," METHOD 3: direct O_L, O_R"
+    print*,"- - - - - - - - - - - - - - - - -"
+    print*,""
+
+
+    Nsb  = size(sb_sector)
+    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb),Oleft(Nsb),Oright(Nsb))
+    allocate(AI(Nsb),BI(Nsb))
+    Offset=0
+    do isb=1,Nsb
+       qn   = sb_sector%qn(index=isb)
+       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
+       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
+       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+       AI(isb)%states = sb2block_states(qn,'left')
+       BI(isb)%states = sb2block_states(qn,'right')
+    enddo
 
     pos=1
     Oi = Build_Op_Dmrg(Op,pos)
     do it=1,L
        U  = left%omatrices%op(index=it)
-       Oi = (matmul(matmul(U%t(),Oi),U))
-       Oi = Oi.x.Id(dot%dim)
+       Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
     enddo
-    print*,shape(Oi),shape(psi_left)
-    Psi  = as_sparse(psi_left)
-    val  = trace(as_matrix(matmul(matmul(Psi%t(),Oi),Psi)))
+    do isb=1,Nsb
+       !> get: Oi*^L 
+       Oleft(isb) = sp_filter(Oi,AI(isb)%states)
+    enddo
+    val = dot_product(gs_vector(:,1), OdotV_direct(Oleft,gs_vector(:,1),'left'))
     print*,pos,val
-
-
-    print*,shape(I_R)
-    Oi = sp_kron(Oi,I_R,sb_states)
-    print*,shape(Oi),size(gs_vector(:,1)),size(sb_states)
-    val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
-    print*,pos,val    
 
 
     pos=N
@@ -85,16 +243,75 @@ contains
        U  = right%omatrices%op(index=it)
        Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
     enddo
-    Psi  = as_sparse(psi_right)
-    val  = trace(as_matrix(matmul(matmul(Psi%t(),Oi),Psi)))
+    do isb=1,Nsb
+       !> get: Oi*^R
+       Oright(isb) = sp_filter(Oi,BI(isb)%states)
+    enddo
+    val = dot_product(gs_vector(:,1), OdotV_direct(Oright,gs_vector(:,1),'right'))
     print*,pos,val
 
-    Oi = sp_kron(I_L,Oi,sb_states)
-    val = dot_product(gs_vector(:,1),OI%dot(gs_vector(:,1)))
-    print*,pos,val    
+
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(Offset))deallocate(Offset)
+    if(allocated(Oleft))deallocate(Oleft)
+    if(allocated(Oright))deallocate(Oright)
+    if(allocated(Ai))deallocate(Ai)
+    if(allocated(Bi))deallocate(Bi)
+
+
+  contains
 
 
 
+    function OdotV_direct(Op,v,direction) result(Ov)
+      integer                          :: Nsb,Nloc
+      type(sparse_matrix),dimension(:) :: Op
+      real(8),dimension(:)             :: v
+      character(len=*)                 :: direction
+      real(8),dimension(size(v))       :: Ov
+      real(8)                          :: val
+      integer                          :: i,j,k,n
+      integer                          :: ir,il,jr,jl,it
+      integer                          :: ia,ib,ic,ja,jb,jc,jcol
+      real(8)                          :: aval,bval
+      !
+      Ov=zero
+      !> loop over all the SB sectors:
+      select case(to_lower(direction))
+      case("l","left","sys","s")
+         do k=1,size(sb_sector)
+            !> apply the H^L x 1^r: need to T v and Ov
+            do ir=1,Drs(k)
+               do il=1,Dls(k)
+                  i = ir + (il-1)*Drs(k) + offset(k)
+                  do jcol=1,Op(k)%row(il)%Size
+                     val = Op(k)%row(il)%vals(jcol)
+                     jl  = Op(k)%row(il)%cols(jcol)
+                     j   = ir + (jl-1)*Drs(k) + offset(k)
+                     Ov(i) = Ov(i) + val*v(j)
+                  end do
+               enddo
+            enddo
+         enddo
+      case("r","right","env","e")
+         do k=1,size(sb_sector)
+            !> apply the 1^L x H^r
+            do il=1,Drs(k)
+               do ir=1,Dls(k)
+                  i = il + (ir-1)*Drs(k) + offset(k)           
+                  do jcol=1,Op(k)%row(il)%Size
+                     val = Op(k)%row(il)%vals(jcol)
+                     jl  = Op(k)%row(il)%cols(jcol)
+                     j   = jl + (ir-1)*Drs(k) + offset(k)
+                     Ov(i) = Ov(i) + val*v(j)
+                  end do
+               enddo
+            enddo
+         enddo
+      end select
+      !
+    end function OdotV_direct
 
   end subroutine Measure_Op_dmrg
 
@@ -108,7 +325,6 @@ contains
 
 
 
-  
 
   !##################################################################
   !              BUILD LOCAL OPERATOR 
@@ -330,12 +546,114 @@ contains
 
 
 
+  !##################################################################
+  !                   AVERAGE OPERATOR 
+  !Purpose: take the average of an operator O on the last step basis 
+  !##################################################################
+  function NuAverage_Op_dmrg(Oi,pos) result(Oval)
+    type(sparse_matrix),intent(in)   :: Oi
+    integer                          :: pos
+    character(len=1)                 :: label
+    real(8)                          :: Oval
+    type(sparse_matrix)              :: Psi
+    integer                          :: L,R,N
+    !
+    !The lenght of the last block contributing to the SB construction-> \psi
+    L = left%length-1
+    R = right%length-1
+    N = L+R
+    !
+    !Check:
+    if(pos<1.OR.pos>N)stop "Average_op_dmrg error: Pos not in [1,Ldmrg]"
+    !
+    !Get label of the block holding the site at position pos:
+    label='l'; if(pos>L)label='r'
+    !
+    allocate(Olist(Nsb))
+    !
+    !Measure using PSI matrix:
+    select case(label)
+    case ("l")
+       !> get: Oi*^L 
+       do isb=1,Nsb
+          Olist(isb) = sp_filter(Oi,AI(isb)%states)
+       enddo
+    case ("r")
+       !> get: Oi*^R
+       do isb=1,Nsb
+          Olist(isb) = sp_filter(Oi,BI(isb)%states)
+       enddo
+    end select
+    !
+    Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
+    !
+    do isb=1,Nsb
+       call Olist(isb)%free()
+    enddo
+    deallocate(Olist)
+    !
+  end function NuAverage_Op_dmrg
+
 
   !#################################
   !#################################
 
 
 
+
+  function OdotV_direct(Op,v,direction) result(Ov)
+    integer                          :: Nsb,Nloc
+    type(sparse_matrix),dimension(:) :: Op
+    real(8),dimension(:)             :: v
+    character(len=*)                 :: direction
+    real(8),dimension(size(v))       :: Ov
+    real(8)                          :: val
+    integer                          :: i,j,k,n
+    integer                          :: ir,il,jr,jl,it
+    integer                          :: ia,ib,ic,ja,jb,jc,jcol
+    real(8)                          :: aval,bval
+    !
+    Ov=zero
+    !> loop over all the SB sectors:
+    select case(to_lower(direction))
+    case("l","left","sys","s")
+       do k=1,size(sb_sector)
+          !> apply the H^L x 1^r: need to T v and Ov
+          do ir=1,Drs(k)
+             do il=1,Dls(k)
+                i = ir + (il-1)*Drs(k) + offset(k)
+                do jcol=1,Op(k)%row(il)%Size
+                   val = Op(k)%row(il)%vals(jcol)
+                   jl  = Op(k)%row(il)%cols(jcol)
+                   j   = ir + (jl-1)*Drs(k) + offset(k)
+                   Ov(i) = Ov(i) + val*v(j)
+                end do
+             enddo
+          enddo
+       enddo
+    case("r","right","env","e")
+       do k=1,size(sb_sector)
+          !> apply the 1^L x H^r
+          do il=1,Drs(k)
+             do ir=1,Dls(k)
+                i = il + (ir-1)*Drs(k) + offset(k)           
+                do jcol=1,Op(k)%row(il)%Size
+                   val = Op(k)%row(il)%vals(jcol)
+                   jl  = Op(k)%row(il)%cols(jcol)
+                   j   = jl + (ir-1)*Drs(k) + offset(k)
+                   Ov(i) = Ov(i) + val*v(j)
+                end do
+             enddo
+          enddo
+       enddo
+    end select
+    !
+  end function OdotV_direct
+
+
+
+  !#################################
+  !#################################
 
 
 
@@ -353,6 +671,17 @@ contains
 
 
 
+  subroutine dmrg_write(file,vals,x)
+    character(len=*) :: file
+    integer,optional :: x
+    integer          :: x_
+    real(8)          :: vals(:)
+    integer          :: Eunit
+    x_ = left%length;if(present(x))x_=x
+    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
+    write(Eunit,*)x_,vals
+    close(Eunit)
+  end subroutine dmrg_write
 
 
 
@@ -627,3 +956,257 @@ END MODULE DMRG_MEASURE
 !    Psi = as_sparse(psi_right)
 !    val = trace(as_matrix(matmul(matmul(Psi%dgr(),Oi),Psi)))
 ! end select
+
+
+
+
+
+
+
+  ! subroutine Measure_Op_dmrg(Op,file,ref,avOp)
+  !   type(sparse_matrix),intent(in)            :: Op
+  !   character(len=*)                          :: file
+  !   character(len=1)                          :: label
+  !   real(8) :: ref
+  !   real(8),dimension(:),allocatable,optional :: avOp
+  !   real(8)                                   :: val
+  !   integer                                   :: it,i,L,R,N,j,pos,dims(2)
+  !   type(sparse_matrix)                       :: Oi,U,Psi,Ok,I_R,I_L
+  !   !
+
+  !   suffix=label_DMRG('u')
+  !   !
+  !   L = left%length-1           !the len of the last block used to create the SB->\psi
+  !   R = right%length-1
+  !   N = L+R
+  !   !
+  !   if(present(avOp))then
+  !      if(allocated(avOp))deallocate(avOp)
+  !      allocate(avOp(N))
+  !   endif
+  !   !
+  !   ! call start_timer()
+  !   ! do pos=1,N
+  !   !    Oi = Build_Op_dmrg(Op,pos)
+  !   !    Oi = Advance_Op_dmrg(Oi,pos)
+  !   !    val= Average_Op_dmrg(Oi,pos)
+  !   !    if(present(avOp))avOp(pos)=val
+  !   !    call write_user(trim(file),[val],x=pos)
+  !   !    call Oi%free()
+  !   !    call progress(pos,N)
+  !   ! enddo
+  !   ! call stop_timer("Done "//str(file))
+
+
+
+
+  !   ! U =  right%omatrices%op(index=R)
+  !   ! dims=shape(U)
+  !   ! ! I_R = Id(dot%dim).x.Id(dims(2))!(matmul(U%t(),U))
+  !   ! I_R = Id(dot%dim*dims(2))
+  !   ! U =  left%omatrices%op(index=R)
+  !   ! dims=shape(U)
+  !   ! ! I_L = Id(dims(2)).x.Id(dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
+  !   ! I_L = Id(dims(2)*dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
+
+
+  !   ! print*,"size(GSpsi)",size(gs_vector(:,1))
+
+
+
+  !   ! print*,""
+  !   ! print*,"- - - - - - - - - - - - - - - - -"
+  !   ! print*," METHOD 1: O.x.I - I.x.O full"
+  !   ! print*,"- - - - - - - - - - - - - - - - -"
+  !   ! print*,""
+
+
+  !   ! print*,""
+  !   ! print*,"pos=1"
+  !   ! print*,""
+  !   ! print*,"Method <psi|O.x.I_R|psi>"
+  !   ! print*,shape(I_R)
+  !   ! pos=1
+  !   ! Oi = Build_Op_Dmrg(Op,pos)
+  !   ! do it=1,L
+  !   !    U  = left%omatrices%op(index=it)
+  !   !    Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
+  !   ! enddo
+  !   ! Oi = sp_kron(Oi,I_R,sb_states)
+  !   ! print*,shape(Oi)
+  !   ! val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
+  !   ! print*,pos,val    
+
+
+  !   ! print*,""
+  !   ! print*,"pos=N"
+  !   ! print*,""
+  !   ! print*,"Method <psi|I_L.x.O|psi>"
+  !   ! pos=N
+  !   ! print*,shape(I_L)
+  !   ! Oi = Build_Op_Dmrg(Op,pos)
+  !   ! do it=1,R
+  !   !    U  = right%omatrices%op(index=it)
+  !   !    Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
+  !   ! enddo
+  !   ! Oi = sp_kron(I_L,Oi,sb_states)
+  !   ! print*,shape(Oi)
+  !   ! val = dot_product(gs_vector(:,1),OI%dot(gs_vector(:,1)))
+  !   ! print*,pos,val    
+
+
+
+  !   ! print*,""
+  !   ! print*,"- - - - - - - - - - - - - - - - -"
+  !   ! print*," METHOD 2: O_L.psi_L, O_R.psi_R  "
+  !   ! print*,"- - - - - - - - - - - - - - - - -"
+  !   ! print*,""
+
+
+
+  !   ! print*,""
+  !   ! print*,"Method <psiL|O_L|psiL>"
+  !   ! pos=1
+  !   ! Oi = Build_Op_Dmrg(Op,pos)
+  !   ! do it=1,L
+  !   !    U  = left%omatrices%op(index=it)
+  !   !    Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
+  !   ! enddo
+  !   ! print*,"psiL_blocks:",shape(psi_left)
+  !   ! Psi  = as_sparse(psi_left)
+  !   ! print*,"psiL_blocks:",shape(psi_left)
+  !   ! print*,shape(Psi%t()),shape(Oi),shape(Psi)
+  !   ! val  = trace(as_matrix(matmul(matmul(Psi%t(),Oi),Psi)))
+  !   ! print*,pos,val
+
+
+
+  !   ! print*,""
+  !   ! print*,"Method <psiR|O_R|psiR>"
+  !   ! pos=N
+  !   ! Oi = Build_Op_Dmrg(Op,pos)
+  !   ! do it=1,R
+  !   !    U  = right%omatrices%op(index=it)
+  !   !    Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
+  !   ! enddo
+  !   ! print*,"psiR_blocks:",shape(psi_right)
+  !   ! Psi  = as_sparse(psi_right)
+  !   ! print*,shape(Psi%t()),shape(Oi),shape(Psi)
+  !   ! val  = trace(as_matrix(matmul(matmul(Psi%t(),Oi),Psi)))
+  !   ! print*,pos,val
+
+
+
+
+
+  !   print*,""
+  !   print*,"- - - - - - - - - - - - - - - - -"
+  !   print*," METHOD 3: direct O_L, O_R"
+  !   print*,"- - - - - - - - - - - - - - - - -"
+  !   print*,""
+
+
+  !   Nsb  = size(sb_sector)
+  !   allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb),Oleft(Nsb),Oright(Nsb))
+  !   allocate(AI(Nsb),BI(Nsb))
+  !   Offset=0
+  !   do isb=1,Nsb
+  !      qn   = sb_sector%qn(index=isb)
+  !      Dls(isb)= sector_qn_dim(left%sectors(1),qn)
+  !      Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
+  !      if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+  !      AI(isb)%states = sb2block_states(qn,'left')
+  !      BI(isb)%states = sb2block_states(qn,'right')
+  !   enddo
+
+  !   pos=1
+  !   Oi = Build_Op_Dmrg(Op,pos)
+  !   do it=1,L
+  !      U  = left%omatrices%op(index=it)
+  !      Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
+  !   enddo
+  !   do isb=1,Nsb
+  !      !> get: Oi*^L 
+  !      Oleft(isb) = sp_filter(Oi,AI(isb)%states)
+  !   enddo
+  !   val = dot_product(gs_vector(:,1), OdotV_direct(Oleft,gs_vector(:,1),'left'))
+  !   print*,pos,val
+
+
+  !   pos=N
+  !   Oi = Build_Op_Dmrg(Op,pos)
+  !   do it=1,R
+  !      U  = right%omatrices%op(index=it)
+  !      Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
+  !   enddo
+  !   do isb=1,Nsb
+  !      !> get: Oi*^R
+  !      Oright(isb) = sp_filter(Oi,BI(isb)%states)
+  !   enddo
+  !   val = dot_product(gs_vector(:,1), OdotV_direct(Oright,gs_vector(:,1),'right'))
+  !   print*,pos,val
+
+
+  !   if(allocated(Dls))deallocate(Dls)
+  !   if(allocated(Drs))deallocate(Drs)
+  !   if(allocated(Offset))deallocate(Offset)
+  !   if(allocated(Oleft))deallocate(Oleft)
+  !   if(allocated(Oright))deallocate(Oright)
+  !   if(allocated(Ai))deallocate(Ai)
+  !   if(allocated(Bi))deallocate(Bi)
+
+
+  ! contains
+
+
+
+  !   function OdotV_direct(Op,v,direction) result(Ov)
+  !     integer                          :: Nsb,Nloc
+  !     type(sparse_matrix),dimension(:) :: Op
+  !     real(8),dimension(:)             :: v
+  !     character(len=*)                 :: direction
+  !     real(8),dimension(size(v))       :: Ov
+  !     real(8)                          :: val
+  !     integer                          :: i,j,k,n
+  !     integer                          :: ir,il,jr,jl,it
+  !     integer                          :: ia,ib,ic,ja,jb,jc,jcol
+  !     real(8)                          :: aval,bval
+  !     !
+  !     Ov=zero
+  !     !> loop over all the SB sectors:
+  !     select case(to_lower(direction))
+  !     case("l","left","sys","s")
+  !        do k=1,size(sb_sector)
+  !           !> apply the H^L x 1^r: need to T v and Ov
+  !           do ir=1,Drs(k)
+  !              do il=1,Dls(k)
+  !                 i = ir + (il-1)*Drs(k) + offset(k)
+  !                 do jcol=1,Op(k)%row(il)%Size
+  !                    val = Op(k)%row(il)%vals(jcol)
+  !                    jl  = Op(k)%row(il)%cols(jcol)
+  !                    j   = ir + (jl-1)*Drs(k) + offset(k)
+  !                    Ov(i) = Ov(i) + val*v(j)
+  !                 end do
+  !              enddo
+  !           enddo
+  !        enddo
+  !     case("r","right","env","e")
+  !        do k=1,size(sb_sector)
+  !           !> apply the 1^L x H^r
+  !           do il=1,Drs(k)
+  !              do ir=1,Dls(k)
+  !                 i = il + (ir-1)*Drs(k) + offset(k)           
+  !                 do jcol=1,Op(k)%row(il)%Size
+  !                    val = Op(k)%row(il)%vals(jcol)
+  !                    jl  = Op(k)%row(il)%cols(jcol)
+  !                    j   = jl + (ir-1)*Drs(k) + offset(k)
+  !                    Ov(i) = Ov(i) + val*v(j)
+  !                 end do
+  !              enddo
+  !           enddo
+  !        enddo
+  !     end select
+  !     !
+  !   end function OdotV_direct
+
+  ! end subroutine Measure_Op_dmrg

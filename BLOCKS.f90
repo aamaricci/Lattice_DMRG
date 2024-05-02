@@ -1,5 +1,5 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -312,32 +312,38 @@ contains
   !              SHOW 
   !##################################################################
   !##################################################################
-  subroutine show_block(self,fmt,wOP,wOMAT)
+  subroutine show_block(self,fmt,wOP,wOMAT,file)
     class(block)              :: self
     character(len=*),optional :: fmt
     logical,optional          :: wOP,wOMAT
+    character(len=*),optional       :: file
     character(len=32)         :: fmt_
     logical :: wOP_,wOMAT_
+    integer                         :: unit_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     wOP_  =.false.;if(present(wOP))  wOP_  =wOP
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
-    write(*,"(A15,I6)")"Block Length  =",self%length
-    write(*,"(A15,I6)")"Block Dim     =",self%Dim
-    write(*,"(A16,A)") "Block Type    = ",self%SiteType
-    write(*,"(A15,I6)")"Block Sectors =",size(self%sectors)
+    unit_=6;if(present(file))open(free_unit(unit_),file=str(file))
+    !
+    write(unit_,"(A15,I6)")"Block Length  =",self%length
+    write(unit_,"(A15,I6)")"Block Dim     =",self%Dim
+    write(unit_,"(A16,A)") "Block Type    = ",self%SiteType
+    write(unit_,"(A15,I6)")"Block Sectors =",size(self%sectors)
     do i=1,size(self%sectors)
-       write(*,"(A14,I6)")"Block Sector  =",i
-       call self%sectors(i)%show()
+       write(unit_,"(A14,I6)")"Block Sector  =",i
+       call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
-       write(*,"(A15,A)")"Link Name    = ",self%KeyLink
-       write(*,"(A14)")"Block Ops     :"
-       call self%operators%show(fmt=fmt_)
+       write(unit_,"(A15,A)")"Link Name    = ",self%KeyLink
+       write(unit_,"(A14)")"Block Ops     :"
+       call self%operators%show(fmt=fmt_,unit=unit_)
+
     endif
     if(wOMAT_)then
-       write(*,"(A14)")"Block Omats   :"
-       call self%omatrices%show(fmt=fmt_)
+       write(unit_,"(A14)")"Block Omats   :"
+       call self%omatrices%show(fmt=fmt_,unit=unit_)
     endif
+    if(present(file))close(unit_)
   end subroutine show_block
 
 
