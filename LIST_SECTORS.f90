@@ -6,7 +6,7 @@
 ! ie we return the state indices (as positions in the tuple_basis) with
 ! a given value of Q.
 MODULE LIST_SECTORS
-  USE SCIFOR, only:str,sort_quicksort,assert_shape
+  USE SCIFOR, only:str,sort_quicksort,assert_shape,free_unit
   USE AUX_FUNCS
   USE TUPLE_BASIS
   implicit none
@@ -546,37 +546,44 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Pretty print an sectors_list
   !+------------------------------------------------------------------+
-  subroutine show_sectors_list(self)
+  subroutine show_sectors_list(self,unit,file)
     class(sectors_list),intent(inout) :: self
+    integer,optional :: unit
     integer                           :: i,count=0
     type(qtype),pointer               :: c
+    character(len=*),optional       :: file
+    integer                         :: unit_
+    unit_=6
+    if(present(unit))unit_=unit
+    if(present(file))open(free_unit(unit_),file=str(file))
     !
-    write(*,"(A6,I12)")"Size :",self%size
-    write(*,"(A6,I12)")"Dim  :",dim(self)
-    write(*,"(A18)")"------------------"
+    write(unit_,"(A6,I12)")"Size :",self%size
+    write(unit_,"(A6,I12)")"Dim  :",dim(self)
+    write(unit_,"(A18)")"------------------"
     c => self%root%next
     do
        if(.not.associated(c))exit
        count=count+1
-       write(*,"(A6,I12)")"Index:",c%index
-       write(*,"(A6)",advance='no')"Qn   :"
+       write(unit_,"(A6,I12)")"Index:",c%index
+       write(unit_,"(A6)",advance='no')"Qn   :"
        call show_qn(c%qn)
-       write(*,"(A6,"//str(size(c%map))//"I6)")&
+       write(unit_,"(A6,"//str(size(c%map))//"I6)")&
             "Map  :",(c%map(i),i=1,size(c%map))
-       write(*,*)""
+       write(unit_,*)""
        c => c%next
     end do
+    if(present(file))close(unit_)
   contains
     subroutine show_qn(qn)
       real(8),dimension(:) :: qn
       integer              :: j
-      write(*,"(A1)",advance='no')"["
-      write(*,"(F6.2,A1)",advance='no')qn(1)
+      write(unit_,"(A1)",advance='no')"["
+      write(unit_,"(F6.2,A1)",advance='no')qn(1)
       do j=2,size(qn)
-         write(*,"(A1,F6.2)",advance='no')",",qn(j)
+         write(unit_,"(A1,F6.2)",advance='no')",",qn(j)
       enddo
-      write(*,"(A1)",advance='no')"]"
-      write(*,*)""
+      write(unit_,"(A1)",advance='no')"]"
+      write(unit_,*)""
     end subroutine show_qn
   end subroutine show_sectors_list
 

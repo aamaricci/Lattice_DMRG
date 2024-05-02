@@ -1,5 +1,5 @@
 MODULE LIST_OPERATORS
-  USE SCIFOR, only:str
+  USE SCIFOR, only:str,free_unit
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   implicit none
@@ -459,7 +459,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Returns True is key exists, False otherwise
   !+------------------------------------------------------------------+
-  recursive function has_key_operators_list(self, key) result(bool)
+  function has_key_operators_list(self, key) result(bool)
     class(operators_list),intent(inout) :: self
     character(len=*),intent(in)  :: key
     logical                      :: bool
@@ -477,6 +477,7 @@ contains
     end do
     c=>null()
   end function has_key_operators_list
+
 
 
   !+------------------------------------------------------------------+
@@ -510,29 +511,36 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Pretty print an operators_list
   !+------------------------------------------------------------------+
-  recursive subroutine show_operators_list(self,fmt)
+  recursive subroutine show_operators_list(self,fmt,unit,file)
     class(operators_list),intent(inout) :: self
     character(len=*),optional           :: fmt
+    integer,optional :: unit
     character(len=32)                   :: fmt_
     integer                             :: i,count=0
     type(optype),pointer                 :: c
+    character(len=*),optional       :: file
+    integer                         :: unit_
+    unit_=6
+    if(present(unit))unit_=unit
+    if(present(file))open(free_unit(unit_),file=str(file))
     !
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     !
-    write(*,"(A6,I12)")"Size :",self%size
-    write(*,"(A18)")"------------------"
+    write(unit_,"(A6,I12)")"Size :",self%size
+    write(unit_,"(A18)")"------------------"
     c => self%root%next
     do
        if(.not.associated(c))exit
        count=count+1
-       write(*,"(A6,I12)")  "Index:",c%index
-       write(*,"(A6,A)")"Key  :",str(c%ckey)
-       write(*,*)"Op  :"
+       write(unit_,"(A6,I12)")  "Index:",c%index
+       write(unit_,"(A6,A)")"Key  :",str(c%ckey)
+       write(unit_,*)"Op  :"
        call c%ope%display()
-       write(*,*)""
+       write(unit_,*)""
        c => c%next
     end do
     c=>null()
+    if(present(file))close(unit_)
   end subroutine show_operators_list
 
 
