@@ -47,8 +47,10 @@ MODULE VARS_GLOBAL
   real(8),dimension(:,:),allocatable             :: gs_vector
   real(8),dimension(:),allocatable               :: rho_left_evals
   real(8),dimension(:),allocatable               :: rho_right_evals
-  type(blocks_matrix)                            :: psi_left,rho_left,rho_L
-  type(blocks_matrix)                            :: psi_right,rho_right
+  type(blocks_matrix)                            :: psi_left
+  type(blocks_matrix)                            :: psi_right
+  type(blocks_matrix)                            :: rho_left
+  type(blocks_matrix)                            :: rho_right
   !GLOBAL LEFT & RIGHT & DOT 
   type(block)                                    :: left,right
   type(site)                                     :: dot

@@ -630,11 +630,14 @@ contains
 =======
           if(val==0d0)cycle
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           print*,istate,jstate,i,j,val
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 =======
           ! print*,istate,jstate,i,j,val
 >>>>>>> a3c79a0 (Intermediate commit.):MATRIX_SPARSE.f90
+=======
+>>>>>>> 94f42f9 (development version.):MATRIX_SPARSE.f90
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1

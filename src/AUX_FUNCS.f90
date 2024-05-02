@@ -40,7 +40,7 @@ MODULE AUX_FUNCS
 
 
   logical,parameter,public           :: show_dble=.true.
-  character(len=12),parameter,public :: show_fmt='F9.3'
+  character(len=12),parameter,public :: show_fmt='F12.3'
 
 contains
 

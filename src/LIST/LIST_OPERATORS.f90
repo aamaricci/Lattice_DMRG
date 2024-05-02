@@ -570,6 +570,7 @@ contains
   end function has_key_operators_list
 
 
+
   !+------------------------------------------------------------------+
   !PURPOSE:  Returns the shape of the operators in the operators_list
   ! If valid list all operators have same shape so the first is fine. 
@@ -619,12 +620,21 @@ contains
   recursive subroutine show_operators_list(self,fmt,unit,file)
     class(operators_list),intent(inout) :: self
     character(len=*),optional           :: fmt
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
     integer,optional                    :: unit
     character(len=32)                   :: fmt_
     integer                             :: i,count=0
     type(optype),pointer                :: c
     character(len=*),optional           :: file
     integer                             :: unit_
+=======
+    integer,optional :: unit
+    character(len=32)                   :: fmt_
+    integer                             :: i,count=0
+    type(optype),pointer                 :: c
+    character(len=*),optional       :: file
+    integer                         :: unit_
+>>>>>>> 94f42f9 (development version.):LIST_OPERATORS.f90
     unit_=6
     if(present(unit))unit_=unit
     if(present(file))open(free_unit(unit_),file=str(file))
@@ -638,6 +648,7 @@ contains
        if(.not.associated(c))exit
        count=count+1
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
        write(unit_,"(A6,I12)")  "Index:",c%index
        write(unit_,"(A6,A)")"Key  :",str(c%ckey)
        write(unit_,"(A6,A)")"Type :",str(c%ctype)
@@ -650,6 +661,13 @@ contains
        call c%ope%display()
        write(*,*)""
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
+=======
+       write(unit_,"(A6,I12)")  "Index:",c%index
+       write(unit_,"(A6,A)")"Key  :",str(c%ckey)
+       write(unit_,*)"Op  :"
+       call c%ope%display()
+       write(unit_,*)""
+>>>>>>> 94f42f9 (development version.):LIST_OPERATORS.f90
        c => c%next
     end do
     c=>null()

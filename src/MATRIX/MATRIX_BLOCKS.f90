@@ -1046,6 +1046,7 @@ contains
              val = c%M(i,j)
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 #ifdef _CMPLX
              write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')&
                   "(",dreal(val),",",dimag(val),")"
@@ -1057,6 +1058,9 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
              write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')val
+=======
+             write(unit_,"("//str(self%Ncol)//"(F12.4,1X))",advance='no')val
+>>>>>>> 94f42f9 (development version.):MATRIX_BLOCKS.f90
              !write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
           enddo

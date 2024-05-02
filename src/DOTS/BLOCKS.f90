@@ -2,6 +2,7 @@ MODULE BLOCKS
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
 =======
   USE SCIFOR, only: str,assert_shape,zeye
@@ -12,6 +13,9 @@ MODULE BLOCKS
 =======
   USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower
 >>>>>>> ad31530 (Almost final commit.):BLOCKS.f90
+=======
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
+>>>>>>> 94f42f9 (development version.):BLOCKS.f90
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -472,6 +476,7 @@ contains
     class(block)              :: self
     character(len=*),optional :: fmt
     logical,optional          :: wOP,wOMAT
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     character(len=*),optional :: file
     character(len=32)         :: fmt_
     logical                   :: wOP_,wOMAT_
@@ -480,23 +485,36 @@ contains
     wOP_  =.false.;if(present(wOP))  wOP_  =wOP
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+    character(len=*),optional       :: file
+    character(len=32)         :: fmt_
+    logical :: wOP_,wOMAT_
+    integer                         :: unit_
+    fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
+    wOP_  =.false.;if(present(wOP))  wOP_  =wOP
+    wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
+>>>>>>> 94f42f9 (development version.):BLOCKS.f90
     unit_=6;if(present(file))open(free_unit(unit_),file=str(file))
     !
     write(unit_,"(A15,I6)")"Block Length  =",self%length
     write(unit_,"(A15,I6)")"Block Dim     =",self%Dim
     write(unit_,"(A16,A)") "Block Type    = ",self%SiteType
     write(unit_,"(A15,I6)")"Block Sectors =",size(self%sectors)
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     write(*,"(A15,I6)")"Block Length  =",self%length
     write(*,"(A15,I6)")"Block Dim     =",self%Dim
     write(*,"(A16,A)") "Block Type    = ",self%SiteType
     write(*,"(A15,I6)")"Block Sectors =",size(self%sectors)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+>>>>>>> 94f42f9 (development version.):BLOCKS.f90
     do i=1,size(self%sectors)
        write(unit_,"(A14,I6)")"Block Sector  =",i
        call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
        write(unit_,"(A15,A)")"Op Name    = ",self%OpName
        write(unit_,"(A14)")"Block Operators:"
@@ -515,6 +533,16 @@ contains
        write(*,"(A14)")"Block Omats   :"
        call self%omatrices%show(fmt=fmt_)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+       write(unit_,"(A15,A)")"Link Name    = ",self%KeyLink
+       write(unit_,"(A14)")"Block Ops     :"
+       call self%operators%show(fmt=fmt_,unit=unit_)
+
+    endif
+    if(wOMAT_)then
+       write(unit_,"(A14)")"Block Omats   :"
+       call self%omatrices%show(fmt=fmt_,unit=unit_)
+>>>>>>> 94f42f9 (development version.):BLOCKS.f90
     endif
     if(present(file))close(unit_)
   end subroutine show_block
