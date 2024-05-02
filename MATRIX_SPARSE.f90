@@ -397,7 +397,6 @@ contains
           j=Jstates(jstate)
           val = A%get(i,j)
           if(val==0d0)cycle
-          ! print*,istate,jstate,i,j,val
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
