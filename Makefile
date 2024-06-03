@@ -1,5 +1,5 @@
 FC=mpif90
-EXE=kron_spin_1d
+EXE=kron_hm_1d
 
 
 SF_INC:=$(shell pkg-config --cflags scifor)
@@ -33,7 +33,8 @@ ddebug: code
 code: version $(OBJS)
 	@echo "compiling ${EXE}"
 	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE) ${SF_INC} ${SF_LIB}
-
+	@echo " "
+	@echo "> created: ${EXE}"	
 
 test: hlocal matrix_sparse matrix_blocks tuples sectors operators sites blocks
 
