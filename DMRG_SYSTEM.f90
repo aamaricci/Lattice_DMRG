@@ -186,21 +186,31 @@ contains
        Estates = Esweep(isweep)
     endif
     !
-    !Check if blocks are valid ones
     if(.not.left%is_valid(.true.))stop "single_dmrg_step error: left is not a valid block"
     if(.not.right%is_valid(.true.))stop "single_dmrg_step error: right is not a valid block"
     !
     !Start DMRG step timer
     call start_timer()
     !
-    if(left%length+right%length==2)then !first loop
-       !there is nothing really to be done as the two blocks are already set
+    m_left = left%dim
+    m_right = right%dim
+
+    if(left%length+right%length==2)then
+       m_s = m_left
+       m_e = m_right
     else
-       !assume you have rho_left/right: proceed further we truncation + rotation
-       !add a check about actual status of rho_left/right:
        !
-       m_left = left%dim
-       m_right = right%dim
+       !Add a check here:
+       !
+       call start_timer()
+       call rho_left%eigh(sort=.true.,reverse=.true.)
+       call rho_right%eigh(sort=.true.,reverse=.true.)
+       rho_left_evals  = rho_left%evals()
+       rho_right_evals = rho_right%evals()
+       call stop_timer("Diag Rho")
+#ifdef _DEBUG
+       print*,sum(rho_left_evals),sum(rho_right_evals)
+#endif
        !
        call start_timer()
        !Build Truncated Density Matrices:
@@ -218,23 +228,38 @@ contains
        !
        e_=rho_left_evals(m_s)
        j_=m_s
-       ! print*,j_,e_
-       ! print*,"extension"
        do i=j_+1,size(rho_left_evals)
           err=abs(rho_left_evals(i)-e_)/e_
           if(err<=1d-1)m_s=m_s+1
-          ! print*,i,rho_left_evals(i),err
        enddo
        e_=rho_right_evals(m_e)
        j_=m_e
-       ! print*,j_,e_
-       ! print*,"extension"
        do i=j_+1,size(rho_right_evals)          
           err=abs(rho_right_evals(i)-e_)/e_
           if(err<=1d-1)m_e=m_e+1
-          ! print*,i,rho_right_evals(i),err
        enddo
        !
+#ifdef _DEBUG
+       unit     = fopen("lambdas_L_"//str(left%length)//".dat")       
+       do i=1,m_s
+          write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i))))
+       enddo
+       write(unit,*)" "
+       do i=m_s+1,size(rho_left_evals)
+          write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i))))
+       enddo
+       close(unit)
+       !
+       unit     = fopen("lambdas_R_"//str(left%length)//".dat")       
+       do i=1,m_e
+          write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i))))
+       enddo
+       write(unit,*)" "
+       do i=m_s+1,size(rho_right_evals)
+          write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i))))
+       enddo
+       close(unit)
+#endif
        truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
        !
@@ -242,11 +267,10 @@ contains
        trRho_left  = rho_left%sparse(m_left,m_s)
        trRho_right = rho_right%sparse(m_right,m_e)
        !
-       print*,"Left_RhoTr"
+#ifdef _DEBUG
        call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
-       print*,"Right_RhoTr"
        call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-
+#endif
        !
        !>Store all the rotation/truncation matrices:
        call left%put_omat(str(left%length),trRho_left)
@@ -266,10 +290,10 @@ contains
        call left%set_basis(basis=left_basis)
        call right%set_basis(basis=right_basis)
        !
-       print*,"Left_NewBasis"
+#ifdef _DEBUG
        call rho_left%show(file="NewBasis_L_"//str(left%length)//".dat")
-       print*,"RIght_NewBasis"
        call rho_right%show(file="NewBasis_R_"//str(right%length)//".dat")
+#endif
        !
        call stop_timer("Renormalize Blocks + Setup Basis")
        write(LOGfile,"(A,2ES24.15)")"Truncation Errors                    :",&
@@ -289,12 +313,10 @@ contains
     call enlarge_block(left,dot,grow='left')
     call enlarge_block(right,dot,grow='right')
     call stop_timer("Enlarge blocks")
-
-    print*,"Enl LEFT:"
+#ifdef _DEBUG
     call left%show(file="EnlLEFT_"//str(left%length)//".dat")
-    print*,"Enl RIGHT:"
     call right%show(file="EnlRIGHT_"//str(right%length)//".dat")
-
+#endif
     m_left = left%dim
     m_right = right%dim
     if(.not.left%is_valid())stop "dmrg_step error: enlarged_left is not a valid block"
@@ -309,7 +331,7 @@ contains
     write(LOGfile,"(A22,"//str(size(current_target_QN))//"F12.7)")"Target_QN = ",current_target_QN
     write(LOGfile,"(A22,G12.7)")"Total         = ",sum(current_target_QN)
     write(LOGfile,"(A22,G12.7)")"Filling       = ",sum(current_target_QN)/current_L
-    write(LOGfile,"(A22,G12.7)")"Filling/Norb  = ",sum(current_target_QN)/current_L/Norb    
+    write(LOGfile,"(A22,G12.7)")"Filling/Norb  = ",sum(current_target_QN)/current_L/Norb
     call sb_get_states()
     m_sb = size(sb_states)
     write(LOGfile,"(A,I12,I12))")&
@@ -329,8 +351,6 @@ contains
     call start_timer()
     call rho_left%free()
     call rho_right%free()
-    call psi_left%free()
-    call psi_right%free()
     do isb=1,size(sb_sector)
        sb_qn  = sb_sector%qn(index=isb)
        sb_map = sb_sector%map(index=isb)
@@ -342,35 +362,19 @@ contains
        call rho_left%append(&
             build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
             qn=qn,map=left%sectors(1)%map(qn=qn))
-       call psi_left%append(&
-            build_PsiMat(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
-            qn=qn,map=left%sectors(1)%map(qn=qn))
        !
        qn = current_target_qn-sb_qn
        call rho_right%append(&
             build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
             qn=qn,map=right%sectors(1)%map(qn=qn))
-       call psi_right%append(&
-            build_PsiMat(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
-            qn=qn,map=right%sectors(1)%map(qn=qn))
     enddo
-
-
+    call stop_timer("Get Rho")
+#ifdef _DEBUG
     print*,"rho_Left:"
     call rho_left%show(file="Rho_L_"//str(left%length)//".dat")
-
     print*,"rho_Right"
     call rho_right%show(file="Rho_R_"//str(right%length)//".dat")
-    !
-
-
-
-    call rho_left%eigh(sort=.true.,reverse=.true.)
-    call rho_right%eigh(sort=.true.,reverse=.true.)
-    rho_left_evals  = rho_left%evals()
-    rho_right_evals = rho_right%evals()
-    call stop_timer("Get Psi + Rho")
-    !
+#endif
     !
     !
     write(LOGfile,"(A,L12,12X,L12)")&
@@ -484,9 +488,6 @@ contains
        call self%set_basis( basis=enl_basis )
     case ("right","r")
        enl_basis = (dot_basis.o.self_basis)
-       ! call self_basis%show()
-       ! call dot_basis%show()
-       ! call enl_basis%show()
        call self%set_basis( basis=enl_basis )
     end select
     !
@@ -533,25 +534,25 @@ contains
 
 
 
-  !##################################################################
-  !              RESHAPE GROUND STATE AS MATRIX 
-  !##################################################################
-  function build_PsiMat(Nleft,Nright,psi,map,direction) result(psi_mat)
-    integer                            :: Nleft,Nright
-    real(8),dimension(:)               :: psi
-    integer,dimension(nleft*nright)       :: map
-    character(len=*)                   :: direction
-    real(8),dimension(:,:),allocatable :: psi_mat
-    if(allocated(psi_mat))deallocate(psi_mat)
-    select case(to_lower(str(direction)))
-    case ('left','l')
-       allocate(psi_mat(nleft,nright));psi_mat=zero
-       psi_mat = transpose(reshape(psi(map), [nright,nleft]))
-    case ('right','r')
-       allocate(psi_mat(nright,nleft));psi_mat=zero
-       psi_mat = reshape(psi(map), [nright,nleft])
-    end select
-  end function build_psimat
+  ! !##################################################################
+  ! !              RESHAPE GROUND STATE AS MATRIX 
+  ! !##################################################################
+  ! function build_PsiMat(Nleft,Nright,psi,map,direction) result(psi_mat)
+  !   integer                            :: Nleft,Nright
+  !   real(8),dimension(:)               :: psi
+  !   integer,dimension(nleft*nright)       :: map
+  !   character(len=*)                   :: direction
+  !   real(8),dimension(:,:),allocatable :: psi_mat
+  !   if(allocated(psi_mat))deallocate(psi_mat)
+  !   select case(to_lower(str(direction)))
+  !   case ('left','l')
+  !      allocate(psi_mat(nleft,nright));psi_mat=zero
+  !      psi_mat = transpose(reshape(psi(map), [nright,nleft]))
+  !   case ('right','r')
+  !      allocate(psi_mat(nright,nleft));psi_mat=zero
+  !      psi_mat = reshape(psi(map), [nright,nleft])
+  !   end select
+  ! end function build_psimat
 
 
 
