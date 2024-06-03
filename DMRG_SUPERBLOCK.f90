@@ -32,7 +32,9 @@ contains
     !
     call sb_sector%free()
     !
+#ifdef _DEBUG
     open(102,file='SB_list_'//str(left%length)//'.dat')
+#endif
     do ileft=1,size(left%sectors(1))
        left_qn   = left%sectors(1)%qn(index=ileft)
        right_qn  = current_target_qn - left_qn
@@ -41,20 +43,28 @@ contains
        left_map = left%sectors(1)%map(qn=left_qn)
        right_map = right%sectors(1)%map(qn=right_qn)
        !
+#ifdef _DEBUG
        write(102,*)left_qn,right_qn
        write(102,*)size(left_map),size(right_map)
+#endif
        do i=1,size(left_map)
           do j=1,size(right_map)
              istate=right_map(j) + (left_map(i)-1)*right%Dim
+#ifdef _DEBUG
              write(102,*)left_map(i),right_map(j),istate,right%Dim
+#endif
              call append(sb_states, istate)
              call sb_sector%append(qn=left_qn,istate=size(sb_states))
           enddo
        enddo
+#ifdef _DEBUG
        write(102,*)""
+#endif
        ! call eta(ileft,size(left%sectors(1)))
     enddo
+#ifdef _DEBUG
     close(102)
+#endif
     !
     call stop_timer("Get SB states")
     !
@@ -166,10 +176,7 @@ contains
     endif
     call stop_timer("Diag H_sb")
 
-    do i=1,Neigen
-       print*,i,gs_energy(i)/2/left%length/Norb
-    enddo
-
+    
     !Free Memory
     call spHsb%free()
     if(allocated(Hleft))then

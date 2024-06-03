@@ -11,7 +11,7 @@ MODULE MATRIX_BLOCKS
      real(8),dimension(:),allocatable      :: qn
      real(8),dimension(:),allocatable      :: E
      integer,dimension(:),allocatable      :: map
-     real(8),dimension(:,:),allocatable :: M
+     real(8),dimension(:,:),allocatable    :: M
      type(block_type),pointer              :: next=>null()
   end type block_type
 
