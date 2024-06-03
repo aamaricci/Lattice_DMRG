@@ -21,11 +21,15 @@ MODULE MATRIX_BLOCKS
      real(8),dimension(:),allocatable      :: E
      integer,dimension(:),allocatable      :: map
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
      complex(8),dimension(:,:),allocatable :: M
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
      real(8),dimension(:,:),allocatable :: M
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+     real(8),dimension(:,:),allocatable    :: M
+>>>>>>> 937c70b (Intermediate commit.):MATRIX_BLOCKS.f90
      type(block_type),pointer              :: next=>null()
   end type block_type
 
