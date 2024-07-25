@@ -4,12 +4,115 @@ MODULE DMRG_CONNECT
   private
 
 
+  public :: enlarge_block
   public :: connect_fermion_blocks
   public :: connect_spin_blocks
 
 
 contains
 
+  
+  !-----------------------------------------------------------------!
+  ! Purpose: enlarge a given BLOCK "SELF" growing it left/right with
+  ! a SITE "DOT" (specified in the init)
+  !-----------------------------------------------------------------!
+  subroutine enlarge_block(self,dot,grow)
+    type(block)                  :: self
+    type(site)                   :: dot
+    character(len=*),optional    :: grow
+    character(len=16)            :: grow_
+    character(len=:),allocatable :: key,dtype
+    type(tbasis)                 :: self_basis,dot_basis,enl_basis
+    type(sparse_matrix)          :: Hb,Hd,H2
+    integer                      :: i
+    !
+    grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
+    !
+    call start_timer("Enlarge blocks "//str(grow_))
+    !
+    if(.not.self%operators%has_key("H"))&
+         stop "Enlarge_Block ERROR: Missing self.H operator in the list"
+    if(.not.dot%operators%has_key("H"))&
+         stop "Enlarge_Block ERROR: Missing dot.H operator in the list"
+    !
+    dtype=dot%type()
+    if(dtype/=self%type())&
+         stop "Enlarge_Block ERROR: Dot.Type != Self.Type"
+    !    
+    !> Update Hamiltonian:
+    select case(str(grow_))
+    case ("left","l")
+       Hb = self%operators%op("H").x.id(dot%dim)
+       Hd = id(self%dim).x.dot%operators%op("H")
+       select case(dtype)
+       case default;stop "Enlarge_Block ERROR: wrong dot.Type"
+       case ("spin","s")
+          H2 = connect_spin_blocks(self,as_block(dot))
+       case ("fermion","f,","electron","e")
+          H2 = connect_fermion_blocks(self,as_block(dot))
+       end select
+    case ("right","r")
+       Hb = id(dot%dim).x.self%operators%op("H")
+       Hd = dot%operators%op("H").x.id(self%dim)
+       select case(dtype)
+       case default;stop "Enlarge_Block ERROR: wrong dot.Type"
+       case ("spin","s")
+          H2 = connect_spin_blocks(as_block(dot),self)
+       case ("fermion","f,","electron","e")
+          H2 = connect_fermion_blocks(as_block(dot),self)
+       end select
+    end select
+    call self%put_op("H", Hb +  Hd + H2)
+    !
+    !> Update all the other operators in the list: 
+    do i=1,size(self%operators)
+       key = self%operators%key(index=i)
+       if(str(key)=="H")cycle
+       select case(str(grow_))
+       case ("left","l")
+          call self%put_op(str(key), Id(self%dim).x.dot%operators%op(str(key)))
+       case ("right","r")
+          call self%put_op(str(key), dot%operators%op(str(key)).x.Id(self%dim))
+       end select
+    enddo
+    !
+    !> Enlarge dimensions
+    self%length = self%length + 1
+    self%Dim    = self%Dim*dot%Dim
+    !
+    !> Enlarge the basis states
+    call self%get_basis(self_basis)
+    call dot%get_basis(dot_basis)
+    !
+    select case(str(grow_))
+    case ("left","l")
+       enl_basis = (self_basis.o.dot_basis)
+       call self%set_basis( basis=enl_basis )
+    case ("right","r")
+       enl_basis = (dot_basis.o.self_basis)
+       call self%set_basis( basis=enl_basis )
+    end select
+    !
+#ifdef _DEBUG
+    call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+#endif
+    !
+    if(.not.self%is_valid())then
+       write(LOGfile,*)"dmrg_step error: enlarged_block "//str(grow_)// "is not a valid block"
+       stop
+    endif
+    !
+    !Free the memory:
+    call Hb%free()
+    call Hd%free()
+    call H2%free()
+    call self_basis%free()
+    call dot_basis%free()
+    call enl_basis%free()
+    !
+    call stop_timer()
+    !
+  end subroutine enlarge_block
 
 
   !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
