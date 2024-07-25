@@ -564,6 +564,8 @@ contains
     class(blocks_matrix),intent(inout)        :: self
     logical,optional                          :: sort,reverse
     integer,dimension(:),allocatable,optional :: order
+    real(8),dimension(:),allocatable          :: Rtmp
+    integer,dimension(:),allocatable          :: Itmp
     logical                                   :: sort_,reverse_
     type(block_type),pointer                  :: c
     integer                                   :: i,Nloc,Offset,N
@@ -585,8 +587,8 @@ contains
        Nloc = size(c%M,1)
        if(any(shape(c%M)/=[Nloc,Nloc]))stop "eigh block matrix ERROR: local block is not square"
        if(allocated(c%E))deallocate(c%E)
-       allocate(c%E(Nloc))
-       call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
+       allocate(c%E(Nloc));c%E=0d0
+       call eigh(c%M,c%E,method='dsyevd')  !<- overwrites blocks with eigenvec matrix
        !
        self%evalues(Offset+1:Offset+Nloc) = c%E
        Offset = Offset + Nloc
@@ -600,14 +602,15 @@ contains
     if(sort_)then
        call sort_quicksort(self%evalues,self%eorder)
        if(reverse_)then
-          self%evalues = self%evalues(N:1:-1)
-          self%eorder  = self%eorder(N:1:-1)
+          allocate(Rtmp(N),Itmp(N))
+          Rtmp = self%evalues(N:1:-1) ; self%evalues=Rtmp
+          Itmp = self%eorder(N:1:-1)  ; self%eorder =Itmp
+          deallocate(Rtmp,Itmp) !just to avoid in place reverse
        endif
     endif
     if(present(order))then
        if(allocated(order))deallocate(order)
-       allocate(order, mold=self%eorder)
-       order = self%eorder
+       allocate(order, source=self%eorder)
     endif
     !
     self%diag=.true.
@@ -886,9 +889,9 @@ contains
     format='('//str(fmt_)//'1x)'
     ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
     !
-    write(*,"(A6,I12)")"Size :",size(self)
-    write(*,"(A6,2I6)")"Shape:",shape(self)
-    write(*,"(A18)")"------------------"
+    write(unit_,"(A6,I12)")"Size :",size(self)
+    write(unit_,"(A6,2I6)")"Shape:",shape(self)
+    write(unit_,"(A18)")"------------------"
     c => self%root%next
     do
        if(.not.associated(c))exit

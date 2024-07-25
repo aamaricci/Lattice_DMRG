@@ -26,7 +26,7 @@ contains
     real(8),dimension(:),allocatable :: left_qn,right_qn
     integer,dimension(:),allocatable :: left_map,right_map
     !
-    call start_timer()
+    call start_timer("Get SB states")
     !
     if(allocated(sb_states))deallocate(sb_states)
     !
@@ -66,7 +66,7 @@ contains
     close(102)
 #endif
     !
-    call stop_timer("Get SB states")
+    call stop_timer()
     !
     call sb_sector%show(file='SB_sector_'//str(left%length)//'.dat')
   end subroutine sb_get_states
@@ -75,7 +75,6 @@ contains
 
 
   !##################################################################
-  !
   !         SETUP THE SUPERBLOCK HAMILTONIAN PROBLEM
   ! . if Hmat: returb H^SB as dense matrix there for Lapack use
   ! . if sparse_H = T: build H^SB as sparse matrix
@@ -96,9 +95,9 @@ contains
        spHtimesV_p => null()
        !
        !>Build Sparse Hsb:
-       call start_timer("get H_sb")
+       call start_timer("get H_sb Sparse&Dump")
        call Setup_SuperBlock_Sparse()
-       call stop_timer("Done H_sb")
+       call stop_timer()
        !
        !Dump Hsb to dense matrix as required:
        call spHsb%dump(Hmat)
@@ -108,17 +107,17 @@ contains
     !Build SuperBLock HxV operation: stored or direct
     select case(sparse_H)
     case(.true.)
-       call start_timer("get H_sb")
+       call start_timer("get H_sb Sparse")
        call Setup_SuperBlock_Sparse()
-       call stop_timer("Done H_sb")
+       call stop_timer()
        !
        !Set HxV function pointer:
        spHtimesV_p => spMatVec_sparse_main
        !
     case(.false.)
-       call start_timer("get H_sb")
+       call start_timer("get H_sb Direct")
        call Setup_SuperBlock_Direct()
-       call stop_timer("Done H_sb")
+       call stop_timer()
        !
        !Set HxV function pointer:
        spHtimesV_p => spMatVec_direct_main
@@ -158,7 +157,7 @@ contains
     allocate(gs_energy(Neigen))     ;gs_energy=0d0
     allocate(gs_vector(m_sb,Neigen));gs_vector=0d0
     !
-    call start_timer()
+    call start_timer("Diag H_sb")
     if(lanc_solve)then
        call sb_build_Hv()
        call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
@@ -174,7 +173,7 @@ contains
        gs_energy(1:Lanc_Neigen)   = evals(1:Lanc_Neigen)
        deallocate(Hsb,evals)
     endif
-    call stop_timer("Diag H_sb")
+    call stop_timer()
 
     
     !Free Memory
