@@ -60,7 +60,8 @@ MODULE VARS_GLOBAL
   type(sectors_list)                             :: sb_sector
 
 
-
+  integer                     :: Mstates
+  real(8)                     :: Estates
 
 contains
 
@@ -97,6 +98,8 @@ contains
     !
     N = int(Ltot/(M+eps))+1
     !
+    write(LOGfile,*)""
+    write(LOGfile,*)""
     select case(label)
     case default; stop "dmrg_graphic error: label != 1(L),2(R)"
     case(0)
@@ -140,12 +143,11 @@ contains
        if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
     end select
     if(Ltot<=M)then
-       write(LOGfile,"(A1)",advance='yes')"|"
+       write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
     else
-       write(LOGfile,"(A1,I3,2x,A,1x,A)",advance='yes')"|",index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
+       write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
+            index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
     endif
-    write(LOGfile,*)""
-    write(LOGfile,*)""
     call wait(150)
   end subroutine dmrg_graphic
 

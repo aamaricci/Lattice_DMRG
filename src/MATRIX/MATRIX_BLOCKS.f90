@@ -671,6 +671,8 @@ contains
     class(blocks_matrix),intent(inout)        :: self
     logical,optional                          :: sort,reverse
     integer,dimension(:),allocatable,optional :: order
+    real(8),dimension(:),allocatable          :: Rtmp
+    integer,dimension(:),allocatable          :: Itmp
     logical                                   :: sort_,reverse_
     real(8),dimension(:),allocatable          :: Rtmp
     integer,dimension(:),allocatable          :: Itmp
@@ -695,7 +697,11 @@ contains
        if(any(shape(c%M)/=[Nloc,Nloc]))stop "eigh block matrix ERROR: local block is not square"
        if(allocated(c%E))deallocate(c%E)
        allocate(c%E(Nloc));c%E=0d0
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
+=======
+       call eigh(c%M,c%E,method='dsyevd')  !<- overwrites blocks with eigenvec matrix
+>>>>>>> e290820 (Intermediate commit.):MATRIX_BLOCKS.f90
        !
        where(c%E<0d0)c%E=1d-20
        self%evalues(Offset+1:Offset+Nloc) = c%E
