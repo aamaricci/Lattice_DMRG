@@ -40,7 +40,7 @@ contains
          stop "Setup_SuperBlock_Direct ERROR: left.Type != right.Type"
     !
     !
-    call start_timer()
+    ! call start_timer("Setup SuperBlock Direct")
     select case(type)
     case default;stop "Setup_SuperBlock_Direct ERROR: wrong left/right.Type"
     case ("spin","s")
@@ -48,7 +48,7 @@ contains
     case ("fermion","f,","electron","e")
        call Setup_SuperBlock_Fermion_Direct()
     end select
-    call stop_timer("Setup SuperBlock Direct")
+    ! call stop_timer()
   end subroutine Setup_SuperBlock_Direct
 
   !##################################################################

@@ -64,11 +64,13 @@ program testEDkron
   enddo
 
   dens = n(1,1)!+n(1,2)
-  call dens%show()
+  ! print*,"DENS:"
+  ! call dens%show()
   
-  docc = matmul(n(1,1),n(1,2))
-  call docc%show()
-  m2 = matmul((n(1,2)-n(1,1)),(n(1,2)-n(1,1)))
+  ! docc = matmul(n(1,1),n(1,2))
+  ! print*,"DOCC:"
+  ! call docc%show()
+  ! m2 = matmul((n(1,2)-n(1,1)),(n(1,2)-n(1,1)))
   
   left=init_left
   right=init_right
@@ -76,10 +78,11 @@ program testEDkron
 
   do i=1,Ldmrg
      call step_dmrg()
-     call write_energy()
-     call Measure_Op_DMRG(Op=dens,pos=[1,left%length+right%length-2])
-     ! call Measure_Op_DMRG(Op=docc,pos=[1,left%length+right%length-2])
-     ! call Measure_Op_DMRG(Op=m2,pos=[1,left%length+right%length-2])
+     call write_energy()     
+     call Measure_Op_DMRG(Op=dens,pos=arange(1,left%length+right%length))
+     print*,""
+     print*,""
+     print*,""
   enddo
 
 

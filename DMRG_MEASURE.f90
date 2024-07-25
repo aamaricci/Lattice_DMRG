@@ -82,15 +82,17 @@ contains
     suffix=label_DMRG('u')
     !
     !
-    L = left%length-1           !the len of the last block used to create the SB->\psi
-    R = right%length-1
+    L = left%length           !the len of the last block used to create the SB->\psi
+    R = right%length
     N = L+R
+    ! print*,"Measure L,R,N:",L,R,N
     !
     Np = N;if(present(pos))Np= size(pos)
     !
     allocate(vals(Np))
     allocate(pos_(Np))
     pos_=arange(1,Np);if(present(pos))pos_=pos
+    ! print*,"Measure pos:",pos_
     !
     call start_timer()
     call Init_measure_dmrg()
@@ -99,7 +101,7 @@ contains
        Oi     = Build_Op_dmrg(Op,ipos)
        Oi     = Advance_Op_dmrg(Oi,ipos)
        vals(i)= Average_Op_dmrg(Oi,ipos)
-       write(LOGfile,*)ipos,vals(i)
+       write(LOGfile,*)ipos,vals(i),abs(vals(i)-0.5d0)
     enddo
     call End_measure_dmrg()
     call stop_timer("Done "//str(file))
@@ -131,6 +133,10 @@ contains
   !Purpose: return the O(i) at a site I of the chain given an 
   !         operator O in the local dot basis:
   !##################################################################
+  ! U  = left%omatrices%op(index=i-1)
+  ! Oi = matmul(U%dgr(),U).x.Op
+  ! U  = right%omatrices%op(index=i-1)
+  ! Oi = Op.x.matmul(U%dgr(),U)
   function Build_Op_dmrg(Op,pos,set_basis) result(Oi)
     type(sparse_matrix),intent(in) :: Op
     integer                        :: pos
@@ -140,14 +146,14 @@ contains
     character(len=1)               :: label
     type(sparse_matrix)            :: U
     integer                        :: L,R,N
-    integer                        :: i
+    integer                        :: i,dB(2),d
     logical                        :: set_basis_
     !
     set_basis_ = .false. ;if(present(set_basis))set_basis_=set_basis
     !
     !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length-1
-    R = right%length-1
+    L = left%length
+    R = right%length
     N = L+R
     !
     !Check:
@@ -165,8 +171,8 @@ contains
        if(i==1)then
           Oi = Op
        else
-          U  = left%omatrices%op(index=i-1)
-          Oi = matmul(U%dgr(),U).x.Op
+          dB = shape(left%omatrices%op(index=i-1));D=dB(2)
+          Oi = Id(d).x.Op
           if(set_basis_)then
              U  = left%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
@@ -176,8 +182,8 @@ contains
        if(i==1)then
           Oi = Op
        else
-          U  = right%omatrices%op(index=i-1)
-          Oi = Op.x.matmul(U%dgr(),U)
+          dB = shape(right%omatrices%op(index=i-1));D=dB(2)
+          Oi = Op.x.Id(d)
           if(set_basis_)then
              U  = right%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
@@ -205,8 +211,8 @@ contains
     integer                          :: i,istart,iend,it
     !
     !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length-1
-    R = right%length-1
+    L = left%length
+    R = right%length
     N = L+R
     !
     !Check:
@@ -228,29 +234,80 @@ contains
        if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
     end select
     !
+    ! print*,istart,iend
+    !
     Oi = Op
     !Evolve to SB basis
-    select case(label)
-    case ("l")
-       do it=istart,iend
+    do it=istart,iend-1
+       select case(label)
+       case ("l")
           U  = left%omatrices%op(index=it)
-          Oi = (matmul(matmul(U%dgr(),Oi),U)).x.Id(dot%dim)
-       enddo
-    case ("r")
-       do it=istart,iend
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Oi.x.Id(dot%dim)
+       case ("r")
           U  = right%omatrices%op(index=it)
-          Oi = Id(dot%dim).x.(matmul(matmul(U%dgr(),Oi),U))
-       enddo
-    end select
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Id(dot%dim).x.Oi
+       end select
+    enddo
     call U%free()
   end function Advance_Op_dmrg
 
 
 
-  ! !##################################################################
-  ! !                   ADVANCE CORRELATION FUNCTION 
-  ! !Purpose: advance the correlation O(i) Nstep from site I 
-  ! !##################################################################
+
+
+
+
+  !##################################################################
+  !                   AVERAGE OPERATOR 
+  !Purpose: take the average of an operator O on the last step basis 
+  !##################################################################
+  function Average_Op_dmrg(Oi,pos) result(Oval)
+    type(sparse_matrix),intent(in)   :: Oi
+    integer                          :: pos
+    character(len=1)                 :: label
+    real(8)                          :: Oval
+    type(sparse_matrix)              :: Psi
+    integer                          :: L,R,N
+    !
+    !The lenght of the last block contributing to the SB construction-> \psi
+    L = left%length
+    R = right%length
+    N = L+R
+    !
+    !Check:
+    if(pos<1.OR.pos>N)stop "Average_op_dmrg error: Pos not in [1,Ldmrg]"
+    !
+    !Get label of the block holding the site at position pos:
+    label='l'; if(pos>L)label='r'
+    !
+    allocate(Olist(Nsb))
+    !
+    !Measure using PSI matrix:
+    do isb=1,Nsb
+       select case(label)
+       case default;stop "Average_op_dmrg error: label not [l,r]"
+       case ("l");Olist(isb) = sp_filter(Oi,LI(isb)%states)
+       case ("r");Olist(isb) = sp_filter(Oi,RI(isb)%states)
+       end select
+    enddo
+    !
+    Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
+    !
+    do isb=1,Nsb
+       call Olist(isb)%free()
+    enddo
+    deallocate(Olist)
+    !
+  end function Average_Op_dmrg
+
+
+
+  !##################################################################
+  !                   ADVANCE CORRELATION FUNCTION 
+  !Purpose: advance the correlation O(i) Nstep from site I 
+  !##################################################################
   function Advance_Corr_dmrg(Op,pos,nstep) result(Oi)
     type(sparse_matrix),intent(in)   :: Op
     integer                          :: pos
@@ -261,8 +318,8 @@ contains
     integer                          :: i,istart,iend,it
     !
     !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length-1             !
-    R = right%length-1            !
+    L = left%length             !
+    R = right%length            !
     N = L+R                       !== Ldmrg
     !
     !Check:
@@ -290,67 +347,19 @@ contains
     case ("l")
        do it=istart+1,iend
           U  = left%omatrices%op(index=it)
-          Oi = (matmul(matmul(U%dgr(),Oi),U)).x.Id(dot%dim)
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Oi.x.Id(dot%dim)
        enddo
     case ("r")
        do it=istart+1,iend
           U  = right%omatrices%op(index=it)
-          Oi = Id(dot%dim).x.(matmul(matmul(U%dgr(),Oi),U))
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Id(dot%dim).x.Oi
        enddo
     end select
     call U%free()
   end function Advance_Corr_dmrg
 
-
-
-
-  !##################################################################
-  !                   AVERAGE OPERATOR 
-  !Purpose: take the average of an operator O on the last step basis 
-  !##################################################################
-  function Average_Op_dmrg(Oi,pos) result(Oval)
-    type(sparse_matrix),intent(in)   :: Oi
-    integer                          :: pos
-    character(len=1)                 :: label
-    real(8)                          :: Oval
-    type(sparse_matrix)              :: Psi
-    integer                          :: L,R,N
-    !
-    !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length-1
-    R = right%length-1
-    N = L+R
-    !
-    !Check:
-    if(pos<1.OR.pos>N)stop "Average_op_dmrg error: Pos not in [1,Ldmrg]"
-    !
-    !Get label of the block holding the site at position pos:
-    label='l'; if(pos>L)label='r'
-    !
-    allocate(Olist(Nsb))
-    !
-    !Measure using PSI matrix:
-    select case(label)
-    case ("l")
-       !> get: Oi*^L 
-       do isb=1,Nsb
-          Olist(isb) = sp_filter(Oi,LI(isb)%states)
-       enddo
-    case ("r")
-       !> get: Oi*^R
-       do isb=1,Nsb
-          Olist(isb) = sp_filter(Oi,RI(isb)%states)
-       enddo
-    end select
-    !
-    Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
-    !
-    do isb=1,Nsb
-       call Olist(isb)%free()
-    enddo
-    deallocate(Olist)
-    !
-  end function Average_Op_dmrg
 
 
   !#################################
