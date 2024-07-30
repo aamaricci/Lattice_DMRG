@@ -174,6 +174,9 @@ contains
     integer                            :: current_L
     !
     iLabel=0;if(present(label))iLabel=label
+    !2Bremoved
+    suffix = label_DMRG('i',1)
+    !
     Mstates=Mdmrg
     Estates=Edmrg
     if(present(isweep))then
@@ -259,11 +262,12 @@ contains
     !#################################
     call sb_get_rdm()
 
-    if(left%length == Ldmrg+1)then
-       call renormalize_('left')
-       call renormalize_('right')
-    endif
-
+! #ifdef _DEBUG    
+!     if(left%length == Ldmrg+1)then
+!        call renormalize_('left')
+!        call renormalize_('right')
+!     endif
+! #endif
     !
     !
     !#################################

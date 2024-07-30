@@ -544,7 +544,7 @@ contains
        self_vec = self%evec(m=it)
        self_map = self%map(m=it)
        do i=1,size(self_vec)
-          call sparse%insert(self_vec(i),self_map(i),it)
+          call sparse%fast_insert(self_vec(i),self_map(i),it)
        enddo
     enddo
   end function sparse_blocks_matrix
@@ -588,7 +588,7 @@ contains
        if(any(shape(c%M)/=[Nloc,Nloc]))stop "eigh block matrix ERROR: local block is not square"
        if(allocated(c%E))deallocate(c%E)
        allocate(c%E(Nloc));c%E=0d0
-       call eigh(c%M,c%E,method='dsyevd')  !<- overwrites blocks with eigenvec matrix
+       call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
        !
        self%evalues(Offset+1:Offset+Nloc) = c%E
        Offset = Offset + Nloc

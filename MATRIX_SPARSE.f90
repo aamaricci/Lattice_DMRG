@@ -19,21 +19,21 @@ MODULE MATRIX_SPARSE
      integer                                   :: Ncol=0
      logical                                   :: status=.false.
    contains
-     procedure,pass :: init      => sp_init_matrix
-     procedure,pass :: free      => sp_free_matrix
-     procedure,pass :: load      => sp_load_matrix
-     procedure,pass :: dump      => sp_dump_matrix
+     procedure,pass :: init       => sp_init_matrix
+     procedure,pass :: free       => sp_free_matrix
+     procedure,pass :: load       => sp_load_matrix
+     procedure,pass :: dump       => sp_dump_matrix
      procedure,pass :: fast_insert=> sp_fast_insert_element
-     procedure,pass :: insert    => sp_insert_element
-     procedure,pass :: get       => sp_get_element
-     procedure,pass :: show      => sp_show_matrix
-     procedure,pass :: display   => sp_display_matrix
-     procedure,pass :: spy       => sp_spy_matrix
-     procedure,pass :: as_matrix => sp_as_matrix
-     procedure,pass :: dgr       => sp_dgr_matrix
-     procedure,pass :: t         => sp_transpose_matrix
-     procedure,pass :: nnz       => sp_nnz_matrix
-     procedure,pass :: dot       => sp_matmul_vector
+     procedure,pass :: insert     => sp_insert_element
+     procedure,pass :: get        => sp_get_element
+     procedure,pass :: show       => sp_show_matrix
+     procedure,pass :: display    => sp_display_matrix
+     procedure,pass :: spy        => sp_spy_matrix
+     procedure,pass :: as_matrix  => sp_as_matrix
+     procedure,pass :: dgr        => sp_dgr_matrix
+     procedure,pass :: t          => sp_transpose_matrix
+     procedure,pass :: nnz        => sp_nnz_matrix
+     procedure,pass :: dot        => sp_matmul_vector
   end type sparse_matrix
 
 

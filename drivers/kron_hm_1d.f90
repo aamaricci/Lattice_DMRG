@@ -66,20 +66,22 @@ program testEDkron
   dens = n(1,1)!+n(1,2)
   ! print*,"DENS:"
   ! call dens%show()
-  
-  ! docc = matmul(n(1,1),n(1,2))
+
+  docc = matmul(n(1,1),n(1,2))
   ! print*,"DOCC:"
   ! call docc%show()
-  ! m2 = matmul((n(1,2)-n(1,1)),(n(1,2)-n(1,1)))
-  
+  m2 = matmul((n(1,2)-n(1,1)),(n(1,2)-n(1,1)))
+
   left=init_left
   right=init_right
   suffix = label_DMRG('i',1)
 
   do i=1,Ldmrg
+
      call step_dmrg()
-     call write_energy()     
-     call Measure_Op_DMRG(Op=dens,pos=arange(1,left%length+right%length))
+     call write_energy()
+     L = left%length+right%length
+     call Measure_Op_DMRG(Op=dens,pos=[1,2,L-1,L])
      print*,""
      print*,""
      print*,""
@@ -87,9 +89,9 @@ program testEDkron
 
 
 
-  call Measure_Op_DMRG(file='densVSj',Op=dens)!,pos=arange(1,left%length+right%length-2),)
-  ! call Measure_Op_DMRG(file='doccVSj',Op=docc)!,pos=arange(1,left%length+right%length-2),)
-  ! call Measure_Op_DMRG(file='mVSj',Op=m2)!,pos=arange(1,left%length+right%length-2),)
+  call Measure_Op_DMRG(file='densVSj',Op=dens)
+  ! call Measure_Op_DMRG(file='doccVSj',Op=docc)
+  ! call Measure_Op_DMRG(file='mVSj',Op=m2)
   ! suffix = label_DMRG('i',1)
   ! print*,""
   ! print*,""
