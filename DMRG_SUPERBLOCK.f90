@@ -68,7 +68,7 @@ contains
     !
     call stop_timer()
     !
-    call sb_sector%show(file='SB_sector_'//str(left%length)//'.dat')
+    !call sb_sector%show(file='SB_sector_'//str(left%length)//'.dat')
   end subroutine sb_get_states
 
 
