@@ -67,6 +67,7 @@ contains
     !
     if(allocated(rho))deallocate(rho)
     !
+    !These two give the same results
     !psi_tmp = transpose(reshape(psi(map), [nright,nleft]))
     do concurrent(il=1:Nleft,ir=1:Nright)
        i = map(ir + (il-1)*Nright)
@@ -105,6 +106,9 @@ contains
     type(tbasis)                :: left_basis,right_basis
     type(sparse_matrix)         :: trRho_left,trRho_right
     !
+    real(8),dimension(:,:),allocatable :: MatRhoL
+    real(8),dimension(:),allocatable :: LamRhoL
+    !
     m_left  = left%dim
     m_right = right%dim
     !
@@ -115,10 +119,11 @@ contains
     case ("left","l","sys","system","s")
        mtr = m_left
        if(left%length+right%length==2)return
-       ! 
+       !
        call start_timer("Diag Rho "//to_lower(str(label)))
        call rho_left%eigh(sort=.true.,reverse=.true.)
        call stop_timer()
+
        !
        if(allocated(rho_left_evals))deallocate(rho_left_evals)
        allocate(rho_left_evals, source=rho_left%evals())
@@ -163,10 +168,12 @@ contains
           if(i==m_s)write(unit,*)" "
        enddo
        close(unit)
-       call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
-       call rho_left%show(file="NewBasis_L_"//str(left%length)//".dat")
+       ! call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
+       call rho_left%show(file="NewRho_L_"//str(left%length)//".dat")
 #endif
        !Free Rho_Left
+       call left_basis%free()
+       call trRho_left%free()
        call rho_left%free()
        !
        !
@@ -222,20 +229,17 @@ contains
        enddo
        close(unit)
        !
-       call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-       call rho_right%show(file="NewBasis_R_"//str(right%length)//".dat")
+       ! call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
+       call rho_right%show(file="NewRho_R_"//str(right%length)//".dat")
 #endif
        !Free Rho Right:
+       call right_basis%free()
+       call trRho_right%free()
        call rho_right%free()
 !!!!#################################
 !!!!#################################
     case default;stop "renormalize block: wrong label, not in [left-sys|right-env]"
     end select
-    !
-    call left_basis%free()
-    call right_basis%free()
-    call trRho_left%free()
-    call trRho_right%free()
     !
     return
   end subroutine renormalize_block
@@ -308,6 +312,8 @@ contains
           if(i==m_s)write(unit,*)" "
        enddo
        close(unit)
+       call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
+       call rho_left%show(file="NewRho_L_"//str(left%length)//".dat")
 #endif
        ! !Free Rho_Left
        ! call rho_left%free()
@@ -349,6 +355,8 @@ contains
           if(i==m_e)write(unit,*)""
        enddo
        close(unit)
+       call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
+       call rho_right%show(file="NewRho_R_"//str(right%length)//".dat")
 #endif
        ! !Free Rho Right:
        ! call rho_right%free()

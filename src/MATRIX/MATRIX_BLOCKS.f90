@@ -698,10 +698,14 @@ contains
        if(allocated(c%E))deallocate(c%E)
        allocate(c%E(Nloc));c%E=0d0
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
 =======
        call eigh(c%M,c%E,method='dsyevd')  !<- overwrites blocks with eigenvec matrix
 >>>>>>> e290820 (Intermediate commit.):MATRIX_BLOCKS.f90
+=======
+       call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
+>>>>>>> e5e5680 (Intermediate commit.):MATRIX_BLOCKS.f90
        !
        where(c%E<0d0)c%E=1d-20
        self%evalues(Offset+1:Offset+Nloc) = c%E

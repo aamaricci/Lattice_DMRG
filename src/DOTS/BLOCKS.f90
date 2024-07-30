@@ -267,7 +267,7 @@ contains
     character(len=:),allocatable     :: key,type
 =======
     class(block)                 :: self
-    real(8),dimension(:,:)    :: Umat   ![N,M]
+    real(8),dimension(:,:)       :: Umat   ![N,M]
     integer                      :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)          :: Op
     character(len=:),allocatable :: key

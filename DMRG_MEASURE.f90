@@ -78,6 +78,10 @@ contains
     character(len=128)                        :: file_
     integer                                   :: i,ipos,L,R,N,Np
     type(sparse_matrix)                       :: Oi
+    integer                                   :: it,j,dims(2)
+    type(sparse_matrix)                       :: U,Ok,I_R,I_L
+    real(8) :: val
+
     !
     suffix=label_DMRG('u')
     !
@@ -89,18 +93,22 @@ contains
     !
     Np = N;if(present(pos))Np= size(pos)
     !
+
     allocate(vals(Np))
     allocate(pos_(Np))
     pos_=arange(1,Np);if(present(pos))pos_=pos
-    ! print*,"Measure pos:",pos_
     !
     call start_timer()
     call Init_measure_dmrg()
     do i=1,Np
        ipos   = pos_(i)
-       Oi     = Build_Op_dmrg(Op,ipos)
-       Oi     = Advance_Op_dmrg(Oi,ipos)
-       vals(i)= Average_Op_dmrg(Oi,ipos)
+       j = ipos
+       ! !>TO BE REMOVED:
+       ! if(j<=L)J = N+1-j
+       ! !<-------------
+       oi     = Build_Op_dmrg(Op,j)
+       Oi     = Advance_Op_dmrg(Oi,j)
+       vals(i)= Average_Op_dmrg(Oi,j)
        write(LOGfile,*)ipos,vals(i),abs(vals(i)-0.5d0)
     enddo
     call End_measure_dmrg()
@@ -114,6 +122,52 @@ contains
        avOp = vals
     endif
     call Oi%free()
+
+
+
+
+    ! U =  right%omatrices%op(index=R-1)
+    ! dims=shape(U)
+    ! I_R = Id(dot%dim*dims(2))
+    ! U =  left%omatrices%op(index=L-1)
+    ! dims=shape(U)
+    ! I_L = Id(dims(2)*dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
+
+
+
+    ! print*,""
+    ! print*,"pos=1"
+    ! print*,""
+    ! print*,"Method <psi|O.x.I_R|psi>"
+    ! print*,shape(I_R)
+    ! ipos=1
+    ! Oi = Build_Op_Dmrg(Op,ipos)
+    ! do it=1,L-1
+    !    U  = left%omatrices%op(index=it)
+    !    Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
+    ! enddo
+    ! Oi = sp_kron(Oi,I_R,sb_states)
+    ! print*,shape(Oi)
+    ! val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
+    ! print*,ipos,val    
+
+
+    ! print*,""
+    ! print*,"ipos=N"
+    ! print*,""
+    ! print*,"Method <psi|I_L.x.O|psi>"
+    ! ipos=N
+    ! print*,shape(I_L)
+    ! Oi = Build_Op_Dmrg(Op,ipos)
+    ! do it=1,R-1
+    !    U  = right%omatrices%op(index=it)
+    !    Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
+    ! enddo
+    ! Oi = sp_kron(I_L,Oi,sb_states)
+    ! print*,shape(Oi)
+    ! val = dot_product(gs_vector(:,1),OI%dot(gs_vector(:,1)))
+    ! print*,ipos,val    
+
   end subroutine Measure_Op_dmrg
 
 
@@ -166,31 +220,29 @@ contains
     i=pos    ; if(pos>L)i=N+1-pos
     !
     !Build Operator on the chain at position pos:
-    select case(label)
-    case('l')
-       if(i==1)then
-          Oi = Op
-       else
+
+    if(i==1)then
+       Oi = Op
+    else
+       select case(label)
+       case('l')
           dB = shape(left%omatrices%op(index=i-1));D=dB(2)
           Oi = Id(d).x.Op
           if(set_basis_)then
              U  = left%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
+             call U%free()
           endif
-       endif
-    case('r')
-       if(i==1)then
-          Oi = Op
-       else
+       case('r')
           dB = shape(right%omatrices%op(index=i-1));D=dB(2)
           Oi = Op.x.Id(d)
           if(set_basis_)then
              U  = right%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
+             call U%free()
           endif
-       endif
-    end select
-    call U%free()
+       end select
+    endif
   end function Build_Op_dmrg
 
 
@@ -304,63 +356,6 @@ contains
 
 
 
-  !##################################################################
-  !                   ADVANCE CORRELATION FUNCTION 
-  !Purpose: advance the correlation O(i) Nstep from site I 
-  !##################################################################
-  function Advance_Corr_dmrg(Op,pos,nstep) result(Oi)
-    type(sparse_matrix),intent(in)   :: Op
-    integer                          :: pos
-    integer,optional                 :: nstep
-    type(sparse_matrix)              :: Oi,U
-    character(len=1)                 :: label
-    integer                          :: L,R,N
-    integer                          :: i,istart,iend,it
-    !
-    !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length             !
-    R = right%length            !
-    N = L+R                       !== Ldmrg
-    !
-    !Check:
-    if(pos<1.OR.pos>N)stop "Advance_op_dmrg error: Pos not in [1,Ldmrg]"
-    !
-    !Get label of the block holding the site at position pos:
-    label='l'; if(pos>L)label='r'
-    !
-    !Get index in the block from the position pos in the chain:
-    i=pos    ; if(pos>L)i=N+1-pos
-    !
-    istart  = i
-    select case(label)
-    case ("l")
-       istart = i ; iend   = L ; if(present(nstep))iend=istart+nstep
-       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
-    case ("r") 
-       istart = i ; iend   = R ; if(present(nstep))iend=istart+nstep
-       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
-    end select
-    !
-    !
-    Oi = Op
-    select case(label)
-    case ("l")
-       do it=istart+1,iend
-          U  = left%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot%dim)
-       enddo
-    case ("r")
-       do it=istart+1,iend
-          U  = right%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot%dim).x.Oi
-       enddo
-    end select
-    call U%free()
-  end function Advance_Corr_dmrg
-
-
 
   !#################################
   !#################################
@@ -416,6 +411,65 @@ contains
     end select
     !
   end function OdotV_direct
+
+
+
+
+  !##################################################################
+  !                   ADVANCE CORRELATION FUNCTION 
+  !Purpose: advance the correlation O(i) Nstep from site I 
+  !##################################################################
+  function Advance_Corr_dmrg(Op,pos,nstep) result(Oi)
+    type(sparse_matrix),intent(in)   :: Op
+    integer                          :: pos
+    integer,optional                 :: nstep
+    type(sparse_matrix)              :: Oi,U
+    character(len=1)                 :: label
+    integer                          :: L,R,N
+    integer                          :: i,istart,iend,it
+    !
+    !The lenght of the last block contributing to the SB construction-> \psi
+    L = left%length             !
+    R = right%length            !
+    N = L+R                       !== Ldmrg
+    !
+    !Check:
+    if(pos<1.OR.pos>N)stop "Advance_op_dmrg error: Pos not in [1,Ldmrg]"
+    !
+    !Get label of the block holding the site at position pos:
+    label='l'; if(pos>L)label='r'
+    !
+    !Get index in the block from the position pos in the chain:
+    i=pos    ; if(pos>L)i=N+1-pos
+    !
+    istart  = i
+    select case(label)
+    case ("l")
+       istart = i ; iend   = L ; if(present(nstep))iend=istart+nstep
+       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
+    case ("r") 
+       istart = i ; iend   = R ; if(present(nstep))iend=istart+nstep
+       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
+    end select
+    !
+    !
+    Oi = Op
+    select case(label)
+    case ("l")
+       do it=istart+1,iend
+          U  = left%omatrices%op(index=it)
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Oi.x.Id(dot%dim)
+       enddo
+    case ("r")
+       do it=istart+1,iend
+          U  = right%omatrices%op(index=it)
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Id(dot%dim).x.Oi
+       enddo
+    end select
+    call U%free()
+  end function Advance_Corr_dmrg
 
 
 
