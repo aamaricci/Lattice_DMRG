@@ -12,17 +12,20 @@ MODULE VARS_GLOBAL
   implicit none
 
 
-  abstract interface
-     function UserHconnect(left,right) 
-       USE BLOCKS
-       implicit none
-       type(block)                          :: left
-       type(block)                          :: right
-       real(8),dimension(:,:),allocatable :: UserHconnect ![Nso,Nso]
-     end function UserHconnect
-  end interface
-  procedure(UserHconnect),pointer,public  :: Hmodel=>null()
-  !
+  ! abstract interface
+  !    function UserHconnect(left,right) 
+  !      USE BLOCKS
+  !      implicit none
+  !      type(block)                          :: left
+  !      type(block)                          :: right
+  !      real(8),dimension(:,:),allocatable :: UserHconnect ![Nso,Nso]
+  !    end function UserHconnect
+  ! end interface
+  ! procedure(UserHconnect),pointer,public  :: Hmodel=>null()
+  ! !
+
+  real(8),dimension(:,:),allocatable :: HopH
+
 
   abstract interface
      subroutine sparse_HxV(Nloc,v,Hv)
