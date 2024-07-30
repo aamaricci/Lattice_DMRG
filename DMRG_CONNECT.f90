@@ -129,7 +129,9 @@ contains
     real(8),dimension(:,:),allocatable        :: Hij
     !
     !Hij is shared:
-    Hij = Hmodel(left,right)
+    !Hij = Hmodel(left,right)
+    if(allocated(Hij))deallocate(Hij)
+    allocate(Hij, source=HopH)
     !
     !> Get H2 dimensions:
     dleft = shape(left%operators)
@@ -189,7 +191,9 @@ contains
     real(8),dimension(:,:),allocatable :: Hij
     !
     !Hij is shared:
-    Hij = Hmodel(left,right)
+    !Hij = Hmodel(left,right)
+    if(allocated(Hij))deallocate(Hij)
+    allocate(Hij, source=HopH)
     !
     !> Get H2 dimensions:
     Hdims = shape(left%operators)*shape(right%operators)

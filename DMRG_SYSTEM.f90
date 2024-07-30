@@ -25,11 +25,16 @@ contains
   !##################################################################
   !              INIT/FINALIZE DMRG ALGORITHM
   !##################################################################
-  subroutine init_dmrg(Huser,ModelDot)
-    procedure(UserHconnect) :: Huser
-    type(site)              :: ModelDot
-    if(associated(Hmodel))nullify(Hmodel)
-    Hmodel => Huser
+  subroutine init_dmrg(Hij,ModelDot)
+    ! procedure(UserHconnect) :: Huser
+    real(8),dimension(:,:) :: Hij
+    type(site)             :: ModelDot
+    ! if(associated(Hmodel))nullify(Hmodel)
+    ! Hmodel => Huser
+    call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
+    if(allocated(HopH))deallocate(HopH)
+    allocate(HopH, source=Hij)
+    !
     allocate(target_qn, source=DMRG_QN)
     dot        = ModelDot
     init_left   = block(dot)
@@ -39,7 +44,8 @@ contains
 
 
   subroutine finalize_dmrg()
-    if(associated(Hmodel))nullify(Hmodel)
+    ! if(associated(Hmodel))nullify(Hmodel)
+    if(allocated(HopH))deallocate(HopH)    
     call dot%free()
     call init_left%free()
     call init_right%free()
@@ -349,6 +355,7 @@ contains
     real(8) :: entropy
     !
     entropy=0d0
+    if(.not.allocated(rho_left_evals))return
     do i=1,size(rho_left_evals)
        if(rho_left_evals(i)<0d0)cycle       
        entropy = entropy-rho_left_evals(i)*log(rho_left_evals(i))
