@@ -15,9 +15,10 @@ program hm_1d
   complex(8),dimension(:,:),allocatable     :: Hij,Hloc
   complex(8),dimension(:,:,:,:),allocatable :: Hlat
   real(8),dimension(:),allocatable          :: Eij
-
+  real(8),dimension(:),allocatable          :: rhoDiag
+  real(8),dimension(:,:),allocatable        :: rhoH,dens
   real(8)                                   :: mh,ts,lambda,E0
-  real(8)                                   :: xmu
+  real(8)                                   :: xmu,beta
   character(len=20)                         :: file
   logical                                   :: pbc
   complex(8),dimension(:,:),allocatable     :: GammaX,Gamma0,GammaZ
@@ -28,6 +29,7 @@ program hm_1d
   call parse_input_variable(ts,"ts","input.conf",default=-1d0)
   call parse_input_variable(norb,"Norb","input.conf",default=2)
   call parse_input_variable(pbc,"pbc","input.conf",default=.false.)
+  call parse_input_variable(beta,"beta","input.conf",default=1000d0)
   call save_input_file("input.conf")
 
 
@@ -57,7 +59,7 @@ program hm_1d
   Links(2,:) =-[1]
 
 
-  do Nx=4,Nkx,2
+  do Nx=2,Nkx,2
      Nlat = Nx
 
 
@@ -91,8 +93,15 @@ program hm_1d
 
      if(allocated(Hij))deallocate(Hij)
      if(allocated(Eij))deallocate(Eij)
+     if(allocated(rhoDiag))deallocate(rhoDiag)
+     if(allocated(rhoH))deallocate(rhoH)
+     if(allocated(dens))deallocate(dens)
      allocate(Hij(Nlat*Nso,Nlat*Nso))
+     allocate(rhoH(Nlat*Nso,Nlat*Nso))
      allocate(Eij(Nlat*Nso))
+     allocate(rhoDiag(Nlat*Nso))
+     allocate(dens(Nlat,Nso))
+     
      print*,Nlat,Nso,Nlat*Nso
      Hij = zero
      do ilat=1,Nlat
@@ -112,14 +121,26 @@ program hm_1d
 
      call eigh(Hij,Eij)
 
+     rhoDiag = fermi(Eij,beta)
+     rhoH    = matmul(Hij , matmul(diag(rhoDiag), transpose(Hij)) ) 
+
+     do ilat=1,Nlat
+        do io=1,Nso
+           i = io + (ilat-1)*Nso
+           dens(ilat,io) = rhoH(i,i)
+        enddo
+     enddo
+
+     
      Nup = Nlat*Nso/2
      Ndw = Nlat*Nso-Nup
      print*,Nso,Nup,Ndw
 
      E0 = sum(Eij(:Nup)) + sum(Eij(:Ndw))
      E0 = E0/Nlat/Nso
-     write(*,*)Nlat/2,E0,E0/2
-     write(100,*)Nlat/2,E0,E0/2
+     write(*,*)Nlat/2,E0,dens(:,1)!,sum(Eij(:Nup))/Nlat/Nso,sum(Eij(:Ndw))/Nlat/Nso
+     
+     write(100,*)Nlat/2,E0
   enddo
 
 

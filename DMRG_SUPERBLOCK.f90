@@ -22,7 +22,7 @@ contains
   !-----------------------------------------------------------------!
   subroutine sb_get_states()
     integer                          :: ileft,iright
-    integer                          :: i,j,istate
+    integer                          :: i,j,istate,unit
     real(8),dimension(:),allocatable :: left_qn,right_qn
     integer,dimension(:),allocatable :: left_map,right_map
     !
@@ -33,7 +33,7 @@ contains
     call sb_sector%free()
     !
 #ifdef _DEBUG
-    open(102,file='SB_list_'//str(left%length)//'.dat')
+    unit = fopen('SB_list_'//str(left%length)//'.dat')
 #endif
     do ileft=1,size(left%sectors(1))
        left_qn   = left%sectors(1)%qn(index=ileft)
@@ -44,26 +44,26 @@ contains
        right_map = right%sectors(1)%map(qn=right_qn)
        !
 #ifdef _DEBUG
-       write(102,*)left_qn,right_qn
-       write(102,*)size(left_map),size(right_map)
+       write(unit,*)left_qn,right_qn
+       write(unit,*)size(left_map),size(right_map)
 #endif
        do i=1,size(left_map)
           do j=1,size(right_map)
              istate=right_map(j) + (left_map(i)-1)*right%Dim
 #ifdef _DEBUG
-             write(102,*)left_map(i),right_map(j),istate,right%Dim
+             write(unit,*)left_map(i),right_map(j),istate
 #endif
              call append(sb_states, istate)
              call sb_sector%append(qn=left_qn,istate=size(sb_states))
           enddo
        enddo
 #ifdef _DEBUG
-       write(102,*)""
+       write(unit,*)""
 #endif
        ! call eta(ileft,size(left%sectors(1)))
     enddo
 #ifdef _DEBUG
-    close(102)
+    close(unit)
 #endif
     !
     call stop_timer()
