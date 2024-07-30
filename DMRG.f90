@@ -10,7 +10,7 @@ MODULE DMRG
   USE SITES
   USE BLOCKS
   !DMRG
-  USE VARS_GLOBAL!< uncomment this to compile kron_ tests
+  ! USE VARS_GLOBAL!< uncomment this to compile kron_ tests
   USE DMRG_SUPERBLOCK
   USE DMRG_MEASURE
   USE DMRG_SYSTEM

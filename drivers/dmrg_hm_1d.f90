@@ -9,7 +9,7 @@ program hubbard_1d
   character(len=1)                               :: DMRGtype
   real(8)                                        :: ts(2),Mh(2),lambda
   type(site)                                     :: Dot
-  real(8),dimension(:,:),allocatable             :: Hloc
+  real(8),dimension(:,:),allocatable             :: Hloc,Hlr
   type(sparse_matrix),dimension(:,:),allocatable :: N,C
   type(sparse_matrix) :: dens,docc,P
 
@@ -44,16 +44,19 @@ program hubbard_1d
         n(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
      enddo
   enddo
-
   docc = matmul(n(1,1),n(1,2))
   dens = n(1,1)!+n(1,2)
-
-  call dens%show()
-  
+  call dens%show()  
   call docc%show()
 
+
+
+  if(allocated(Hlr))deallocate(Hlr)
+  allocate(Hlr(Nso,Nso))
+  Hlr = diag([ts(1:Norb),ts(1:Norb)])
+  if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
   !Init DMRG
-  call init_dmrg(hm_1d_model,ModelDot=Dot)
+  call init_dmrg(Hlr,ModelDot=Dot)
 
   !Run DMRG algorithm
   select case(DMRGtype)
@@ -66,10 +69,9 @@ program hubbard_1d
 
 
 
-  call Measure_Op_DMRG(dens,file="n_l1VSj",ref=0.5d0)
+  call Measure_Op_DMRG(dens,file="n_l1VSj")
 
-   ! call Measure_Op_DMRG(docc,file="docc_l1VSj",ref=0.25d0)
-  
+
 
   !Finalize DMRG
   call finalize_dmrg()

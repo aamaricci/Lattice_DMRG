@@ -71,7 +71,9 @@ contains
     !
     !
     !> GET THE USER DEFINED MODEL HAMILTONIAN PARAMETERS:
-    Hij = Hmodel(left,right)
+    ! Hij = Hmodel(left,right)
+    if(allocated(Hij))deallocate(Hij)
+    allocate(Hij, source=HopH)
     !
     !
     Nso  = Nspin
@@ -181,7 +183,9 @@ contains
     !
     !
     !> GET THE USER DEFINED MODEL HAMILTONIAN PARAMETERS:
-    Hij = Hmodel(left,right)
+    ! Hij = Hmodel(left,right)
+    if(allocated(Hij))deallocate(Hij)
+    allocate(Hij, source=HopH)
     !
     !
     Nso  = Nspin*Norb
