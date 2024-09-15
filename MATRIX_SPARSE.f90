@@ -302,7 +302,7 @@ contains
     !
   end subroutine sp_insert_element
 
-  !no addition
+  !no addition, no check... wild cow-boy 
   subroutine sp_fast_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
     real(8),intent(in)              :: value
