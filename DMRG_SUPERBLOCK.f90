@@ -164,7 +164,7 @@ contains
             Nblock,&
             Nitermax,&
             tol=lanc_tolerance,&
-            iverbose=.false.)
+            iverbose=.true.)
     else !use LAPACK
        call sb_build_Hv(Hsb)
        allocate(evals(m_sb))

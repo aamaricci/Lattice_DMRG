@@ -438,6 +438,21 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+    ! ifound=.false.
+    ! c => self%root%next
+    ! do                            !traverse the list until QN is found
+    !    if(.not.associated(c))exit
+    !    if(c%index == index_) then
+    !       ifound=.true.
+    !       exit          
+    !    endif
+    !    c => c%next
+    ! end do
+    ! if(.not.ifound)stop "get_qn_matrix error: not found"
+    !
+>>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -456,6 +471,10 @@ contains
     class(blocks_matrix)             :: self
     integer,optional                 :: index
     integer,optional                 :: m
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+    integer                          :: index_,q,m_,i
+>>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
     integer,dimension(:),allocatable :: map
     integer                          :: index_,q,m_,i
     type(block_type),pointer         :: c
@@ -471,6 +490,20 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+    ! ifound=.false.
+    ! c => self%root%next
+    ! do                            !traverse the list until QN is found
+    !    if(.not.associated(c))exit
+    !    if(c%index == index_) then
+    !       ifound=.true.
+    !       exit          
+    !    endif
+    !    c => c%next
+    ! end do
+    ! if(.not.ifound)stop "get_qn_matrix error: not found"
+>>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -478,6 +511,10 @@ contains
     !
     if(allocated(map))deallocate(map)
     allocate(map, source=c%map)
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+    ! map = c%map
+>>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
     !
     c=>null()
   end function get_map_blocks_matrix
@@ -642,10 +679,13 @@ contains
     real(8),dimension(:),allocatable :: self_vec
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
     integer,dimension(:),allocatable    :: self_map
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
     ! dims = shape(self)
     ! m_=dims(2);if(present(m))m_=m
     ! if(m_<1.OR.m_>dims(2))stop "as_sparse_truncate_blocks_matrix ERROR: m<1 OR m>size(self,2)"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
     call sparse%init(n,m)
     do it=1,m
        self_vec = self%evec(m=it) !returns the smallest it-th evector

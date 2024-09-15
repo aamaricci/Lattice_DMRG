@@ -64,7 +64,7 @@ contains
     end select
     call self%put_op("H", Hb +  Hd + H2)
     !
-    !> Update all the other operators in the list: 
+    !> Update all the other operators in the list:
     do i=1,size(self%operators)
        key = self%operators%key(index=i)
        if(str(key)=="H")cycle
@@ -83,7 +83,6 @@ contains
     !> Enlarge the basis states
     call self%get_basis(self_basis)
     call dot%get_basis(dot_basis)
-    !
     select case(str(grow_))
     case ("left","l")
        enl_basis = (self_basis.o.dot_basis)

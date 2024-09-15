@@ -19,6 +19,7 @@ contains
     integer                            :: Nleft,Nright
     real(8),dimension(:),allocatable   :: sb_qn,qn
     integer,dimension(:),allocatable   :: sb_map
+    real(8),dimension(:,:),allocatable :: rho
     call start_timer("Get Rho")
     call rho_left%free()
     call rho_right%free()
@@ -29,21 +30,21 @@ contains
        Nright  = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nleft*Nright==0)cycle
        !
-       qn = sb_qn
-       call rho_left%append(&
-            build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
-            qn=qn,map=left%sectors(1)%map(qn=qn))
+       qn  = sb_qn
+       rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left') 
+       call rho_left%append(rho,qn=qn,map=left%sectors(1)%map(qn=qn))
        !
-       qn = current_target_qn-sb_qn
-       call rho_right%append(&
-            build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
-            qn=qn,map=right%sectors(1)%map(qn=qn))
+       qn  = current_target_qn-sb_qn
+       rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
+       call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
+       !
     enddo
     call stop_timer()
 #ifdef _DEBUG
     call rho_left%show(file="Rho_L_"//str(left%length)//".dat")
     call rho_right%show(file="Rho_R_"//str(right%length)//".dat")
 #endif
+    if(allocated(rho))deallocate(rho)
     if(allocated(sb_map))deallocate(sb_map)
     if(allocated(sb_qn))deallocate(sb_qn)
     if(allocated(qn))deallocate(qn)
@@ -61,7 +62,7 @@ contains
     real(8),dimension(:)               :: psi
     integer,dimension(nleft*nright)    :: map
     character(len=*)                   :: direction
-    real(8),dimension(:,:),allocatable :: rho,Rtmp
+    real(8),dimension(:,:),allocatable :: rho
     real(8),dimension(nleft,nright)    :: psi_tmp
     integer                            :: il,ir,i,j
     !
@@ -115,7 +116,7 @@ contains
     select case(to_lower(str(label)))
 !!!!!#################################
 !!!!!      LEFT
-!!!!!!#################################
+!!!!!#################################
     case ("left","l","sys","system","s")
        mtr = m_left
        if(left%length+right%length==2)return
@@ -123,7 +124,6 @@ contains
        call start_timer("Diag Rho "//to_lower(str(label)))
        call rho_left%eigh(sort=.true.,reverse=.true.)
        call stop_timer()
-
        !
        if(allocated(rho_left_evals))deallocate(rho_left_evals)
        allocate(rho_left_evals, source=rho_left%evals())
@@ -131,7 +131,7 @@ contains
        !Build Truncated Density Matrices:
        call start_timer("Renormalize "//to_lower(str(label)))
        if(Mstates/=0)then
-          m_s = min(Mstates,m_left,size(rho_left_evals))
+          m_s   = min(Mstates,m_left,size(rho_left_evals))
        elseif(Estates/=0d0)then
           m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
           m_s   = m_err(1)
@@ -142,7 +142,8 @@ contains
        e_=rho_left_evals(m_s)
        j_=m_s
        do i=j_+1,size(rho_left_evals)
-          if(abs(rho_left_evals(i)-e_)<=lanc_tolerance)m_s=m_s+1
+          err = abs(e_-rho_left_evals(i))/e_
+          if(err<=1d-2)m_s=m_s+1
        enddo
        !>truncation-rotation matrices:
        truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
@@ -167,8 +168,7 @@ contains
           write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i)))),1d0-sum(rho_left_evals(1:i))
           if(i==m_s)write(unit,*)" "
        enddo
-       close(unit)
-       ! call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
+       close(unit)       
        call rho_left%show(file="NewRho_L_"//str(left%length)//".dat")
 #endif
        !Free Rho_Left
@@ -203,7 +203,8 @@ contains
        e_=rho_right_evals(m_e)
        j_=m_e
        do i=j_+1,size(rho_right_evals)
-          if(abs(rho_right_evals(i)-e_)<=lanc_tolerance)m_e=m_e+1
+          err = abs(e_-rho_right_evals(i))/e_
+          if(err<=1d-2)m_e=m_e+1
        enddo
        !>truncation-rotation matrices:
        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
