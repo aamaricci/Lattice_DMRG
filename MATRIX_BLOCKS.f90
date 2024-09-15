@@ -356,17 +356,22 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
-    ifound=.false.
-    c => self%root%next
-    do                            !traverse the list until QN is found
-       if(.not.associated(c))exit
-       if(c%index == index_) then
-          ifound=.true.
-          exit          
-       endif
+    ! ifound=.false.
+    ! c => self%root%next
+    ! do                            !traverse the list until QN is found
+    !    if(.not.associated(c))exit
+    !    if(c%index == index_) then
+    !       ifound=.true.
+    !       exit          
+    !    endif
+    !    c => c%next
+    ! end do
+    ! if(.not.ifound)stop "get_qn_matrix error: not found"
+    !
+    c => self%root
+    do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
-    end do
-    if(.not.ifound)stop "get_qn_matrix error: not found"
+    enddo
     !
     allocate(qn, source=c%qn)
     ! qn = c%qn
@@ -382,7 +387,7 @@ contains
     class(blocks_matrix)             :: self
     integer,optional                 :: index
     integer,optional                 :: m
-    integer                          :: index_,q,m_
+    integer                          :: index_,q,m_,i
     integer,dimension(:),allocatable :: map
     logical                          :: ifound
     type(block_type),pointer         :: c
@@ -398,21 +403,25 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
-    ifound=.false.
-    c => self%root%next
-    do                            !traverse the list until QN is found
-       if(.not.associated(c))exit
-       if(c%index == index_) then
-          ifound=.true.
-          exit          
-       endif
+    ! ifound=.false.
+    ! c => self%root%next
+    ! do                            !traverse the list until QN is found
+    !    if(.not.associated(c))exit
+    !    if(c%index == index_) then
+    !       ifound=.true.
+    !       exit          
+    !    endif
+    !    c => c%next
+    ! end do
+    ! if(.not.ifound)stop "get_qn_matrix error: not found"
+    c => self%root
+    do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
-    end do
-    if(.not.ifound)stop "get_qn_matrix error: not found"
+    enddo
     !
     if(allocated(map))deallocate(map)
-    allocate(map, mold=c%map)
-    map = c%map
+    allocate(map, source=c%map)
+    ! map = c%map
     !
     c=>null()
   end function get_map_blocks_matrix
@@ -504,7 +513,7 @@ contains
        self_vec = self%evec(m=it)
        self_map = self%map(m=it)
        do i=1,size(self_vec)
-          call sparse%insert(self_vec(i),self_map(i),it)
+          call sparse%fast_insert(self_vec(i),self_map(i),it)
        enddo
     enddo
     
@@ -536,13 +545,10 @@ contains
     integer                             :: i,it
     real(8),dimension(:),allocatable :: self_vec
     integer,dimension(:),allocatable    :: self_map
-    ! dims = shape(self)
-    ! m_=dims(2);if(present(m))m_=m
-    ! if(m_<1.OR.m_>dims(2))stop "as_sparse_truncate_blocks_matrix ERROR: m<1 OR m>size(self,2)"
     call sparse%init(n,m)
     do it=1,m
-       self_vec = self%evec(m=it)
-       self_map = self%map(m=it)
+       self_vec = self%evec(m=it) !returns the smallest it-th evector
+       self_map = self%map(m=it)  !the same
        do i=1,size(self_vec)
           call sparse%fast_insert(self_vec(i),self_map(i),it)
        enddo
@@ -590,6 +596,7 @@ contains
        allocate(c%E(Nloc));c%E=0d0
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
        !
+       where(c%E<0d0)c%E=1d-20
        self%evalues(Offset+1:Offset+Nloc) = c%E
        Offset = Offset + Nloc
        !
@@ -816,7 +823,7 @@ contains
 
 
   !+------------------------------------------------------------------+
-  !PURPOSE:  Given an integer index m=1,self.Nrow,
+  !PURPOSE:  Given an integer index m=1,self.Ncol,
   ! returns the corresponding BLock index containing it and the relative
   ! position pos inside the block.
   ! [1...D_1][D_1+1...D_2]...[D_{q-1}...D_q] = D=self.Ndim

@@ -106,7 +106,7 @@ contains
        ! !>TO BE REMOVED:
        ! if(j<=L)J = N+1-j
        ! !<-------------
-       oi     = Build_Op_dmrg(Op,j)
+       Oi     = Build_Op_dmrg(Op,j)
        Oi     = Advance_Op_dmrg(Oi,j)
        vals(i)= Average_Op_dmrg(Oi,j)
        write(LOGfile,*)ipos,vals(i),abs(vals(i)-0.5d0)
@@ -288,20 +288,22 @@ contains
     !
     ! print*,istart,iend
     !
-    Oi = Op
     !Evolve to SB basis
-    do it=istart,iend-1
-       select case(label)
-       case ("l")
+    Oi = Op
+    select case(label)
+    case ("l")
+       do it=istart,iend-1
           U  = left%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = matmul(U%dgr(),matmul(Oi,U))
           Oi = Oi.x.Id(dot%dim)
-       case ("r")
+       enddo
+    case ("r")
+       do it=istart,iend-1
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Id(dot%dim).x.Oi
-       end select
-    enddo
+       enddo
+    end select
     call U%free()
   end function Advance_Op_dmrg
 

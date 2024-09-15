@@ -311,11 +311,11 @@ contains
     integer                            :: arow,brow,acol,bcol,jcol
     integer                            :: ia,ib,ic,ja,jb,jc
     real(8)                            :: aval,bval
+    real :: t0,t1
     !
     Hv=zero
     !> loop over all the SB sectors:
     sector: do k=1,size(sb_sector)
-       !
        !> apply the H^L x 1^r: need to T v and Hv
        do ir=1,Drs(k)
           do il=1,Dls(k)
@@ -328,6 +328,7 @@ contains
              end do
           enddo
        enddo
+
        !
        !> apply the 1^L x H^r
        do il=1,Drs(k)
