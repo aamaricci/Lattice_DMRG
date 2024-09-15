@@ -132,10 +132,10 @@ contains
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,default=5,&
          comment="iDMRG steps to take=max length of the SB.")
 
-    call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=20,&
+    call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,default=0,&
          comment="Number of states for truncation. If 0 use Edmrg as threshold.")
 
-    call parse_input_variable(Edmrg,"Edmrg",INPUTunit,default=0d0,&
+    call parse_input_variable(Edmrg,"Edmrg",INPUTunit,default=1d-8,&
          comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
 
     call parse_input_variable(Nsweep,"Nsweep",INPUTunit,default=1,&

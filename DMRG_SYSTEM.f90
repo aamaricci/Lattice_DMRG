@@ -36,10 +36,10 @@ contains
     allocate(HopH, source=Hij)
     !
     allocate(target_qn, source=DMRG_QN)
-    dot        = ModelDot
+    dot         = ModelDot
     init_left   = block(dot)
-    init_right   = block(dot)
-    init_called=.true.
+    init_right  = block(dot)
+    init_called =.true.
   end subroutine init_dmrg
 
 
@@ -229,11 +229,9 @@ contains
     m_sb = size(sb_states)
     !
     write(LOGfile,"(A,I12,12X,I12)")&
-         "Blocks Length                        :",left%length-1,right%length-1
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Blocks Dim                           :",m_left,m_right
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Renormalized Blocks Dim              :",m_rleft,m_rright
+         "Initial Blocks Length                :",left%length-1,right%length-1
+    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
+         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
     write(LOGfile,"(A,L12,12X,L12)")&
          "Truncating                           :",Mstates<=m_left,Mstates<=m_right
     write(LOGfile,"(A,2ES24.15)")&
@@ -244,9 +242,9 @@ contains
          "Enlarged Blocks Dim                  :",m_eleft,m_eright  
     write(LOGfile,"(A,I12)")&
          "SuperBlock Length                    :",current_L
-    write(LOGfile,"(A,I12,A1,I12,A1,F10.5,A1)")&
+    write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
          "SuperBlock Dimension  (tot)          :", &
-         m_sb,"(",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
+         m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
     write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
          "Target_QN                            :",current_target_QN
     write(LOGfile,"(A,3x,G24.15)")&
@@ -268,12 +266,12 @@ contains
     !#################################
     call sb_get_rdm()
 
-! #ifdef _DEBUG    
-!     if(left%length == Ldmrg+1)then
-!        call renormalize_('left')
-!        call renormalize_('right')
-!     endif
-! #endif
+    ! #ifdef _DEBUG    
+    !     if(left%length == Ldmrg+1)then
+    !        call renormalize_('left')
+    !        call renormalize_('right')
+    !     endif
+    ! #endif
     !
     !
     !#################################
@@ -357,7 +355,7 @@ contains
     entropy=0d0
     if(.not.allocated(rho_left_evals))return
     do i=1,size(rho_left_evals)
-       if(rho_left_evals(i)<0d0)cycle       
+       if(rho_left_evals(i)<=0d0)cycle
        entropy = entropy-rho_left_evals(i)*log(rho_left_evals(i))
     enddo
     Eunit     = fopen("SentropyVSleft.length_"//str(suffix),append=.true.)
