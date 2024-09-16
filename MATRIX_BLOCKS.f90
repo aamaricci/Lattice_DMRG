@@ -338,9 +338,8 @@ contains
     class(blocks_matrix)             :: self
     integer,optional                 :: index
     integer,optional                 :: m
-    integer                          :: index_,q,m_
+    integer                          :: index_,q,m_,i
     real(8),dimension(:),allocatable :: qn
-    logical                          :: ifound
     type(block_type),pointer         :: c
     !
     if(allocated(qn))deallocate(qn)
@@ -356,25 +355,12 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
-    ! ifound=.false.
-    ! c => self%root%next
-    ! do                            !traverse the list until QN is found
-    !    if(.not.associated(c))exit
-    !    if(c%index == index_) then
-    !       ifound=.true.
-    !       exit          
-    !    endif
-    !    c => c%next
-    ! end do
-    ! if(.not.ifound)stop "get_qn_matrix error: not found"
-    !
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
     enddo
     !
     allocate(qn, source=c%qn)
-    ! qn = c%qn
     !
     c=>null()
   end function get_qn_blocks_matrix
@@ -387,9 +373,8 @@ contains
     class(blocks_matrix)             :: self
     integer,optional                 :: index
     integer,optional                 :: m
-    integer                          :: index_,q,m_,i
     integer,dimension(:),allocatable :: map
-    logical                          :: ifound
+    integer                          :: index_,q,m_,i
     type(block_type),pointer         :: c
     !    
     index_=1
@@ -403,17 +388,6 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
-    ! ifound=.false.
-    ! c => self%root%next
-    ! do                            !traverse the list until QN is found
-    !    if(.not.associated(c))exit
-    !    if(c%index == index_) then
-    !       ifound=.true.
-    !       exit          
-    !    endif
-    !    c => c%next
-    ! end do
-    ! if(.not.ifound)stop "get_qn_matrix error: not found"
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -421,7 +395,6 @@ contains
     !
     if(allocated(map))deallocate(map)
     allocate(map, source=c%map)
-    ! map = c%map
     !
     c=>null()
   end function get_map_blocks_matrix
