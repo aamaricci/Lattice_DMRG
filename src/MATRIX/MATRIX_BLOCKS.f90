@@ -439,6 +439,7 @@ contains
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     ! ifound=.false.
     ! c => self%root%next
@@ -453,6 +454,8 @@ contains
     ! if(.not.ifound)stop "get_qn_matrix error: not found"
     !
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -472,9 +475,12 @@ contains
     integer,optional                 :: index
     integer,optional                 :: m
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     integer                          :: index_,q,m_,i
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
     integer,dimension(:),allocatable :: map
     integer                          :: index_,q,m_,i
     type(block_type),pointer         :: c
@@ -491,6 +497,7 @@ contains
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     ! ifound=.false.
     ! c => self%root%next
@@ -504,6 +511,8 @@ contains
     ! end do
     ! if(.not.ifound)stop "get_qn_matrix error: not found"
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -512,9 +521,12 @@ contains
     if(allocated(map))deallocate(map)
     allocate(map, source=c%map)
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     ! map = c%map
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
     !
     c=>null()
   end function get_map_blocks_matrix

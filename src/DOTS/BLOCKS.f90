@@ -291,6 +291,7 @@ contains
     !Udgr.rho.U [M,N].[N,N].[N,M]=[M,M]
     function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
       type(sparse_matrix),intent(in) :: Op
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
       integer                        :: N,M
       type(sparse_matrix)            :: RotOp
 #ifdef _CMPLX
@@ -302,21 +303,33 @@ contains
       real(8),dimension(M,M)         :: Umat
       real(8),dimension(N,N)         :: OpMat
 #endif
+=======
+      real(8),dimension(N,M)         :: trRho
+      integer                        :: N,M
+      type(sparse_matrix)            :: RotOp
+      real(8),dimension(M,M)         :: Umat
+      real(8),dimension(N,N)         :: OpMat
+>>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
       N = size(trRho,1)
       M = size(trRho,2)
       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
       OpMat= Op%as_matrix()
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 #ifdef _CMPLX
       Umat = matmul( matmul( conjg(transpose(trRho)),OpMat),trRho) 
 #else
       Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
 #endif
+=======
+      Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
+>>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
       call RotOp%load( Umat )
     end function rotate_and_truncate
     !
   end subroutine rotate_operators_block
   !
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
   function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
@@ -335,6 +348,8 @@ contains
     call RotOp%load( Umat )
   end function rotate_and_truncate
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+=======
+>>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
 
 
   !##################################################################

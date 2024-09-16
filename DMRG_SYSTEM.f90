@@ -26,11 +26,8 @@ contains
   !              INIT/FINALIZE DMRG ALGORITHM
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
-    ! procedure(UserHconnect) :: Huser
     real(8),dimension(:,:) :: Hij
     type(site)             :: ModelDot
-    ! if(associated(Hmodel))nullify(Hmodel)
-    ! Hmodel => Huser
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
     allocate(HopH, source=Hij)
@@ -44,7 +41,6 @@ contains
 
 
   subroutine finalize_dmrg()
-    ! if(associated(Hmodel))nullify(Hmodel)
     if(allocated(HopH))deallocate(HopH)    
     call dot%free()
     call init_left%free()
@@ -74,7 +70,7 @@ contains
     !
     suffix = label_DMRG('i',1)
     !
-    do while (2*left%length <= Ldmrg)
+    do while (left%length < Ldmrg)
        call step_dmrg()
        call write_energy()
        call write_truncation()
@@ -122,7 +118,7 @@ contains
     print*,"START FINITE DMRG:"
     print*,""
     print*,""
-
+    !
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
        if(Esweep(im)==0)then
@@ -229,7 +225,7 @@ contains
     m_sb = size(sb_states)
     !
     write(LOGfile,"(A,I12,12X,I12)")&
-         "Initial Blocks Length                :",left%length-1,right%length-1
+         "Blocks Length                        :",left%length-1,right%length-1
     write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
          "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
     write(LOGfile,"(A,L12,12X,L12)")&
@@ -253,7 +249,6 @@ contains
          "Filling                              :",sum(current_target_QN)/current_L
     write(LOGfile,"(A,3x,G24.15)")&
          "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-
     !
     !
     !#################################
@@ -265,13 +260,6 @@ contains
     !      BUILD RDM
     !#################################
     call sb_get_rdm()
-
-    ! #ifdef _DEBUG    
-    !     if(left%length == Ldmrg+1)then
-    !        call renormalize_('left')
-    !        call renormalize_('right')
-    !     endif
-    ! #endif
     !
     !
     !#################################
@@ -290,9 +278,6 @@ contains
     !Clean memory:
     call spHsb%free()
     !
-
-
-
     return
   end subroutine step_dmrg
 
@@ -340,7 +325,9 @@ contains
     integer                   :: Eunit
     current_L = left%length + right%length
     Eunit     = fopen("truncationVSleft.length_"//str(suffix),append=.true.)
-    write(Eunit,*)left%length,truncation_error_left/current_L/Norb,truncation_error_right/current_L/Norb
+    write(Eunit,*)left%length,&
+         truncation_error_left/current_L/Norb,&
+         truncation_error_right/current_L/Norb
     close(Eunit)
   end subroutine write_truncation
 
