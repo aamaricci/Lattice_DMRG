@@ -50,7 +50,6 @@ program hubbard_1d
   call docc%show()
 
 
-
   if(allocated(Hlr))deallocate(Hlr)
   allocate(Hlr(Nso,Nso))
   Hlr = diag([ts(1:Norb),ts(1:Norb)])
@@ -68,34 +67,11 @@ program hubbard_1d
   end select
 
 
-
-  call Measure_Op_DMRG(dens,file="n_l1VSj")
-
+  call Measure_Op_DMRG(dens,file="n_l1VSj")!,pos=[Ldmrg,Ldmrg+1])
 
 
   !Finalize DMRG
   call finalize_dmrg()
-
-
-contains
-
-
-
-  !This is user defined Function to be passed to the SYSTEM
-  function hm_1d_model(left,right) result(Hlr)
-    type(block)                        :: left
-    type(block)                        :: right
-    real(8),dimension(:,:),allocatable :: Hlr
-    !
-    if(allocated(Hlr))deallocate(Hlr)
-    allocate(Hlr(Nspin*Norb,Nspin*Norb))
-    !
-    !workout local part, like random local field
-    !if(left%Dim==1 AND right%Dim==1) then operate over local H
-    !if(left%Dim==1 OR right%Dim==1) then operate over local H
-    Hlr = diag([ts(1:Norb),ts(1:Norb)])
-    if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
-  end function hm_1d_model
 
 
 end program hubbard_1d

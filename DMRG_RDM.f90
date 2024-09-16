@@ -183,9 +183,11 @@ contains
     case ("right","r","env","environment","e")
        mtr  = m_right
        if(left%length+right%length==2)return
+       !
        call start_timer("Diag Rho "//to_lower(str(label)))
        call rho_right%eigh(sort=.true.,reverse=.true.)
        call stop_timer()
+       !
        if(allocated(rho_right_evals))deallocate(rho_right_evals)
        allocate(rho_right_evals, source=rho_right%evals())
        !
