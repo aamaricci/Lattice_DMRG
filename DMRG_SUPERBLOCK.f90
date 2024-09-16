@@ -40,26 +40,24 @@ contains
        right_qn  = current_target_qn - left_qn
        if(.not.right%sectors(1)%has_qn(right_qn))cycle
        !
-       left_map = left%sectors(1)%map(qn=left_qn)
+       left_map  = left%sectors(1)%map(qn=left_qn)
        right_map = right%sectors(1)%map(qn=right_qn)
        !
 #ifdef _DEBUG
+       write(unit,*)""
        write(unit,*)left_qn,right_qn
        write(unit,*)size(left_map),size(right_map)
 #endif
        do i=1,size(left_map)
           do j=1,size(right_map)
              istate=right_map(j) + (left_map(i)-1)*right%Dim
+             call append(sb_states, istate)
+             call sb_sector%append(qn=left_qn,istate=size(sb_states))
 #ifdef _DEBUG
              write(unit,*)left_map(i),right_map(j),istate
 #endif
-             call append(sb_states, istate)
-             call sb_sector%append(qn=left_qn,istate=size(sb_states))
           enddo
        enddo
-#ifdef _DEBUG
-       write(unit,*)""
-#endif
        ! call eta(ileft,size(left%sectors(1)))
     enddo
 #ifdef _DEBUG
@@ -68,7 +66,6 @@ contains
     !
     call stop_timer()
     !
-    !call sb_sector%show(file='SB_sector_'//str(left%length)//'.dat')
   end subroutine sb_get_states
 
 
@@ -174,8 +171,7 @@ contains
        deallocate(Hsb,evals)
     endif
     call stop_timer()
-
-    
+    !    
     !Free Memory
     call spHsb%free()
     if(allocated(Hleft))then

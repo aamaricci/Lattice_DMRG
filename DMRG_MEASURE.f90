@@ -89,7 +89,6 @@ contains
     L = left%length           !the len of the last block used to create the SB->\psi
     R = right%length
     N = L+R
-    ! print*,"Measure L,R,N:",L,R,N
     !
     Np = N;if(present(pos))Np= size(pos)
     !
@@ -106,9 +105,9 @@ contains
        ! !>TO BE REMOVED:
        ! if(j<=L)J = N+1-j
        ! !<-------------
-       Oi     = Build_Op_dmrg(Op,j)
-       Oi     = Advance_Op_dmrg(Oi,j)
-       vals(i)= Average_Op_dmrg(Oi,j)
+       Oi     = Build_Op_dmrg(Op,j)   !suspect #1
+       Oi     = Advance_Op_dmrg(Oi,j) !suspect #2 
+       vals(i)= Average_Op_dmrg(Oi,j) !< this is evidently not the issue, see below
        write(LOGfile,*)ipos,vals(i),abs(vals(i)-0.5d0)
     enddo
     call End_measure_dmrg()
@@ -125,16 +124,16 @@ contains
 
 
 
-
+    !Other way to get the average of the operator <O>
+    ! missing the use of \rho which requires to store the block matrix
+    ! which we removed in this version. look in the log.
+    !
     ! U =  right%omatrices%op(index=R-1)
     ! dims=shape(U)
     ! I_R = Id(dot%dim*dims(2))
     ! U =  left%omatrices%op(index=L-1)
     ! dims=shape(U)
     ! I_L = Id(dims(2)*dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
-
-
-
     ! print*,""
     ! print*,"pos=1"
     ! print*,""
@@ -150,8 +149,6 @@ contains
     ! print*,shape(Oi)
     ! val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
     ! print*,ipos,val    
-
-
     ! print*,""
     ! print*,"ipos=N"
     ! print*,""
@@ -220,7 +217,6 @@ contains
     i=pos    ; if(pos>L)i=N+1-pos
     !
     !Build Operator on the chain at position pos:
-
     if(i==1)then
        Oi = Op
     else
@@ -286,24 +282,22 @@ contains
        if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
     end select
     !
-    ! print*,istart,iend
-    !
     !Evolve to SB basis
     Oi = Op
     select case(label)
-    case ("l")
+    case ("l") 
        do it=istart,iend-1
           U  = left%omatrices%op(index=it)
-          Oi = matmul(U%dgr(),matmul(Oi,U))
+          Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Oi.x.Id(dot%dim)
-       enddo
-    case ("r")
+       enddo   
+    case ("r") 
        do it=istart,iend-1
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Id(dot%dim).x.Oi
-       enddo
-    end select
+       enddo   
+    end select 
     call U%free()
   end function Advance_Op_dmrg
 

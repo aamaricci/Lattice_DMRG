@@ -196,7 +196,7 @@ contains
     !
     N = size(Umat,1)
     M = size(Umat,2)
-    if(N/=self%dim) stop "rotate_operators_block error: size(Umat,1) != self.dim"
+    if(N/=self%dim) stop "self.renormalize error: size(Umat,1) != self.dim"
     do i=1,size(self%operators)
        key = self%operators%key(index=i)
        Op  = self%operators%op(index=i)
@@ -206,23 +206,27 @@ contains
     !
     call Op%free()
     !
+  contains
+    !
+    !Udgr.rho.U [M,N].[N,N].[N,M]=[M,M]
+    function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
+      type(sparse_matrix),intent(in) :: Op
+      real(8),dimension(N,M)         :: trRho
+      integer                        :: N,M
+      type(sparse_matrix)            :: RotOp
+      real(8),dimension(M,M)         :: Umat
+      real(8),dimension(N,N)         :: OpMat
+      N = size(trRho,1)
+      M = size(trRho,2)
+      if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
+           stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
+      OpMat= Op%as_matrix()
+      Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
+      call RotOp%load( Umat )
+    end function rotate_and_truncate
+    !
   end subroutine rotate_operators_block
   !
-  function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
-    type(sparse_matrix),intent(in) :: Op
-    real(8),dimension(N,M)      :: trRho  ![Nesys,M]
-    integer                        :: N,M
-    type(sparse_matrix)            :: RotOp
-    real(8),dimension(M,M)      :: Umat
-    real(8),dimension(N,N)      :: OpMat
-    N = size(trRho,1)
-    M = size(trRho,2)
-    if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) stop "rotate_and_truncate error: shape(Op) != [N,N] N=size(Rho,1)"
-    OpMat= Op%as_matrix()
-    ! Umat = matmul( conjg(transpose(trRho)), matmul(OpMat,trRho)) ![M,N].[N,N].[N,M]=[M,M]
-    Umat = matmul( matmul(transpose(trRho),OpMat),trRho) ![M,N].[N,N].[N,M]=[M,M]
-    call RotOp%load( Umat )
-  end function rotate_and_truncate
 
 
   !##################################################################
