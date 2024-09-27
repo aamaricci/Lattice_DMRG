@@ -184,10 +184,6 @@ contains
   !Purpose: return the O(i) at a site I of the chain given an 
   !         operator O in the local dot basis:
   !##################################################################
-  ! U  = left%omatrices%op(index=i-1)
-  ! Oi = matmul(U%dgr(),U).x.Op
-  ! U  = right%omatrices%op(index=i-1)
-  ! Oi = Op.x.matmul(U%dgr(),U)
   function Build_Op_dmrg(Op,pos,set_basis) result(Oi)
     type(sparse_matrix),intent(in) :: Op
     integer                        :: pos
@@ -275,24 +271,24 @@ contains
     istart  = i
     select case(label)
     case ("l")
-       istart = i ; iend   = L ; if(present(nstep))iend=istart+nstep
-       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
+       istart = i ; iend   = L-1 ; if(present(nstep))iend=istart+nstep
+       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L"
     case ("r") 
-       istart = i ; iend   = R ; if(present(nstep))iend=istart+nstep
-       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
+       istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
+       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R"
     end select
     !
     !Evolve to SB basis
     Oi = Op
     select case(label)
     case ("l") 
-       do it=istart,iend-1
+       do it=istart,iend
           U  = left%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Oi.x.Id(dot%dim)
        enddo   
     case ("r") 
-       do it=istart,iend-1
+       do it=istart,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Id(dot%dim).x.Oi
