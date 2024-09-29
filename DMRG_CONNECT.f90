@@ -23,7 +23,7 @@ contains
     character(len=16)            :: grow_
     character(len=:),allocatable :: key,dtype
     type(tbasis)                 :: self_basis,dot_basis,enl_basis
-    type(sparse_matrix)          :: Hb,Hd,H2
+    type(sparse_matrix)          :: Hb,Hd,H2,Dd
     integer                      :: i
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
@@ -66,13 +66,28 @@ contains
     !
     !> Update all the other operators in the list:
     do i=1,size(self%operators)
-       key = self%operators%key(index=i)
-       if(str(key)=="H")cycle
+       key = str(self%operators%key(index=i))
+       if(key=="H")cycle
+
+       !Bosonic operators:
+       !O_L -> I_L.x.O_d
+       !O_R -> O_d.x.I_R
+       !Fermionic operators:
+       !O_L -> P_L.x.O_d
+       !O_R -> O_d.x.I_R
+       !Sign operator:
+       !P_L -> P_L.x.P_d
+       !P_R -> P_d.x.P_R
        select case(str(grow_))
        case ("left","l")
-          call self%put_op(str(key), Id(self%dim).x.dot%operators%op(str(key)))
+          Dd = Id(self%dim)
+          if(key=="P")Dd = self%operators%op(key="P")
+          if(key(1:1)=="C")Dd = self%operators%op(key="P")
+          call self%put_op(str(key), Dd.x.dot%operators%op(str(key)))
        case ("right","r")
-          call self%put_op(str(key), dot%operators%op(str(key)).x.Id(self%dim))
+          Dd = Id(self%dim)
+          if(key=="P")Dd = self%operators%op(key="P")
+          call self%put_op(str(key), dot%operators%op(str(key)).x.Dd)
        end select
     enddo
     !

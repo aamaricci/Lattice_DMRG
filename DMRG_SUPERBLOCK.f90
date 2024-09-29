@@ -11,7 +11,9 @@ MODULE DMRG_SUPERBLOCK
   public :: sb_get_states
   public :: sb_diag
 
-
+  !Uncomment to test with kron_
+  public :: sb_build_Hv
+  
 contains
 
 

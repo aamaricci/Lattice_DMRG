@@ -1,18 +1,19 @@
 MODULE DMRG
+  !GENERAL
   USE INPUT_VARS
   USE AUX_FUNCS
-  !LIBRARY:
+  !AUX MODULES
   USE MATRIX_SPARSE
   USE MATRIX_BLOCKS
   USE TUPLE_BASIS
   USE LIST_OPERATORS
   USE LIST_SECTORS
+  !DMRG:
   USE SITES
   USE BLOCKS
-  !DMRG
-  ! USE VARS_GLOBAL!< uncomment this to compile kron_ tests
-  USE DMRG_SUPERBLOCK
+  USE DMRG_SUPERBLOCK !< uncomment public sb_build_HV to compile kron_ tests
   USE DMRG_MEASURE
   USE DMRG_SYSTEM
+  !USE VARS_GLOBAL!< uncomment this to compile kron_ tests
   implicit none  
 END MODULE DMRG
