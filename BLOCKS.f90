@@ -16,7 +16,7 @@ MODULE BLOCKS
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
      type(operators_list)                        :: omatrices
-     character(len=:),allocatable                :: KeyLink
+     character(len=:),allocatable                :: Opname
      character(len=:),allocatable                :: SiteType
    contains
      procedure,pass :: free        => free_block
@@ -28,7 +28,7 @@ MODULE BLOCKS
      procedure,pass :: is_valid    => is_valid_block
      procedure,pass :: renormalize => rotate_operators_block
      procedure,pass :: okey        => okey_block
-     procedure,pass :: name        => KeyLink_block
+     procedure,pass :: name        => Opname_block
      procedure,pass :: type        => SiteType_block
   end type block
 
@@ -78,7 +78,7 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
-    if(allocated(self%KeyLink))deallocate(self%KeyLink)
+    if(allocated(self%Opname))deallocate(self%Opname)
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_block
 
@@ -87,13 +87,14 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,key,type) result(self)
+  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
     integer,intent(in)              :: length
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(operators_list),intent(in) :: omatrices
-    character(len=:),allocatable    :: key,type
+    character(len=:),allocatable    :: OpName
+    character(len=:),allocatable    :: SiteType
     type(block)                     :: self
     self%length    = length
     self%Dim       = Dim
@@ -103,8 +104,8 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = sectors(i)
     enddo
-    allocate(self%KeyLink, source=key)
-    allocate(self%SiteType, source=type)
+    allocate(self%OpName, source=OpName)
+    allocate(self%SiteType, source=SiteType)
   end function constructor_from_scrath
 
 
@@ -119,7 +120,7 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
     enddo
-    allocate(self%KeyLink, source=ssite%KeyLink)
+    allocate(self%OpName, source=ssite%OpName)
     allocate(self%SiteType, source=ssite%SiteType)
   end function constructor_from_site
 
@@ -134,22 +135,24 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a sparse operator in the block dictionary
   !+------------------------------------------------------------------+
-  subroutine put_op_block(self,key,op)
+  subroutine put_op_block(self,key,op,type)
     class(block)                   :: self
     character(len=*),intent(in)    :: key
     type(sparse_matrix),intent(in) :: op
-    call self%operators%put(str(key),op)
+    character(len=*),intent(in)    :: type
+    call self%operators%put(str(key),op,type)
   end subroutine put_op_block
 
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a sparse matrix in the block dictionary
   !+------------------------------------------------------------------+
-  subroutine put_omat_block(self,key,op)
+  subroutine put_omat_block(self,key,op,type)
     class(block)                   :: self
     character(len=*),intent(in)    :: key
     type(sparse_matrix),intent(in) :: op
-    call self%omatrices%put(str(key),op)
+    character(len=*),intent(in)    :: type
+    call self%omatrices%put(str(key),op,type)
   end subroutine put_omat_block
 
 
@@ -192,15 +195,16 @@ contains
     real(8),dimension(:,:)       :: Umat   ![N,M]
     integer                      :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)          :: Op
-    character(len=:),allocatable :: key
+    character(len=:),allocatable :: key,type
     !
     N = size(Umat,1)
     M = size(Umat,2)
     if(N/=self%dim) stop "self.renormalize error: size(Umat,1) != self.dim"
     do i=1,size(self%operators)
-       key = self%operators%key(index=i)
-       Op  = self%operators%op(index=i)
-       call self%put_op(str(key),rotate_and_truncate(Op,Umat,N,M))
+       key  = self%operators%key(index=i)
+       type = self%operators%type(index=i)
+       Op   = self%operators%op(index=i)
+       call self%put_op(str(key),rotate_and_truncate(Op,Umat,N,M), type)
     enddo
     self%dim = M
     !
@@ -249,7 +253,7 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i) = B%sectors(i)
     enddo
-    allocate(A%KeyLink, source=B%KeyLink)
+    allocate(A%OpName, source=B%OpName)
     allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_block
 
@@ -296,11 +300,11 @@ contains
   end function okey_block
 
 
-  function KeyLink_block(self) result(string)
+  function OpName_block(self) result(string)
     class(block)                  :: self
     character(len=:),allocatable :: string
-    allocate(string, source=self%KeyLink)
-  end function KeyLink_block
+    allocate(string, source=self%OpName)
+  end function OpName_block
 
 
   function SiteType_block(self) result(string)
@@ -320,10 +324,10 @@ contains
     class(block)              :: self
     character(len=*),optional :: fmt
     logical,optional          :: wOP,wOMAT
-    character(len=*),optional       :: file
+    character(len=*),optional :: file
     character(len=32)         :: fmt_
-    logical :: wOP_,wOMAT_
-    integer                         :: unit_
+    logical                   :: wOP_,wOMAT_
+    integer                   :: unit_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     wOP_  =.false.;if(present(wOP))  wOP_  =wOP
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
@@ -338,7 +342,7 @@ contains
        call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
-       write(unit_,"(A15,A)")"Link Name    = ",self%KeyLink
+       write(unit_,"(A15,A)")"Op Name    = ",self%OpName
        write(unit_,"(A14)")"Block Ops     :"
        call self%operators%show(fmt=fmt_,unit=unit_)
 
@@ -412,7 +416,9 @@ program testBLOCKS
        dim=2,&
        sectors=[sectors_list(sz_basis)],&
        operators=operators_list(['H0','Sz','Sp'],&
-       [sparse(Hzero),sparse(Sz),sparse(Splus)]))
+       [sparse(Hzero),sparse(Sz),sparse(Splus)],['b','s','b']),&
+       opname='S',&
+       sitetype='spin')
   print*,"Showing the operator list:"
   call my_block%show()
   print*,""
@@ -431,7 +437,7 @@ program testBLOCKS
 
 
   print*,"TEST Constructor 2: from_site"
-  my_block=block(spin_onehalf_site())
+  my_block=block(spin_site(2))
   print*,"Showing the operator list:"
   call my_block%show()
   print*,""
@@ -475,11 +481,11 @@ program testBLOCKS
   print*,"Check allocatable array of blocks:"
   allocate(my_blocks(5))
   print*,"Copy spin 1/2 into BlockArray(1:5)"
-  my_blocks(1)=block(spin_onehalf_site())
-  my_blocks(2)=block(spin_onehalf_site())
-  my_blocks(3)=block(spin_one_site())
-  my_blocks(4)=block(spin_one_site())
-  my_blocks(5)=block(spin_onehalf_site())
+  my_blocks(1)=block(spin_site(2))
+  my_blocks(2)=block(spin_site(2))
+  my_blocks(3)=block(spin_site(3))
+  my_blocks(4)=block(spin_site(3))
+  my_blocks(5)=block(spin_site(2))
   !
   print*,"Check each of the block is correct" 
   do i=2,5

@@ -9,15 +9,15 @@ program testEDkron
   character(len=1)                             :: DMRGtype
   real(8)                                      :: ts(2),Mh,suml,lambda,vh
   type(site)                                   :: my_dot
+  type(sparse_matrix)                          :: C,N,Cl,Cr,P
   type(sparse_matrix),allocatable,dimension(:) :: Hsb
   real(8)                                      :: t0
   integer                                      :: m_sb
-  real(8),dimension(:,:),allocatable           :: Evecs,Rho,Hloc
+  real(8),dimension(:,:),allocatable           :: Evecs,Rho,Hloc,Hlr
   real(8),dimension(:),allocatable             :: Evals
-  integer                                      :: Neigen=2
+  ! integer                                      :: Neigen=2
 
-  type(sparse_matrix),dimension(:,:),allocatable :: N,C
-  type(sparse_matrix) :: dens,docc,P,sz,m2
+
 
 
 
@@ -47,84 +47,89 @@ program testEDkron
   call my_dot%show()
 
 
-  call init_dmrg(hm_1d_model,ModelDot=my_Dot)
+
+
+  if(allocated(Hlr))deallocate(Hlr)
+  allocate(Hlr(Nso,Nso))
+  Hlr = diag([ts(1:Norb),ts(1:Norb)])
+  if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
+
+
+  call init_dmrg(Hlr,ModelDot=my_Dot)
   target_qn = DMRG_qn
   !
 
 
-  !Post-processing and measure quantities:
-  !Measure <Sz(i)>
-  P = dot%operators%op(key="P")
-  allocate(C(Norb,Nspin),N(Norb,Nspin))
-  do ispin=1,Nspin
-     do iorb=1,Norb
-        C(iorb,ispin) = dot%operators%op(key="C"//dot%okey(iorb,ispin))
-        n(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
-     enddo
+
+
+
+
+  print*,""
+  print*,""
+  print*,"######################################"
+  print*,"   o->o + o<-o"
+  print*,"######################################"
+  print*,""
+  print*,""
+
+
+  write(LOGfile,"(A22,2I12)")"Blocks Length (L-R) = ",left%length,right%length
+  left  = block(my_dot)
+  right = block(my_dot)
+  call enlarge_block(left,my_dot,grow='left')
+  call enlarge_block(right,my_dot,grow='right')
+  !
+
+
+  !#################################
+  !    Build SUPER-BLOCK Sector
+  !#################################
+  current_L         = left%length + right%length
+  current_target_QN = int(target_qn*current_L*Norb)
+  write(LOGfile,"(A22,I12)")"SuperBlock Length = ",current_L
+  write(LOGfile,"(A22,"//str(size(current_target_QN))//"F12.7)")"Target_QN = ",current_target_QN
+  write(LOGfile,"(A22,G12.7)")"Total         = ",sum(current_target_QN)
+  write(LOGfile,"(A22,G12.7)")"Filling       = ",sum(current_target_QN)/current_L
+  write(LOGfile,"(A22,G12.7)")"Filling/Norb  = ",sum(current_target_QN)/current_L/Norb
+  call sb_get_states()
+  print*,size(sb_states)
+
+
+  !Old Style solution:
+  print*,"Old style solution: spH --> H.v --> \psi"
+  print*,"######################################"
+  sparse_H = .true.
+  m_sb = size(sb_states)
+  call sb_diag()
+  do i=1,size(gs_energy)
+     print*,i,gs_energy(i)/2/left%length/Norb
   enddo
-
-  dens = n(1,1)!+n(1,2)
-  ! print*,"DENS:"
-  ! call dens%show()
-
-  docc = matmul(n(1,1),n(1,2))
-  ! print*,"DOCC:"
-  ! call docc%show()
-  m2 = matmul((n(1,2)-n(1,1)),(n(1,2)-n(1,1)))
-
-  left=init_left
-  right=init_right
-  suffix = label_DMRG('i',1)
-
-  do i=1,Ldmrg
-
-     call step_dmrg()
-     call write_energy()
-     L = left%length+right%length
-     call Measure_Op_DMRG(Op=dens,pos=[1,2,L-1,L])
-     print*,""
-     print*,""
-     print*,""
-  enddo
+  print*,""
+  !So it won't work anymore:
+  call spHsb%free()
 
 
 
-  call Measure_Op_DMRG(file='densVSj',Op=dens)
-  ! call Measure_Op_DMRG(file='doccVSj',Op=docc)
-  ! call Measure_Op_DMRG(file='mVSj',Op=m2)
-  ! suffix = label_DMRG('i',1)
+
+  
+  ! !
+  ! !Using _new to get energy:
+  ! print*,"Solving the same problem using new Method:"
+  ! print*,"######################################"
+  ! sparse_H = .false.
+  ! call sb_build_Hv()
+  ! allocate(Evals(Neigen))
+  ! allocate(Evecs(size(sb_states),Neigen))
+  ! call sp_eigh(spHtimesV_p,evals,evecs,&
+  !      3*Neigen,&
+  !      500,&
+  !      tol=1d-12,&
+  !      iverbose=.false.)
+  ! do i=1,Neigen
+  !    print*,i,Evals(i)/2/left%length/Norb
+  ! enddo
+  ! deallocate(evals,evecs)
   ! print*,""
-  ! print*,""
-  ! print*,""
-  ! print*,""
-
-
-  call finalize_dmrg()
-
-
-contains
-
-
-  !This is user defined Function to be passed to the SYSTEM
-  function hm_1d_model(left,right) result(Hlr)
-    type(block)                        :: left
-    type(block)                        :: right
-    real(8),dimension(:,:),allocatable :: Hlr
-    !
-    if(allocated(Hlr))deallocate(Hlr)
-    allocate(Hlr(Nspin*Norb,Nspin*Norb))
-    !
-    !workout local part, like random local field
-    !if(left%Dim==1 AND right%Dim==1) then operate over local H
-    !if(left%Dim==1 OR right%Dim==1) then operate over local H
-    Hlr = diag([ts(1:Norb),ts(1:Norb)])
-    if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
-  end function hm_1d_model
-
-
-
-
-
 
 
 end program testEDkron

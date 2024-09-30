@@ -68,7 +68,7 @@ program hubbard_1d
 
 
   call Measure_Op_DMRG(dens,file="n_l1VSj")!,pos=[Ldmrg,Ldmrg+1])
-
+  call Measure_Op_DMRG(docc,file="d_l1VSj")!,pos=[Ldmrg,Ldmrg+1])
 
   !Finalize DMRG
   call finalize_dmrg()
