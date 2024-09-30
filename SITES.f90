@@ -15,7 +15,7 @@ MODULE SITES
      integer                                     :: Dim=1
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
-     character(len=:),allocatable                :: KeyLink
+     character(len=:),allocatable                :: OpName
      character(len=:),allocatable                :: SiteType
    contains
      procedure,pass     :: free        => free_site
@@ -26,7 +26,7 @@ MODULE SITES
      procedure,pass     :: show        => show_site
      procedure,pass     :: is_valid    => is_valid_site
      procedure,pass     :: okey        => okey_site
-     procedure,pass     :: name        => KeyLink_site
+     procedure,pass     :: name        => OpName_site
      procedure,pass     :: type        => SiteType_site
   end type site
 
@@ -70,7 +70,7 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
-    if(allocated(self%KeyLink))deallocate(self%KeyLink)
+    if(allocated(self%OpName))deallocate(self%OpName)
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_site
 
@@ -79,11 +79,11 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_site(Dim,sectors,operators,key,type) result(self)
+  function constructor_site(Dim,sectors,operators,opname,sitetype) result(self)
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
-    character(len=:),allocatable    :: key,type
+    character(len=:),allocatable    :: opname,sitetype
     type(site)                      :: self
     integer                         :: i
     self%Dim       = Dim
@@ -92,8 +92,8 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = sectors(i)
     enddo
-    allocate(self%KeyLink, source=key)
-    allocate(self%SiteType, source=type)
+    allocate(self%OpName, source=opname)
+    allocate(self%SiteType, source=sitetype)
   end function constructor_site
 
 
@@ -111,11 +111,12 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Put a sparse operator in the site dictionary
   !+------------------------------------------------------------------+
-  subroutine put_op_site(self,key,op)
+  subroutine put_op_site(self,key,op,type)
     class(site)                    :: self
     character(len=*),intent(in)    :: key
     type(sparse_matrix),intent(in) :: op
-    call self%operators%put(str(key),op)
+    character(len=*),intent(in)    :: type
+    call self%operators%put(str(key),op,type)
   end subroutine put_op_site
 
 
@@ -123,11 +124,12 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a dense operator in the site dictionary
   !+------------------------------------------------------------------+
-  subroutine load_op_site(self,key,op)
-    class(site)                          :: self
-    character(len=*),intent(in)          :: key
+  subroutine load_op_site(self,key,op,type)
+    class(site)                       :: self
+    character(len=*),intent(in)       :: key
     real(8),dimension(:,:),intent(in) :: op
-    call self%operators%load(str(key),op)
+    character(len=*),intent(in)       :: type    
+    call self%operators%load(str(key),op,type)
   end subroutine load_op_site
 
 
@@ -176,11 +178,11 @@ contains
   end function okey_site
 
 
-  function KeyLink_site(self) result(string)
+  function OpName_site(self) result(string)
     class(site)                  :: self
     character(len=:),allocatable :: string
-    allocate(string, source=self%KeyLink)
-  end function KeyLink_site
+    allocate(string, source=self%OpName)
+  end function OpName_site
 
 
   function SiteType_site(self) result(string)
@@ -211,7 +213,7 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i)   = B%sectors(i)
     enddo
-    allocate(A%KeyLink, source=B%KeyLink)
+    allocate(A%OpName, source=B%OpName)
     allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_site
 
@@ -251,7 +253,7 @@ contains
        write(*,"(A14,I6)")"Site Sectors =",i
        call self%sectors(i)%show()
     enddo
-    write(*,"(A15,A)")"Link Name    = ",self%KeyLink
+    write(*,"(A15,A)")"Op Name    = ",self%OpName
     write(*,"(A14)")"Site Ops     :"
     call self%operators%show(fmt=fmt_)
   end subroutine show_site
@@ -278,7 +280,7 @@ contains
     !
     call self%free()
     self%SiteType="SPIN"
-    self%KeyLink="S"
+    self%OpName="S"
     !
     select case(sun)
     case default;stop "spin_site ERROR: SU(N) value not supported"
@@ -286,13 +288,13 @@ contains
        self%Dim = 2
        !
        allocate(H(2,2));H=h_(1)*pauli_x+h_(3)*pauli_z
-       call self%put("H",sparse(H))
+       call self%put("H",sparse(H),'bosonic')
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
        allocate(Sz(2,2));Sz=reshape([one,zero,zero,-one]/2,[2,2])
        allocate(Sp(2,2));Sp=reshape([zero,zero,one,zero],[2,2])
-       call self%put(self%KeyLink//self%okey(0,1),sparse(Sz))
-       call self%put(self%KeyLink//self%okey(0,2),sparse(Sp))
+       call self%put(self%OpName//self%okey(0,1),sparse(Sz),"bosonic")
+       call self%put(self%OpName//self%okey(0,2),sparse(Sp),"bosonic")
        !
        !> Build Sectors:
        allocate(self%sectors(1))
@@ -301,17 +303,16 @@ contains
     case(3)
        self%Dim = 3
        !
-
        allocate(Sz(3,3));Sz=diag([1d0,0d0,-1d0])
        allocate(Sp(3,3));Sp=0d0;Sp(1,2)=sqrt(2d0);Sp(2,3)=sqrt(2d0)
        allocate(Sx(3,3));Sx=reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
        !
        allocate(H(3,3));H=h_(1)*Sx+h_(3)*Sz
-       call self%put("H",sparse(H))
+       call self%put("H",sparse(H),'bosonic')
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
-       call self%put(self%KeyLink//self%okey(0,1),sparse(Sz))
-       call self%put(self%KeyLink//self%okey(0,2),sparse(Sp))
+       call self%put(self%OpName//self%okey(0,1),sparse(Sz),"bosonic")
+       call self%put(self%OpName//self%okey(0,2),sparse(Sp),"bosonic")
        !
        !> Build Sectors:       
        allocate(self%sectors(1))
@@ -344,7 +345,7 @@ contains
     !
     call self%free()
     self%SiteType="FERMION"
-    self%KeyLink="C"
+    self%OpName="C"
     !
     !
     hloc_ = zeros(Nspin*Norb,Nspin*Norb);if(present(hloc))hloc_=hloc
@@ -359,20 +360,20 @@ contains
     !
     !> Build local Hamiltonian:
     H = build_Hlocal_operator(hloc_)
-    call self%put("H",sparse(H))
+    call self%put("H",sparse(H),"bosonic")
     !
     !> Build all the C operators (Cdg is obtained by H.C.)
     do ispin=1,2
        do iorb=1,Norb
           Op = build_C_operator(iorb,ispin)
-          Key= self%KeyLink//self%okey(iorb,ispin)
-          call self%put(Key,sparse(Op))
+          Key= self%OpName//self%okey(iorb,ispin)
+          call self%put(Key,sparse(Op),"fermionic")
        enddo
     enddo
     !
     !> Build fermionic sign operator
     P = Build_FermionicSign()
-    call self%put("P",sparse(P))
+    call self%put("P",sparse(P),"sign")
     !
     !> Build QN for the local basis:
     allocate(self%sectors(1))
@@ -434,7 +435,9 @@ program testSITES
        dim      = 2, &
        sectors  = [sectors_list(sz_basis)],&
        operators= operators_list(['H0','Sz','Sp'],&
-       [sparse(Hzero),sparse(Sz),sparse(Splus)]))
+       [sparse(Hzero),sparse(Sz),sparse(Splus)],['b   ','sign','bose']),&
+       opname='S',&
+       sitetype='spin')
   print*,"Is site valid:",my_site%is_valid()
   call my_site%show()
 
@@ -446,19 +449,19 @@ program testSITES
   call a%show()
   print*,a%is_valid()
   print*,"modify a, check a and my_site"
-  call a%put("G5",sparse(Gamma03))
+  call a%put("G5",sparse(Gamma03),'b')
   print*,"Is A site valid:",a%is_valid()
   print*,"Is My_site site valid:",my_site%is_valid()
 
 
   print*,"Test PAULI SITE"
-  b = pauli_site()
+  b = spin_site(2)
   call b%show()
   call b%free()
 
 
   call read_input("DMRG.conf")
-  b = hubbard_site()
+  b = electron_site()
   call b%show()
   print*,"Is site valid:",b%is_valid()
   call b%free()

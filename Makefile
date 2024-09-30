@@ -1,6 +1,6 @@
 FC=mpif90
 EXE=dmrg_hm_1d
-
+#EXE=kron_hm_1d
 
 SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
@@ -10,7 +10,7 @@ OFLAG= -cpp -D_ -O3 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argu
 DFLAG= -cpp -D_DEBUG -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
 DDFLAG=-cpp -D_DEBUG -O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check  -fdebug-aux-vars -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999 
 #-fsanitize=address
-OBJS = VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o  TUPLE_BASIS.o LIST_SECTORS.o MATRIX_BLOCKS.o LIST_OPERATORS.o  SITES.o BLOCKS.o VARS_GLOBAL.o DMRG_CONNECT.o DMRG_SUPERBLOCK_COMMON.o DMRG_SUPERBLOCK_SPARSE.o DMRG_SUPERBLOCK_DIRECT.o DMRG_SUPERBLOCK.o DMRG_RDM.o DMRG_MEASURE.o DMRG_SYSTEM.o  DMRG.o
+OBJS = VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o  TUPLE_BASIS.o LIST_SECTORS.o MATRIX_BLOCKS.o LIST_OPERATORS.o  SITES.o BLOCKS.o VARS_GLOBAL.o DMRG_CONNECT.o DMRG_SUPERBLOCK_COMMON.o DMRG_SUPERBLOCK_SPARSE.o DMRG_SUPERBLOCK_DIRECT.o DMRG_SUPERBLOCK.o DMRG_RDM.o DMRG_MEASURE.o DMRG_MAIN.o  DMRG.o
 
 ##$ Extends the implicit support of the Makefile to .f90 files
 .SUFFIXES: .f90
@@ -73,8 +73,8 @@ operators: version VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
 
 
 sites: FLAG=$(DFLAG)
-sites: MYOBJ=VERSION.o INPUT_VARS.o HLOCAL.o AUX_FUNCS.o MATRIX_SPARSE.o TUPLE_BASIS.o LIST_OPERATORS.o LIST_SECTORS.o 
-sites: version VERSION.o INPUT_VARS.o HLOCAL.o AUX_FUNCS.o MATRIX_SPARSE.o TUPLE_BASIS.o LIST_OPERATORS.o LIST_SECTORS.o
+sites: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o TUPLE_BASIS.o LIST_OPERATORS.o LIST_SECTORS.o HLOCAL.o 
+sites: version VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o TUPLE_BASIS.o LIST_OPERATORS.o LIST_SECTORS.o HLOCAL.o 
 	${FC} $(FLAG) -D_TEST ${MYOBJ} SITES.f90 -o $(HOME)/.bin/testSITES ${SF_INC} ${SF_LIB}
 
 blocks: FLAG=$(DFLAG)	

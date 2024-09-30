@@ -6,7 +6,8 @@ MODULE DMRG_RDM
 
   public :: sb_get_rdm
   public :: renormalize_block
-  public :: renormalize_
+
+  
 contains
 
 
@@ -149,7 +150,7 @@ contains
        truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
        trRho_left             = rho_left%sparse(m_left,m_s)
        !>Store all the rotation/truncation matrices:
-       call left%put_omat(str(left%length),trRho_left)
+       call left%put_omat(str(left%length),trRho_left,'')
        !>Renormalize Blocks:
        call left%renormalize(as_matrix(trRho_left))
        !>Prepare output and update basis state
@@ -169,7 +170,6 @@ contains
           if(i==m_s)write(unit,*)" "
        enddo
        close(unit)       
-       call rho_left%show(file="NewRho_L_"//str(left%length)//".dat")
 #endif
        !Free Rho_Left
        call left_basis%free()
@@ -212,7 +212,7 @@ contains
        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
        trRho_right            = rho_right%sparse(m_right,m_e)
        !>Store all the rotation/truncation matrices:
-       call right%put_omat(str(right%length),trRho_right)
+       call right%put_omat(str(right%length),trRho_right,'')
        !>Renormalize Blocks:
        call right%renormalize(as_matrix(trRho_right))
        !>Prepare output and update basis state
@@ -231,9 +231,6 @@ contains
           if(i==m_e)write(unit,*)" "
        enddo
        close(unit)
-       !
-       ! call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-       call rho_right%show(file="NewRho_R_"//str(right%length)//".dat")
 #endif
        !Free Rho Right:
        call right_basis%free()
@@ -253,123 +250,6 @@ contains
 
 
 
-
-
-  !##################################################################
-  !   RENORMALIZE THE L/R BLOCKS USING RDM
-  !##################################################################
-  subroutine renormalize_(label)
-    character(len=*),intent(in) :: label
-    integer                     :: mtr
-    integer                     :: m_left,m_right
-    integer                     :: m_s,m_e
-    integer                     :: j_
-    integer                     :: m_err(1)
-    real(8)                     :: e_,err
-    integer                     :: i,j,r,l,im,unit
-    type(tbasis)                :: left_basis,right_basis
-    type(sparse_matrix)         :: trRho_left,trRho_right
-    !
-    m_left  = left%dim
-    m_right = right%dim
-    !
-    select case(to_lower(str(label)))
-!!!!!#################################
-!!!!!      LEFT
-!!!!!!#################################
-    case ("left","l","sys","system","s")
-       mtr = m_left
-       if(left%length+right%length==2)return
-       ! 
-       call start_timer("Diag Rho "//to_lower(str(label)))
-       call rho_left%eigh(sort=.true.,reverse=.true.)
-       call stop_timer()
-       !
-       rho_left_evals  = rho_left%evals()
-       !
-       !Build Truncated Density Matrices:
-       call start_timer("Renormalize "//to_lower(str(label)))
-       if(Mstates/=0)then
-          print*,Mstates,m_left,size(rho_left_evals)
-          m_s = min(Mstates,m_left,size(rho_left_evals))
-       elseif(Estates/=0d0)then
-          m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
-          m_s   = m_err(1)
-       else
-          stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
-       endif
-       e_=rho_left_evals(m_s)
-       j_=m_s
-       do i=j_+1,size(rho_left_evals)
-          if(abs(rho_left_evals(i)-e_)<=lanc_tolerance)m_s=m_s+1
-       enddo
-       !>truncation-rotation matrices:
-       truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
-       call stop_timer()
-       !
-       !
-#ifdef _DEBUG
-       unit=fopen("lambdas_L_"//str(left%length)//".dat")       
-       do i=1,size(rho_left_evals)
-          write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i)))),1d0-sum(rho_left_evals(1:i))
-          if(i==m_s)write(unit,*)" "
-       enddo
-       close(unit)
-       call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
-       call rho_left%show(file="NewRho_L_"//str(left%length)//".dat")
-#endif
-       ! !Free Rho_Left
-       ! call rho_left%free()
-       !
-       !
-!!!!!#################################
-!!!!!      RIGHT
-!!!!!#################################
-    case ("right","r","env","environment","e")
-       mtr  = m_right
-       if(left%length+right%length==2)return
-       call start_timer("Diag Rho "//to_lower(str(label)))
-       call rho_right%eigh(sort=.true.,reverse=.true.)
-       rho_right_evals = rho_right%evals()
-       call stop_timer()
-       !
-       !Build Truncated Density Matrices:
-       call start_timer("Renormalize "//to_lower(str(label)))
-       if(Mstates/=0)then
-          m_e = min(Mstates,m_right,size(rho_right_evals))       
-       elseif(Estates/=0d0)then
-          m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
-          m_e   = m_err(1)
-       else
-          stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
-       endif
-       e_=rho_right_evals(m_e)
-       j_=m_e
-       do i=j_+1,size(rho_right_evals)          
-          if(abs(rho_right_evals(i)-e_)<=lanc_tolerance)m_e=m_e+1
-       enddo
-       truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
-       call stop_timer()
-       !
-#ifdef _DEBUG
-       unit     = fopen("lambdas_R_"//str(left%length)//".dat")       
-       do i=1,size(rho_right_evals)!m_e
-          write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i)))),1d0-sum(rho_right_evals(1:i))
-          if(i==m_e)write(unit,*)""
-       enddo
-       close(unit)
-       call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-       call rho_right%show(file="NewRho_R_"//str(right%length)//".dat")
-#endif
-       ! !Free Rho Right:
-       ! call rho_right%free()
-!!!!#################################
-!!!!#################################
-    case default;stop "renormalize block: wrong label, not in [left-sys|right-env]"
-    end select
-    !
-    return
-  end subroutine renormalize_
 
 
 
