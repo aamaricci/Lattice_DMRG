@@ -90,7 +90,7 @@ contains
     !
     call wait(50)
     !call lefttem("clear")
-    ! call execute_command_line("clear")
+    call execute_command_line("clear")
     Ltot = Ldmrg!/2
     Ldot = bold_green('=')
     Rdot = bold_red('-')
