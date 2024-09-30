@@ -35,6 +35,7 @@ MODULE LIST_OPERATORS
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
      procedure,pass :: shape    => shape_operators_list 
 =======
      procedure,pass :: shaope   => shape_operators_list !True if operators_list is valid
@@ -42,6 +43,9 @@ MODULE LIST_OPERATORS
 =======
      procedure,pass :: shape   => shape_operators_list 
 >>>>>>> 370d791 (Intermediate commit.):LIST_OPERATORS.f90
+=======
+     procedure,pass :: shape    => shape_operators_list 
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
   end type operators_list
 
 
@@ -233,6 +237,7 @@ contains
   !PURPOSE:  Load a dense matrix as operator in the operators_list
   !+------------------------------------------------------------------+
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
   subroutine load_operators_list(self,key,op,type)
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
@@ -254,6 +259,15 @@ contains
 =======
     real(8),dimension(:,:),intent(in) :: op
 >>>>>>> f63915b (Testing the code.):LIST_OPERATORS.f90
+=======
+  subroutine load_operators_list(self,key,op,type)
+    class(operators_list),intent(inout)  :: self
+    character(len=*),intent(in)          :: key
+    character(len=*),intent(in),optional :: type
+    real(8),dimension(:,:),intent(in)    :: op
+    character(len=16)                    :: type_
+    type_='';if(present(type))type_=str(type)    
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
     if(.not.associated(self%root))allocate(self%root)
     call self%put(key,as_sparse(op),type_)
   end subroutine load_operators_list
@@ -264,6 +278,7 @@ contains
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
   function dump_op_operators_list(self,key) result(matrix)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
     class(operators_list),intent(inout)   :: self
     character(len=*),intent(in)           :: key
 #ifdef _CMPLX
@@ -271,6 +286,11 @@ contains
 #else
     real(8),dimension(:,:),allocatable    :: matrix
 #endif
+=======
+    class(operators_list),intent(inout) :: self
+    character(len=*),intent(in)         :: key
+    real(8),dimension(:,:),allocatable  :: matrix
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
     matrix = as_matrix( self%op(key=key) )  
   end function dump_op_operators_list
 
@@ -453,6 +473,9 @@ contains
 
   !+------------------------------------------------------------------+
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
   !PURPOSE: Return all the keys in the operators_list
   !+------------------------------------------------------------------+  
   function types_operators_list(self,len) result(types)
@@ -467,6 +490,7 @@ contains
     enddo
   end function types_operators_list
 
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
@@ -496,6 +520,8 @@ contains
     c=>null()
   end function dump_op_operators_list
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
+=======
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
 
 
@@ -577,9 +603,9 @@ contains
   !+------------------------------------------------------------------+
   function shape_operators_list(self) result(shape)
     class(operators_list),intent(inout) :: self
-    integer,dimension(2)             :: shape
-    type(optype),pointer             :: c
-    logical :: bool
+    integer,dimension(2)                :: shape
+    type(optype),pointer                :: c
+    logical                             :: bool
     bool = self%is_valid()
     if(.not.bool)stop "shape_operator_list: not a valid list"
     c => self%root%next
@@ -621,6 +647,7 @@ contains
     class(operators_list),intent(inout) :: self
     character(len=*),optional           :: fmt
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
     integer,optional                    :: unit
     character(len=32)                   :: fmt_
     integer                             :: i,count=0
@@ -635,6 +662,14 @@ contains
     character(len=*),optional       :: file
     integer                         :: unit_
 >>>>>>> 94f42f9 (development version.):LIST_OPERATORS.f90
+=======
+    integer,optional                    :: unit
+    character(len=32)                   :: fmt_
+    integer                             :: i,count=0
+    type(optype),pointer                :: c
+    character(len=*),optional           :: file
+    integer                             :: unit_
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
     unit_=6
     if(present(unit))unit_=unit
     if(present(file))open(free_unit(unit_),file=str(file))
@@ -664,7 +699,7 @@ contains
 =======
        write(unit_,"(A6,I12)")  "Index:",c%index
        write(unit_,"(A6,A)")"Key  :",str(c%ckey)
-       write(unit_,*)"Op  :"
+       write(unit_,"(A6,A)")"Type :",str(c%ctype)
        call c%ope%display()
        write(unit_,*)""
 >>>>>>> 94f42f9 (development version.):LIST_OPERATORS.f90
@@ -752,22 +787,36 @@ program testOPERATORS_TUPLE
   integer,parameter                     :: sec=500
 
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
   type(operators_list)                  :: my_list,a_list
   type(operators_list)                  :: copy_list,clist(2)
   type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
+=======
+  type(operators_list)               :: my_list,a_list
+  type(operators_list)               :: copy_list,clist(2)
+  type(sparse_matrix)                :: spSz,spSp,spH,spK,a,b,c
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
   real(8),dimension(:,:),allocatable :: mat
-  integer                               :: i,j,n
-  logical                               :: bool
+  integer                            :: i,j,n
+  logical                            :: bool
   real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
   real(8),dimension(2,2),parameter   :: Sz=pauli_z
   real(8),dimension(2,2),parameter   :: Sx=pauli_x
   real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
   real(8),dimension(4,4)             :: Gamma13,Gamma03
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
   character(len=10)                     :: key
   character(len=10),allocatable         :: keys(:)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
 
+=======
+  character(len=10)                  :: key,type
+  character(len=10),allocatable      :: keys(:)
+  integer,parameter :: sec=500
+  
+  
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
 
@@ -780,7 +829,11 @@ program testOPERATORS_TUPLE
   call my_list%show()
   call my_list%free()
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+  
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
   print*,"TEST LOAD matrices"
   call my_list%load("H0",Hzero,'b')
@@ -792,7 +845,11 @@ program testOPERATORS_TUPLE
   call wait(sec)
 
 
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+  
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
   print*,"TEST (CONSTRUCT + )APPEND matrices"
   call my_list%append("H0",as_sparse(Hzero),'b')
   call my_list%append("Sz",as_sparse(Sz),'b')
@@ -800,11 +857,14 @@ program testOPERATORS_TUPLE
   call my_list%show()
   print*,""
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
 
 
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
 
-
+  
   print*,"TEST RETRIEVE FUNCTIONALITIES"
   print*,"TEST .DUMP"
   print*,"Mat.allocated:",allocated(mat)
@@ -817,8 +877,12 @@ program testOPERATORS_TUPLE
   deallocate(mat)
   print*,""
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
+  
   print*,"TEST .GET"
   do i=1,size(my_list)
      call my_list%get(index=i,key=key,op=a,type=type)
@@ -829,8 +893,12 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
+  
   print*,"TEST .KEY + .OP + ITERATION over index"
   do i=1,size(my_list)
      a = my_list%op(index=i)
@@ -846,7 +914,11 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+  
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
   print*,"TEST HAS_KEY"
   print*,"list has key Sz",my_list%has_key("Sz")
@@ -896,7 +968,11 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+  
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
   print*,"TEST ITERATION SIZE:"
   do i=1,size(my_list)
@@ -916,12 +992,21 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 
 
   print*,"TEST DEEP COPY '='"
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
+=======
+
+
+  
+  print*,"TEST DEEP COPY '='"
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(eye(2),Sz)
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
   call a_list%append("gamma13",as_sparse(Gamma13),'b')
   call a_list%append("gamma03",as_sparse(Gamma03),'b')
   call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)),'b')
@@ -933,7 +1018,11 @@ program testOPERATORS_TUPLE
   call clist(2)%show()
   print*,""
   call wait(sec)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
+=======
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
+  
 end program testOPERATORS_TUPLE
 #endif

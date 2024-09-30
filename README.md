@@ -1,6 +1,10 @@
 # Lattice DMRG 
 
+<<<<<<< HEAD
 This is a simple, yet complete, DMRG library to solve Heisenberg (spin-S) and Hubbard models in 1D. The software exploits consevation of the Quantum Numbers ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
+=======
+This is simple, yet complete, DMRG code to solve Heisenberg (spin-S) and Hubbard models in 1D. The software exploits consevation of the Quantum Numbers ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED)
 
  
 The structure of this code is largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
@@ -124,7 +128,7 @@ are available here:
 
 ![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/figH.png)
 
-For sake of simplicity we compare the energy per site of the non-interacting case $U=0$ at one electron per site $\langle N\rangle=1$ obtained from the two available Matrix-Vector methods (see above Milestone 5) against the exact Tight Binding and the exact solution $E_0 = -4t/\pi$. We used $M=100$ states which, as evident from the plot, are not enough to observe a decent convergence to the exact result but demonstrate the correct behavior of the DMRG algorithm. 
+In the top-left panel we compare the energy per site $E(j)$ with respect to the exact solution $E_0=-4t/\pi$ and the exact numberical solution for the non-interacting case at one electron per site $\langle N\rangle=1$. We used $M=40$ states to reach a satisfactory convergence of the ground state energy. In the top-right panel we report the occupation profile per spin. In the bottom-left panel we show the evolution of the entanglement entropy per site $S(j)$, while the last panel bottom-right displayes the profile of the double occupation.  
 
 
 ### Known issues
@@ -136,10 +140,17 @@ There are a number of known issues with this code which, mostly for time reasons
 
 ***LICENSE***  
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> 7d79fdd (2.0.0 STABLE UPDATED CODE + BUG FIXED)
 Copyright 2023- (C) Adriano Amaricci, Carlos Mejuto Zaera, Ricardo Lopes
 
 =======
 >>>>>>> 4780dc0 (2.0.0 STABLE UPDATED CODE + BUG FIXED)
+=======
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED)
 The software is provided with no license, as such it is protected by copyright.
 The software is provided as it is and can be read and copied, in agreement with 
 the Terms of Service of GITHUB. Use of the code is constrained to author agreement.   

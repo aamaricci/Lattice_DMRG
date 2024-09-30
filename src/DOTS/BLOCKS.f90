@@ -33,10 +33,14 @@ MODULE BLOCKS
      type(operators_list)                        :: operators
      type(operators_list)                        :: omatrices
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
      character(len=:),allocatable                :: Opname
 =======
      character(len=:),allocatable                :: KeyLink
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+     character(len=:),allocatable                :: Opname
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
      character(len=:),allocatable                :: SiteType
    contains
      procedure,pass :: free        => free_block
@@ -50,12 +54,16 @@ MODULE BLOCKS
      procedure,pass :: okey        => okey_block
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
      procedure,pass :: name        => Opname_block
      procedure,pass :: type        => SiteType_block
 =======
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 =======
      procedure,pass :: name        => KeyLink_block
+=======
+     procedure,pass :: name        => Opname_block
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
      procedure,pass :: type        => SiteType_block
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
   end type block
@@ -107,10 +115,14 @@ contains
        deallocate(self%sectors)
     endif
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     if(allocated(self%Opname))deallocate(self%Opname)
 =======
     if(allocated(self%KeyLink))deallocate(self%KeyLink)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+    if(allocated(self%Opname))deallocate(self%Opname)
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_block
 
@@ -120,21 +132,30 @@ contains
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
 =======
   function constructor_from_scrath(length,Dim,sectors,operators,omatrices,key,type) result(self)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     integer,intent(in)              :: length
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(operators_list),intent(in) :: omatrices
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     character(len=:),allocatable    :: OpName
     character(len=:),allocatable    :: SiteType
 =======
     character(len=:),allocatable    :: key,type
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+    character(len=:),allocatable    :: OpName
+    character(len=:),allocatable    :: SiteType
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     type(block)                     :: self
     self%length    = length
     self%Dim       = Dim
@@ -145,12 +166,17 @@ contains
        self%sectors(i) = sectors(i)
     enddo
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     allocate(self%OpName, source=OpName)
     allocate(self%SiteType, source=SiteType)
 =======
     allocate(self%KeyLink, source=key)
     allocate(self%SiteType, source=type)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+    allocate(self%OpName, source=OpName)
+    allocate(self%SiteType, source=SiteType)
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
   end function constructor_from_scrath
 
 
@@ -178,10 +204,14 @@ contains
        self%sectors(i)   = ssite%sectors(i)
     enddo
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     allocate(self%OpName, source=ssite%OpName)
 =======
     allocate(self%KeyLink, source=ssite%KeyLink)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+    allocate(self%OpName, source=ssite%OpName)
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     allocate(self%SiteType, source=ssite%SiteType)
   end function constructor_from_site
 
@@ -270,8 +300,12 @@ contains
     real(8),dimension(:,:)       :: Umat   ![N,M]
     integer                      :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)          :: Op
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     character(len=:),allocatable :: key
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+=======
+    character(len=:),allocatable :: key,type
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     !
     N = size(Umat,1)
     M = size(Umat,2)
@@ -373,10 +407,14 @@ contains
        A%sectors(i) = B%sectors(i)
     enddo
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     allocate(A%OpName, source=B%OpName)
 =======
     allocate(A%KeyLink, source=B%KeyLink)
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+    allocate(A%OpName, source=B%OpName)
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_block
 
@@ -448,6 +486,7 @@ contains
 
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   function OpName_block(self) result(string)
     class(block)                  :: self
     character(len=:),allocatable :: string
@@ -460,6 +499,13 @@ contains
     allocate(string, source=self%KeyLink)
   end function KeyLink_block
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+  function OpName_block(self) result(string)
+    class(block)                  :: self
+    character(len=:),allocatable :: string
+    allocate(string, source=self%OpName)
+  end function OpName_block
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
 
 
   function SiteType_block(self) result(string)
@@ -492,6 +538,7 @@ contains
     character(len=*),optional :: fmt
     logical,optional          :: wOP,wOMAT
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
     character(len=*),optional :: file
     character(len=32)         :: fmt_
     logical                   :: wOP_,wOMAT_
@@ -502,9 +549,12 @@ contains
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     character(len=*),optional       :: file
+=======
+    character(len=*),optional :: file
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
     character(len=32)         :: fmt_
-    logical :: wOP_,wOMAT_
-    integer                         :: unit_
+    logical                   :: wOP_,wOMAT_
+    integer                   :: unit_
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     wOP_  =.false.;if(present(wOP))  wOP_  =wOP
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
@@ -531,6 +581,7 @@ contains
     if(wOP_)then
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
        write(unit_,"(A15,A)")"Op Name    = ",self%OpName
        write(unit_,"(A14)")"Block Operators:"
        call self%operators%show(fmt=fmt_,unit=unit_)
@@ -550,6 +601,9 @@ contains
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
 =======
        write(unit_,"(A15,A)")"Link Name    = ",self%KeyLink
+=======
+       write(unit_,"(A15,A)")"Op Name    = ",self%OpName
+>>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
        write(unit_,"(A14)")"Block Ops     :"
        call self%operators%show(fmt=fmt_,unit=unit_)
 
