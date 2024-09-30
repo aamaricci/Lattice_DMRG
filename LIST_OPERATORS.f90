@@ -8,6 +8,7 @@ MODULE LIST_OPERATORS
   type optype
      integer                      :: index=0
      character(len=:),allocatable :: ckey
+     character(len=:),allocatable :: ctype
      type(sparse_matrix)          :: ope
      type(optype),pointer         :: next   =>null()
   end type optype
@@ -23,14 +24,16 @@ MODULE LIST_OPERATORS
      procedure,pass :: append   => append_operators_list   !put sparse operator
      procedure,pass :: show     => show_operators_list     !show operators_list to screen
      procedure,pass :: load     => load_operators_list     !load dense matrix operator
-     procedure,pass :: get      => get_all_operators_list      !get sparse operator
-     procedure,pass :: op       => get_op_operators_list       !return operator given:key,indx,current
-     procedure,pass :: key      => get_key_operators_list      !return key given: indx, current
-     procedure,pass :: dump     => dump_op_operators_list     !dump dense matrix operator
+     procedure,pass :: dump     => dump_op_operators_list  !dump dense matrix operator
+     procedure,pass :: get      => get_all_operators_list  !get {key,operator,type}
+     procedure,pass :: op       => get_op_operators_list   !return operator given:key,indx
+     procedure,pass :: key      => get_key_operators_list  !return key given: indx
+     procedure,pass :: type     => get_type_operators_list  !return type given: key,indx
      procedure,pass :: keys     => keys_operators_list     !return all the keys
+     procedure,pass :: types    => types_operators_list     !return all the types
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
-     procedure,pass :: shape   => shape_operators_list 
+     procedure,pass :: shape    => shape_operators_list 
   end type operators_list
 
 
@@ -62,6 +65,7 @@ MODULE LIST_OPERATORS
   public :: assignment(=)
 
 
+
 contains
 
 
@@ -74,27 +78,39 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor: given a key+operator
   !+------------------------------------------------------------------+
-  function construct_from_single_operator(keys,op) result(self)
-    type(operators_list) :: self
-    character(len=*)     :: keys
-    type(sparse_matrix)  :: op
+  function construct_from_single_operator(key,op,type) result(self)
+    type(operators_list)      :: self
+    character(len=*)          :: key
+    character(len=*),optional :: type
+    type(sparse_matrix)       :: op
+    character(len=16)         :: type_
+    type_='';if(present(type))type_=str(type)
     call self%free()
     allocate(self%root)
-    call self%put(keys,op)
+    call self%put(key,op,type_)
   end function construct_from_single_operator
+
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor: given a list of keys+operators
   !+------------------------------------------------------------------+
-  function construct_from_array_operator(keys,ops) result(self)
-    type(operators_list)                      :: self
-    character(len=*),dimension(:)             :: keys
-    type(sparse_matrix),dimension(size(keys)) :: ops
-    integer                                   :: i
+  function construct_from_array_operator(keys,ops,types) result(self)
+    type(operators_list)                            :: self
+    character(len=*),dimension(:)                   :: keys
+    character(len=*),dimension(size(keys)),optional :: types
+    type(sparse_matrix),dimension(size(keys))       :: ops
+    character(len=16),dimension(size(keys))         :: types_
+    integer                                         :: i
+    types_=''
+    if(present(types))then
+       do i=1,size(keys)
+          types_(i)=str(types(i))
+       enddo
+    endif
     call self%free()
     allocate(self%root)
     do i=1,size(keys)
-       call self%put(keys(i),ops(i))
+       call self%put(keys(i),ops(i),types_(i))
     enddo
   end function construct_from_array_operator
 
@@ -119,6 +135,7 @@ contains
        c%index=  0
        call c%ope%free()         !<- use sparse_matrix free procedure
        if(allocated(c%ckey))deallocate(c%ckey)
+       if(allocated(c%ctype))deallocate(c%ctype)
        deallocate(c)
     enddo
     self%size=0
@@ -139,12 +156,16 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Put a sparse matrix as operator in the operators_list
   !+------------------------------------------------------------------+
-  subroutine put_operators_list(self,key,op)
-    class(operators_list),intent(inout) :: self
-    character(len=*),intent(in)         :: key
-    type(sparse_matrix),intent(in)      :: op
-    type(optype),pointer                :: p,c
-    logical                             :: iadd
+  subroutine put_operators_list(self,key,op,type)
+    class(operators_list),intent(inout)  :: self
+    character(len=*),intent(in)          :: key
+    character(len=*),intent(in),optional :: type
+    type(sparse_matrix),intent(in)       :: op
+    type(optype),pointer                 :: p,c
+    logical                              :: iadd
+    character(len=16)                    :: type_
+    !
+    type_='';if(present(type))type_=str(type)
     !
     if(.not.associated(self%root))allocate(self%root)
     !
@@ -153,7 +174,7 @@ contains
     c => p%next
     do                            !traverse the list until QN is found
        if(.not.associated(c))exit
-       if (str(c%ckey) == str(key)) then
+       if ( (str(c%ckey)  == str(key)) ) then
           iadd = .true.
           exit
        endif
@@ -162,19 +183,21 @@ contains
     end do
     !
     if(iadd)then                !KEY exists: update operator
-       c%ckey = str(key)
-       c%ope  = op
+       c%ckey         = str(key)
+       c%ctype        = str(type)
+       c%ope          = op
     else                        !QN does not exist: create a new element
        allocate(p%next)
-       p%next%ckey   = str(key)
-       p%next%ope    = op
-       p%next%index = p%index+1
-       if(.not.associated(c))then !end of the list special case (c=>c%next)
-          p%next%next  => null()
+       p%next%ckey    = str(key)
+       p%next%ctype   = str(type)
+       p%next%ope     = op
+       p%next%index   = p%index+1
+       if(.not.associated(c))then
+          p%next%next => null()
        else
-          p%next%next  => c      !the %next of the new node come to current
+          p%next%next => c
        end if
-       self%size = self%size+1
+       self%size      = self%size+1
     endif
     p=>null()
     c=>null()
@@ -182,63 +205,47 @@ contains
 
 
 
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Append == Put a sparse matrix as operator in the operators_list
+  !+------------------------------------------------------------------+
+  subroutine append_operators_list(self,key,op,type)
+    class(operators_list),intent(inout)  :: self
+    character(len=*),intent(in)          :: key
+    character(len=*),intent(in),optional :: type
+    type(sparse_matrix),intent(in)       :: op
+    character(len=16)                    :: type_
+    type_='';if(present(type))type_=str(type)
+    call self%put(key,op,type_)
+  end subroutine append_operators_list
+
+
 
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a dense matrix as operator in the operators_list
   !+------------------------------------------------------------------+
-  subroutine load_operators_list(self,key,op)
+  subroutine load_operators_list(self,key,op,type)
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
-    real(8),dimension(:,:),intent(in) :: op
+    character(len=*),intent(in),optional :: type
+    real(8),dimension(:,:),intent(in)    :: op
+    character(len=16)                    :: type_
+    type_='';if(present(type))type_=str(type)    
     if(.not.associated(self%root))allocate(self%root)
-    call self%put(key,as_sparse(op))
+    call self%put(key,as_sparse(op),type_)
   end subroutine load_operators_list
 
 
+
   !+------------------------------------------------------------------+
-  !PURPOSE:  Append == Put a sparse matrix as operator in the operators_list
+  !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
-  subroutine append_operators_list(self,key,op)
+  function dump_op_operators_list(self,key) result(matrix)
     class(operators_list),intent(inout) :: self
     character(len=*),intent(in)         :: key
-    type(sparse_matrix),intent(in)      :: op
-    type(optype),pointer                :: p,c
-    logical                             :: iadd
-    !
-    if(.not.associated(self%root))allocate(self%root)
-    !
-    iadd = .false.
-    p => self%root
-    c => p%next
-    do                            !traverse the list until QN is found
-       if(.not.associated(c))exit
-       if (str(c%ckey) == str(key)) then
-          iadd = .true.
-          exit
-       endif
-       p => c
-       c => c%next
-    end do
-    !
-    if(iadd)then                !KEY exists: update operator
-       c%ckey = str(key)
-       c%ope  = op
-    else                        !KEY does not exist: create a new element
-       allocate(p%next)
-       p%next%ckey   = str(key)
-       p%next%ope    = op
-       p%next%index = p%index+1
-       if(.not.associated(c))then !end of the list special case (c=>c%next)
-          p%next%next  => null()
-       else
-          p%next%next  => c      !the %next of the new node come to current
-       end if
-       self%size = self%size+1
-    endif
-    p=>null()
-    c=>null()
-  end subroutine append_operators_list
+    real(8),dimension(:,:),allocatable  :: matrix
+    matrix = as_matrix( self%op(key=key) )  
+  end function dump_op_operators_list
 
 
 
@@ -250,16 +257,17 @@ contains
   !##################################################################
   !##################################################################
   !+------------------------------------------------------------------+
-  !PURPOSE: Get operator of the operators_list as a sparse matrix given a key 
+  !PURPOSE: Get {key,operator,type} of the list given an index
   !+------------------------------------------------------------------+
-  subroutine get_all_operators_list(self,index,key,op)
-    class(operators_list),intent(inout) :: self
-    character(len=*),intent(out)        :: key
-    type(sparse_matrix),intent(out)     :: op
-    integer,intent(in)                  :: index
-    integer                             :: index_
-    type(optype),pointer                :: c
-    logical                             :: ifound
+  subroutine get_all_operators_list(self,index,key,op,type)
+    class(operators_list),intent(inout)   :: self
+    integer,intent(in)                    :: index
+    character(len=*),intent(out)          :: key
+    character(len=*),intent(out),optional :: type
+    type(sparse_matrix),intent(out)       :: op
+    integer                               :: index_
+    type(optype),pointer                  :: c
+    logical                               :: ifound
     !
     index_=index
     if(index_>self%size.OR.index_<=0)stop "get_sectors_list: index !in [1,self.size]"    
@@ -276,8 +284,9 @@ contains
     end do
     if(.not.ifound)stop "get error: not found"
     !
-    key = str(c%ckey)
     op  = c%ope
+    key = str(c%ckey)
+    if(present(type))type= str(c%ctype)
     !
     c=>null()
   end subroutine get_all_operators_list
@@ -285,7 +294,7 @@ contains
 
 
   !+------------------------------------------------------------------+
-  !PURPOSE: Return operator of the operators_list as sparse matrix given:
+  !PURPOSE: Return operator of the list as sparse matrix given:
   ! + key: the operator corresponding to the key value
   ! + indx: the operator corresponding to  the indx value
   !+------------------------------------------------------------------+
@@ -301,7 +310,6 @@ contains
     index_=self%size;if(present(index))index_=index
     if(index_>self%size.OR.index_<=0)stop "get_op_operators_list: index !in [1,self.size]"
     if(.not.present(index).AND..not.present(key))stop "get_op_operators_list: no input given: use index=i OR key=str"
-
     ifound=.false.
     c => self%root%next
     loop:do                            !traverse the list until QN is found
@@ -358,6 +366,45 @@ contains
   end function get_key_operators_list
 
 
+  !+------------------------------------------------------------------+
+  !PURPOSE: Return operator type of the list given:
+  ! + key  : the type corresponding to the key value
+  ! + index: the type corresponding to  the indx value
+  !+------------------------------------------------------------------+
+  function get_type_operators_list(self,index,key) result(type)
+    class(operators_list)        :: self
+    integer                      :: index
+    character(len=*),optional    :: key
+    character(len=:),allocatable :: type
+    integer                      :: index_
+    type(optype),pointer         :: c
+    logical                      :: ifound
+    !
+    index_=index
+    if(index_>self%size.OR.index_<=0)stop "get_op_operators_list: index !in [1,self.size]"
+    !
+    ifound=.false.
+    c => self%root%next
+    loop:do                            !traverse the list until QN is found
+       if(.not.associated(c))exit
+       if(present(key))then
+          if (str(c%ckey) == str(key)) then
+             ifound=.true.
+             exit loop
+          endif
+       elseif(c%index == index_)then
+          ifound=.true.
+          exit
+       endif
+       c => c%next
+    end do loop
+    if(.not.ifound)stop "get_type_operators_list error: not found"
+    !
+    type = str(c%ctype)
+    !
+    c=>null()
+  end function get_type_operators_list
+
 
 
   !+------------------------------------------------------------------+
@@ -378,33 +425,20 @@ contains
 
 
   !+------------------------------------------------------------------+
-  !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
-  !+------------------------------------------------------------------+
-  function dump_op_operators_list(self,key) result(matrix)
-    class(operators_list),intent(inout)   :: self
-    character(len=*),intent(in)           :: key
-    real(8),dimension(:,:),allocatable :: matrix
-    type(optype),pointer                  :: c
-    logical                               :: ifound
-    !
-    if(allocated(matrix))deallocate(matrix)
-    !
-    ifound=.false.
-    c => self%root%next
-    do                            !traverse the list until KEY is found
-       if(.not.associated(c))exit
-       if(str(c%ckey) == str(key)) then
-          ifound=.true.
-          exit          
-       endif
-       c => c%next
-    end do
-    if(.not.ifound)stop "dump_operator_matrix error: not found"
-    !
-    matrix = c%ope%as_matrix()
-    !
-    c=>null()
-  end function dump_op_operators_list
+  !PURPOSE: Return all the keys in the operators_list
+  !+------------------------------------------------------------------+  
+  function types_operators_list(self,len) result(types)
+    class(operators_list)                       :: self
+    integer                                     :: len
+    character(len=len),dimension(:),allocatable :: types
+    integer                                     :: i,Nsize
+    Nsize=size(self)
+    allocate(types(Nsize))
+    do i=1,Nsize
+       types(i) = str(self%type(i))
+    enddo
+  end function types_operators_list
+
 
 
 
@@ -461,9 +495,9 @@ contains
   !+------------------------------------------------------------------+
   function has_key_operators_list(self, key) result(bool)
     class(operators_list),intent(inout) :: self
-    character(len=*),intent(in)  :: key
-    logical                      :: bool
-    type(optype),pointer               :: c
+    character(len=*),intent(in)         :: key
+    logical                             :: bool
+    type(optype),pointer                :: c
     !
     bool=.false.
     c => self%root%next
@@ -486,9 +520,9 @@ contains
   !+------------------------------------------------------------------+
   function shape_operators_list(self) result(shape)
     class(operators_list),intent(inout) :: self
-    integer,dimension(2)             :: shape
-    type(optype),pointer             :: c
-    logical :: bool
+    integer,dimension(2)                :: shape
+    type(optype),pointer                :: c
+    logical                             :: bool
     bool = self%is_valid()
     if(.not.bool)stop "shape_operator_list: not a valid list"
     c => self%root%next
@@ -514,12 +548,12 @@ contains
   recursive subroutine show_operators_list(self,fmt,unit,file)
     class(operators_list),intent(inout) :: self
     character(len=*),optional           :: fmt
-    integer,optional :: unit
+    integer,optional                    :: unit
     character(len=32)                   :: fmt_
     integer                             :: i,count=0
-    type(optype),pointer                 :: c
-    character(len=*),optional       :: file
-    integer                         :: unit_
+    type(optype),pointer                :: c
+    character(len=*),optional           :: file
+    integer                             :: unit_
     unit_=6
     if(present(unit))unit_=unit
     if(present(file))open(free_unit(unit_),file=str(file))
@@ -534,7 +568,7 @@ contains
        count=count+1
        write(unit_,"(A6,I12)")  "Index:",c%index
        write(unit_,"(A6,A)")"Key  :",str(c%ckey)
-       write(unit_,*)"Op  :"
+       write(unit_,"(A6,A)")"Type :",str(c%ctype)
        call c%ope%display()
        write(unit_,*)""
        c => c%next
@@ -562,7 +596,7 @@ contains
     integer                            :: i
     call A%free()
     do i=1,size(B)
-       call A%put(B%key(index=i),B%op(index=i))
+       call A%put(B%key(index=i),B%op(index=i),B%type(index=i))
     enddo
   end subroutine equality_operators_list
 
@@ -595,53 +629,59 @@ program testOPERATORS_TUPLE
   USE LIST_OPERATORS
   implicit none
 
-  type(operators_list)                  :: my_list,a_list
-  type(operators_list)                  :: copy_list,clist(2)
-  type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
+  type(operators_list)               :: my_list,a_list
+  type(operators_list)               :: copy_list,clist(2)
+  type(sparse_matrix)                :: spSz,spSp,spH,spK,a,b,c
   real(8),dimension(:,:),allocatable :: mat
-  integer                               :: i,j,n
-  logical                               :: bool
+  integer                            :: i,j,n
+  logical                            :: bool
   real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
   real(8),dimension(2,2),parameter   :: Sz=pauli_z
   real(8),dimension(2,2),parameter   :: Sx=pauli_x
   real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
   real(8),dimension(4,4)             :: Gamma13,Gamma03
-  character(len=10)                     :: key
-  character(len=10),allocatable         :: keys(:)
-
+  character(len=10)                  :: key,type
+  character(len=10),allocatable      :: keys(:)
+  integer,parameter :: sec=500
+  
+  
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(eye(2),Sz)
 
 
   print*,"TEST CONSTRUCTOR, PUT, SHOW, FREE"
   my_list = operators_list(&
-       ['H0','Sz','Sp'],&
-       [sparse(Hzero),sparse(Sz),sparse(Splus)])
+       ['H0','Sz','Sp','P ','C '],&
+       [sparse(Hzero),sparse(Sz),sparse(Splus),sparse(Sz),sparse(Sz)],&
+       ['bose ','bose ','bose ','sign ','fermi'])
   call my_list%show()
   call my_list%free()
-
+  call wait(sec)
+  
 
   print*,"TEST LOAD matrices"
-  call my_list%load("H0",Hzero)
-  call my_list%load("Sz",Sz)
-  call my_list%load("Sp",Splus)
+  call my_list%load("H0",Hzero,'b')
+  call my_list%load("Sz",Sz,'s')
+  call my_list%load("Sp",Splus,'fermi')
   print*,"TEST SHOW"
   call my_list%show()
   call my_list%free()
+  call wait(sec)
 
-  print*,"TEST APPEND + LOAD matrices"
-  call my_list%append("H0",as_sparse(Hzero))
-  call my_list%append("Sz",as_sparse(Sz))
-  call my_list%load("Sp",Splus)  
-  print*,"TEST SHOW"
+
+  
+  print*,"TEST (CONSTRUCT + )APPEND matrices"
+  call my_list%append("H0",as_sparse(Hzero),'b')
+  call my_list%append("Sz",as_sparse(Sz),'b')
+  call my_list%append("Sp",as_sparse(Splus),'Bosonic')
   call my_list%show()
+  print*,""
+  call wait(sec)
 
 
 
 
-
-
-
+  
   print*,"TEST RETRIEVE FUNCTIONALITIES"
   print*,"TEST .DUMP"
   print*,"Mat.allocated:",allocated(mat)
@@ -652,15 +692,22 @@ program testOPERATORS_TUPLE
      write(*,*)(mat(i,j),j=1,size(mat,2))
   enddo
   deallocate(mat)
+  print*,""
+  call wait(sec)
 
+  
   print*,"TEST .GET"
   do i=1,size(my_list)
-     call my_list%get(index=i,key=key,op=a)
+     call my_list%get(index=i,key=key,op=a,type=type)
      print*,i
      print*,key
+     print*,type
      call a%show()
   enddo
+  print*,""
+  call wait(sec)
 
+  
   print*,"TEST .KEY + .OP + ITERATION over index"
   do i=1,size(my_list)
      a = my_list%op(index=i)
@@ -668,19 +715,21 @@ program testOPERATORS_TUPLE
      call a%show()
   enddo
   print*,""
-
   do i=1,size(my_list)
      key = my_list%key(index=i)
      a = my_list%op(key=key)
      print*,i,key
      call a%show
   enddo
-
+  print*,""
+  call wait(sec)
+  
 
   print*,"TEST HAS_KEY"
   print*,"list has key Sz",my_list%has_key("Sz")
   print*,"list has key SZ",my_list%has_key("SZ")
   print*,""
+  call wait(sec)
 
 
 
@@ -691,16 +740,17 @@ program testOPERATORS_TUPLE
   print*,"is not valid with dim=3"
   print*,my_list%is_valid(dim=3)
   print*,"is not valid once appended s_0.x.s_3"
-  call my_list%append("W",as_sparse(Gamma03))
+  call my_list%append("W",as_sparse(Gamma03),'b')
   print*,my_list%is_valid()
   call my_list%free
   print*,""
+  call wait(sec)
 
 
 
-  call my_list%append("H0",as_sparse(Hzero))
-  call my_list%append("Sz",as_sparse(Sz))
-  call my_list%load("Sp",Splus)
+  call my_list%append("H0",as_sparse(Hzero),'b')
+  call my_list%append("Sz",as_sparse(Sz),'b')
+  call my_list%load("Sp",Splus,'b')
 
 
 
@@ -708,7 +758,8 @@ program testOPERATORS_TUPLE
   copy_list = my_list
   call copy_list%show()
   print*,copy_list%is_valid()
-
+  print*,""
+  call wait(sec)
 
 
   print*,"TEST my_list.o('key')"
@@ -719,16 +770,19 @@ program testOPERATORS_TUPLE
   a = my_list%op("Sz")
   print*,"a.print"
   call a%show
-
   print*,""
+  call wait(sec)
+
+  
 
   print*,"TEST ITERATION SIZE:"
   do i=1,size(my_list)
      a = my_list%op(index=i)
-     print*,i,my_list%key(i)
+     print*,i,my_list%key(i),my_list%type(i)
      call a%show()
   enddo
-
+  print*,""
+  call wait(sec)
 
   print*,"TEST ITERATION KEYS:"
   keys = my_list%keys(len(keys))
@@ -737,21 +791,26 @@ program testOPERATORS_TUPLE
      print*,i,str(keys(i))
      call a%show()
   enddo
+  print*,""
+  call wait(sec)
 
-  print*,""
-  print*,""
+
+  
   print*,"TEST DEEP COPY '='"
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(eye(2),Sz)
-  call a_list%append("gamma13",as_sparse(Gamma13))
-  call a_list%append("gamma03",as_sparse(Gamma03))
-  call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)))
+  call a_list%append("gamma13",as_sparse(Gamma13),'b')
+  call a_list%append("gamma03",as_sparse(Gamma03),'b')
+  call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)),'b')
 
   clist(1) = my_list
   clist(2) = a_list
 
   call clist(1)%show()
   call clist(2)%show()
+  print*,""
+  call wait(sec)
 
+  
 end program testOPERATORS_TUPLE
 #endif

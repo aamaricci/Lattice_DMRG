@@ -1,0 +1,26 @@
+#%Module	
+set project dmrg
+set root /Users/amaricci/opt/dmrg/gnu/devel_mpi/debug/dble/3.2.1-11-gc8aed3d
+set plat gnu
+set version "(gnu/devel_mpi/debug/dble/3.2.1-11-gc8aed3d)"
+set compiler /usr/local/bin/mpif90
+  
+proc ModulesHelp { } {
+        puts stderr "\tThis module provides access to DMRG library\n";
+	puts stderr "\tVersion $version\n"
+	puts stderr "\t compiled with $compiler\n"	
+}
+
+module-whatis "DMRG Fortran library"
+
+
+setenv       DMRG_ROOT  		 $root
+setenv	     FC			 $compiler
+setenv	     F90		 $compiler
+prepend-path LD_LIBRARY_PATH    "$root/lib"
+prepend-path LIBRARY_PATH       "$root/lib"
+prepend-path PATH		"$root/bin"
+prepend-path PKG_CONFIG_PATH	"$root/etc"
+
+puts stderr " > (un)load DMRG $version"
+#EOF

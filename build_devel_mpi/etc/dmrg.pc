@@ -1,0 +1,15 @@
+prefix=/Users/amaricci/opt/dmrg/gnu/devel_mpi/debug/dble/3.2.1-11-gc8aed3d
+exec_prefix=${prefix}/bin
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: DMRG
+Description: The DMRG library
+Cflags: -I${includedir}
+Libs: -L${libdir} -ldmrg
+Version:3.2.1-11-gc8aed3d
+
+	
+
+
+ 

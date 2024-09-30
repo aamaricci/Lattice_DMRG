@@ -11,7 +11,6 @@ MODULE DMRG_SUPERBLOCK
   public :: sb_get_states
   public :: sb_diag
 
-
 contains
 
 
@@ -67,62 +66,6 @@ contains
     call stop_timer()
     !
   end subroutine sb_get_states
-
-
-
-
-  !##################################################################
-  !         SETUP THE SUPERBLOCK HAMILTONIAN PROBLEM
-  ! . if Hmat: returb H^SB as dense matrix there for Lapack use
-  ! . if sparse_H = T: build H^SB as sparse matrix
-  ! . if sparse_H = F: setup H^SB terms and blocks for H*v procedure
-  !##################################################################
-  subroutine sb_build_Hv(Hmat)
-    real(8),dimension(:,:),allocatable,optional :: Hmat
-    integer                                     :: m_sb
-
-    if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
-    m_sb = size(sb_states)
-
-    !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
-    if(present(Hmat))then
-       if(allocated(Hmat))deallocate(Hmat)
-       allocate(Hmat(m_sb,m_sb));Hmat=0d0
-       !Nullify HxV function pointer:
-       spHtimesV_p => null()
-       !
-       !>Build Sparse Hsb:
-       call start_timer("get H_sb Sparse&Dump")
-       call Setup_SuperBlock_Sparse()
-       call stop_timer()
-       !
-       !Dump Hsb to dense matrix as required:
-       call spHsb%dump(Hmat)
-       return
-    endif
-    !
-    !Build SuperBLock HxV operation: stored or direct
-    select case(sparse_H)
-    case(.true.)
-       call start_timer("get H_sb Sparse")
-       call Setup_SuperBlock_Sparse()
-       call stop_timer()
-       !
-       !Set HxV function pointer:
-       spHtimesV_p => spMatVec_sparse_main
-       !
-    case(.false.)
-       call start_timer("get H_sb Direct")
-       call Setup_SuperBlock_Direct()
-       call stop_timer()
-       !
-       !Set HxV function pointer:
-       spHtimesV_p => spMatVec_direct_main
-       !
-    end select
-  end subroutine sb_build_Hv
-
-
 
 
   !-----------------------------------------------------------------!
@@ -207,10 +150,56 @@ contains
 
 
 
+  !##################################################################
+  !         SETUP THE SUPERBLOCK HAMILTONIAN PROBLEM
+  ! . if Hmat: returb H^SB as dense matrix there for Lapack use
+  ! . if sparse_H = T: build H^SB as sparse matrix
+  ! . if sparse_H = F: setup H^SB terms and blocks for H*v procedure
+  !##################################################################
+  subroutine sb_build_Hv(Hmat)
+    real(8),dimension(:,:),allocatable,optional :: Hmat
+    integer                                     :: m_sb
 
+    if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
+    m_sb = size(sb_states)
 
-
-
+    !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
+    if(present(Hmat))then
+       if(allocated(Hmat))deallocate(Hmat)
+       allocate(Hmat(m_sb,m_sb));Hmat=0d0
+       !Nullify HxV function pointer:
+       spHtimesV_p => null()
+       !
+       !>Build Sparse Hsb:
+       call start_timer("get H_sb Sparse&Dump")
+       call Setup_SuperBlock_Sparse()
+       call stop_timer()
+       !
+       !Dump Hsb to dense matrix as required:
+       call spHsb%dump(Hmat)
+       return
+    endif
+    !
+    !Build SuperBLock HxV operation: stored or direct
+    select case(sparse_H)
+    case(.true.)
+       call start_timer("get H_sb Sparse")
+       call Setup_SuperBlock_Sparse()
+       call stop_timer()
+       !
+       !Set HxV function pointer:
+       spHtimesV_p => spMatVec_sparse_main
+       !
+    case(.false.)
+       call start_timer("get H_sb Direct")
+       call Setup_SuperBlock_Direct()
+       call stop_timer()
+       !
+       !Set HxV function pointer:
+       spHtimesV_p => spMatVec_direct_main
+       !
+    end select
+  end subroutine sb_build_Hv
 
 
 

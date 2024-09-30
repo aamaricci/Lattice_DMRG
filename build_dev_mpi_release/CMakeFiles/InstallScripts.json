@@ -1,0 +1,12 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/amaricci/projects_src/Lattice_DMRG/build_dev_mpi_release/cmake_install.cmake",
+		"/Users/amaricci/projects_src/Lattice_DMRG/build_dev_mpi_release/src/MATRIX/cmake_install.cmake",
+		"/Users/amaricci/projects_src/Lattice_DMRG/build_dev_mpi_release/src/LIST/cmake_install.cmake",
+		"/Users/amaricci/projects_src/Lattice_DMRG/build_dev_mpi_release/src/FOCK/cmake_install.cmake",
+		"/Users/amaricci/projects_src/Lattice_DMRG/build_dev_mpi_release/src/BLOCKS/cmake_install.cmake",
+		"/Users/amaricci/projects_src/Lattice_DMRG/build_dev_mpi_release/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

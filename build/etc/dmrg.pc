@@ -1,0 +1,15 @@
+prefix=/Users/amaricci/opt/dmrg/gnu/devel_pbc/debug/dble/3.2.0-1-g300a190
+exec_prefix=${prefix}/bin
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: DMRG
+Description: The DMRG library
+Cflags: -I${includedir}
+Libs: -L${libdir} -ldmrg
+Version:3.2.0-1-g300a190
+
+	
+
+
+ 

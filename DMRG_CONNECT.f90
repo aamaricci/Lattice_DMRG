@@ -21,9 +21,9 @@ contains
     type(site)                   :: dot
     character(len=*),optional    :: grow
     character(len=16)            :: grow_
-    character(len=:),allocatable :: key,dtype
+    character(len=:),allocatable :: key,dtype,otype
     type(tbasis)                 :: self_basis,dot_basis,enl_basis
-    type(sparse_matrix)          :: Hb,Hd,H2
+    type(sparse_matrix)          :: Hb,Hd,H2,eO
     integer                      :: i
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
@@ -62,17 +62,43 @@ contains
           H2 = connect_fermion_blocks(as_block(dot),self)
        end select
     end select
-    call self%put_op("H", Hb +  Hd + H2)
+    call self%put_op("H", Hb +  Hd + H2, type="bosonic")
     !
     !> Update all the other operators in the list:
     do i=1,size(self%operators)
-       key = self%operators%key(index=i)
-       if(str(key)=="H")cycle
+       key   = str(self%operators%key(index=i))
+       otype = str(self%operators%type(index=i))
+       if(key=="H")cycle
+       !
+       !Bosonic operators:
+       !O_L -> I_L.x.O_d  | O_R -> O_d.x.I_R
+       !Fermionic operators:
+       !O_L -> P_L.x.O_d  | O_R -> O_d.x.I_R
+       !Sign operator:
+       !P_L -> P_L.x.P_d  | P_R -> P_d.x.P_R
        select case(str(grow_))
        case ("left","l")
-          call self%put_op(str(key), Id(self%dim).x.dot%operators%op(str(key)))
+          select case(to_lower(str(otype)))
+          case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
+          case('b','bose','bosonic')
+             eO = Id(self%dim)
+          case('f','fermi','fermionic')
+             eO = self%operators%op(key="P")
+          case('s','sign')
+             eO = self%operators%op(key="P")
+          end select
+          call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
        case ("right","r")
-          call self%put_op(str(key), dot%operators%op(str(key)).x.Id(self%dim))
+          select case(to_lower(str(otype)))
+          case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
+          case('b','bose','bosonic')
+             eO = Id(self%dim)
+          case('f','fermi','fermionic')
+             eO = Id(self%dim)
+          case('s','sign')
+             eO = self%operators%op(key="P")
+          end select
+          call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
        end select
     enddo
     !
