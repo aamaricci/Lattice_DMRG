@@ -8,6 +8,7 @@ program dmrg_spin_1d
   real(8)             :: Hvec(3)
   type(site)          :: Dot
   type(sparse_matrix) :: bSz,bSp,SiSj
+  real(8),dimension(:,:),allocatable :: Hlr
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
@@ -25,7 +26,12 @@ program dmrg_spin_1d
   Dot = spin_site(sun=SUN,Hvec=Hvec)
   call Dot%show()
 
-  call init_dmrg(heisenberg_1d_model,ModelDot=Dot)
+
+  if(allocated(Hlr))deallocate(Hlr)
+  allocate(Hlr(Nspin*Norb,Nspin*Norb))
+  Hlr(1,1) = Jp
+  Hlr(2,2) = Jx/2d0
+  call init_dmrg(Hlr,ModelDot=Dot)
 
 
   !Run DMRG algorithm
@@ -39,8 +45,8 @@ program dmrg_spin_1d
 
   !Post-processing and measure quantities:
   !Measure <Sz(i)>
-  call Measure_Op_DMRG(dot%operators%op(key="S_z"),file="SzVSj")
-  
+  call Measure_DMRG(dot%operators%op(key="S_z"),file="SzVSj")
+
   !Measure <S(i).S(i+1)>
   unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
   do pos=1,Ldmrg/2-1
@@ -57,21 +63,6 @@ program dmrg_spin_1d
   call finalize_dmrg()
 
 contains
-
-
-  function heisenberg_1d_model(left,right) result(Hlr)
-    type(block)                   :: left
-    type(block)                   :: right
-    real(8),dimension(:,:),allocatable :: Hlr
-    if(allocated(Hlr))deallocate(Hlr)
-    allocate(Hlr(Nspin*Norb,Nspin*Norb))
-    !
-    !workout local part, like random local field
-    !if(left%Dim==1 AND right%Dim==1) then operate over local H
-    !if(left%Dim==1 OR right%Dim==1) then operate over local H
-    Hlr(1,1) = Jp
-    Hlr(2,2) = Jx/2d0
-  end function Heisenberg_1d_Model
 
 
   function get_SiSj(Sz1,Sp1,Sz2,Sp2) result(sisj)
