@@ -10,6 +10,7 @@ MODULE DMRG_MEASURE
   !Measuring:
   public :: Init_Measure_DMRG
   public :: End_measure_DMRG
+  public :: Measure_DMRG
   public :: Measure_Op_DMRG
   public :: Build_Op_DMRG
   public :: Advance_Op_DMRG
@@ -20,7 +21,14 @@ MODULE DMRG_MEASURE
   interface Write_DMRG
      module procedure :: write_user_scalar
      module procedure :: write_user_array
+     module procedure :: write_user_matrix
   end interface Write_DMRG
+
+
+  interface  Measure_DMRG
+     module procedure :: Measure_DMRG_scalar
+     module procedure :: Measure_DMRG_vector
+  end interface Measure_DMRG
 
   integer                                      :: Nsb
   real(8),dimension(:),allocatable             :: qn,qm
@@ -49,6 +57,7 @@ contains
        LI(isb)%states = sb2block_states(qn,'left')
        RI(isb)%states = sb2block_states(qn,'right')
     enddo
+    suffix=label_DMRG('u')
     measure_status=.true.
   end subroutine Init_Measure_dmrg
 
@@ -64,10 +73,31 @@ contains
 
 
 
+
   !##################################################################
-  !              MEASURE LOCAL OPERATOR
+  !              Measure local Operator Op
+  !Purpose: return the average value <gs|Op|gs> for a given Op
   !##################################################################
-  subroutine Measure_Op_dmrg(Op,pos,file,avOp)
+  function Measure_Op_DMRG(Op,pos) result(avOp)
+    type(sparse_matrix),intent(in) :: Op
+    integer                        :: pos
+    type(sparse_matrix)            :: Oi
+    real(8)                        :: avOp
+    if(.not.measure_status)call Init_Measure_DMRG()
+    Oi   = Build_Op_dmrg(Op,pos)
+    Oi   = Advance_Op_dmrg(Oi,pos)
+    avOp = Average_Op_dmrg(Oi,pos)
+    call Oi%free()
+  end function Measure_Op_DMRG
+
+
+
+
+  !##################################################################
+  !          Measure local operators on a given set of
+  !     positions, write results on file and return average value
+  !##################################################################
+  subroutine Measure_DMRG_scalar(Op,pos,file,avOp)
     type(sparse_matrix),intent(in)            :: Op
     integer,dimension(:),optional             :: pos
     character(len=*),optional                 :: file
@@ -76,23 +106,14 @@ contains
     integer,dimension(:),allocatable          :: pos_
     character(len=1)                          :: label
     character(len=128)                        :: file_
-    integer                                   :: i,ipos,L,R,N,Np
+    integer                                   :: i,ipos,L,R,Np
     type(sparse_matrix)                       :: Oi
     integer                                   :: it,j,dims(2)
-    type(sparse_matrix)                       :: U,Ok,I_R,I_L
-    real(8) :: val
-
-    !
-    suffix=label_DMRG('u')
     !
     !
-    L = left%length           !the len of the last block used to create the SB->\psi
-    R = right%length
-    N = L+R
+    L = left%length ; R = right%length
+    Np = L+R;if(present(pos))Np= size(pos)
     !
-    Np = N;if(present(pos))Np= size(pos)
-    !
-
     allocate(vals(Np))
     allocate(pos_(Np))
     pos_=arange(1,Np);if(present(pos))pos_=pos
@@ -100,15 +121,9 @@ contains
     call start_timer()
     call Init_measure_dmrg()
     do i=1,Np
-       ipos   = pos_(i)
-       j = ipos
-       ! !>TO BE REMOVED:
-       ! if(j<=L)J = N+1-j
-       ! !<-------------
-       Oi     = Build_Op_dmrg(Op,j)   !suspect #1
-       Oi     = Advance_Op_dmrg(Oi,j) !suspect #2 
-       vals(i)= Average_Op_dmrg(Oi,j) !< this is evidently not the issue, see below
-       write(LOGfile,*)ipos,vals(i),abs(vals(i)-0.5d0)
+       ipos    = pos_(i)
+       vals(i) = Measure_Op_DMRG(Op,ipos)
+       write(LOGfile,*)ipos,vals(i)
     enddo
     call End_measure_dmrg()
     call stop_timer("Done "//str(file))
@@ -117,58 +132,56 @@ contains
     !
     if(present(avOp))then
        if(allocated(avOp))deallocate(avOp)
-       allocate(avOp(Np))
-       avOp = vals
+       allocate(avOp, source=vals)
     endif
-    call Oi%free()
+  end subroutine Measure_dmrg_scalar
 
 
-
-    !Other way to get the average of the operator <O>
-    ! missing the use of \rho which requires to store the block matrix
-    ! which we removed in this version. look in the log.
+  subroutine Measure_DMRG_vector(Op,pos,file,avOp)
+    type(sparse_matrix),dimension(:),intent(in) :: Op
+    integer,dimension(:),optional               :: pos
+    character(len=*),optional                   :: file
+    real(8),dimension(:,:),allocatable,optional :: avOp
+    real(8),dimension(:,:),allocatable          :: vals
+    integer,dimension(:),allocatable            :: pos_
+    character(len=1)                            :: label
+    character(len=128)                          :: file_
+    integer                                     :: i,ipos,L,R,Np,M
+    type(sparse_matrix)                         :: Oi
+    integer                                     :: it,j,dims(2)
     !
-    ! U =  right%omatrices%op(index=R-1)
-    ! dims=shape(U)
-    ! I_R = Id(dot%dim*dims(2))
-    ! U =  left%omatrices%op(index=L-1)
-    ! dims=shape(U)
-    ! I_L = Id(dims(2)*dot%dim)!(matmul(U%t(),U)).x.Id(dot%dim)
-    ! print*,""
-    ! print*,"pos=1"
-    ! print*,""
-    ! print*,"Method <psi|O.x.I_R|psi>"
-    ! print*,shape(I_R)
-    ! ipos=1
-    ! Oi = Build_Op_Dmrg(Op,ipos)
-    ! do it=1,L-1
-    !    U  = left%omatrices%op(index=it)
-    !    Oi = (matmul(matmul(U%t(),Oi),U)).x.Id(dot%dim)
-    ! enddo
-    ! Oi = sp_kron(Oi,I_R,sb_states)
-    ! print*,shape(Oi)
-    ! val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
-    ! print*,ipos,val    
-    ! print*,""
-    ! print*,"ipos=N"
-    ! print*,""
-    ! print*,"Method <psi|I_L.x.O|psi>"
-    ! ipos=N
-    ! print*,shape(I_L)
-    ! Oi = Build_Op_Dmrg(Op,ipos)
-    ! do it=1,R-1
-    !    U  = right%omatrices%op(index=it)
-    !    Oi = Id(dot%dim).x.(matmul(matmul(U%t(),Oi),U))
-    ! enddo
-    ! Oi = sp_kron(I_L,Oi,sb_states)
-    ! print*,shape(Oi)
-    ! val = dot_product(gs_vector(:,1),OI%dot(gs_vector(:,1)))
-    ! print*,ipos,val    
-
-  end subroutine Measure_Op_dmrg
-
-
-
+    !
+    M  = size(Op)
+    L  = left%length
+    R  = right%length
+    Np = L+R;if(present(pos))Np= size(pos)
+    print*,Np
+    !
+    allocate(pos_(Np))
+    pos_=arange(1,Np);if(present(pos))pos_=pos
+    !
+    allocate(vals(M,Np))
+    print*,size(vals,1),size(vals,2)
+    !
+    call start_timer()
+    call Init_measure_dmrg()
+    do i=1,Np
+       ipos = pos_(i)
+       do j=1,M
+          vals(j,i) = Measure_Op_DMRG(Op(j),ipos)
+       enddo
+       write(LOGfile,*)ipos,(vals(j,i),j=1,M)
+    enddo
+    call End_measure_dmrg()
+    call stop_timer("Done "//str(file))
+    !
+    if(present(file))call Write_DMRG(trim(file),vals,pos_)
+    !
+    if(present(avOp))then
+       if(allocated(avOp))deallocate(avOp)
+       allocate(avOp, source=vals)
+    endif
+  end subroutine Measure_DMRG_vector
 
 
 
@@ -286,14 +299,14 @@ contains
           U  = left%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Oi.x.Id(dot%dim)
-       enddo   
+       enddo
     case ("r") 
        do it=istart,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
           Oi = Id(dot%dim).x.Oi
-       enddo   
-    end select 
+       enddo
+    end select
     call U%free()
   end function Advance_Op_dmrg
 
@@ -496,7 +509,19 @@ contains
     close(Eunit)
   end subroutine write_user_array
 
-
+  subroutine write_user_matrix(file,vals,x)
+    character(len=*) :: file
+    real(8)          :: vals(:,:) !M,N
+    integer,optional :: x(size(vals,2))
+    integer          :: x_(size(vals,2))
+    integer          :: i,j,Eunit
+    x_=arange(1,size(vals,2));if(present(x))x_=x
+    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
+    do i=1,size(vals,2)
+       write(Eunit,*)x_(i),(vals(j,i),j=1,size(vals,1))
+    enddo
+    close(Eunit)
+  end subroutine write_user_matrix
 
 
 
