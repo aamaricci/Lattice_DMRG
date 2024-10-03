@@ -11,7 +11,7 @@ program hubbard_1d
   type(site)                                     :: Dot
   real(8),dimension(:,:),allocatable             :: Hloc,Hlr
   type(sparse_matrix),dimension(:,:),allocatable :: N,C
-  type(sparse_matrix) :: dens,docc,P
+  type(sparse_matrix),dimension(:),allocatable   :: dens,docc,sz,s2z,Mvec
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"TS",finput,default=(/( -0.5d0,i=1,2 )/),&
@@ -34,27 +34,12 @@ program hubbard_1d
   Hloc = diag([Mh(1:Norb),Mh(1:Norb)])
   Dot  = electron_site(Hloc)
 
-  !Post-processing and measure quantities:
-  !Measure <Sz(i)>
-  P = dot%operators%op(key="P")
-  allocate(C(Norb,Nspin),N(Norb,Nspin))
-  do ispin=1,Nspin
-     do iorb=1,Norb
-        C(iorb,ispin) = dot%operators%op(key="C"//dot%okey(iorb,ispin))
-        n(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
-     enddo
-  enddo
-  docc = matmul(n(1,1),n(1,2))
-  dens = n(1,1)!+n(1,2)
-  call dens%show()  
-  call docc%show()
-
-
   if(allocated(Hlr))deallocate(Hlr)
   allocate(Hlr(Nso,Nso))
   Hlr = diag([ts(1:Norb),ts(1:Norb)])
   if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
-  !Init DMRG
+
+
   call init_dmrg(Hlr,ModelDot=Dot)
 
   !Run DMRG algorithm
@@ -67,8 +52,29 @@ program hubbard_1d
   end select
 
 
-  call Measure_Op_DMRG(dens,file="n_l1VSj")!,pos=[Ldmrg,Ldmrg+1])
-  call Measure_Op_DMRG(docc,file="d_l1VSj")!,pos=[Ldmrg,Ldmrg+1])
+
+
+  !Post-processing and measure quantities:
+  !Measure <Sz(i)>
+  allocate(C(Norb,Nspin),N(Norb,Nspin))
+  do ispin=1,Nspin
+     do iorb=1,Norb
+        C(iorb,ispin) = dot%operators%op(key="C"//dot%okey(iorb,ispin))
+        N(iorb,ispin) = matmul(C(iorb,ispin)%dgr(),C(iorb,ispin))
+     enddo
+  enddo
+  allocate(Mvec(3*Norb),sz(Norb))
+  do iorb=1,Norb
+     sz(iorb)          = n(iorb,1)-n(iorb,2)
+     Mvec(iorb)        = n(iorb,1)+n(iorb,2)
+     Mvec(iorb+Norb)   = matmul(n(iorb,1),n(iorb,2))
+     Mvec(iorb+2*Norb) = matmul(sz(iorb),sz(iorb))
+  enddo
+
+
+  call Measure_DMRG(Mvec,file="n_d_s2z_l1VSj", pos=arange(1,Ldmrg))
+
+
 
   !Finalize DMRG
   call finalize_dmrg()
