@@ -9,7 +9,7 @@ program hubbard_1d
   character(len=1)                               :: DMRGtype
   real(8)                                        :: ts(2),Mh(2),lambda
   type(site)                                     :: Dot
-  real(8),dimension(:,:),allocatable             :: Hloc,Hlr
+  complex(8),dimension(:,:),allocatable          :: Hloc,Hlr
   type(sparse_matrix),dimension(:,:),allocatable :: N,C
   type(sparse_matrix),dimension(:),allocatable   :: dens,docc,sz,s2z,Mvec
 
@@ -31,12 +31,12 @@ program hubbard_1d
 
   !>Local Hamiltonian:
   allocate(Hloc(Nso,Nso))
-  Hloc = diag([Mh(1:Norb),Mh(1:Norb)])
+  Hloc = one*diag([Mh(1:Norb),Mh(1:Norb)])
   Dot  = electron_site(Hloc)
 
   if(allocated(Hlr))deallocate(Hlr)
   allocate(Hlr(Nso,Nso))
-  Hlr = diag([ts(1:Norb),ts(1:Norb)])
+  Hlr = one*diag([ts(1:Norb),ts(1:Norb)])
   if(Norb==2)Hlr = Hlr + lambda*kron(pauli_0,pauli_x)
 
 

@@ -919,7 +919,7 @@ contains
     integer                          :: i    
     call at%free()
     do i=1,size(a)
-       call at%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+       call at%append(transpose(a%block(index=i)), a%qn(index=i), a%map(index=i))
     enddo
   end function transpose_blocks_matrix
 
