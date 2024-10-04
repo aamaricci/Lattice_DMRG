@@ -16,7 +16,14 @@ OBJS = VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o  TUPLE_BASIS.
 .SUFFIXES: .f90
 
 REV=$(shell git rev-parse HEAD)
+BRANCH=_$(shell git rev-parse --abbrev-ref HEAD)
 VER = 'character(len=41),parameter :: git_code_version = "$(REV)"' > git_version.inc
+ifeq ($(BRANCH),_master)
+BRANCH=
+endif
+ifeq ($(BRANCH),_main)
+BRANCH=
+endif
 
 all: FLAG=$(NFLAG)
 all: code
@@ -32,9 +39,9 @@ ddebug: code
 
 code: version $(OBJS)
 	@echo "compiling ${EXE}"
-	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE) ${SF_INC} ${SF_LIB}
+	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE)$(BRANCH) ${SF_INC} ${SF_LIB}
 	@echo " "
-	@echo "> created: ${EXE}"	
+	@echo "> created: ${EXE}$(BRANCH)"
 
 test: hlocal matrix_sparse matrix_blocks tuples sectors operators sites blocks
 
