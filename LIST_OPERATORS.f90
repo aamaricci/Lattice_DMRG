@@ -228,7 +228,7 @@ contains
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
     character(len=*),intent(in),optional :: type
-    real(8),dimension(:,:),intent(in)    :: op
+    complex(8),dimension(:,:),intent(in) :: op
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)    
     if(.not.associated(self%root))allocate(self%root)
@@ -241,9 +241,9 @@ contains
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
   function dump_op_operators_list(self,key) result(matrix)
-    class(operators_list),intent(inout) :: self
-    character(len=*),intent(in)         :: key
-    real(8),dimension(:,:),allocatable  :: matrix
+    class(operators_list),intent(inout)   :: self
+    character(len=*),intent(in)           :: key
+    complex(8),dimension(:,:),allocatable :: matrix
     matrix = as_matrix( self%op(key=key) )  
   end function dump_op_operators_list
 
@@ -629,20 +629,20 @@ program testOPERATORS_TUPLE
   USE LIST_OPERATORS
   implicit none
 
-  type(operators_list)               :: my_list,a_list
-  type(operators_list)               :: copy_list,clist(2)
-  type(sparse_matrix)                :: spSz,spSp,spH,spK,a,b,c
-  real(8),dimension(:,:),allocatable :: mat
-  integer                            :: i,j,n
-  logical                            :: bool
-  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  real(8),dimension(2,2),parameter   :: Sz=pauli_z
-  real(8),dimension(2,2),parameter   :: Sx=pauli_x
-  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
-  real(8),dimension(4,4)             :: Gamma13,Gamma03
-  character(len=10)                  :: key,type
-  character(len=10),allocatable      :: keys(:)
-  integer,parameter :: sec=500
+  type(operators_list)                  :: my_list,a_list
+  type(operators_list)                  :: copy_list,clist(2)
+  type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
+  complex(8),dimension(:,:),allocatable :: mat
+  integer                               :: i,j,n
+  logical                               :: bool
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+  character(len=10)                     :: key,type
+  character(len=10),allocatable         :: keys(:)
+  integer,parameter                     :: sec=500
   
   
   Gamma13=kron(Sx,Sz)

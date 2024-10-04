@@ -8,7 +8,7 @@ program dmrg_spin_1d
   real(8)             :: Hvec(3)
   type(site)          :: Dot
   type(sparse_matrix) :: bSz,bSp,SiSj
-  real(8),dimension(:,:),allocatable :: Hlr
+  complex(8),dimension(:,:),allocatable :: Hlr
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')

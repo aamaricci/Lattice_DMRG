@@ -151,7 +151,7 @@ contains
     integer                                   :: ispin,iorb,jorb,io,jo
     integer,dimension(2)                      :: Hdims,dleft,dright
     character(len=:),allocatable              :: key
-    real(8),dimension(:,:),allocatable        :: Hij
+    complex(8),dimension(:,:),allocatable     :: Hij
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
@@ -183,13 +183,14 @@ contains
        do jo=1,Nspin*Norb
           if(Hij(io,jo)==0d0)cycle
           if(present(states))then
-             H2 = H2 + Hij(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
-             H2 = H2 + Hij(io,jo)*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
+             H2 = H2 &
+                  + Hij(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states) &
+                  + Hij(io,jo)*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
           else
-             H2 = H2 + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
-             H2 = H2 + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
+             H2 = H2 &
+                  + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo)) &
+                  + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
           endif
-
        enddo
     enddo
     !
@@ -205,15 +206,15 @@ contains
 
 
   function connect_spin_blocks(left,right,states) result(H2)
-    type(block)                        :: left
-    type(block)                        :: right
-    integer,dimension(:),optional      :: states
-    type(sparse_matrix)                :: Sl(Nspin)![Sz,Sp]
-    type(sparse_matrix)                :: Sr(Nspin)![Sz,Sp]
-    type(sparse_matrix)                :: H2
-    integer,dimension(2)               :: Hdims
-    integer                            :: ispin
-    real(8),dimension(:,:),allocatable :: Hij
+    type(block)                           :: left
+    type(block)                           :: right
+    integer,dimension(:),optional         :: states
+    type(sparse_matrix)                   :: Sl(Nspin)![Sz,Sp]
+    type(sparse_matrix)                   :: Sr(Nspin)![Sz,Sp]
+    type(sparse_matrix)                   :: H2
+    integer,dimension(2)                  :: Hdims
+    integer                               :: ispin
+    complex(8),dimension(:,:),allocatable :: Hij
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
@@ -234,13 +235,15 @@ contains
     !
     !>Build H2:
     if(present(states))then
-       H2 = H2 + Hij(1,1)*sp_kron(Sl(1),Sr(1),states) + &
-            Hij(2,2)*sp_kron(Sl(2),Sr(2)%dgr(),states)+ &
-            Hij(2,2)*sp_kron(Sl(2)%dgr(),Sr(2),states)
+       H2 = H2 &
+            + Hij(1,1)*sp_kron(Sl(1),Sr(1),states)       &
+            + Hij(2,2)*sp_kron(Sl(2),Sr(2)%dgr(),states) &
+            + Hij(2,2)*sp_kron(Sl(2)%dgr(),Sr(2),states)
     else
-       H2 = H2 + Hij(1,1)*(Sl(1).x.Sr(1)) + &
-            Hij(2,2)*(Sl(2).x.Sr(2)%dgr())+ &
-            Hij(2,2)*(Sl(2)%dgr().x.Sr(2))
+       H2 = H2 &
+            + Hij(1,1)*(Sl(1).x.Sr(1))       &
+            + Hij(2,2)*(Sl(2).x.Sr(2)%dgr()) &
+            + Hij(2,2)*(Sl(2)%dgr().x.Sr(2))
     endif
     !
     !> Free memory

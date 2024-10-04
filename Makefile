@@ -10,13 +10,39 @@ OFLAG= -cpp -D_ -O3 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argu
 DFLAG= -cpp -D_DEBUG -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
 DDFLAG=-cpp -D_DEBUG -O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check  -fdebug-aux-vars -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999 
 #-fsanitize=address
-OBJS = VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o  TUPLE_BASIS.o LIST_SECTORS.o MATRIX_BLOCKS.o LIST_OPERATORS.o  SITES.o BLOCKS.o VARS_GLOBAL.o DMRG_CONNECT.o DMRG_SUPERBLOCK_COMMON.o DMRG_SUPERBLOCK_SPARSE.o DMRG_SUPERBLOCK_DIRECT.o DMRG_SUPERBLOCK.o DMRG_RDM.o DMRG_MEASURE.o DMRG_MAIN.o  DMRG.o
+OBJS = \
+VERSION.o			\
+INPUT_VARS.o			\
+AUX_FUNCS.o			\
+TUPLE_BASIS.o			\
+LIST_SECTORS.o			\
+HLOCAL.o			\
+MATRIX_SPARSE.o			\
+MATRIX_BLOCKS.o			\
+LIST_OPERATORS.o		\
+SITES.o				\
+BLOCKS.o			\
+VARS_GLOBAL.o			\
+DMRG_CONNECT.o			\
+DMRG_SUPERBLOCK_COMMON.o	\
+DMRG_SUPERBLOCK_SPARSE.o	\
+DMRG_SUPERBLOCK_DIRECT.o	\
+DMRG_SUPERBLOCK.o		\
+DMRG_RDM.o			\
+DMRG_MEASURE.o			\
+DMRG_MAIN.o			\
+DMRG.o
 
 ##$ Extends the implicit support of the Makefile to .f90 files
 .SUFFIXES: .f90
 
 REV=$(shell git rev-parse HEAD)
+BRANCH=_$(shell git rev-parse --abbrev-ref HEAD)
 VER = 'character(len=41),parameter :: git_code_version = "$(REV)"' > git_version.inc
+ifeq ($(BRANCH),_master)
+BRANCH=
+endif
+
 
 all: FLAG=$(NFLAG)
 all: code
@@ -32,9 +58,9 @@ ddebug: code
 
 code: version $(OBJS)
 	@echo "compiling ${EXE}"
-	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE) ${SF_INC} ${SF_LIB}
+	${FC} $(FLAG) ${OBJS} drivers/$(EXE).f90 -o $(HOME)/.bin/$(EXE)$(BRANCH) ${SF_INC} ${SF_LIB}
 	@echo " "
-	@echo "> created: ${EXE}"	
+	@echo "> created: ${EXE}$(BRANCH)"
 
 test: hlocal matrix_sparse matrix_blocks tuples sectors operators sites blocks
 
@@ -55,9 +81,9 @@ tuples: version VERSION.o INPUT_VARS.o AUX_FUNCS.o
 	${FC} $(FLAG) -D_TEST ${MYOBJ}  TUPLE_BASIS.f90 -o $(HOME)/.bin/testTUPLE_BASIS ${SF_INC} ${SF_LIB}
 
 
-sectors: FLAG=$(DFLAG)
-sectors: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o 
-sectors: version VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o
+list_sectors: FLAG=$(DFLAG)
+list_sectors: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o 
+list_sectors: version VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o
 	${FC} $(FLAG) -D_TEST ${MYOBJ} LIST_SECTORS.f90 -o $(HOME)/.bin/testLIST_SECTORS ${SF_INC} ${SF_LIB}
 
 matrix_blocks: FLAG=$(DFLAG)
@@ -66,9 +92,9 @@ matrix_blocks: version VERSION.o INPUT_VARS.o AUX_FUNCS.o TUPLE_BASIS.o  LIST_SE
 	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_BLOCKS.f90 -o $(HOME)/.bin/testMATRIX_BLOCKS ${SF_INC} ${SF_LIB}
 
 
-operators: FLAG=$(DFLAG)
-operators: MYOBJ= VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
-operators: version VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
+list_operators: FLAG=$(DFLAG)
+list_operators: MYOBJ= VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
+list_operators: version VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o
 	${FC} $(FLAG) -D_TEST ${MYOBJ} LIST_OPERATORS.f90 -o $(HOME)/.bin/testLIST_OPERATORS ${SF_INC} ${SF_LIB}
 
 
@@ -89,6 +115,7 @@ clean:
 	@echo ""
 
 version:
+	@echo "git_branch : $(BRANCH)"
 	@echo "git_version: $(REV)"
 	@echo $(VER)
 

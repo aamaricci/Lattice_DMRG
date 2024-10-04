@@ -125,10 +125,10 @@ contains
   !PURPOSE:  Load a dense operator in the site dictionary
   !+------------------------------------------------------------------+
   subroutine load_op_site(self,key,op,type)
-    class(site)                       :: self
-    character(len=*),intent(in)       :: key
-    real(8),dimension(:,:),intent(in) :: op
-    character(len=*),intent(in)       :: type    
+    class(site)                          :: self
+    character(len=*),intent(in)          :: key
+    complex(8),dimension(:,:),intent(in) :: op
+    character(len=*),intent(in)          :: type    
     call self%operators%load(str(key),op,type)
   end subroutine load_op_site
 
@@ -142,7 +142,8 @@ contains
     integer,optional :: indx
     integer          :: indx_
     indx_=1;if(present(indx))indx_=indx
-    if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_BLOCK ERROR: indx out of range"
+    if(indx_<1.OR.indx_>size(self%sectors))&
+         stop "SET_SECTORS_BLOCK ERROR: indx out of range"
     call basis%free()
     basis  = self%sectors(indx_)%basis()
   end subroutine get_basis_site
@@ -158,7 +159,8 @@ contains
     integer,optional :: indx
     integer          :: indx_
     indx_=1;if(present(indx))indx_=indx
-    if(indx_<1.OR.indx_>size(self%sectors))stop "SET_SECTORS_SITE ERROR: indx out of range"
+    if(indx_<1.OR.indx_>size(self%sectors))&
+         stop "SET_SECTORS_SITE ERROR: indx out of range"
     self%sectors(indx) = sectors_list( basis )
   end subroutine set_basis_site
 
@@ -254,7 +256,7 @@ contains
        call self%sectors(i)%show()
     enddo
     write(*,"(A15,A)")"Op Name    = ",self%OpName
-    write(*,"(A14)")"Site Ops     :"
+    write(*,"(A14)")"Site Operators:"
     call self%operators%show(fmt=fmt_)
   end subroutine show_site
 
@@ -270,13 +272,13 @@ contains
   function spin_site(sun,hvec) result(self)
     integer                            :: sun
     real(8),dimension(3),optional      :: hvec
-    real(8),dimension(3)               :: h_
+    complex(8),dimension(3)            :: h_
     type(site)                         :: self
-    real(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
+    complex(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
     character(len=:),allocatable       :: key
-    integer :: ispin
+    integer                            :: ispin
     !
-    h_ = 0d0; if(present(hvec))h_=hvec
+    h_ = zero; if(present(hvec))h_=hvec
     !
     call self%free()
     self%SiteType="SPIN"
@@ -303,9 +305,9 @@ contains
     case(3)
        self%Dim = 3
        !
-       allocate(Sz(3,3));Sz=diag([1d0,0d0,-1d0])
-       allocate(Sp(3,3));Sp=0d0;Sp(1,2)=sqrt(2d0);Sp(2,3)=sqrt(2d0)
-       allocate(Sx(3,3));Sx=reshape([0d0,1d0,0d0,1d0,0d0,1d0,0d0,1d0,0d0],[3,3])/sqrt(2d0)
+       allocate(Sz(3,3));Sz=diag([one,zero,-one])
+       allocate(Sp(3,3));Sp=zero;Sp(1,2)=one*sqrt(2d0);Sp(2,3)=one*sqrt(2d0)
+       allocate(Sx(3,3));Sx=reshape([zero,one,zero,one,zero,one,zero,one,zero],[3,3])/sqrt(2d0)
        !
        allocate(H(3,3));H=h_(1)*Sx+h_(3)*Sz
        call self%put("H",sparse(H),'bosonic')
@@ -334,14 +336,14 @@ contains
   !##################################################################
   !Fock = [|0,0>,|1,0>,|0,1>,|1,1>] <- |up,dw> <- cycle UP first 1_dw x 1_up
   function electron_site(hloc) result(self)
-    real(8),dimension(Nspin*Norb,Nspin*Norb),optional :: hloc  
-    real(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
-    type(site)                                        :: self
-    integer,dimension(:),allocatable                  :: Basis
-    real(8),dimension(:,:),allocatable                :: H,P
-    real(8),dimension(:,:),allocatable                :: Op
-    integer                                           :: iorb,ispin
-    character(len=:),allocatable                      :: key
+    complex(8),dimension(Nspin*Norb,Nspin*Norb),optional :: hloc  
+    complex(8),dimension(Nspin*Norb,Nspin*Norb)          :: hloc_
+    type(site)                                           :: self
+    integer,dimension(:),allocatable                     :: Basis
+    complex(8),dimension(:,:),allocatable                :: H,P
+    complex(8),dimension(:,:),allocatable                :: Op
+    integer                                              :: iorb,ispin
+    character(len=:),allocatable                         :: key
     !
     call self%free()
     self%SiteType="FERMION"
@@ -420,11 +422,11 @@ program testSITES
 
   type(site)                          :: my_site,a,b
   type(tbasis)                        :: sz_basis
-  real(8),dimension(2,2),parameter :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  real(8),dimension(2,2),parameter :: Sz=pauli_z
-  real(8),dimension(2,2),parameter :: Sx=pauli_x
-  real(8),dimension(2,2),parameter :: Splus=reshape([zero,zero,one,zero],[2,2])
-  real(8),dimension(4,4)           :: Gamma13,Gamma03
+  complex(8),dimension(2,2),parameter :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)           :: Gamma13,Gamma03
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(id(2),Sz)

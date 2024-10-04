@@ -24,8 +24,8 @@ contains
   !              INIT/FINALIZE DMRG ALGORITHM
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
-    real(8),dimension(:,:) :: Hij
-    type(site)             :: ModelDot
+    complex(8),dimension(:,:) :: Hij
+    type(site)                :: ModelDot
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
     allocate(HopH, source=Hij)
@@ -82,9 +82,7 @@ contains
     integer                                :: i,im,right_label,left_label,current_L
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
-    real(8),allocatable                    :: val(:)
-    integer                                :: j,Ncorr
-    type(sparse_matrix),allocatable        :: Ocorr(:)
+    integer                                :: j
     !
     if(mod(Ldmrg,2)/=0)&
          stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."

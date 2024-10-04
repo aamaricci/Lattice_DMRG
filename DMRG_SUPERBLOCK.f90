@@ -72,11 +72,11 @@ contains
   ! Purpose: Diagonalize the SuperBlock problem.
   !-----------------------------------------------------------------!
   subroutine sb_diag()
-    integer                            :: m_sb
-    integer                            :: Nitermax,Neigen,Nblock
-    real(8),dimension(:),allocatable   :: evals
-    real(8),dimension(:,:),allocatable :: Hsb
-    logical                            :: exist,lanc_solve
+    integer                               :: m_sb
+    integer                               :: Nitermax,Neigen,Nblock
+    real(8),dimension(:),allocatable      :: evals
+    complex(8),dimension(:,:),allocatable :: Hsb
+    logical                               :: exist,lanc_solve
     !    
     m_sb = size(sb_states)
     if(m_sb==0)stop "sb_diag ERROR: size(sb_states)==0"
@@ -95,7 +95,7 @@ contains
     if(allocated(gs_energy))deallocate(gs_energy)
     if(allocated(gs_vector))deallocate(gs_vector)
     allocate(gs_energy(Neigen))     ;gs_energy=0d0
-    allocate(gs_vector(m_sb,Neigen));gs_vector=0d0
+    allocate(gs_vector(m_sb,Neigen));gs_vector=zero
     !
     call start_timer("Diag H_sb")
     if(lanc_solve)then
@@ -157,8 +157,8 @@ contains
   ! . if sparse_H = F: setup H^SB terms and blocks for H*v procedure
   !##################################################################
   subroutine sb_build_Hv(Hmat)
-    real(8),dimension(:,:),allocatable,optional :: Hmat
-    integer                                     :: m_sb
+    complex(8),dimension(:,:),allocatable,optional :: Hmat
+    integer                                        :: m_sb
 
     if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
     m_sb = size(sb_states)
@@ -166,7 +166,7 @@ contains
     !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
     if(present(Hmat))then
        if(allocated(Hmat))deallocate(Hmat)
-       allocate(Hmat(m_sb,m_sb));Hmat=0d0
+       allocate(Hmat(m_sb,m_sb));Hmat=zero
        !Nullify HxV function pointer:
        spHtimesV_p => null()
        !

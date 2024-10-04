@@ -16,17 +16,19 @@ contains
   !       GET REDUCED DENSITY MATRIX 
   !##################################################################
   subroutine sb_get_rdm()
-    integer                            :: isb
-    integer                            :: Nleft,Nright
-    real(8),dimension(:),allocatable   :: sb_qn,qn
-    integer,dimension(:),allocatable   :: sb_map
-    real(8),dimension(:,:),allocatable :: rho
-    call start_timer("Get Rho")
+    integer                               :: isb
+    integer                               :: Nleft,Nright
+    real(8),dimension(:),allocatable      :: sb_qn,qn
+    integer,dimension(:),allocatable      :: sb_map
+    complex(8),dimension(:,:),allocatable :: rho
+    !
     call rho_left%free()
     call rho_right%free()
+    !
+    call start_timer("Get Rho")
     do isb=1,size(sb_sector)
-       sb_qn  = sb_sector%qn(index=isb)
-       sb_map = sb_sector%map(index=isb)
+       sb_qn   = sb_sector%qn(index=isb)
+       sb_map  = sb_sector%map(index=isb)
        Nleft   = size(left%sectors(1)%map(qn=sb_qn))
        Nright  = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
        if(Nleft*Nright==0)cycle
@@ -41,10 +43,7 @@ contains
        !
     enddo
     call stop_timer()
-#ifdef _DEBUG
-    call rho_left%show(file="Rho_L_"//str(left%length)//".dat")
-    call rho_right%show(file="Rho_R_"//str(right%length)//".dat")
-#endif
+    !
     if(allocated(rho))deallocate(rho)
     if(allocated(sb_map))deallocate(sb_map)
     if(allocated(sb_qn))deallocate(sb_qn)
@@ -59,13 +58,13 @@ contains
   !              BUILD REDUCED DENSITY MATRIX 
   !##################################################################
   function build_density_matrix(Nleft,Nright,psi,map,direction) result(rho)
-    integer                            :: Nleft,Nright
-    real(8),dimension(:)               :: psi
-    integer,dimension(nleft*nright)    :: map
-    character(len=*)                   :: direction
-    real(8),dimension(:,:),allocatable :: rho
-    real(8),dimension(nleft,nright)    :: psi_tmp
-    integer                            :: il,ir,i,j
+    integer                               :: Nleft,Nright
+    complex(8),dimension(:)               :: psi
+    integer,dimension(nleft*nright)       :: map
+    character(len=*)                      :: direction
+    complex(8),dimension(:,:),allocatable :: rho
+    complex(8),dimension(nleft,nright)    :: psi_tmp
+    integer                               :: il,ir,i,j
     !
     if(allocated(rho))deallocate(rho)
     !
@@ -79,13 +78,13 @@ contains
     select case(to_lower(str(direction)))
     case ('left','l')
        allocate(rho(nleft,nleft));rho=zero
-       rho  = matmul(psi_tmp,  (transpose(psi_tmp)) )
+       rho  = matmul(psi_tmp,  conjg(transpose(psi_tmp)) )
     case ('right','r')
        allocate(rho(nright,nright));rho=zero
-       rho  = matmul((transpose(psi_tmp)), psi_tmp  )
+       rho  = matmul(conjg(transpose(psi_tmp)), psi_tmp  )
     end select
-    if(any(abs(rho-transpose(rho))>1d-12))&
-         stop "build_density_matrix error: rho not symmetric"
+    if(any(abs(rho-conjg(transpose(rho)))>1d-12))&
+         stop "build_density_matrix error: rho not Hermitian"
   end function build_density_matrix
 
 
@@ -107,9 +106,6 @@ contains
     integer                     :: i,j,r,l,im,unit
     type(tbasis)                :: left_basis,right_basis
     type(sparse_matrix)         :: trRho_left,trRho_right
-    !
-    real(8),dimension(:,:),allocatable :: MatRhoL
-    real(8),dimension(:),allocatable :: LamRhoL
     !
     m_left  = left%dim
     m_right = right%dim
@@ -194,7 +190,7 @@ contains
        !Build Truncated Density Matrices:
        call start_timer("Renormalize "//to_lower(str(label)))
        if(Mstates/=0)then
-          m_e = min(Mstates,m_right,size(rho_right_evals))       
+          m_e   = min(Mstates,m_right,size(rho_right_evals))       
        elseif(Estates/=0d0)then
           m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
           m_e   = m_err(1)
@@ -243,27 +239,6 @@ contains
     !
     return
   end subroutine renormalize_block
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
