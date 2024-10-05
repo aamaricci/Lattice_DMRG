@@ -567,7 +567,7 @@ contains
        allocate(c%E(Nloc));c%E=0d0
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
        !
-       where(c%E<0d0)c%E=1d-20
+       !where(c%E<0d0)c%E=1d-20
        self%evalues(Offset+1:Offset+Nloc) = c%E
        Offset = Offset + Nloc
        !

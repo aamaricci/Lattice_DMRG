@@ -296,7 +296,7 @@ contains
              endif
           endif
           !
-          Hmat(ii,ii)=Hmat(ii,ii) + htmp
+          Hmat(ii,ii)=Hmat(ii,ii) + one*htmp
           !
           !UP electrons
           do io=1,Ns
@@ -359,7 +359,7 @@ contains
           m   = sectorI%H(1)%map(i)
           nvec= bdecomp(m,2*Ns)
           if(nvec(alfa) == 0) cycle
-          call c(alfa,m,l,c_)          
+          call c(alfa,m,l,c_)
           Cmat(l+1,m+1) = one*c_
        enddo
        call Delete_LocalFock_Sector(sectorI)
@@ -475,7 +475,7 @@ contains
        Ndw = popcnt(idw)
        do iup = 0,NN-1
           Nup = popcnt(iup)
-          i      = iup + idw*NN
+          i   = iup + idw*NN
           call append(Hvec,nup)
           call append(Hvec,ndw)
        enddo

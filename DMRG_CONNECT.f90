@@ -219,7 +219,7 @@ contains
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)
-    allocate(Hij, source=HopH)
+    allocate(Hij, source=HopH)    
     !
     !> Get H2 dimensions:
     Hdims = shape(left%operators)*shape(right%operators)
@@ -231,7 +231,6 @@ contains
        Sl(ispin) = left%operators%op("S"//left%okey(0,ispin))
        Sr(ispin) = right%operators%op("S"//right%okey(0,ispin))
     enddo
-    !
     !
     !>Build H2:
     if(present(states))then
