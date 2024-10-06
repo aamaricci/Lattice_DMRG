@@ -24,48 +24,46 @@ MODULE VARS_GLOBAL
   ! procedure(UserHconnect),pointer,public  :: Hmodel=>null()
   ! !
 
-  real(8),dimension(:,:),allocatable :: HopH
+  complex(8),dimension(:,:),allocatable :: HopH
 
 
   abstract interface
      subroutine sparse_HxV(Nloc,v,Hv)
-       integer                            :: Nloc
-       real(8),dimension(Nloc)            :: v
-       real(8),dimension(Nloc)            :: Hv
+       integer                          :: Nloc
+       complex(8),dimension(Nloc)       :: v
+       complex(8),dimension(Nloc)       :: Hv
      end subroutine sparse_HxV
   end interface
-  procedure(sparse_HxV),pointer,public :: spHtimesV_p=>null()
+  procedure(sparse_HxV),pointer,public  :: spHtimesV_p=>null()
 
 
-
-  type(sparse_matrix)                            :: spHsb
+  type(sparse_matrix)                   :: spHsb
   !
-  real(8)                                        :: truncation_error_left,truncation_error_right
-
-  character(len=:),allocatable                   :: suffix
-  real(8),dimension(:),allocatable               :: target_Qn,current_target_QN
-  type(block)                                    :: init_left,init_right
-  logical                                        :: init_called=.false.
-  real(8),dimension(:),allocatable               :: gs_energy
-  real(8),dimension(:,:),allocatable             :: gs_vector
-  real(8),dimension(:),allocatable               :: rho_left_evals
-  real(8),dimension(:),allocatable               :: rho_right_evals
-  type(blocks_matrix)                            :: psi_left
-  type(blocks_matrix)                            :: psi_right
-  type(blocks_matrix)                            :: rho_left
-  type(blocks_matrix)                            :: rho_right
+  real(8)                               :: truncation_error_left,truncation_error_right
+  character(len=:),allocatable          :: suffix
+  real(8),dimension(:),allocatable      :: target_Qn,current_target_QN
+  type(block)                           :: init_left,init_right
+  logical                               :: init_called=.false.
+  complex(8),dimension(:,:),allocatable :: gs_vector
+  real(8),dimension(:),allocatable      :: gs_energy
+  real(8),dimension(:),allocatable      :: rho_left_evals
+  real(8),dimension(:),allocatable      :: rho_right_evals
+  type(blocks_matrix)                   :: psi_left
+  type(blocks_matrix)                   :: psi_right
+  type(blocks_matrix)                   :: rho_left
+  type(blocks_matrix)                   :: rho_right
   !GLOBAL LEFT & RIGHT & DOT 
-  type(block)                                    :: left,right
-  type(site)                                     :: dot
+  type(block)                           :: left,right
+  type(site)                            :: dot
   !
   !SUPERBLOCK SHARED THINGS
-  integer,dimension(:),allocatable               :: sb_states
-  type(sectors_list)                             :: sb_sector
+  integer,dimension(:),allocatable      :: sb_states
+  type(sectors_list)                    :: sb_sector
+  !
+  integer                               :: Mstates
+  real(8)                               :: Estates
 
-
-  integer                     :: Mstates
-  real(8)                     :: Estates
-
+  
 contains
 
 
@@ -90,7 +88,7 @@ contains
     !
     call wait(50)
     !call lefttem("clear")
-    call execute_command_line("clear")
+    !call execute_command_line("clear")
     Ltot = Ldmrg!/2
     Ldot = bold_green('=')
     Rdot = bold_red('-')
@@ -106,9 +104,9 @@ contains
     select case(label)
     case default; stop "dmrg_graphic error: label != 1(L),2(R)"
     case(0)
-       Mleft = int(left%length/(N+eps))+1
+       Mleft  = int(left%length/(N+eps))+1
        Mright = int(right%length/(N+eps))+1
-       LMleft= Ltot/N-Mleft
+       LMleft = Ltot/N-Mleft
        LMright= Ltot/N-Mright
        index=nint(mod(dble(left%length),N+eps))
        write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
@@ -119,9 +117,9 @@ contains
        write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
        if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
     case(1)
-       Mleft = int(left%length/(N+eps))+1
+       Mleft  = int(left%length/(N+eps))+1
        Mright = int(right%length/(N+eps))+1
-       LMleft= 0
+       LMleft = 0
        LMright= 0
        index=nint(mod(dble(left%length),N+eps))
        write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
@@ -132,9 +130,9 @@ contains
        write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
        if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
     case(2)
-       Mleft = int(right%length/(N+eps))+1
+       Mleft  = int(right%length/(N+eps))+1
        Mright = int(left%length/(N+eps))+1
-       LMleft= 0
+       LMleft = 0
        LMright= 0
        index=nint(mod(dble(right%length),N+eps))
        write(LOGfile,"(A,2I4,2x,A1)",advance="no")&

@@ -72,7 +72,7 @@ contains
   subroutine free_block(self)
     class(block) :: self
     self%length = 0
-    self%Dim   = 1
+    self%Dim    = 1
     call self%operators%free()
     if(allocated(self%sectors))then
        call self%sectors%free()
@@ -102,7 +102,7 @@ contains
     self%omatrices = omatrices
     allocate(self%sectors(size(sectors)))
     do i=1,size(self%sectors)
-       self%sectors(i)   = sectors(i)
+       self%sectors(i) = sectors(i)
     enddo
     allocate(self%OpName, source=OpName)
     allocate(self%SiteType, source=SiteType)
@@ -115,7 +115,7 @@ contains
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
-    call self%omatrices%put("1",sparse(eye(self%Dim)))
+    call self%omatrices%put("1",sparse(zeye(self%Dim)))
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
@@ -192,7 +192,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine rotate_operators_block(self,Umat)
     class(block)                 :: self
-    real(8),dimension(:,:)       :: Umat   ![N,M]
+    complex(8),dimension(:,:)       :: Umat   ![N,M]
     integer                      :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)          :: Op
     character(len=:),allocatable :: key,type
@@ -215,17 +215,17 @@ contains
     !Udgr.rho.U [M,N].[N,N].[N,M]=[M,M]
     function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
       type(sparse_matrix),intent(in) :: Op
-      real(8),dimension(N,M)         :: trRho
+      complex(8),dimension(N,M)         :: trRho
       integer                        :: N,M
       type(sparse_matrix)            :: RotOp
-      real(8),dimension(M,M)         :: Umat
-      real(8),dimension(N,N)         :: OpMat
+      complex(8),dimension(M,M)         :: Umat
+      complex(8),dimension(N,N)         :: OpMat
       N = size(trRho,1)
       M = size(trRho,2)
       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
       OpMat= Op%as_matrix()
-      Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
+      Umat = matmul( matmul( conjg(transpose(trRho)),OpMat),trRho) 
       call RotOp%load( Umat )
     end function rotate_and_truncate
     !
@@ -343,7 +343,7 @@ contains
     enddo
     if(wOP_)then
        write(unit_,"(A15,A)")"Op Name    = ",self%OpName
-       write(unit_,"(A14)")"Block Ops     :"
+       write(unit_,"(A14)")"Block Operators:"
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
@@ -397,11 +397,11 @@ program testBLOCKS
   type(sectors_list)               :: sect
   type(tbasis)                     :: sz_basis
   integer                          :: i
-  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  real(8),dimension(2,2),parameter   :: Sz=pauli_z
-  real(8),dimension(2,2),parameter   :: Sx=pauli_x
-  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
-  real(8),dimension(4,4)             :: Gamma13,Gamma03
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
 
 
   Gamma13=kron(Sx,Sz)

@@ -40,15 +40,13 @@ contains
          stop "Setup_SuperBlock_Direct ERROR: left.Type != right.Type"
     !
     !
-    ! call start_timer("Setup SuperBlock Direct")
-    select case(type)
+    select case(to_lower(type))
     case default;stop "Setup_SuperBlock_Direct ERROR: wrong left/right.Type"
     case ("spin","s")
        call Setup_SuperBlock_Spin_Direct()
     case ("fermion","f,","electron","e")
        call Setup_SuperBlock_Fermion_Direct()
     end select
-    ! call stop_timer()
   end subroutine Setup_SuperBlock_Direct
 
   !##################################################################
@@ -62,7 +60,7 @@ contains
     real(8),dimension(:),allocatable             :: dq
     integer,dimension(:,:,:),allocatable         :: tMap
     type(sparse_matrix),allocatable,dimension(:) :: Sleft,Sright
-    real(8),dimension(:,:),allocatable           :: Hij
+    complex(8),dimension(:,:),allocatable        :: Hij
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
@@ -101,7 +99,7 @@ contains
     !
     Offset=0
     do isb=1,Nsb
-       qn   = sb_sector%qn(index=isb)
+       qn      = sb_sector%qn(index=isb)
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
@@ -109,19 +107,19 @@ contains
     !
     dq=[1d0]
     do isb=1,size(sb_sector)
-       qn   = sb_sector%qn(index=isb)
+       qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
        BI(isb)%states = sb2block_states(qn,'right')
-       qm   = qn - dq
+       qm             = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
-       jsb = sb_sector%index(qn=qm)
+       jsb            = sb_sector%index(qn=qm)
        AJ(jsb)%states = sb2block_states(qm,'left')
        BJ(jsb)%states = sb2block_states(qm,'right')
     enddo
     !
     do ispin=1,Nspin
-       Sleft(ispin)  = left%operators%op("S"//left%okey(0,ispin))
-       Sright(ispin) = right%operators%op("S"//right%okey(0,ispin))
+       Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
+       Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
     enddo
     !
     do isb=1,size(sb_sector)
@@ -146,12 +144,12 @@ contains
        A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
        B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
        RowOffset(it,isb)=Offset(isb)
-       ColOffset(it,isb)=Offset(jsb)!right%sectors(1)%index(qn=qm))
+       ColOffset(it,isb)=Offset(jsb)
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
        A(it,isb) = hconjg(A(tMap(2,1,1),isb))
        B(it,isb) = hconjg(B(tMap(2,1,1),isb))
-       RowOffset(it,isb)=Offset(jsb)!right%sectors(1)%index(qn=qm))
+       RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
     enddo
   end subroutine Setup_SuperBlock_Spin_Direct
@@ -170,11 +168,12 @@ contains
     real(8),dimension(:),allocatable             :: qn,qm
     type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
     real(8),dimension(:),allocatable             :: dq
-    real(8),dimension(2),parameter               :: qnup=[1d0,0d0],qndw=[0d0,1d0]
+    real(8),dimension(2),parameter               :: qnup=[1d0,0d0]
+    real(8),dimension(2),parameter               :: qndw=[0d0,1d0]
     integer,dimension(:,:,:),allocatable         :: tMap
     type(sparse_matrix)                          :: P
     type(sparse_matrix),allocatable,dimension(:) :: Cleft,Cright
-    real(8),dimension(:,:),allocatable           :: Hij
+    complex(8),dimension(:,:),allocatable        :: Hij
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
@@ -189,7 +188,7 @@ contains
     !
     !
     Nso  = Nspin*Norb
-    tNso = 2*count(Hij/=0d0)
+    tNso = 2*count(Hij/=zero)
     Nsb  = size(sb_sector)
     !
     !Massive allocation
@@ -209,7 +208,7 @@ contains
     do i=1,2
        do io=1,Nso
           do jo=1,Nso
-             if(Hij(io,jo)==0d0)cycle
+             if(Hij(io,jo)==zero)cycle
              it = it+1
              tMap(i,io,jo)=it
           enddo
@@ -219,21 +218,21 @@ contains
     !
     Offset=0
     do isb=1,Nsb
-       qn   = sb_sector%qn(index=isb)
+       qn      = sb_sector%qn(index=isb)
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
     enddo
     !
     do isb=1,size(sb_sector)
-       qn   = sb_sector%qn(index=isb)
+       qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
        BI(isb)%states = sb2block_states(qn,'right')
        do ispin=1,Nspin
-          dq = qnup ; if(ispin==2)dq=qndw
+          dq = qnup   ; if(ispin==2)dq=qndw
           qm = qn - dq
           if(.not.sb_sector%has_qn(qm))cycle
-          jsb = sb_sector%index(qn=qm)
+          jsb            = sb_sector%index(qn=qm)
           AJ(jsb)%states = sb2block_states(qm,'left')
           BJ(jsb)%states = sb2block_states(qm,'right')
        enddo
@@ -244,7 +243,7 @@ contains
     do ispin=1,Nspin
        do iorb=1,Norb
           io = iorb+(ispin-1)*Norb
-          Cleft(io) = left%operators%op("C"//left%okey(iorb,ispin))
+          Cleft(io)  = left%operators%op("C"//left%okey(iorb,ispin))
           Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
        enddo
     enddo
@@ -274,13 +273,13 @@ contains
                 A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
                 B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
                 RowOffset(it,isb)=Offset(isb)           
-                ColOffset(it,isb)=Offset(jsb)!right%sectors(1)%index(qn=qm))
+                ColOffset(it,isb)=Offset(jsb)
                 !
                 !> get H.c. + Row/Col Offsets
                 it=tMap(2,io,jo)
                 A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
                 B(it,isb) = hconjg(B(tMap(1,io,jo),isb))
-                RowOffset(it,isb)=Offset(jsb)!right%sectors(1)%index(qn=qm))
+                RowOffset(it,isb)=Offset(jsb)
                 ColOffset(it,isb)=Offset(isb)
              enddo
           enddo
@@ -302,33 +301,19 @@ contains
 
 
   subroutine spMatVec_direct_main(Nloc,v,Hv)
-    integer                            :: Nloc
-    real(8),dimension(Nloc)            :: v
-    real(8),dimension(Nloc)            :: Hv
-    real(8)                            :: val
-    integer                            :: i,j,k,n
-    integer                            :: ir,il,jr,jl,it
-    integer                            :: arow,brow,acol,bcol,jcol
-    integer                            :: ia,ib,ic,ja,jb,jc
-    real(8)                            :: aval,bval
-    real :: t0,t1
+    integer                    :: Nloc
+    complex(8),dimension(Nloc) :: v
+    complex(8),dimension(Nloc) :: Hv
+    complex(8)                 :: val
+    complex(8)                 :: aval,bval
+    integer                    :: i,j,k,n
+    integer                    :: ir,il,jr,jl,it
+    integer                    :: arow,brow,acol,bcol,jcol
+    integer                    :: ia,ib,ic,ja,jb,jc
     !
     Hv=zero
     !> loop over all the SB sectors:
     sector: do k=1,size(sb_sector)
-       !> apply the H^L x 1^r: need to T v and Hv
-       do ir=1,Drs(k)
-          do il=1,Dls(k)
-             i = ir + (il-1)*Drs(k) + offset(k)
-             do jcol=1,Hleft(k)%row(il)%Size
-                val = Hleft(k)%row(il)%vals(jcol)
-                jl  = Hleft(k)%row(il)%cols(jcol)
-                j   = ir + (jl-1)*Drs(k) + offset(k)
-                Hv(i) = Hv(i) + val*v(j)
-             end do
-          enddo
-       enddo
-
        !
        !> apply the 1^L x H^r
        do il=1,Drs(k)
@@ -338,6 +323,19 @@ contains
                 val = Hright(k)%row(il)%vals(jcol)
                 jl  = Hright(k)%row(il)%cols(jcol)
                 j   = jl + (ir-1)*Drs(k) + offset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+       enddo
+       !
+       !> apply the H^L x 1^r: need to T v and Hv
+       do ir=1,Drs(k)
+          do il=1,Dls(k)
+             i = ir + (il-1)*Drs(k) + offset(k)
+             do jcol=1,Hleft(k)%row(il)%Size
+                val = Hleft(k)%row(il)%vals(jcol)
+                jl  = Hleft(k)%row(il)%cols(jcol)
+                j   = ir + (jl-1)*Drs(k) + offset(k)
                 Hv(i) = Hv(i) + val*v(j)
              end do
           enddo
@@ -357,8 +355,6 @@ contains
                 do jb=1,B(it,k)%row(brow)%Size
                    bcol = B(it,k)%row(brow)%cols(jb)
                    bval = B(it,k)%row(brow)%vals(jb)
-                   ! print*,j,bcol,acol,B(it,k)%Ncol,ColOffset(it,k)
-                   ! if(j>Nloc)stop "J> Nloc"
                    j = bcol+(acol-1)*B(it,k)%Ncol + ColOffset(it,k)
                    Hv(i) = Hv(i) + aval*bval*v(j)
                 enddo

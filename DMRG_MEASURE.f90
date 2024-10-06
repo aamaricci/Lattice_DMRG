@@ -50,7 +50,7 @@ contains
     allocate(LI(Nsb),RI(Nsb))
     Offset=0
     do isb=1,Nsb
-       qn   = sb_sector%qn(index=isb)
+       qn      = sb_sector%qn(index=isb)
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
@@ -155,13 +155,11 @@ contains
     L  = left%length
     R  = right%length
     Np = L+R;if(present(pos))Np= size(pos)
-    print*,Np
     !
     allocate(pos_(Np))
     pos_=arange(1,Np);if(present(pos))pos_=pos
     !
     allocate(vals(M,Np))
-    print*,size(vals,1),size(vals,2)
     !
     call start_timer()
     call Init_measure_dmrg()
@@ -182,10 +180,6 @@ contains
        allocate(avOp, source=vals)
     endif
   end subroutine Measure_DMRG_vector
-
-
-
-
 
 
 
@@ -371,14 +365,13 @@ contains
   function OdotV_direct(Op,v,direction) result(Ov)
     integer                          :: Nsb,Nloc
     type(sparse_matrix),dimension(:) :: Op
-    real(8),dimension(:)             :: v
+    complex(8),dimension(:)             :: v
     character(len=*)                 :: direction
-    real(8),dimension(size(v))       :: Ov
-    real(8)                          :: val
+    complex(8),dimension(size(v))       :: Ov
+    complex(8)                          :: val
     integer                          :: i,j,k,n
     integer                          :: ir,il,jr,jl,it
     integer                          :: ia,ib,ic,ja,jb,jc,jcol
-    real(8)                          :: aval,bval
     !
     Ov=zero
     !> loop over all the SB sectors:
@@ -450,11 +443,11 @@ contains
     istart  = i
     select case(label)
     case ("l")
-       istart = i ; iend   = L ; if(present(nstep))iend=istart+nstep
-       if(iend>L)stop "Advance_Op_DMRG ERROR: iend > L"
+       istart = i ; iend   = L-1 ; if(present(nstep))iend=istart+nstep
+       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L-1"
     case ("r") 
-       istart = i ; iend   = R ; if(present(nstep))iend=istart+nstep
-       if(iend>R)stop "Advance_Op_DMRG ERROR: iend > R"
+       istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
+       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R-1"
     end select
     !
     !

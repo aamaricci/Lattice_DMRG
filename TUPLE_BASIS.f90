@@ -10,7 +10,7 @@ MODULE TUPLE_BASIS
   private
 
   type tstates
-     integer,dimension(:),allocatable :: states
+     integer,dimension(:),allocatable     :: states
   end type tstates
 
   type tuple
@@ -22,15 +22,15 @@ MODULE TUPLE_BASIS
      integer                              :: qdim=0
      integer                              :: size=0
    contains
-     procedure,pass      :: free     => free_tbasis     !destructor
-     procedure,pass      :: dimq     => dimq_tbasis     !return qdim of the QN tuples
-     procedure,pass      :: dump     => dump_tbasis     !dump basis to a rank-2 array [Nbasis,Qdim]
-     procedure,pass      :: flat     => flat_tbasis     !flat basis to a rank-1 array
-     procedure,pass      :: qn       => qn_tbasis       !return a QN tuple at a given index
-     procedure,pass      :: append   => append_tbasis   !append a QN tuple to the basis
-     procedure,pass      :: expand   => expand_tbasis   !expand the basis adding a new layer of qn
-     procedure,pass      :: index    => index_tbasis    !create index from a given qn
-     procedure,pass      :: show     => show_tbasis     !show
+     procedure,pass :: free   => free_tbasis     !destructor
+     procedure,pass :: dimq   => dimq_tbasis     !return qdim of the QN tuples
+     procedure,pass :: dump   => dump_tbasis     !dump basis to a rank-2 array [Nbasis,Qdim]
+     procedure,pass :: flat   => flat_tbasis     !flat basis to a rank-1 array
+     procedure,pass :: qn     => qn_tbasis       !return a QN tuple at a given index
+     procedure,pass :: append => append_tbasis   !append a QN tuple to the basis
+     procedure,pass :: expand => expand_tbasis   !expand the basis adding a new layer of qn
+     procedure,pass :: index  => index_tbasis    !create index from a given qn
+     procedure,pass :: show   => show_tbasis     !show
   end type tbasis
 
 

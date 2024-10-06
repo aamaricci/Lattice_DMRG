@@ -8,7 +8,7 @@ program dmrg_spin_1d
   real(8)             :: Hvec(3)
   type(site)          :: Dot
   type(sparse_matrix) :: bSz,bSp,SiSj
-  real(8),dimension(:,:),allocatable :: Hlr
+  complex(8),dimension(:,:),allocatable :: Hlr
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
@@ -29,8 +29,9 @@ program dmrg_spin_1d
 
   if(allocated(Hlr))deallocate(Hlr)
   allocate(Hlr(Nspin*Norb,Nspin*Norb))
-  Hlr(1,1) = Jp
-  Hlr(2,2) = Jx/2d0
+  Hlr      = zero
+  Hlr(1,1) = one*Jp
+  Hlr(2,2) = one*Jx/2d0
   call init_dmrg(Hlr,ModelDot=Dot)
 
 
@@ -47,16 +48,16 @@ program dmrg_spin_1d
   !Measure <Sz(i)>
   call Measure_DMRG(dot%operators%op(key="S_z"),file="SzVSj")
 
-  !Measure <S(i).S(i+1)>
-  unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
-  do pos=1,Ldmrg/2-1
-     bSz = Build_Op_DMRG(dot%operators%op("S_z"),pos,set_basis=.true.)
-     bSp = Build_Op_DMRG(dot%operators%op("S_p"),pos,set_basis=.true.)
-     SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
-     SiSj= Advance_Corr_DMRG(SiSj,pos)
-     write(unit,*)pos,Average_Op_DMRG(SiSj,pos)
-  enddo
-  close(unit)
+  ! !Measure <S(i).S(i+1)>
+  ! unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
+  ! do pos=1,Ldmrg/2-1
+  !    bSz = Build_Op_DMRG(dot%operators%op("S_z"),pos,set_basis=.true.)
+  !    bSp = Build_Op_DMRG(dot%operators%op("S_p"),pos,set_basis=.true.)
+  !    SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
+  !    SiSj= Advance_Corr_DMRG(SiSj,pos)
+  !    write(unit,*)pos,Average_Op_DMRG(SiSj,pos)
+  ! enddo
+  ! close(unit)
 
 
   !Finalize DMRG

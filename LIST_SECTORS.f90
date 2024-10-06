@@ -15,9 +15,9 @@ MODULE LIST_SECTORS
 
   type qtype
      integer                          :: index=0
-     real(8),dimension(:),allocatable :: qn           !tuple of quantum numbers
-     integer,dimension(:),allocatable :: map          !map of the tuples, the states with a given tuple of qn.
-     type(qtype),pointer              :: next=>null()  !link to next box (chain)
+     real(8),dimension(:),allocatable :: qn   !tuple of quantum numbers
+     integer,dimension(:),allocatable :: map  !map of the tuples, the states with a given tuple of qn.
+     type(qtype),pointer              :: next=>null()
   end type qtype
 
 
@@ -26,17 +26,17 @@ MODULE LIST_SECTORS
      integer             :: size=0
      type(qtype),pointer :: root=>null()
    contains
-     procedure,pass      :: free     => free_sectors_list     !destructor
-     procedure,pass      :: put      => put_sectors_list      !put sectors_list qn array
-     procedure,pass      :: load     => load_sectors_list     !load=sequential put=constructor
-     procedure,pass      :: append   => append_sectors_list   !append map state given a QN
-     procedure,pass      :: get      => get_sectors_list      !get qn and map for a given index
-     procedure,pass      :: map      => get_map_sectors_list  !get map for a given qn/index
-     procedure,pass      :: qn       => get_qn_sectors_list   !return qn for a given index
-     procedure,pass      :: index    => get_index_sectors_list   !return index for a given qn
-     procedure,pass      :: basis    => basis_sectors_list    !return the basis of the sector list
-     procedure,pass      :: has_qn   => has_qn_sectors_list   !True if qn exists
-     procedure,pass      :: show     => show_sectors_list     !show sectors_list to screen
+     procedure,pass :: free   => free_sectors_list     !destructor
+     procedure,pass :: put    => put_sectors_list      !put sectors_list qn array
+     procedure,pass :: load   => load_sectors_list     !load=sequential put=constructor
+     procedure,pass :: append => append_sectors_list   !append map state given a QN
+     procedure,pass :: get    => get_sectors_list      !get qn and map for a given index
+     procedure,pass :: map    => get_map_sectors_list  !get map for a given qn/index
+     procedure,pass :: qn     => get_qn_sectors_list   !return qn for a given index
+     procedure,pass :: index  => get_index_sectors_list!return index for a given qn
+     procedure,pass :: basis  => basis_sectors_list    !return the basis of the sector list
+     procedure,pass :: has_qn => has_qn_sectors_list   !True if qn exists
+     procedure,pass :: show   => show_sectors_list     !show sectors_list to screen
   end type sectors_list
 
 
@@ -201,7 +201,7 @@ contains
        allocate(p%next)
        p%next%qn    = qn
        p%next%index = p%index+1
-       p%next%map   =  basis%index(qn)
+       p%next%map   = basis%index(qn)
        if(.not.associated(c))then !end of the list special case (c=>c%next)
           p%next%next  => null()
        else
