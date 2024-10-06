@@ -152,6 +152,7 @@ contains
     integer,dimension(2)                      :: Hdims,dleft,dright
     character(len=:),allocatable              :: key
     complex(8),dimension(:,:),allocatable     :: Hij
+    complex(8)                                :: Tr,Tl
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
@@ -182,12 +183,14 @@ contains
     do io=1,Nspin*Norb
        do jo=1,Nspin*Norb
           if(Hij(io,jo)==0d0)cycle
+          Tr = Hij(io,jo)
+          Tl = conjg(Tr)
           if(present(states))then
-             H2 = H2 + Hij(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
-             H2 = H2 + Hij(io,jo)*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
+             H2 = H2 + Tr*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
+             H2 = H2 + Tl*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
           else
-             H2 = H2 + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
-             H2 = H2 + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
+             H2 = H2 + Tr*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
+             H2 = H2 + Tl*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
           endif
        enddo
     enddo

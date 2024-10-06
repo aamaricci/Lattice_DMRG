@@ -9,7 +9,7 @@ program hubbard_1d
   character(len=1)                               :: DMRGtype
   real(8)                                        :: ts(2),Mh(2),lambda
   type(site)                                     :: Dot
-  real(8),dimension(:,:),allocatable             :: Hloc,Hlr
+  complex(8),dimension(:,:),allocatable          :: Hloc,Hlr
   type(sparse_matrix),dimension(:,:),allocatable :: N,C
   type(sparse_matrix),dimension(:),allocatable   :: dens,docc,sz,s2z,Mvec
 
