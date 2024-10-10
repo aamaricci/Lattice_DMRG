@@ -82,7 +82,7 @@ contains
        rho  = matmul( psi_tmp,  conjg(transpose(psi_tmp)) )
     case ('right','r')
        allocate(rho(nright,nright));rho=zero
-       rho  = matmul( conjg(transpose(psi_tmp)), psi_tmp  )
+       rho  = transpose(matmul( conjg(transpose(psi_tmp)), psi_tmp  ))
     end select
     if(any(abs(rho-conjg(transpose(rho)))/=0d0))&
          stop "build_density_matrix error: rho not Hermitian"

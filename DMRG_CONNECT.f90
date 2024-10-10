@@ -163,7 +163,7 @@ contains
     dleft = shape(left%operators)
     dright= shape(right%operators)
     Hdims = dleft*dright
-    if(present(states))Hdims = [size(states),size(states)]
+    if(present(states))Hdims = size(states)!,size(states)]
     call H2%init(Hdims(1),Hdims(2))
     !
     !FERMION SPECIFIC:
@@ -194,6 +194,8 @@ contains
           endif
        enddo
     enddo
+    ! H2 = H2 + H2%dgr()
+    
     !
     !> free memory
     call P%free

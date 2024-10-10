@@ -7,7 +7,7 @@ EXE=dmrg_bhz_1d
 SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
 
-NFLAG= -cpp -D_ -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
+NFLAG= -cpp -D_ -O2 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argument-mismatch
 OFLAG= -cpp -D_ -O3 -funroll-loops -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp -Ofast -ftree-parallelize-loops=4
 DFLAG= -cpp -D_DEBUG -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
 DDFLAG=-cpp -D_DEBUG -O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check  -fdebug-aux-vars -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime -Wextra -Wimplicit-interface -Wno-unused-function -fPIC -g -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-99999999 

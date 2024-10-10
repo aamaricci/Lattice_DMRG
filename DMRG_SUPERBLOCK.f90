@@ -68,6 +68,8 @@ contains
   end subroutine sb_get_states
 
 
+  
+
   !-----------------------------------------------------------------!
   ! Purpose: Diagonalize the SuperBlock problem.
   !-----------------------------------------------------------------!
@@ -78,6 +80,7 @@ contains
     complex(8),dimension(:,:),allocatable :: Hsb
     logical                               :: exist,lanc_solve
     complex(8),dimension(:),allocatable :: v0
+    real(8),dimension(:),allocatable :: rev,imv
     !    
     m_sb = size(sb_states)
     if(m_sb==0)stop "sb_diag ERROR: size(sb_states)==0"
@@ -100,12 +103,19 @@ contains
     call start_timer("Diag H_sb")
     if(lanc_solve)then
        call sb_build_Hv()
-       allocate(v0(m_sb)); v0 = ones(m_sb); v0 = v0/sqrt(dot_product(v0,v0))
+       !allocate(v0(m_sb)); v0 = dcmplx(1d0,1d0); v0 = v0/sqrt(dot_product(v0,v0))
+       ! allocate(v0(m_sb),rev(m_sb),imv(m_sb));
+       ! !call mt_random(rev);
+       ! !call mt_random(imv);
+       ! rev = 1d0
+       ! imv = 1d0
+       ! v0 = dcmplx(rev,imv)
+       ! v0 = v0/sqrt(dot_product(v0,v0))
        call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
             Nblock,&
             Nitermax,&
             tol=lanc_tolerance,&
-            v0=v0,&
+            !v0=v0,&
             iverbose=.false.)
     else !use LAPACK
        call sb_build_Hv(Hsb)
@@ -173,7 +183,7 @@ contains
        spHtimesV_p => null()
        !
        !>Build Sparse Hsb:
-       call start_timer("get H_sb Sparse&Dump")
+       call start_timer("get H_sb Dense: LAPACK")
        call Setup_SuperBlock_Sparse()
        call stop_timer()
        !
@@ -185,7 +195,7 @@ contains
     !Build SuperBLock HxV operation: stored or direct
     select case(sparse_H)
     case(.true.)
-       call start_timer("get H_sb Sparse")
+       call start_timer("get H_sb Sparse: ARPACK")
        call Setup_SuperBlock_Sparse()
        call stop_timer()
        !
@@ -193,7 +203,7 @@ contains
        spHtimesV_p => spMatVec_sparse_main
        !
     case(.false.)
-       call start_timer("get H_sb Direct")
+       call start_timer("get H_sb Direct: ARPACK")
        call Setup_SuperBlock_Direct()
        call stop_timer()
        !

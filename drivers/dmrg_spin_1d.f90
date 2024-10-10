@@ -5,7 +5,7 @@ program dmrg_spin_1d
   character(len=64)   :: finput
   character(len=1)    :: DMRGtype
   integer             :: i,SUN,Unit,pos
-  real(8)             :: Hvec(3)
+  real(8)             :: Hvec(3),km,kmp
   type(site)          :: Dot
   type(sparse_matrix) :: bSz,bSp,SiSj
   complex(8),dimension(:,:),allocatable :: Hlr
@@ -20,9 +20,8 @@ program dmrg_spin_1d
        comment="DMRG algorithm: Infinite, Finite")
   call read_input(finput)
 
-
+  
   !Init DMRG
-  print*,hvec
   Dot = spin_site(sun=SUN,Hvec=Hvec)
   call Dot%show()
 
