@@ -1,15 +1,28 @@
 MODULE MATRIX_SPARSE  
-  USE SCIFOR, only: str,free_unit,zero,assert_shape,zeye,eye,arange
+  USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
   USE AUX_FUNCS, only: show_fmt,append
   implicit none
   private
 
 
+#ifdef _CMPLX
+  complex(8) :: zero=cmplx(0d0,0d0)
+#else
+  real(8)    :: zero=0d0
+#endif
+  integer    :: i,j
+
+
+
   !SPARSE ROW OF THE SPARSE MATRIX: note this is dynamic array
   type sparse_row
-     integer                          :: size
-     real(8),dimension(:),allocatable :: vals
-     integer,dimension(:),allocatable :: cols
+     integer                             :: size
+     integer,dimension(:),allocatable    :: cols
+#ifdef _CMPLX
+     complex(8),dimension(:),allocatable :: vals
+#else
+     real(8),dimension(:),allocatable    :: vals
+#endif
   end type sparse_row
 
   !SPARSE MATRIX STRUCTURE
@@ -73,18 +86,24 @@ MODULE MATRIX_SPARSE
   interface operator(*)
      module procedure :: sp_left_product_matrix_i
      module procedure :: sp_left_product_matrix_d
-     ! module procedure :: sp_left_product_matrix_c
+#ifdef _CMPLX
+     module procedure :: sp_left_product_matrix_c
+#endif
      !
      module procedure :: sp_right_product_matrix_i
      module procedure :: sp_right_product_matrix_d
-     ! module procedure :: sp_right_product_matrix_c
+#ifdef _CMPLX
+     module procedure :: sp_right_product_matrix_c
+#endif
   end interface operator(*)
 
   !SCALAR DIVISION
   interface operator(/)
      module procedure :: sp_right_division_matrix_i
      module procedure :: sp_right_division_matrix_d
-     ! module procedure :: sp_right_division_matrix_c
+#ifdef _CMPLX
+     module procedure :: sp_right_division_matrix_c
+#endif
   end interface operator(/)
 
 
@@ -185,7 +204,11 @@ contains
 
 
   function sp_construct_matrix(matrix) result(self)
-    real(8),dimension(:,:),intent(in) :: matrix
+#ifdef _CMPLX
+    complex(8),dimension(:,:),intent(in) :: matrix
+#else
+    real(8),dimension(:,:),intent(in)    :: matrix
+#endif
     type(sparse_matrix)                  :: self
     call self%load(matrix)
   end function sp_construct_matrix
@@ -219,8 +242,12 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_load_matrix(sparse,matrix)
     class(sparse_matrix),intent(inout)   :: sparse
-    real(8),dimension(:,:),intent(in) :: matrix
-    integer                              :: i,j,Ndim1,Ndim2
+#ifdef _CMPLX
+    complex(8),dimension(:,:),intent(in) :: matrix
+#else
+    real(8),dimension(:,:),intent(in)    :: matrix
+#endif
+    integer                              :: Ndim1,Ndim2
     !
     call sparse%free()
     Ndim1=size(matrix,1)
@@ -240,8 +267,12 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_dump_matrix(sparse,matrix)
     class(sparse_matrix),intent(in)         :: sparse
-    real(8),dimension(:,:),intent(inout) :: matrix
-    integer                                 :: i,j,Ndim1,Ndim2
+#ifdef _CMPLX
+    complex(8),dimension(:,:),intent(inout) :: matrix
+#else
+    real(8),dimension(:,:),intent(inout)    :: matrix
+#endif
+    integer                                 :: Ndim1,Ndim2
     Ndim1=size(matrix,1)
     Ndim2=size(matrix,2)
     call assert_shape(matrix,[sparse%Nrow,sparse%Ncol],"sp_dump_matrix","Matrix")
@@ -259,8 +290,11 @@ contains
   !+------------------------------------------------------------------+
   function sp_as_matrix(sparse) result(matrix)
     class(sparse_matrix),intent(in)               :: sparse
-    real(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
-    integer                                       :: i,j
+#ifdef _CMPLX
+    complex(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
+#else
+    real(8),dimension(sparse%Nrow,sparse%Ncol)    :: matrix
+#endif
     matrix = zero
     if(.not.sparse%status)return
     do i=1,sparse%Nrow
@@ -276,7 +310,11 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
-    real(8),intent(in)              :: value
+#ifdef _CMPLX
+    complex(8),intent(in)              :: value
+#else
+    real(8),intent(in)                 :: value
+#endif
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     logical                            :: iadd
@@ -305,7 +343,11 @@ contains
   !no addition, no check... wild cow-boy 
   subroutine sp_fast_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
-    real(8),intent(in)              :: value
+#ifdef _CMPLX
+    complex(8),intent(in)              :: value
+#else
+    real(8),intent(in)                 :: value
+#endif
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     !
@@ -325,17 +367,18 @@ contains
   !+------------------------------------------------------------------+
   function sp_get_element(sparse,i,j) result(val)
     class(sparse_matrix),intent(in) :: sparse    
-    integer,intent(in)                 :: i,j
+    integer,intent(in)              :: i,j
+#ifdef _CMPLX
+    complex(8)                      :: val
+#else
     real(8)                         :: val
-    integer                            :: pos
+#endif
+    integer                         :: pos
     if(.not.sparse%status)stop "sp_get_element: sparse.status=F"
     val=zero
     if(.not.any(sparse%row(i)%cols==j))return
     pos=binary_search(sparse%row(i)%cols,j)
     val=sparse%row(i)%vals(pos)
-    ! do pos=1,sparse%row(i)%size
-    !    if(j==sparse%row(i)%cols(pos))value=sparse%row(i)%vals(pos)
-    ! enddo
   end function sp_get_element
 
 
@@ -344,8 +387,8 @@ contains
   !+------------------------------------------------------------------+
   function sp_nnz_matrix(sparse) result(nnz)
     class(sparse_matrix),intent(in) :: sparse    
-    integer :: nnz
-    integer :: i
+    integer                         :: nnz
+    integer                         :: i
     nnz=0
     if(.not.sparse%status)return
     do i=1,sparse%Nrow
@@ -357,10 +400,14 @@ contains
 
   function sp_filter_matrix_1(A,states) result(Ak)
     class(sparse_matrix), intent(in) :: A
-    integer,dimension(:),intent(in)     :: states
-    type(sparse_matrix)                 :: Ak
-    integer                             :: i,j,istate,jstate
-    real(8)                             :: val
+    integer,dimension(:),intent(in)  :: states
+    type(sparse_matrix)              :: Ak
+    integer                          :: istate,jstate
+#ifdef _CMPLX
+    complex(8)                       :: val
+#else
+    real(8)                          :: val
+#endif
     !
     if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
     !
@@ -372,7 +419,7 @@ contains
        do jstate=1,size(states)
           j=states(jstate)
           val = A%get(i,j)
-          if(val==0d0)cycle
+          if(val==zero)cycle
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -383,10 +430,14 @@ contains
 
   function sp_filter_matrix_2(A,Istates,Jstates) result(Ak)
     class(sparse_matrix), intent(in) :: A
-    integer,dimension(:),intent(in)     :: Istates,Jstates
-    type(sparse_matrix)                 :: Ak
-    integer                             :: i,j,istate,jstate
-    real(8)                             :: val
+    integer,dimension(:),intent(in)  :: Istates,Jstates
+    type(sparse_matrix)              :: Ak
+    integer                          :: istate,jstate
+#ifdef _CMPLX
+    complex(8)                       :: val
+#else
+    real(8)                          :: val
+#endif
     !
     call Ak%free()
     call Ak%init(size(Istates),size(Jstates))
@@ -396,7 +447,7 @@ contains
        do jstate=1,size(Jstates)
           j=Jstates(jstate)
           val = A%get(i,j)
-          if(val==0d0)cycle
+          if(val==zero)cycle
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -419,21 +470,31 @@ contains
     character(len=*),optional :: fmt,file
     character(len=12)         :: fmt_
     integer                   :: unit_
-    integer                   :: i,j,Ns,NN
+    integer                   :: Ns,NN
     character(len=64)         :: format
-    real(8)                :: val
+#ifdef _CMPLX
+    complex(8)                :: val
+#else
+    real(8)                   :: val
+#endif
     unit_=6
     if(present(file))open(free_unit(unit_),file=str(file))
-    fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt) !ES10.3
+    fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
+#ifdef _CMPLX
+    format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+#else
     format='(A1,'//str(fmt_)//',1x)'
-    ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+#endif
     if(.not.sparse%status)return
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
+#ifdef _CMPLX
+          write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
+#else
           write(unit_,"("//str(sparse%Ncol)//"F5.1)",advance='no')val
-          ! write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
+#endif
        enddo
        write(unit_,*)
     enddo
@@ -443,9 +504,13 @@ contains
   subroutine sp_display_matrix(sparse)
     class(sparse_matrix) :: sparse
     integer              :: unit_
-    integer              :: i,j,Ns
+    integer              :: Ns
     character(len=20)    :: fmtR,fmtI
-    real(8)           :: val
+#ifdef _CMPLX
+    complex(8)           :: val
+#else
+    real(8)              :: val
+#endif
     unit_=6
     fmtI='(I10)'
     fmtR='(ES10.3)'
@@ -454,11 +519,9 @@ contains
        Ns = size(sparse%row(i)%cols)
        if(Ns==0)cycle
        do j=1,Ns
-          write(unit_,"(A1,2I5,A1,F7.3)",advance='no')"[",i,sparse%row(i)%cols(j),"]",sparse%row(i)%vals(j)
+          write(unit_,"(A1,2I5,A1,2F8.3)",advance='no')"[",i,sparse%row(i)%cols(j),"]",sparse%row(i)%vals(j)
        enddo
        write(unit_,"(A1)",advance='yes')""
-       ! write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
-       ! write(unit_,"("//str(Ns)//"(2F10.3))",advance='yes')sparse%row(i)%vals
        write(unit_,*)
     enddo
   end subroutine sp_display_matrix
@@ -532,7 +595,11 @@ contains
     type(sparse_matrix)             :: AxB
     integer                         :: i,icol,j,k,kcol,l
     integer                         :: indx_row,indx_col
-    real(8)                      :: value
+#ifdef _CMPLX
+    complex(8)                      :: value
+#else
+    real(8)                         :: value
+#endif
     if(.not.A%status)stop "sp_kron_matrix: A.status=F"
     if(.not.B%status)stop "sp_kron_matrix: B.status=F"
     call AxB%free()
@@ -562,7 +629,11 @@ contains
     type(sparse_matrix)             :: AxB,Ap,Bp
     integer                         :: i,icol,j,k,kcol,l,istate,jstate
     integer                         :: indx_row,indx_col
+#ifdef _CMPLX
+    complex(8)                      :: val,Aval,Bval
+#else
     real(8)                         :: val,Aval,Bval
+#endif
     !
     call AxB%free()
     call AxB%init(size(states),size(states))
@@ -595,7 +666,11 @@ contains
     type(sparse_matrix), intent(in) :: A,B
     type(sparse_matrix)             :: Bt,AxB
     integer                         :: i,icol,j,jcol,k
-    real(8)                      :: value
+#ifdef _CMPLX
+    complex(8)                      :: value
+#else
+    real(8)                         :: value
+#endif
     !
     if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
     if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
@@ -627,11 +702,17 @@ contains
 
   function sp_matmul_vector(H,v) result(Hv)
     class(sparse_matrix), intent(in)    :: H
-    real(8),dimension(:)             :: v
-    real(8),dimension(:),allocatable :: Hv
     integer                             :: Nloc
-    real(8)                          :: val
-    integer                             :: i,j,jcol
+#ifdef _CMPLX
+    complex(8),dimension(:)             :: v
+    complex(8),dimension(:),allocatable :: Hv
+    complex(8)                          :: val
+#else
+    real(8),dimension(:)                :: v
+    real(8),dimension(:),allocatable    :: Hv
+    real(8)                             :: val
+#endif
+    integer                             :: jcol
     !
     if(.not.H%status)stop "sp_matmul_vector: H.status=F"
     !
@@ -660,16 +741,22 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    real(8)                       :: val
-    integer                          :: i,j
+#ifdef _CMPLX
+    complex(8)                       :: val
+#else
+    real(8)                          :: val
+#endif
     if(.not.a%status)stop "sp_dgr_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !hconjg
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
-          ! call c%insert(conjg(val),col,i)
+#ifdef _CMPLX
+          call c%insert(conjg(val),col,i)
+#else
           call c%insert(val,col,i)
+#endif
        enddo
     enddo
   end function sp_dgr_matrix
@@ -679,8 +766,11 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    real(8)                       :: val
-    integer                          :: i,j
+#ifdef _CMPLX
+    complex(8)                       :: val
+#else
+    real(8)                          :: val
+#endif
     if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
@@ -697,16 +787,22 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
-    real(8)                       :: val
-    integer                          :: i,j
+#ifdef _CMPLX
+    complex(8)                       :: val
+#else
+    real(8)                          :: val
+#endif
     if(.not.a%status)stop "sp_hconjg_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
-          ! call c%insert(conjg(val),col,i)
+#ifdef _CMPLX
+          call c%insert(conjg(val),col,i)
+#else
           call c%insert((val),col,i)
+#endif
        enddo
     enddo
   end function sp_hconjg_matrix
@@ -719,8 +815,11 @@ contains
     type(sparse_matrix),intent(inout) :: a
     type(sparse_matrix),intent(in)    :: b
     integer                           :: col
-    real(8)                        :: val
-    integer                           :: i,j
+#ifdef _CMPLX
+    complex(8)                        :: val
+#else
+    real(8)                           :: val
+#endif
     if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
     call a%free()
     call a%init(b%Nrow,b%Ncol)
@@ -739,8 +838,13 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_matrix_equal_scalar(a,c)
     type(sparse_matrix),intent(inout) :: a
-    real(8),intent(in)             :: c
-    integer                           :: i,j
+#ifdef _CMPLX
+    complex(8)                        :: val
+    complex(8),intent(in)             :: c
+#else
+    real(8)                           :: val
+    real(8),intent(in)                :: c
+#endif
     if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
     do i=1,a%Nrow
        do j=1,a%row(i)%size
@@ -758,8 +862,11 @@ contains
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
     integer                         :: col
-    real(8)                      :: val
-    integer                         :: i,j    
+#ifdef _CMPLX
+    complex(8)                      :: val
+#else
+    real(8)                         :: val
+#endif
     if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
     if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
@@ -782,8 +889,11 @@ contains
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
     integer                         :: col
-    real(8)                      :: val
-    integer                         :: i,j
+#ifdef _CMPLX
+    complex(8)                      :: val
+#else
+    real(8)                         :: val
+#endif
     if(.not.a%status)stop "sp_minus_matrix error: a.status=F"
     if(.not.b%status)stop "sp_minus_matrix error: b.status=F"
     if(a%Nrow/=b%Nrow)stop "sp_minus_matrix error: a.Nrow != b.Nrow"
@@ -810,8 +920,11 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    real(8)                     :: val
-    integer                        :: i,j
+#ifdef _CMPLX
+    complex(8)                     :: val
+#else
+    real(8)                        :: val
+#endif
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -829,8 +942,11 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    real(8)                     :: val
-    integer                        :: i,j
+#ifdef _CMPLX
+    complex(8)                     :: val
+#else
+    real(8)                        :: val
+#endif
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -843,25 +959,25 @@ contains
     enddo
   end function sp_left_product_matrix_d
 
-  ! function sp_left_product_matrix_c(C,A) result(B)
-  !   real(8),intent(in)          :: C
-  !   type(sparse_matrix),intent(in) :: A
-  !   type(sparse_matrix)            :: B
-  !   integer                        :: col
-  !   real(8)                     :: val
-  !   integer                        :: i,j
-  !   if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
-  !   call b%free()
-  !   call b%init(a%Nrow,a%Ncol)
-  !   do i=1,a%Nrow
-  !      do j=1,a%row(i)%size
-  !         col = a%row(i)%cols(j)
-  !         val = a%row(i)%vals(j)*C
-  !         call b%insert(val,i,col)
-  !      enddo
-  !   enddo
-  ! end function sp_left_product_matrix_c
-
+#ifdef _CMPLX
+  function sp_left_product_matrix_c(C,A) result(B)
+    complex(8),intent(in)          :: C
+    type(sparse_matrix),intent(in) :: A
+    type(sparse_matrix)            :: B
+    integer                        :: col
+    complex(8)                     :: val
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
+    call b%free()
+    call b%init(a%Nrow,a%Ncol)
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          col = a%row(i)%cols(j)
+          val = a%row(i)%vals(j)*C
+          call b%insert(val,i,col)
+       enddo
+    enddo
+  end function sp_left_product_matrix_c
+#endif
 
 
 
@@ -874,8 +990,11 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    real(8)                     :: val
-    integer                        :: i,j
+#ifdef _CMPLX
+    complex(8)                     :: val
+#else
+    real(8)                        :: val
+#endif
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -893,8 +1012,11 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    real(8)                     :: val
-    integer                        :: i,j
+#ifdef _CMPLX
+    complex(8)                     :: val
+#else
+    real(8)                        :: val
+#endif
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -907,25 +1029,25 @@ contains
     enddo
   end function sp_right_product_matrix_d
 
-  ! function sp_right_product_matrix_c(A,C) result(B)
-  !   real(8),intent(in)          :: C
-  !   type(sparse_matrix),intent(in) :: A
-  !   type(sparse_matrix)            :: B
-  !   integer                        :: col
-  !   real(8)                     :: val
-  !   integer                        :: i,j
-  !   if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
-  !   call b%free()
-  !   call b%init(a%Nrow,a%Ncol)
-  !   do i=1,a%Nrow
-  !      do j=1,a%row(i)%size
-  !         col = a%row(i)%cols(j)
-  !         val = a%row(i)%vals(j)*C
-  !         call b%insert(val,i,col)
-  !      enddo
-  !   enddo
-  ! end function sp_right_product_matrix_c
-
+#ifdef _CMPLX
+  function sp_right_product_matrix_c(A,C) result(B)
+    complex(8),intent(in)          :: C
+    type(sparse_matrix),intent(in) :: A
+    type(sparse_matrix)            :: B
+    integer                        :: col
+    complex(8)                     :: val
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
+    call b%free()
+    call b%init(a%Nrow,a%Ncol)
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          col = a%row(i)%cols(j)
+          val = a%row(i)%vals(j)*C
+          call b%insert(val,i,col)
+       enddo
+    enddo
+  end function sp_right_product_matrix_c
+#endif
 
 
 
@@ -938,8 +1060,11 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    real(8)                     :: val
-    integer                        :: i,j
+#ifdef _CMPLX
+    complex(8)                     :: val
+#else
+    real(8)                        :: val
+#endif
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -957,8 +1082,11 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
-    real(8)                     :: val
-    integer                        :: i,j
+#ifdef _CMPLX
+    complex(8)                     :: val
+#else
+    real(8)                        :: val
+#endif
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
     call b%free()
     call b%init(a%Nrow,a%Ncol)
@@ -971,25 +1099,25 @@ contains
     enddo
   end function sp_right_division_matrix_d
 
-  ! function sp_right_division_matrix_c(A,C) result(B)
-  !   real(8),intent(in)          :: C
-  !   type(sparse_matrix),intent(in) :: A
-  !   type(sparse_matrix)            :: B
-  !   integer                        :: col
-  !   real(8)                     :: val
-  !   integer                        :: i,j
-  !   if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
-  !   call b%free()
-  !   call b%init(a%Nrow,a%Ncol)
-  !   do i=1,a%Nrow
-  !      do j=1,a%row(i)%size
-  !         col = a%row(i)%cols(j)
-  !         val = a%row(i)%vals(j)/C
-  !         call b%insert(val,i,col)
-  !      enddo
-  !   enddo
-  ! end function sp_right_division_matrix_c
-
+#ifdef _CMPLX
+  function sp_right_division_matrix_c(A,C) result(B)
+    complex(8),intent(in)          :: C
+    type(sparse_matrix),intent(in) :: A
+    type(sparse_matrix)            :: B
+    integer                        :: col
+    complex(8)                     :: val
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
+    call b%free()
+    call b%init(a%Nrow,a%Ncol)
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          col = a%row(i)%cols(j)
+          val = a%row(i)%vals(j)/C
+          call b%insert(val,i,col)
+       enddo
+    enddo
+  end function sp_right_division_matrix_c
+#endif
 
 
   !+------------------------------------------------------------------+
@@ -1009,7 +1137,11 @@ contains
   function sp_eye(ndim) result(self)
     type(sparse_matrix) :: self
     integer             :: ndim
+#ifdef _CMPLX
+    call self%load(zeye(ndim))
+#else
     call self%load(eye(ndim))
+#endif
   end function sp_eye
 
 
@@ -1148,21 +1280,33 @@ program testSPARSE_MATRICES
 
   integer                                      :: i,j
   type(sparse_matrix)                          :: spH,spK,a,b,c,avec(2)
-  real(8),dimension(4,4)                    :: GammaX
-  real(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
-
-  real(8),dimension(2,2),parameter          :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  real(8),dimension(2,2),parameter          :: Sz=pauli_z
-  real(8),dimension(2,2),parameter          :: Sx=pauli_x
-  real(8),dimension(2,2),parameter          :: Splus=reshape([zero,zero,one,zero],[2,2])
-  real(8),dimension(4,4)                    :: Gamma13,Gamma03
-
+#ifdef _CMPLX
+  complex(8),dimension(4,4)                    :: GammaX
+  complex(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
+  complex(8),dimension(2,2),parameter          :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter          :: S0=pauli_0
+  complex(8),dimension(2,2),parameter          :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter          :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter          :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)                    :: Gamma13,Gamma03
+  complex(8)                                   :: myone=dcmplx(1d0,0d0),myzero=dcmplx(0d0,0d0)
+#else
+  real(8),dimension(4,4)                       :: GammaX
+  real(8),dimension(:,:),allocatable           :: Amat,Bmat,Cmat
+  real(8),dimension(2,2),parameter             :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter             :: S0=pauli_0
+  real(8),dimension(2,2),parameter             :: Sz=pauli_z
+  real(8),dimension(2,2),parameter             :: Sx=pauli_x
+  real(8),dimension(2,2),parameter             :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)                       :: Gamma13,Gamma03
+  real(8)                                      :: myone=1d0,myzero=0d0
+#endif
   type(sparse_matrix),dimension(:),allocatable :: Olist
 
   !
 
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(eye(2),Sz)
+  Gamma03=kron(S0,Sz)
 
   print*,"test INIT"
   call spH%init(2,2)
@@ -1211,7 +1355,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test LOAD and PRINT"
-  call spH%load(kron(pauli_0,pauli_z))
+  call spH%load(kron(S0,Sz))
   call spH%show()
   print*,"spH.NNZ=",spH%nnz()
   print*,""
@@ -1223,8 +1367,8 @@ program testSPARSE_MATRICES
 
 
   print*,"test INSERT ELEMENT"
-  call spH%insert(one,1,4)
-  call spH%insert(-one,4,4)
+  call spH%insert(myone,1,4)
+  call spH%insert(-myone,4,4)
   call spH%show()  
   print*,""
 
@@ -1235,7 +1379,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test DUMP"
-  gammaX=zero
+  gammaX=myzero
   do i=1,4
      write(*,*)(gammaX(i,j),j=1,4)
   enddo
@@ -1245,7 +1389,7 @@ program testSPARSE_MATRICES
      write(*,*)(gammaX(i,j),j=1,4)
   enddo
 
-  gammaX=zero
+  gammaX=myzero
   do i=1,4
      write(*,*)(gammaX(i,j),j=1,4)
   enddo
@@ -1264,7 +1408,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test spH=zero"  
-  spH=zero
+  spH=myzero
   call spH%show()
   spH=spK
 
@@ -1273,7 +1417,7 @@ program testSPARSE_MATRICES
   print*,"test ADDITION a+b=c"
   print*,"a=sigma_0"
   call a%init(2,2)
-  call a%load(eye(2))
+  call a%load(S0)
   call a%show()
 
   print*,"b=sigma_X"  
@@ -1294,7 +1438,7 @@ program testSPARSE_MATRICES
   print*,"test SUBTRACTION a-b=c"
   print*,"a=sigma_0"
   call a%init(2,2)
-  call a%load(eye(2))
+  call a%load(S0)
   call a%show()
 
   print*,"b=sigma_Z"  
@@ -1317,7 +1461,7 @@ program testSPARSE_MATRICES
   print*,"test LEFT SCALAR PRODUCT b=a*const"
   print*,"a=sigma_0"
   call a%init(2,2)
-  call a%load(eye(2))
+  call a%load(S0)
   call a%show()
 
   print*,"b=2*a"  
@@ -1450,7 +1594,7 @@ program testSPARSE_MATRICES
   print*, "TEST TRANSPOSE CONJUGATE"
   call a%load(Sx+Sz)
   call a%show()
-  b = transpose(a)
+  b = hconjg(a)
   call b%show()
 
   if(any( a%as_matrix()-b%as_matrix() /= zero) )then
@@ -1532,6 +1676,8 @@ program testSPARSE_MATRICES
   enddo
 
   call Olist%free()
+
+
 contains
 
 
@@ -1557,7 +1703,11 @@ contains
 
   subroutine append_matrix(self,matrix)
     type(sparse_matrix),dimension(:),allocatable,intent(inout) :: self
-    real(8),dimension(:,:)                                     :: matrix
+#ifdef _CMPLX
+    complex(8),dimension(:,:)                                  :: matrix
+#else
+    real(8),dimension(:,:)                                  :: matrix
+#endif
     type(sparse_matrix),dimension(:),allocatable               :: tmp
     integer                                                    :: N
     if(allocated(self))then

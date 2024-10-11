@@ -151,7 +151,13 @@ contains
     integer                                   :: ispin,iorb,jorb,io,jo
     integer,dimension(2)                      :: Hdims,dleft,dright
     character(len=:),allocatable              :: key
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable     :: Hij
+    complex(8)                                :: Tr,Tl
+#else
     real(8),dimension(:,:),allocatable        :: Hij
+    real(8)                                   :: Tr,Tl
+#endif
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
@@ -162,7 +168,7 @@ contains
     dleft = shape(left%operators)
     dright= shape(right%operators)
     Hdims = dleft*dright
-    if(present(states))Hdims = [size(states),size(states)]
+    if(present(states))Hdims = size(states)
     call H2%init(Hdims(1),Hdims(2))
     !
     !FERMION SPECIFIC:
@@ -182,14 +188,20 @@ contains
     do io=1,Nspin*Norb
        do jo=1,Nspin*Norb
           if(Hij(io,jo)==0d0)cycle
+#ifdef _CMPLX
+          Tr = Hij(io,jo)
+          Tl = conjg(Tr)
+#else
+          Tr = Hij(io,jo)
+          Tl = Tr
+#endif
           if(present(states))then
-             H2 = H2 + Hij(io,jo)*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
-             H2 = H2 + Hij(io,jo)*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
+             H2 = H2 + Tr*sp_kron(matmul(Cl(io)%dgr(),P),Cr(jo),states)
+             H2 = H2 + Tl*sp_kron(matmul(P,Cl(io)),Cr(jo)%dgr(),states)
           else
-             H2 = H2 + Hij(io,jo)*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
-             H2 = H2 + Hij(io,jo)*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
+             H2 = H2 + Tr*(matmul(Cl(io)%dgr(),P).x.Cr(jo))
+             H2 = H2 + Tl*(matmul(P,Cl(io)).x.Cr(jo)%dgr())
           endif
-
        enddo
     enddo
     !
@@ -205,20 +217,24 @@ contains
 
 
   function connect_spin_blocks(left,right,states) result(H2)
-    type(block)                        :: left
-    type(block)                        :: right
-    integer,dimension(:),optional      :: states
-    type(sparse_matrix)                :: Sl(Nspin)![Sz,Sp]
-    type(sparse_matrix)                :: Sr(Nspin)![Sz,Sp]
-    type(sparse_matrix)                :: H2
-    integer,dimension(2)               :: Hdims
-    integer                            :: ispin
-    real(8),dimension(:,:),allocatable :: Hij
+    type(block)                           :: left
+    type(block)                           :: right
+    integer,dimension(:),optional         :: states
+    type(sparse_matrix)                   :: Sl(Nspin)![Sz,Sp]
+    type(sparse_matrix)                   :: Sr(Nspin)![Sz,Sp]
+    type(sparse_matrix)                   :: H2
+    integer,dimension(2)                  :: Hdims
+    integer                               :: ispin
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: Hij
+#else
+    real(8),dimension(:,:),allocatable    :: Hij
+#endif
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)
-    allocate(Hij, source=HopH)
+    allocate(Hij, source=HopH)    
     !
     !> Get H2 dimensions:
     Hdims = shape(left%operators)*shape(right%operators)
@@ -230,7 +246,6 @@ contains
        Sl(ispin) = left%operators%op("S"//left%okey(0,ispin))
        Sr(ispin) = right%operators%op("S"//right%okey(0,ispin))
     enddo
-    !
     !
     !>Build H2:
     if(present(states))then
