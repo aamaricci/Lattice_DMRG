@@ -35,7 +35,8 @@ contains
     integer,dimension(:),allocatable :: tmp,states,sb_map
     integer                          :: i,istate,l,r,isb
     !
-    if(.not.associated(sb_sector%root))stop "sb2block_states error: sb_sector is not allocated"
+    if(.not.associated(sb_sector%root))&
+         stop "sb2block_states error: sb_sector is not allocated"
     !
     if(allocated(states))deallocate(states)
     !

@@ -228,7 +228,11 @@ contains
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
     character(len=*),intent(in),optional :: type
+#ifdef _CMPLX
+    complex(8),dimension(:,:),intent(in) :: op
+#else
     real(8),dimension(:,:),intent(in)    :: op
+#endif
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)    
     if(.not.associated(self%root))allocate(self%root)
@@ -241,9 +245,13 @@ contains
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
   function dump_op_operators_list(self,key) result(matrix)
-    class(operators_list),intent(inout) :: self
-    character(len=*),intent(in)         :: key
-    real(8),dimension(:,:),allocatable  :: matrix
+    class(operators_list),intent(inout)   :: self
+    character(len=*),intent(in)           :: key
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: matrix
+#else
+    real(8),dimension(:,:),allocatable    :: matrix
+#endif
     matrix = as_matrix( self%op(key=key) )  
   end function dump_op_operators_list
 
@@ -628,25 +636,35 @@ program testOPERATORS_TUPLE
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
   implicit none
+  type(operators_list)                  :: my_list,a_list
+  type(operators_list)                  :: copy_list,clist(2)
+  type(sparse_matrix)                   :: spSz,spSp,spH,spK,a,b,c
+  integer                               :: i,j,n
+  logical                               :: bool
+#ifdef _CMPLX
+  complex(8),dimension(:,:),allocatable :: mat
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: S0=pauli_0
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+#else
+  real(8),dimension(:,:),allocatable    :: mat
+  real(8),dimension(2,2),parameter      :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter      :: S0=pauli_0
+  real(8),dimension(2,2),parameter      :: Sz=pauli_z
+  real(8),dimension(2,2),parameter      :: Sx=pauli_x
+  real(8),dimension(2,2),parameter      :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)                :: Gamma13,Gamma03
+#endif
+  character(len=10)                     :: key,type
+  character(len=10),allocatable         :: keys(:)
+  integer,parameter                     :: sec=500
 
-  type(operators_list)               :: my_list,a_list
-  type(operators_list)               :: copy_list,clist(2)
-  type(sparse_matrix)                :: spSz,spSp,spH,spK,a,b,c
-  real(8),dimension(:,:),allocatable :: mat
-  integer                            :: i,j,n
-  logical                            :: bool
-  real(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
-  real(8),dimension(2,2),parameter   :: Sz=pauli_z
-  real(8),dimension(2,2),parameter   :: Sx=pauli_x
-  real(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
-  real(8),dimension(4,4)             :: Gamma13,Gamma03
-  character(len=10)                  :: key,type
-  character(len=10),allocatable      :: keys(:)
-  integer,parameter :: sec=500
-  
-  
+
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(eye(2),Sz)
+  Gamma03=kron(S0,Sz)
 
 
   print*,"TEST CONSTRUCTOR, PUT, SHOW, FREE"
@@ -657,7 +675,7 @@ program testOPERATORS_TUPLE
   call my_list%show()
   call my_list%free()
   call wait(sec)
-  
+
 
   print*,"TEST LOAD matrices"
   call my_list%load("H0",Hzero,'b')
@@ -669,7 +687,7 @@ program testOPERATORS_TUPLE
   call wait(sec)
 
 
-  
+
   print*,"TEST (CONSTRUCT + )APPEND matrices"
   call my_list%append("H0",as_sparse(Hzero),'b')
   call my_list%append("Sz",as_sparse(Sz),'b')
@@ -681,7 +699,7 @@ program testOPERATORS_TUPLE
 
 
 
-  
+
   print*,"TEST RETRIEVE FUNCTIONALITIES"
   print*,"TEST .DUMP"
   print*,"Mat.allocated:",allocated(mat)
@@ -695,7 +713,7 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
-  
+
   print*,"TEST .GET"
   do i=1,size(my_list)
      call my_list%get(index=i,key=key,op=a,type=type)
@@ -707,7 +725,7 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
-  
+
   print*,"TEST .KEY + .OP + ITERATION over index"
   do i=1,size(my_list)
      a = my_list%op(index=i)
@@ -723,7 +741,7 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
-  
+
 
   print*,"TEST HAS_KEY"
   print*,"list has key Sz",my_list%has_key("Sz")
@@ -773,7 +791,7 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
-  
+
 
   print*,"TEST ITERATION SIZE:"
   do i=1,size(my_list)
@@ -795,10 +813,10 @@ program testOPERATORS_TUPLE
   call wait(sec)
 
 
-  
+
   print*,"TEST DEEP COPY '='"
   Gamma13=kron(Sx,Sz)
-  Gamma03=kron(eye(2),Sz)
+  Gamma03=kron(S0,Sz)
   call a_list%append("gamma13",as_sparse(Gamma13),'b')
   call a_list%append("gamma03",as_sparse(Gamma03),'b')
   call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)),'b')
@@ -811,6 +829,6 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
-  
+
 end program testOPERATORS_TUPLE
 #endif

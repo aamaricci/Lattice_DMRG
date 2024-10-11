@@ -81,7 +81,7 @@ contains
     !
     write(*,"(A)")"Init Local Fock space:"
     write(*,"(A,I15)") '# of levels           = ',Ns
-    write(*,"(A,2I15)") 'Hilbert dim per spin  = ',Nfocks
+    write(*,"(A,2I15)")'Hilbert dim per spin  = ',Nfocks
     write(*,"(A,I15)") 'Fock space dimension  = ',Nfock
     write(*,"(A,I15)") 'Number of sectors     = ',Nsectors
     write(*,"(A)")"--------------------------------------------"
@@ -209,17 +209,31 @@ contains
   !PURPOSE: 
   !+-------------------------------------------------------------------+
   function build_Hlocal_operator(H) result(Hmat)
-    real(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
-    real(8),dimension(:,:),allocatable :: Hmat
-    real(8),dimension(Nspin,Ns,Ns)     :: Hloc
-    type(local_fock_sector)            :: sectorI
-    real(8)                            :: htmp
-    integer                            :: isector,i,m,io,jo,iorb,ispin,jorb,ii,jj
-    integer                            :: iup,idw,mup,mdw,k1,k2
-    real(8)                            :: sg1,sg2
-    integer                            :: nup(Ns),ndw(Ns),nvec(2*Ns)
-    logical                            :: Jcondition
+#ifdef _CMPLX
+    complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
+    complex(8),dimension(:,:),allocatable :: Hmat
+    complex(8),dimension(Nspin,Ns,Ns)     :: Hloc
+    complex(8)                            :: htmp
+#else
+    real(8),dimension(:,:)                :: H    ![Nspin*Norb,Nspin*Norb]
+    real(8),dimension(:,:),allocatable    :: Hmat
+    real(8),dimension(Nspin,Ns,Ns)        :: Hloc    
+    real(8)                               :: htmp
+#endif
+    type(local_fock_sector)               :: sectorI
+    integer                               :: isector,i,m,io,jo,iorb,ispin,jorb,ii,jj
+    integer                               :: iup,idw,mup,mdw,k1,k2
+    real(8)                               :: sg1,sg2
+    integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
+    logical                               :: Jcondition
     !
+
+#ifdef _CMPLX
+    write(*,*)"Using CMPLX code"
+    call wait(1000)
+#endif
+    
+    
     if(allocated(Hmat))deallocate(Hmat)
     allocate(Hmat(Nfock,Nfock))
     !
@@ -237,7 +251,7 @@ contains
     !
     !
     !
-    Hmat=0d0
+    Hmat=zero
     do isector=1,Nsectors
        call Build_LocalFock_Sector(isector,SectorI)
        do i=1,sectorI%Dim
@@ -247,9 +261,9 @@ contains
           ndw  = nvec(Ns+1:2*Ns)
           ii   = m+1
           !
-          htmp = 0d0
+          htmp = zero
           !LOCAL HAMILTONIAN PART:
-          htmp = htmp - xmu*(sum(nup)+sum(ndw))
+          ! htmp = htmp - xmu*(sum(nup)+sum(ndw))
           do io=1,Ns
              htmp = htmp + Hloc(1,io,io)*nup(io)
              htmp = htmp + Hloc(Nspin,io,io)*ndw(io)
@@ -301,7 +315,7 @@ contains
           !UP electrons
           do io=1,Ns
              do jo=1,Ns
-                Jcondition = (Hloc(1,io,jo)/=0d0) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
+                Jcondition = (Hloc(1,io,jo)/=zero) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
                 if (Jcondition) then
                    call c(jo,m,k1,sg1)
                    call cdg(io,k1,k2,sg2)
@@ -339,7 +353,11 @@ contains
   function build_C_operator(iorb,ispin) result(Cmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
-    real(8),dimension(:,:),allocatable :: Cmat
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: Cmat
+#else
+    real(8),dimension(:,:),allocatable    :: Cmat
+#endif
     real(8)                               :: c_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -359,7 +377,7 @@ contains
           m   = sectorI%H(1)%map(i)
           nvec= bdecomp(m,2*Ns)
           if(nvec(alfa) == 0) cycle
-          call c(alfa,m,l,c_)          
+          call c(alfa,m,l,c_)
           Cmat(l+1,m+1) = one*c_
        enddo
        call Delete_LocalFock_Sector(sectorI)
@@ -369,7 +387,11 @@ contains
   function build_Cdg_operator(iorb,ispin) result(CDGmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
-    real(8),dimension(:,:),allocatable :: CDGmat
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: CDGmat
+#else
+    real(8),dimension(:,:),allocatable    :: CDGmat
+#endif
     real(8)                               :: cdg_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -401,7 +423,11 @@ contains
   function build_Dens_operator(iorb,ispin) result(Dmat)
     integer                               :: ispin,iorb
     type(local_fock_sector)               :: sectorI
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: Dmat
+#else
     real(8),dimension(:,:),allocatable :: Dmat
+#endif
     real(8)                               :: dens
     integer                               :: imp,isector,i,m,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -413,7 +439,7 @@ contains
     !
     alfa=iorb;if(ispin==2)alfa=iorb+Ns
     !
-    Dmat=0d0
+    Dmat=zero
     do isector=1,Nsectors
        call Build_LocalFock_Sector(isector,SectorI)
        Dim = SectorI%Dim
@@ -475,7 +501,7 @@ contains
        Ndw = popcnt(idw)
        do iup = 0,NN-1
           Nup = popcnt(iup)
-          i      = iup + idw*NN
+          i   = iup + idw*NN
           call append(Hvec,nup)
           call append(Hvec,ndw)
        enddo
@@ -491,7 +517,11 @@ contains
   !##################################################################
   !##################################################################
   function Build_FermionicSign() result(P)
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: P
+#else
     real(8),dimension(:,:),allocatable :: P
+#endif
     integer,dimension(:),allocatable   :: Hvec
     integer                            :: i,iup,idw,Nup,Ndw,NN
     !
@@ -506,7 +536,7 @@ contains
           call append(Hvec,i)
        enddo
     enddo
-    P = diag(1d0*Hvec)
+    P = diag(one*Hvec)
   end function Build_FermionicSign
 
 
@@ -757,8 +787,13 @@ program testHLOCAL
   USE HLOCAL
   implicit none
   character(len=64)                     :: finput
+#ifdef _CMPLX
+  complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
+  complex(8),dimension(:,:),allocatable :: hloc
+#else
   real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   real(8),dimension(:,:),allocatable :: hloc
+#endif
   integer,dimension(:),allocatable      :: Hvec
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')  
@@ -773,56 +808,56 @@ program testHLOCAL
 
   allocate(hloc(Nspin*Norb,Nspin*Norb))
   hloc=0d0;if(Norb==2)hloc=0.5d0*kron(pauli_0,pauli_z)
-  call print_mat(Hloc)
+  call print_matrix(Hloc)
 
   print*,""
   print*,"H:"
   Hlocal = build_Hlocal_operator(hloc)
-  call print_mat(Hlocal)
+  call print_matrix(Hlocal)
 
   print*,""
   print*,"C_up:"
   Cup = build_C_operator(iorb=1,ispin=1)
-  call print_mat(Cup)
-  ! call print_mat(kron(eye(2),Cop))
+  call print_matrix(Cup)
+  ! call print_matrix(kron(eye(2),Cop))
 
   print*,""
   print*,"C_dw:"
   Cdw = build_C_operator(iorb=1,ispin=2)
-  call print_mat(Cdw)
-  ! call print_mat(kron(Cop,dble(pauli_z)))
+  call print_matrix(Cdw)
+  ! call print_matrix(kron(Cop,dble(pauli_z)))
 
   print*,""
   print*,"CDG_up:"
   CDGup = build_CDG_operator(iorb=1,ispin=1)
-  call print_mat(CDGup)
-  ! call print_mat(transpose(kron(eye(2),Cop)))
+  call print_matrix(CDGup)
+  ! call print_matrix(transpose(kron(eye(2),Cop)))
 
   print*,""
   print*,"CDG_dw:"
   CDGdw = build_CDG_operator(iorb=1,ispin=2)
-  call print_mat(CDGdw)
-  ! call print_mat(transpose(kron(Cop,dble(pauli_z))))
+  call print_matrix(CDGdw)
+  ! call print_matrix(transpose(kron(Cop,dble(pauli_z))))
 
 
   print*,""
   print*,"Dens_up:"
   Dens = build_Dens_operator(iorb=1,ispin=1)
-  call print_mat(dens)
-  ! call print_mat(kron(eye(2),Dens))
+  call print_matrix(dens)
+  ! call print_matrix(kron(eye(2),Dens))
 
   print*,""
   print*,"Dens_dw:"  
   Dens = build_Dens_operator(iorb=1,ispin=2)
-  call print_mat(dens)
-  ! call print_mat(kron(Dens,eye(2)))
+  call print_matrix(dens)
+  ! call print_matrix(kron(Dens,eye(2)))
 
 
   print*,""
   print*,"Docc = CDG_up.C_up.CDG_dw.C_dw"  
   allocate(Docc, mold=Dens)
   Docc = CDGup.x.Cup.x.CDGdw.x.Cdw
-  call print_mat(Docc)
+  call print_matrix(Docc)
 
 
   Hvec = Build_BasisStates()
@@ -832,13 +867,12 @@ program testHLOCAL
 
 
 
-  Hvec = Build_FermionicSign()
-  print*,size(Hvec)
-  call print_mat(diag(1d0*Hvec))
+  P = Build_FermionicSign()
+  call print_matrix(P)
   print*,""
-  call print_mat(kSz(2*Norb))
+  call print_matrix(kSz(2*Norb))
 
-  print*,1d0*Hvec-diagonal(kSz(2*Norb))
+  print*,diagonal(P)-diagonal(kSz(2*Norb))
   call Delete_LocalFock_space()
 
 
@@ -846,14 +880,6 @@ program testHLOCAL
 
 contains
 
-
-  subroutine print_mat(M)
-    real(8),dimension(:,:) :: M
-    integer                   :: i,j
-    do i=1,size(M,1)
-       write(*,"("//str(size(M,2))//"(F4.1,1x))")((M(i,j)),j=1,size(M,2))
-    enddo
-  end subroutine print_mat
 
 
   recursive function KSz(n) result(A)

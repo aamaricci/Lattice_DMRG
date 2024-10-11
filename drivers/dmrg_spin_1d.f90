@@ -49,13 +49,15 @@ program dmrg_spin_1d
 
   !Measure <S(i).S(i+1)>
   unit=fopen("SiSjVSj"//str(label_DMRG('u')),append=.true.)
-  do pos=1,Ldmrg/2-1
+  call Init_measure_dmrg()
+  do pos=1,Ldmrg-1
      bSz = Build_Op_DMRG(dot%operators%op("S_z"),pos,set_basis=.true.)
      bSp = Build_Op_DMRG(dot%operators%op("S_p"),pos,set_basis=.true.)
      SiSj= get_SiSj(bSz,bSp,dot%operators%op("S_z"),dot%operators%op("S_p"))
      SiSj= Advance_Corr_DMRG(SiSj,pos)
      write(unit,*)pos,Average_Op_DMRG(SiSj,pos)
   enddo
+  call End_measure_dmrg()
   close(unit)
 
 

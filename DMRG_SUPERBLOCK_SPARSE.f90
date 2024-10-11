@@ -36,7 +36,7 @@ contains
     m_left = left%dim
     m_right= right%dim
     !
-    select case(type)
+    select case(to_lower(type))
     case default;stop "Setup_SuperBlock_Sparse ERROR: wrong left/right.Type"
     case ("spin","s")
        H2 = connect_spin_blocks(left,right,sb_states)
@@ -44,9 +44,9 @@ contains
        H2 = connect_fermion_blocks(left,right,sb_states)
     end select
     !
-    spHsb = H2 + &
-         sp_kron(left%operators%op("H"),id(m_right),sb_states) + &
-         sp_kron(id(m_left),right%operators%op("H"),sb_states)
+    spHsb = H2 & 
+         + sp_kron(left%operators%op("H"),id(m_right),sb_states) &
+         + sp_kron(id(m_left),right%operators%op("H"),sb_states)
     !
   end subroutine Setup_SuperBlock_Sparse
 
@@ -57,11 +57,17 @@ contains
   !              using shared quantities in GLOBAL
   !##################################################################
   subroutine spMatVec_sparse_main(Nloc,v,Hv)
-    integer                 :: Nloc
-    real(8),dimension(Nloc) :: v
-    real(8),dimension(Nloc) :: Hv
-    real(8)                 :: val
-    integer                 :: i,j,jcol
+    integer                    :: Nloc
+    integer                    :: i,j,jcol
+#ifdef _CMPLX
+    complex(8),dimension(Nloc) :: v
+    complex(8),dimension(Nloc) :: Hv
+    complex(8)                 :: val
+#else
+    real(8),dimension(Nloc)    :: v
+    real(8),dimension(Nloc)    :: Hv
+    real(8)                    :: val
+#endif
     Hv=zero
     do i=1,Nloc
        matmul: do jcol=1, spHsb%row(i)%Size
