@@ -10,6 +10,7 @@ MODULE MATRIX_BLOCKS
      integer                               :: index=0
      real(8),dimension(:),allocatable      :: qn
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
      integer,dimension(:),allocatable      :: map
      real(8),dimension(:),allocatable      :: E
 #ifdef _CMPLX
@@ -30,6 +31,15 @@ MODULE MATRIX_BLOCKS
 =======
      real(8),dimension(:,:),allocatable    :: M
 >>>>>>> 937c70b (Intermediate commit.):MATRIX_BLOCKS.f90
+=======
+     integer,dimension(:),allocatable      :: map
+     real(8),dimension(:),allocatable      :: E
+#ifdef _CMPLX
+     complex(8),dimension(:,:),allocatable :: M
+#else
+     real(8),dimension(:,:),allocatable    :: M
+#endif
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
      type(block_type),pointer              :: next=>null()
   end type block_type
 
@@ -149,17 +159,23 @@ contains
   function construct_blocks_matrix(matrix,qn,map) result(self)
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     type(blocks_matrix)                  :: self
@@ -178,17 +194,23 @@ contains
     integer,dimension(:)                 :: map
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     call self%free()
     allocate(self%root)
     call self%append(matrix,qn,map)
@@ -243,17 +265,23 @@ contains
     class(blocks_matrix),intent(inout)   :: self
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     integer                              :: Dim
@@ -299,17 +327,23 @@ contains
     class(blocks_matrix),intent(inout)   :: self
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:,:),intent(in) :: matrix
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     logical                              :: iupdate
@@ -368,17 +402,23 @@ contains
     integer,optional                      :: index,m
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: matrix
 #else
     real(8),dimension(:,:),allocatable    :: matrix
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),allocatable :: matrix
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:,:),allocatable :: matrix
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     integer                               :: index_,m_
     logical                               :: ifound
     type(block_type),pointer              :: c
@@ -569,17 +609,23 @@ contains
     class(blocks_matrix),intent(inout)    :: self
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: matrix,mtmp
 #else
     real(8),dimension(:,:),allocatable    :: matrix,mtmp
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),allocatable :: matrix,mtmp
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:,:),allocatable :: matrix,mtmp
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     integer                               :: Offset1,Offset2
     integer                               :: N1,N2
     type(block_type),pointer              :: c
@@ -624,12 +670,16 @@ contains
     integer                             :: i,it
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     integer,dimension(:),allocatable    :: self_map
 #ifdef _CMPLX
     complex(8),dimension(:),allocatable :: self_vec
 #else
     real(8),dimension(:),allocatable    :: self_vec
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:),allocatable :: self_vec
 =======
@@ -641,6 +691,8 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     dims = self%shape()
     call sparse%init(dims(1),dims(2))
     do it=1,dims(2)
@@ -679,12 +731,16 @@ contains
     integer                             :: i,it
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     integer,dimension(:),allocatable    :: self_map
 #ifdef _CMPLX
     complex(8),dimension(:),allocatable :: self_vec
 #else
     real(8),dimension(:),allocatable    :: self_vec
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:),allocatable :: self_vec
 =======
@@ -698,6 +754,8 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     call sparse%init(n,m)
     do it=1,m
        self_vec = self%evec(m=it) !returns the smallest it-th evector
@@ -723,11 +781,15 @@ contains
     class(blocks_matrix),intent(inout)        :: self
     logical,optional                          :: sort,reverse
     integer,dimension(:),allocatable,optional :: order
-    real(8),dimension(:),allocatable          :: Rtmp
-    integer,dimension(:),allocatable          :: Itmp
     logical                                   :: sort_,reverse_
     real(8),dimension(:),allocatable          :: Rtmp
     integer,dimension(:),allocatable          :: Itmp
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+    logical                                   :: sort_,reverse_
+    real(8),dimension(:),allocatable          :: Rtmp
+    integer,dimension(:),allocatable          :: Itmp
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     type(block_type),pointer                  :: c
     integer                                   :: i,Nloc,Offset,N
     !
@@ -828,17 +890,23 @@ contains
     integer                             :: m
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8),dimension(:),allocatable :: vec
 #else
     real(8),dimension(:),allocatable    :: vec
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:),allocatable :: vec
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8),dimension(:),allocatable :: vec
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     integer                             :: m_,i,q,pos
     type(block_type),pointer            :: c
     !
@@ -1063,23 +1131,30 @@ contains
     character(len=64)               :: format
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
     real(8)                         :: val
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8)                      :: val
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
     real(8)                      :: val
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     type(block_type),pointer        :: c
     !
     unit_=6
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     if(present(file))open(free_unit(unit_),file=str(file))
     !
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 #ifdef _CMPLX
@@ -1094,6 +1169,13 @@ contains
     format='('//str(fmt_)//'1x)'
     ! format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+#ifdef _CMPLX
+    format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
+#else
+    format='('//str(fmt_)//'1x)'
+#endif
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     !
     write(unit_,"(A6,I12)")"Size :",size(self)
     write(unit_,"(A6,2I6)")"Shape:",shape(self)
@@ -1113,12 +1195,16 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
              write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')&
                   "(",dreal(val),",",dimag(val),")"
 #else
              write(unit_,"("//str(self%Ncol)//"(F12.4,1X))",advance='no')val
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
              write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
@@ -1129,6 +1215,8 @@ contains
 >>>>>>> 94f42f9 (development version.):MATRIX_BLOCKS.f90
              !write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
           enddo
           write(unit_,*)
        enddo
@@ -1155,22 +1243,29 @@ contains
     do i=1,size(a)
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 #ifdef _CMPLX
        call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 #else
        call adg%append(transpose(a%block(index=i)),a%qn(index=i), a%map(index=i) )
 #endif
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
        call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_BLOCKS.f90
 =======
        call adg%append( (transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     enddo
   end function dgr_blocks_matrix
 
 
   function transpose_blocks_matrix(a) result(at)
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
     class(blocks_matrix), intent(in) :: a
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
     type(blocks_matrix)              :: at
@@ -1187,6 +1282,27 @@ contains
   end function transpose_blocks_matrix
 
   function hconjg_blocks_matrix(a) result(adg)
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+    class(blocks_matrix), intent(in) :: a
+    type(blocks_matrix)              :: at
+    integer                          :: i    
+    call at%free()
+    do i=1,size(a)
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+#ifdef _CMPLX
+       call adg%append(conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+#else
+       call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
+#endif
+
+=======
+       call at%append(transpose(a%block(index=i)), a%qn(index=i), a%map(index=i))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+    enddo
+  end function hconjg_blocks_matrix
+
+  function hconjg_blocks_matrix(a) result(adg)
     class(blocks_matrix), intent(in) :: a
     type(blocks_matrix)              :: adg
     integer                          :: i    
@@ -1198,16 +1314,6 @@ contains
        call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 #endif
 
-    enddo
-  end function hconjg_blocks_matrix
-
-  function hconjg_blocks_matrix(a) result(adg)
-    class(blocks_matrix), intent(in) :: a
-    type(blocks_matrix)              :: adg
-    integer                          :: i    
-    call adg%free()
-    do i=1,size(a)
-       call adg%append((transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
     enddo
   end function hconjg_blocks_matrix
 
@@ -1256,6 +1362,7 @@ program testBLOCK_MATRICES
   type(tbasis)                          :: a_basis
   type(sectors_list)                    :: a_sector
   integer,dimension(:),allocatable      :: a_map
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   real(8),dimension(:),allocatable      :: evals
@@ -1309,6 +1416,33 @@ program testBLOCK_MATRICES
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(zeye(2),Sz)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  real(8),dimension(:),allocatable      :: evals
+  integer,dimension(:),allocatable      :: eorder,Dq
+  integer                               :: i,j,q,N,count
+#ifdef _CMPLX
+  complex(8),dimension(:,:),allocatable :: Matrix
+  complex(8),dimension(:),allocatable   :: Vec
+  complex(8),dimension(2,2),parameter   :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  complex(8),dimension(2,2),parameter   :: S0=pauli_0
+  complex(8),dimension(2,2),parameter   :: Sz=pauli_z
+  complex(8),dimension(2,2),parameter   :: Sx=pauli_x
+  complex(8),dimension(2,2),parameter   :: Splus=reshape([zero,zero,one,zero],[2,2])
+  complex(8),dimension(4,4)             :: Gamma13,Gamma03
+#else
+  real(8),dimension(:,:),allocatable    :: Matrix
+  real(8),dimension(:),allocatable      :: Vec
+  real(8),dimension(2,2),parameter      :: Hzero=reshape([zero,zero,zero,zero],[2,2])
+  real(8),dimension(2,2),parameter      :: S0=pauli_0
+  real(8),dimension(2,2),parameter      :: Sz=pauli_z
+  real(8),dimension(2,2),parameter      :: Sx=pauli_x
+  real(8),dimension(2,2),parameter      :: Splus=reshape([zero,zero,one,zero],[2,2])
+  real(8),dimension(4,4)                :: Gamma13,Gamma03
+#endif
+
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(S0,Sz)
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
 
   !Here we create a fake basis, a fake sector to use when building block_matrices
   a_basis  = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
@@ -1330,12 +1464,17 @@ program testBLOCK_MATRICES
 
   print*,"test CONSTRUCTOR 3: append (two elements [2x2],[4x4])"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%append(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%append(kron(S0,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
 =======
   call a%append(zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%append(kron(zeye(2),Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  call a%append(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  call a%append(kron(S0,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
   call a%show()
   bvec(1)=a
   call a%free()
@@ -1345,10 +1484,14 @@ program testBLOCK_MATRICES
 
   print*,"test GET BLOCK MATRIX:"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%load(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 =======
   call a%load(zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  call a%load(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
   call a%append(kron(Sz,Sx),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
   bvec(2)=a
   call a%show()
@@ -1373,10 +1516,14 @@ program testBLOCK_MATRICES
   print*,"test EQUALITY:"
   call a%load(Sx,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%append(kron(S0,Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
 =======
   call a%append(kron(zeye(2),Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  call a%append(kron(S0,Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
   call a%show()
   blH = a
   bvec(3)=a
@@ -1397,10 +1544,14 @@ program testBLOCK_MATRICES
 
   print*,"test PUSH:"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   a = as_blocks(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 =======
   a = as_blocks(zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  a = as_blocks(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
   call a%show()  
   call a%push(kron(Sx,Sz),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
   call a%push(Sx,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
@@ -1413,10 +1564,14 @@ program testBLOCK_MATRICES
 
   print*,"test DGR:"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   a = blocks_matrix(Splus,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 =======
   a = blocks_matrix(reshape([zero,zero,one,zero],[2,2]),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  a = blocks_matrix(Splus,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
   call a%append(kron(Splus,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
   call a%show()
   adg = a%dgr()
@@ -1429,10 +1584,14 @@ program testBLOCK_MATRICES
 
   print*,"test EIGH:"
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+<<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%append(mersenne()*S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 =======
   call a%append(mersenne()*zeye(2),qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+  call a%append(mersenne()*S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
   call a%append(mersenne()*Sx,qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
   call a%append(mersenne()*Sz,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
   call a%append(mersenne()*kron(Sz,Sx),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))

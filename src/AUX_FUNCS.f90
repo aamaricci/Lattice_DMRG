@@ -40,7 +40,7 @@ MODULE AUX_FUNCS
 
 
   logical,parameter,public           :: show_dble=.true.
-  character(len=12),parameter,public :: show_fmt='F12.3'
+  character(len=12),parameter,public :: show_fmt='F9.3'
 
 contains
 
@@ -160,6 +160,7 @@ contains
   !   forall(i=1:2**n)A(i,i) = 1d0
   ! end function KId
 
+<<<<<<< HEAD:src/AUX_FUNCS.f90
 =======
 >>>>>>> f63915b (Testing the code.):AUX_FUNCS.f90
   recursive function KSz(n) result(A)
@@ -185,6 +186,8 @@ contains
 
 =======
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):AUX_FUNCS.f90
 
   
   function label_dmrg(type,im) result(label)

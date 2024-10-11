@@ -11,10 +11,14 @@ MODULE TUPLE_BASIS
 
   type tstates
 <<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
+<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
      integer,dimension(:),allocatable     :: states
 =======
      integer,dimension(:),allocatable :: states
 >>>>>>> e213c0c (Intermediate commit.):TUPLE_BASIS.f90
+=======
+     integer,dimension(:),allocatable     :: states
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):TUPLE_BASIS.f90
   end type tstates
 
   type tuple

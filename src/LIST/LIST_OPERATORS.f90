@@ -264,7 +264,11 @@ contains
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
     character(len=*),intent(in),optional :: type
+#ifdef _CMPLX
+    complex(8),dimension(:,:),intent(in) :: op
+#else
     real(8),dimension(:,:),intent(in)    :: op
+#endif
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)    
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
@@ -279,6 +283,9 @@ contains
   !+------------------------------------------------------------------+
   function dump_op_operators_list(self,key) result(matrix)
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
     class(operators_list),intent(inout)   :: self
     character(len=*),intent(in)           :: key
 #ifdef _CMPLX
@@ -286,11 +293,14 @@ contains
 #else
     real(8),dimension(:,:),allocatable    :: matrix
 #endif
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
     class(operators_list),intent(inout) :: self
     character(len=*),intent(in)         :: key
     real(8),dimension(:,:),allocatable  :: matrix
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
     matrix = as_matrix( self%op(key=key) )  
   end function dump_op_operators_list
 
@@ -785,6 +795,7 @@ program testOPERATORS_TUPLE
   character(len=10)                     :: key,type
   character(len=10),allocatable         :: keys(:)
   integer,parameter                     :: sec=500
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
@@ -817,6 +828,10 @@ program testOPERATORS_TUPLE
   
   
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+
+
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
 
@@ -830,10 +845,14 @@ program testOPERATORS_TUPLE
   call my_list%free()
   call wait(sec)
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
   
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
 
   print*,"TEST LOAD matrices"
   call my_list%load("H0",Hzero,'b')
@@ -846,10 +865,14 @@ program testOPERATORS_TUPLE
 
 
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
   
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
   print*,"TEST (CONSTRUCT + )APPEND matrices"
   call my_list%append("H0",as_sparse(Hzero),'b')
   call my_list%append("Sz",as_sparse(Sz),'b')
@@ -864,7 +887,7 @@ program testOPERATORS_TUPLE
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
 
-  
+
   print*,"TEST RETRIEVE FUNCTIONALITIES"
   print*,"TEST .DUMP"
   print*,"Mat.allocated:",allocated(mat)
@@ -882,7 +905,7 @@ program testOPERATORS_TUPLE
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
-  
+
   print*,"TEST .GET"
   do i=1,size(my_list)
      call my_list%get(index=i,key=key,op=a,type=type)
@@ -898,7 +921,7 @@ program testOPERATORS_TUPLE
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
-  
+
   print*,"TEST .KEY + .OP + ITERATION over index"
   do i=1,size(my_list)
      a = my_list%op(index=i)
@@ -915,10 +938,14 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
   
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
 
   print*,"TEST HAS_KEY"
   print*,"list has key Sz",my_list%has_key("Sz")
@@ -969,10 +996,14 @@ program testOPERATORS_TUPLE
   call wait(sec)
 
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
   
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
 
   print*,"TEST ITERATION SIZE:"
   do i=1,size(my_list)
@@ -1002,11 +1033,15 @@ program testOPERATORS_TUPLE
 =======
 
 
-  
+
   print*,"TEST DEEP COPY '='"
   Gamma13=kron(Sx,Sz)
+<<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
   Gamma03=kron(eye(2),Sz)
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+  Gamma03=kron(S0,Sz)
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
   call a_list%append("gamma13",as_sparse(Gamma13),'b')
   call a_list%append("gamma03",as_sparse(Gamma03),'b')
   call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)),'b')
@@ -1023,6 +1058,6 @@ program testOPERATORS_TUPLE
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 
-  
+
 end program testOPERATORS_TUPLE
 #endif

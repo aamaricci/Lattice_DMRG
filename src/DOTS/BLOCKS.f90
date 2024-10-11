@@ -188,17 +188,23 @@ contains
     self%operators = ssite%operators
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
 #ifdef _CMPLX
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
 #else
     call self%omatrices%put("1",sparse(eye(self%Dim)))
 #endif
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 =======
     call self%omatrices%put("1",sparse(eye(self%Dim)))
 >>>>>>> f63915b (Testing the code.):BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
@@ -278,14 +284,20 @@ contains
 
 
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
   !+------------------------------------------------------------------+
   !PURPOSE:  
   !+------------------------------------------------------------------+
   subroutine rotate_operators_block(self,Umat)
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
     class(block)                     :: self
 #ifdef _CMPLX
     complex(8),dimension(:,:)        :: Umat   ![N,M]
@@ -295,6 +307,7 @@ contains
     integer                          :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)              :: Op
     character(len=:),allocatable     :: key,type
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     class(block)                 :: self
     real(8),dimension(:,:)       :: Umat   ![N,M]
@@ -306,6 +319,8 @@ contains
 =======
     character(len=:),allocatable :: key,type
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
     !
     N = size(Umat,1)
     M = size(Umat,2)
@@ -326,6 +341,7 @@ contains
     function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
       type(sparse_matrix),intent(in) :: Op
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
       integer                        :: N,M
       type(sparse_matrix)            :: RotOp
 #ifdef _CMPLX
@@ -339,25 +355,43 @@ contains
 #endif
 =======
       real(8),dimension(N,M)         :: trRho
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
       integer                        :: N,M
       type(sparse_matrix)            :: RotOp
+#ifdef _CMPLX
+      complex(8),dimension(N,M)      :: trRho
+      complex(8),dimension(M,M)      :: Umat
+      complex(8),dimension(N,N)      :: OpMat
+#else
+      real(8),dimension(N,M)         :: trRho
       real(8),dimension(M,M)         :: Umat
       real(8),dimension(N,N)         :: OpMat
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 >>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
+=======
+#endif
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
       N = size(trRho,1)
       M = size(trRho,2)
       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
       OpMat= Op%as_matrix()
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
 #ifdef _CMPLX
       Umat = matmul( matmul( conjg(transpose(trRho)),OpMat),trRho) 
 #else
       Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
 #endif
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
       Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
 >>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
       call RotOp%load( Umat )
     end function rotate_and_truncate
     !
@@ -584,6 +618,7 @@ contains
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
        write(unit_,"(A15,A)")"Op Name    = ",self%OpName
        write(unit_,"(A14)")"Block Operators:"
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
@@ -605,6 +640,8 @@ contains
        write(unit_,"(A15,A)")"Op Name    = ",self%OpName
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
        write(unit_,"(A14)")"Block Ops     :"
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
@@ -644,10 +681,14 @@ END MODULE BLOCKS
 #ifdef _TEST
 program testBLOCKS
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR
 =======
   USE SCIFOR,  id => eye
 >>>>>>> f63915b (Testing the code.):BLOCKS.f90
+=======
+  USE SCIFOR
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
   USE TUPLE_BASIS
@@ -656,6 +697,9 @@ program testBLOCKS
   USE BLOCKS
   implicit none
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
   type(block)                         :: my_block,a
   type(block),allocatable             :: my_blocks(:)
   type(operators_list)                :: op
@@ -677,6 +721,7 @@ program testBLOCKS
   real(8),dimension(2,2),parameter    :: Splus=reshape([zero,zero,one,zero],[2,2])
   real(8),dimension(4,4)              :: Gamma13,Gamma03
 #endif
+<<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 
 
@@ -708,6 +753,11 @@ program testBLOCKS
 =======
   Gamma03=kron(id(2),Sz)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
+=======
+
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(S0,Sz)
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
 
 
   sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)

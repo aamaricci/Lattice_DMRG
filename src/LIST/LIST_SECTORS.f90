@@ -27,6 +27,9 @@ MODULE LIST_SECTORS
      type(qtype),pointer :: root=>null()
    contains
 <<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
+<<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_SECTORS.f90
      procedure,pass :: free   => free_sectors_list     !destructor
      procedure,pass :: put    => put_sectors_list      !put sectors_list qn array
      procedure,pass :: load   => load_sectors_list     !load=sequential put=constructor
@@ -38,6 +41,7 @@ MODULE LIST_SECTORS
      procedure,pass :: basis  => basis_sectors_list    !return the basis of the sector list
      procedure,pass :: has_qn => has_qn_sectors_list   !True if qn exists
      procedure,pass :: show   => show_sectors_list     !show sectors_list to screen
+<<<<<<< HEAD:src/LIST/LIST_SECTORS.f90
 =======
      procedure,pass      :: free     => free_sectors_list     !destructor
      procedure,pass      :: put      => put_sectors_list      !put sectors_list qn array
@@ -51,6 +55,8 @@ MODULE LIST_SECTORS
      procedure,pass      :: has_qn   => has_qn_sectors_list   !True if qn exists
      procedure,pass      :: show     => show_sectors_list     !show sectors_list to screen
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):LIST_SECTORS.f90
+=======
+>>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_SECTORS.f90
   end type sectors_list
 
 
