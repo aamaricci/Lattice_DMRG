@@ -3,5 +3,10 @@ repo
 *.mod
 git_version.inc
 .DS_Store
+<<<<<<< HEAD
 *build*
 cmplx3.0.0
+=======
+test
+build
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)

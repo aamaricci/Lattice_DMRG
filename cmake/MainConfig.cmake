@@ -4,6 +4,7 @@ SET(USER $ENV{USER})
 STRING(TOLOWER "${CMAKE_Fortran_COMPILER_ID}" FC_ID)
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE)
 <<<<<<< HEAD
+<<<<<<< HEAD
 STRING(TOLOWER "${CMAKE_PRECISION}" PRECISION)
 
 #default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<precision>/<version>
@@ -11,6 +12,11 @@ STRING(TOLOWER "${CMAKE_PRECISION}" PRECISION)
 
 #default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<version>
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+STRING(TOLOWER "${CMAKE_PRECISION}" PRECISION)
+
+#default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<precision>/<version>
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 SET(PREFIX_DEF_LOC "$ENV{HOME}/opt")
 SET(PREFIX_PROJ "${PROJECT_NAME}")
 SET(PREFIX_PATH "${FC_ID}")
@@ -30,6 +36,7 @@ ENDIF()
 
 #If DEBUG, add /debug to
 <<<<<<< HEAD
+<<<<<<< HEAD
 IF("${BUILD_TYPE}" MATCHES "debug" OR "${BUILD_TYPE}" MATCHES "aggressive")
   SET(PREFIX_PATH  "${PREFIX_PATH}/${BUILD_TYPE}")
 ENDIF()
@@ -43,6 +50,15 @@ IF("${BUILD_TYPE}" MATCHES "debug")
 ENDIF()
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+IF("${BUILD_TYPE}" MATCHES "debug" OR "${BUILD_TYPE}" MATCHES "aggressive")
+  SET(PREFIX_PATH  "${PREFIX_PATH}/${BUILD_TYPE}")
+ENDIF()
+
+
+SET(PREFIX_PATH  "${PREFIX_PATH}/${PRECISION}")
+
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 #set default prefix:
 SET(FULL_VER "${PREFIX_PATH}/${VERSION}")
 SET(VERSION_PATH "${PREFIX_PROJ}/${PREFIX_PATH}")

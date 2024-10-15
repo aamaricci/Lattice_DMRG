@@ -16,14 +16,20 @@ STRING(TOUPPER "${BUILD_TYPE}" BUILD_TYPE)
 MESSAGE(STATUS "BUILD_TYPE=${BUILD_TYPE}")
 SET(CMAKE_BUILD_TYPE ${BUILD_TYPE} CACHE INTERNAL "Build type" FORCE)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 #
 SET(PRECISION "DBLE" CACHE STRING "Variable Precision type")
 STRING(TOUPPER "${PRECISION}" PRECISION)
 MESSAGE(STATUS "PRECISION=${PRECISION}")
 SET(CMAKE_PRECISION ${PRECISION} CACHE INTERNAL "Variable Precision type" FORCE)
 
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 
 # Add our local CMAKE modules to the module path
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -123,18 +129,24 @@ ADD_SUBDIRECTORY(${LIB_SRC})
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(MATRIX_LIB
   AUX_LIB
 )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(FOCK_LIB
   AUX_LIB
 )
@@ -146,9 +158,12 @@ ADD_DEPENDENCIES(LIST_LIB
 )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(DOTS_LIB
   AUX_LIB
   MATRIX_LIB
@@ -158,9 +173,12 @@ ADD_DEPENDENCIES(DOTS_LIB
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(DMRG_LIB
   AUX_LIB
   FOCK_LIB

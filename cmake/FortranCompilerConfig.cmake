@@ -1,7 +1,10 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 # Check that Fortran 90 is supported
 IF(NOT CMAKE_Fortran_COMPILER_SUPPORTS_F90)
    MESSAGE(FATAL_ERROR "Fortran compiler does not support F90")
@@ -81,14 +84,21 @@ IF( "${BUILD_TYPE}" MATCHES "DEBUG")
   ADD_DEFINITIONS(-D_DEBUG)
 ENDIF()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 IF( "${BUILD_TYPE}" MATCHES "AGGRESSIVE")
   ADD_DEFINITIONS(-D_DEBUG)
 ENDIF()
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 IF("${PRECISION}" MATCHES "CMPLX")
   ADD_DEFINITIONS(-D_CMPLX)
 ELSE()
@@ -96,6 +106,9 @@ ELSE()
 ENDIF()
 
 
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 
