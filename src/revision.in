@@ -1,0 +1,5 @@
+MODULE VERSION
+  implicit none
+  !GIT VERSION
+  character(len=41),parameter :: git_code_version = "@GIT_SHA1@"	
+END MODULE VERSION
