@@ -1,10 +1,14 @@
 # Lattice DMRG 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 This is a simple, yet complete, DMRG library to solve Heisenberg (spin-S) and Hubbard models in 1D. The software exploits consevation of the Quantum Numbers ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
 =======
 This is simple, yet complete, DMRG code to solve Heisenberg (spin-S) and Hubbard models in 1D. The software exploits consevation of the Quantum Numbers ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED)
+=======
+This is a simple, yet complete, DMRG library to solve Heisenberg (spin-S) and Hubbard models in 1D. The software exploits consevation of the Quantum Numbers ($S_z$ or $[N_\uparrow,N_\downarrow]$) to perform *infinite* and *finite* DMRG algorithms.  
+>>>>>>> aa4dff1 (3.0.0 NEW STABLE CODE: LIBRARY VERSION)
 
  
 The structure of this code is largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
