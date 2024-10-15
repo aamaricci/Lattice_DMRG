@@ -1,10 +1,13 @@
 MODULE AUX_FUNCS
   USE SCIFOR, only: free_unit,str,to_lower,one,zero
   USE INPUT_VARS
+<<<<<<< HEAD
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 =======
   USE SCIFOR, only: free_unit,str,to_lower,one,zero
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   implicit none
   private
 
@@ -26,6 +29,7 @@ MODULE AUX_FUNCS
   public :: append
   public :: add_to
   public :: binary_search
+<<<<<<< HEAD
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 =======
@@ -33,6 +37,8 @@ MODULE AUX_FUNCS
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
 =======
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   public :: fopen
   public :: cumulate
   public :: label_dmrg
@@ -47,8 +53,11 @@ contains
 
 
   function okey(iorb,ispin,isite) result(string)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 <<<<<<< HEAD:src/AUX_FUNCS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,optional             :: iorb,isite,ispin
     integer                      :: iorb_,isite_,ispin_
     character(len=:),allocatable :: string,str_orb,str_spin,str_site
@@ -85,6 +94,7 @@ contains
        end select
     endif
 
+<<<<<<< HEAD
 =======
     integer                      :: iorb
     integer,optional             :: isite,ispin
@@ -131,6 +141,8 @@ contains
     endif
 
 >>>>>>> 7f27ed5 (Intermediate commit.):AUX_FUNCS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     string = trim(str_orb)//trim(str_spin)//trim(str_site)
   end function okey
 
@@ -148,6 +160,7 @@ contains
     enddo
   end function cumulate
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 <<<<<<< HEAD:src/AUX_FUNCS.f90
 <<<<<<< HEAD:src/AUX_FUNCS.f90
@@ -188,6 +201,9 @@ contains
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):AUX_FUNCS.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   
   function label_dmrg(type,im) result(label)
@@ -206,8 +222,13 @@ contains
        label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG")
        if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
     case('f')
+<<<<<<< HEAD
        label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
        if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
+=======
+       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im)
+       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im))//"_sweep"//str(im)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     end select
     label=str(label)//".dmrg"
   end function label_dmrg

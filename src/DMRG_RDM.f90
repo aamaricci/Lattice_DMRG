@@ -25,11 +25,14 @@ contains
 #else
     real(8),dimension(:,:),allocatable    :: rho
 #endif
+<<<<<<< HEAD
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: get RDM"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call rho_left%free()
     call rho_right%free()
     !
@@ -80,7 +83,10 @@ contains
     real(8),dimension(nleft,nright)       :: psi_tmp
 #endif
     !
+<<<<<<< HEAD
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(allocated(rho))deallocate(rho)
     !
     !These two give the same results
@@ -135,10 +141,13 @@ contains
     type(tbasis)                :: left_basis,right_basis
     type(sparse_matrix)         :: trRho_left,trRho_right
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: renormalize block "//str(label)
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     m_left  = left%dim
     m_right = right%dim
     !
@@ -192,6 +201,7 @@ contains
        !
        !
 #ifdef _DEBUG
+<<<<<<< HEAD
        if(verbose>5)then
           unit=fopen("lambdas_L_"//str(left%length)//".dat")       
           do i=1,size(rho_left_evals)
@@ -201,6 +211,15 @@ contains
           enddo
           close(unit)
        endif
+=======
+       unit=fopen("lambdas_L_"//str(left%length)//".dat")       
+       do i=1,size(rho_left_evals)
+          err = abs(e_-rho_left_evals(i))/e_
+          write(unit,*)i,rho_left_evals(i),err,1d0-sum(rho_left_evals(1:i))
+          if(i==m_s)write(unit,*)" "
+       enddo
+       close(unit)       
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #endif
        !Free Rho_Left
        call left_basis%free()
@@ -241,11 +260,15 @@ contains
        enddo
        !>truncation-rotation matrices:
        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
+<<<<<<< HEAD
        print*,truncation_error_right
        print*,m_right,m_e
        print*,shape(rho_right)
        trRho_right            = rho_right%sparse(m_right,m_e)
        print*,shape(trRho_right)
+=======
+       trRho_right            = rho_right%sparse(m_right,m_e)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        !>Store all the rotation/truncation matrices:
        call right%put_omat(str(right%length),trRho_right,'')
        !>Renormalize Blocks:
@@ -260,6 +283,7 @@ contains
        Mtr = m_e
        !
 #ifdef _DEBUG
+<<<<<<< HEAD
        if(verbose>5)then
           unit = fopen("lambdas_R_"//str(left%length)//".dat")       
           do i=1,size(rho_right_evals)
@@ -269,6 +293,15 @@ contains
           enddo
           close(unit)
        endif
+=======
+       unit = fopen("lambdas_R_"//str(left%length)//".dat")       
+       do i=1,size(rho_right_evals)
+          err = abs(e_-rho_right_evals(i))/e_
+          write(unit,*)i,rho_right_evals(i),err,1d0-sum(rho_right_evals(1:i))
+          if(i==m_e)write(unit,*)" "
+       enddo
+       close(unit)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #endif
        !Free Rho Right:
        call right_basis%free()

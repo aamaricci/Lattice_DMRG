@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 # Check that Fortran 90 is supported
 IF(NOT CMAKE_Fortran_COMPILER_SUPPORTS_F90)
    MESSAGE(FATAL_ERROR "Fortran compiler does not support F90")
@@ -76,11 +80,15 @@ ENDIF(USE_MPI)
 IF( "${BUILD_TYPE}" MATCHES "DEBUG")
   ADD_DEFINITIONS(-D_DEBUG)
 ENDIF()
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 IF( "${BUILD_TYPE}" MATCHES "AGGRESSIVE")
   ADD_DEFINITIONS(-D_DEBUG)
 ENDIF()
 
+<<<<<<< HEAD
 IF("${PRECISION}" MATCHES "CMPLX")
   ADD_DEFINITIONS(-D_CMPLX)
 ELSE()
@@ -88,4 +96,6 @@ ELSE()
 ENDIF()
 
 
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 

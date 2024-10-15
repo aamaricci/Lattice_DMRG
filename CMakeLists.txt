@@ -1,7 +1,11 @@
 ##################################################
 # LATTICE DMRG PROJECT
 ##################################################
+<<<<<<< HEAD
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
+=======
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5.0)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 PROJECT(dmrg Fortran)
 SET(VERSION 1.4.1)
 
@@ -11,12 +15,15 @@ SET(BUILD_TYPE "RELEASE" CACHE STRING "Build type")
 STRING(TOUPPER "${BUILD_TYPE}" BUILD_TYPE)
 MESSAGE(STATUS "BUILD_TYPE=${BUILD_TYPE}")
 SET(CMAKE_BUILD_TYPE ${BUILD_TYPE} CACHE INTERNAL "Build type" FORCE)
+<<<<<<< HEAD
 #
 SET(PRECISION "DBLE" CACHE STRING "Variable Precision type")
 STRING(TOUPPER "${PRECISION}" PRECISION)
 MESSAGE(STATUS "PRECISION=${PRECISION}")
 SET(CMAKE_PRECISION ${PRECISION} CACHE INTERNAL "Variable Precision type" FORCE)
 
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 # Add our local CMAKE modules to the module path
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -115,10 +122,19 @@ ADD_SUBDIRECTORY(${LIB_SRC}/DOTS)
 ADD_SUBDIRECTORY(${LIB_SRC})
 
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 ADD_DEPENDENCIES(MATRIX_LIB
   AUX_LIB
 )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 ADD_DEPENDENCIES(FOCK_LIB
   AUX_LIB
 )
@@ -129,6 +145,10 @@ ADD_DEPENDENCIES(LIST_LIB
   MATRIX_LIB
 )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 ADD_DEPENDENCIES(DOTS_LIB
   AUX_LIB
   MATRIX_LIB
@@ -137,6 +157,10 @@ ADD_DEPENDENCIES(DOTS_LIB
 )
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 ADD_DEPENDENCIES(DMRG_LIB
   AUX_LIB
   FOCK_LIB

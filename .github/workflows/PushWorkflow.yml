@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 # This workflow is entirely based on the original work of:
 # Samuele Giuli (for SciFortran project)
 # It is adapted here to the DMRG case + using a local action to setup OS
 #
 name: CI DMRG workflow 
+=======
+name: CI EDIpack2 test workflow 
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 on: push
 
@@ -11,7 +15,11 @@ defaults:
     shell: bash -l {0}
 
 jobs:
+<<<<<<< HEAD
   test-DMRG:
+=======
+  test-EDIpack2:
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -25,8 +33,13 @@ jobs:
 # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@main
 
+<<<<<<< HEAD
 # Setup OS
       - uses: ./.github/actions
+=======
+# QcmPlab setup
+      - uses: QcmPlab/TestSetup@master
+>>>>>>> 7e90d6a (Updating Cmake library construction)
         with:
           pack-type: open
 
@@ -40,32 +53,82 @@ jobs:
       - name: Install SciFortran
         run: scifor/bin/ci_setup_scifor.sh
 
+<<<<<<< HEAD
 # Build DMRG
       - name: Cloning DMRG
         run: git clone https://github.com/aamaricci/Lattice_DMRG.git Lattice_DMRG
       - name: Install Lattice_DMRG
+=======
+# Build EDIpack2
+      - name: Cloning EDIpack2
+        run: git clone https://github.com/aamaricci/EDIpack2.0.git EDIpack2
+      - name: Install EDIpack2
+>>>>>>> 7e90d6a (Updating Cmake library construction)
         run: |
           source ~/.scifor_config_user
           export PKG_CONFIG_PATH=~/.pkgconfig.d
           export GLOB_INC=$( pkg-config --cflags scifor )
           export GLOB_LIB=$( pkg-config --libs   scifor  | sed  "s/;/ /g"  | sed 's/\\/  /g' )
+<<<<<<< HEAD
           Lattice_DMRG/bin/ci_setup_dmrg.sh
 
 #******** TESTING PART ********
+=======
+          EDIpack2/bin/ci_setup_edipack2.sh
+
+
+
+#******** TESTING PART ********
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 # Testing
       - name: Building tests
         run:  |
           source ~/.scifor_config_user
+<<<<<<< HEAD
           source ~/.dmrg_config_user
           export PKG_CONFIG_PATH=~/.pkgconfig.d
           export GLOB_INC=$( pkg-config --cflags scifor dmrg)
           export GLOB_LIB=$( pkg-config --libs   scifor dmrg | sed  "s/;/ /g"  | sed 's/\\/  /g' )
           cd Lattice_DMRG/test
+=======
+          source ~/.edipack2_config_user
+          export PKG_CONFIG_PATH=~/.pkgconfig.d
+          export GLOB_INC=$( pkg-config --cflags scifor edipack2)
+          export GLOB_LIB=$( pkg-config --libs   scifor edipack2 | sed  "s/;/ /g"  | sed 's/\\/  /g' )
+          cd EDIpack2/test
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           export TERM=xterm
           make all
 
       - name: Testing...
         run: |
+<<<<<<< HEAD
           cd Lattice_DMRG/test
           make test
 
+=======
+          cd EDIpack2/test
+          make test
+
+      # - name: Install LCOV
+      #   if: contains( matrix.os, 'ubuntu')
+      #   run: |
+      #     sudo apt-get install lcov
+
+      # - name: Create coverage report
+      #   if: contains( matrix.os, 'ubuntu')
+      #   run: |
+      #     mkdir -p ${{ env.COV_DIR }}
+      #     lcov --capture --initial --base-directory . --directory test/ --output-file ${{ env.COV_DIR }}/coverage.base
+      #     lcov --capture --base-directory . --directory test/ --output-file ${{ env.COV_DIR }}/coverage.capture
+      #     lcov --add-tracefile ${{ env.COV_DIR }}/coverage.base --add-tracefile ${{ env.COV_DIR }}/coverage.capture --output-file ${{ env.COV_DIR }}/coverage.info
+      #   env:
+      #     COV_DIR: test/coverage
+
+      # - name: Upload coverage report to CODECOV
+      #   if: contains( matrix.os, 'ubuntu')
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     files: test/coverage/coverage.info
+>>>>>>> 7e90d6a (Updating Cmake library construction)

@@ -28,10 +28,13 @@ contains
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call start_timer("Enlarge blocks "//str(grow_))
     !
     if(.not.self%operators%has_key("H"))&
@@ -44,9 +47,12 @@ contains
          stop "Enlarge_Block ERROR: Dot.Type != Self.Type"
     !    
     !> Update Hamiltonian:
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     select case(str(grow_))
     case ("left","l")
        Hb = self%operators%op("H").x.id(dot%dim)
@@ -72,9 +78,12 @@ contains
     call self%put_op("H", Hb +  Hd + H2, type="bosonic")
     !
     !> Update all the other operators in the list:
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,size(self%operators)
        key   = str(self%operators%key(index=i))
        otype = str(self%operators%type(index=i))
@@ -129,7 +138,11 @@ contains
     end select
     !
 #ifdef _DEBUG
+<<<<<<< HEAD
     if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+=======
+    call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #endif
     !
     if(.not.self%is_valid())then
@@ -169,10 +182,13 @@ contains
     real(8)                                   :: Tr,Tl
 #endif
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)
@@ -245,10 +261,13 @@ contains
     real(8),dimension(:,:),allocatable    :: Hij
 #endif
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)

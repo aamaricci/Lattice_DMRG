@@ -33,6 +33,7 @@ MODULE LIST_OPERATORS
      procedure,pass :: types    => types_operators_list     !return all the types
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
@@ -46,6 +47,9 @@ MODULE LIST_OPERATORS
 =======
      procedure,pass :: shape    => shape_operators_list 
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+     procedure,pass :: shape    => shape_operators_list 
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end type operators_list
 
 
@@ -236,8 +240,11 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Load a dense matrix as operator in the operators_list
   !+------------------------------------------------------------------+
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   subroutine load_operators_list(self,key,op,type)
     class(operators_list),intent(inout)  :: self
     character(len=*),intent(in)          :: key
@@ -249,6 +256,7 @@ contains
 #endif
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)    
+<<<<<<< HEAD
 =======
   subroutine load_operators_list(self,key,op)
     class(operators_list),intent(inout)  :: self
@@ -272,6 +280,8 @@ contains
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)    
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.associated(self%root))allocate(self%root)
     call self%put(key,as_sparse(op),type_)
   end subroutine load_operators_list
@@ -282,10 +292,13 @@ contains
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
   !+------------------------------------------------------------------+
   function dump_op_operators_list(self,key) result(matrix)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     class(operators_list),intent(inout)   :: self
     character(len=*),intent(in)           :: key
 #ifdef _CMPLX
@@ -293,6 +306,7 @@ contains
 #else
     real(8),dimension(:,:),allocatable    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
     class(operators_list),intent(inout) :: self
@@ -301,6 +315,8 @@ contains
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     matrix = as_matrix( self%op(key=key) )  
   end function dump_op_operators_list
 
@@ -482,10 +498,13 @@ contains
 
 
   !+------------------------------------------------------------------+
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   !PURPOSE: Return all the keys in the operators_list
   !+------------------------------------------------------------------+  
   function types_operators_list(self,len) result(types)
@@ -500,6 +519,7 @@ contains
     enddo
   end function types_operators_list
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
   !PURPOSE: Dump operator of the operators_list as a dense matrix  given a key 
@@ -532,6 +552,8 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):LIST_OPERATORS.f90
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -622,6 +644,7 @@ contains
     shape = [c%ope%Nrow,c%ope%Ncol]
   end function shape_operators_list
 
+<<<<<<< HEAD
   !+------------------------------------------------------------------+
   !PURPOSE:  Returns the shape of the operators in the operators_list
   ! If valid list all operators have same shape so the first is fine. 
@@ -637,6 +660,8 @@ contains
     shape = [c%ope%Nrow,c%ope%Ncol]
   end function shape_operators_list
 
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -656,14 +681,18 @@ contains
   recursive subroutine show_operators_list(self,fmt,unit,file)
     class(operators_list),intent(inout) :: self
     character(len=*),optional           :: fmt
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,optional                    :: unit
     character(len=32)                   :: fmt_
     integer                             :: i,count=0
     type(optype),pointer                :: c
     character(len=*),optional           :: file
     integer                             :: unit_
+<<<<<<< HEAD
 =======
     integer,optional :: unit
     character(len=32)                   :: fmt_
@@ -680,6 +709,8 @@ contains
     character(len=*),optional           :: file
     integer                             :: unit_
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     unit_=6
     if(present(unit))unit_=unit
     if(present(file))open(free_unit(unit_),file=str(file))
@@ -692,13 +723,17 @@ contains
     do
        if(.not.associated(c))exit
        count=count+1
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        write(unit_,"(A6,I12)")  "Index:",c%index
        write(unit_,"(A6,A)")"Key  :",str(c%ckey)
        write(unit_,"(A6,A)")"Type :",str(c%ctype)
        call c%ope%display()
        write(unit_,*)""
+<<<<<<< HEAD
 =======
        write(*,"(A6,I12)")  "Index:",c%index
        write(*,"(A6,A)")"Key  :",str(c%ckey)
@@ -713,6 +748,8 @@ contains
        call c%ope%display()
        write(unit_,*)""
 >>>>>>> 94f42f9 (development version.):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        c => c%next
     end do
     c=>null()
@@ -795,6 +832,7 @@ program testOPERATORS_TUPLE
   character(len=10)                     :: key,type
   character(len=10),allocatable         :: keys(:)
   integer,parameter                     :: sec=500
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
@@ -832,6 +870,10 @@ program testOPERATORS_TUPLE
 
 
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
 
@@ -844,6 +886,7 @@ program testOPERATORS_TUPLE
   call my_list%show()
   call my_list%free()
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
@@ -853,6 +896,9 @@ program testOPERATORS_TUPLE
 =======
 
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,"TEST LOAD matrices"
   call my_list%load("H0",Hzero,'b')
@@ -864,6 +910,7 @@ program testOPERATORS_TUPLE
   call wait(sec)
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
@@ -873,6 +920,9 @@ program testOPERATORS_TUPLE
 =======
 
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   print*,"TEST (CONSTRUCT + )APPEND matrices"
   call my_list%append("H0",as_sparse(Hzero),'b')
   call my_list%append("Sz",as_sparse(Sz),'b')
@@ -880,11 +930,16 @@ program testOPERATORS_TUPLE
   call my_list%show()
   print*,""
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 =======
 
 
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -900,10 +955,13 @@ program testOPERATORS_TUPLE
   deallocate(mat)
   print*,""
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   print*,"TEST .GET"
@@ -916,10 +974,13 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   print*,"TEST .KEY + .OP + ITERATION over index"
@@ -937,6 +998,7 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
@@ -946,6 +1008,9 @@ program testOPERATORS_TUPLE
 =======
 
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,"TEST HAS_KEY"
   print*,"list has key Sz",my_list%has_key("Sz")
@@ -995,6 +1060,7 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
@@ -1004,6 +1070,9 @@ program testOPERATORS_TUPLE
 =======
 
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,"TEST ITERATION SIZE:"
   do i=1,size(my_list)
@@ -1023,13 +1092,17 @@ program testOPERATORS_TUPLE
   enddo
   print*,""
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
   print*,"TEST DEEP COPY '='"
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
+<<<<<<< HEAD
 =======
 
 
@@ -1042,6 +1115,8 @@ program testOPERATORS_TUPLE
 =======
   Gamma03=kron(S0,Sz)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a_list%append("gamma13",as_sparse(Gamma13),'b')
   call a_list%append("gamma03",as_sparse(Gamma03),'b')
   call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)),'b')
@@ -1053,10 +1128,13 @@ program testOPERATORS_TUPLE
   call clist(2)%show()
   print*,""
   call wait(sec)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/LIST/LIST_OPERATORS.f90
 
 =======
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):LIST_OPERATORS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 end program testOPERATORS_TUPLE

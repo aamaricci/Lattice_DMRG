@@ -1,4 +1,5 @@
 MODULE BLOCKS
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
@@ -16,6 +17,9 @@ MODULE BLOCKS
 =======
   USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
 >>>>>>> 94f42f9 (development version.):BLOCKS.f90
+=======
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -32,6 +36,7 @@ MODULE BLOCKS
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
      type(operators_list)                        :: omatrices
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
      character(len=:),allocatable                :: Opname
@@ -41,6 +46,9 @@ MODULE BLOCKS
 =======
      character(len=:),allocatable                :: Opname
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+     character(len=:),allocatable                :: Opname
+>>>>>>> 7e90d6a (Updating Cmake library construction)
      character(len=:),allocatable                :: SiteType
    contains
      procedure,pass :: free        => free_block
@@ -52,6 +60,7 @@ MODULE BLOCKS
      procedure,pass :: is_valid    => is_valid_block
      procedure,pass :: renormalize => rotate_operators_block
      procedure,pass :: okey        => okey_block
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
@@ -66,6 +75,10 @@ MODULE BLOCKS
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
      procedure,pass :: type        => SiteType_block
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+     procedure,pass :: name        => Opname_block
+     procedure,pass :: type        => SiteType_block
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end type block
 
 
@@ -114,6 +127,7 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
     if(allocated(self%Opname))deallocate(self%Opname)
@@ -123,6 +137,9 @@ contains
 =======
     if(allocated(self%Opname))deallocate(self%Opname)
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+    if(allocated(self%Opname))deallocate(self%Opname)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_block
 
@@ -131,6 +148,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
   function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
@@ -140,11 +158,15 @@ contains
 =======
   function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,intent(in)              :: length
     integer,intent(in)              :: Dim
     type(sectors_list),intent(in)   :: sectors(:)
     type(operators_list),intent(in) :: operators
     type(operators_list),intent(in) :: omatrices
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
     character(len=:),allocatable    :: OpName
@@ -156,6 +178,10 @@ contains
     character(len=:),allocatable    :: OpName
     character(len=:),allocatable    :: SiteType
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+    character(len=:),allocatable    :: OpName
+    character(len=:),allocatable    :: SiteType
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     type(block)                     :: self
     self%length    = length
     self%Dim       = Dim
@@ -165,6 +191,7 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i) = sectors(i)
     enddo
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
     allocate(self%OpName, source=OpName)
@@ -177,6 +204,10 @@ contains
     allocate(self%OpName, source=OpName)
     allocate(self%SiteType, source=SiteType)
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+    allocate(self%OpName, source=OpName)
+    allocate(self%SiteType, source=SiteType)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end function constructor_from_scrath
 
 
@@ -186,16 +217,20 @@ contains
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
 #else
     call self%omatrices%put("1",sparse(eye(self%Dim)))
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     call self%omatrices%put("1",sparse(zeye(self%Dim)))
@@ -205,10 +240,13 @@ contains
 >>>>>>> f63915b (Testing the code.):BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     allocate(self%sectors(size(ssite%sectors)))
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
     enddo
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
     allocate(self%OpName, source=ssite%OpName)
@@ -218,6 +256,9 @@ contains
 =======
     allocate(self%OpName, source=ssite%OpName)
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+    allocate(self%OpName, source=ssite%OpName)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     allocate(self%SiteType, source=ssite%SiteType)
   end function constructor_from_site
 
@@ -283,6 +324,7 @@ contains
 
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
@@ -290,14 +332,19 @@ contains
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   !+------------------------------------------------------------------+
   !PURPOSE:  
   !+------------------------------------------------------------------+
   subroutine rotate_operators_block(self,Umat)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     class(block)                     :: self
 #ifdef _CMPLX
     complex(8),dimension(:,:)        :: Umat   ![N,M]
@@ -307,6 +354,7 @@ contains
     integer                          :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)              :: Op
     character(len=:),allocatable     :: key,type
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     class(block)                 :: self
@@ -321,6 +369,8 @@ contains
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     N = size(Umat,1)
     M = size(Umat,2)
@@ -340,8 +390,11 @@ contains
     !Udgr.rho.U [M,N].[N,N].[N,M]=[M,M]
     function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
       type(sparse_matrix),intent(in) :: Op
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
       integer                        :: N,M
       type(sparse_matrix)            :: RotOp
 #ifdef _CMPLX
@@ -353,6 +406,7 @@ contains
       real(8),dimension(M,M)         :: Umat
       real(8),dimension(N,N)         :: OpMat
 #endif
+<<<<<<< HEAD
 =======
       real(8),dimension(N,M)         :: trRho
 =======
@@ -372,31 +426,40 @@ contains
 =======
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
       N = size(trRho,1)
       M = size(trRho,2)
       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
       OpMat= Op%as_matrix()
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
       Umat = matmul( matmul( conjg(transpose(trRho)),OpMat),trRho) 
 #else
       Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
       Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
 >>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
       call RotOp%load( Umat )
     end function rotate_and_truncate
     !
   end subroutine rotate_operators_block
   !
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
@@ -418,6 +481,8 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):BLOCKS.f90
 =======
 >>>>>>> 6b8bcf7 (intermediate commit.):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   !##################################################################
@@ -440,6 +505,7 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i) = B%sectors(i)
     enddo
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
     allocate(A%OpName, source=B%OpName)
@@ -449,6 +515,9 @@ contains
 =======
     allocate(A%OpName, source=B%OpName)
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+    allocate(A%OpName, source=B%OpName)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_block
 
@@ -481,8 +550,11 @@ contains
 
   function okey_block(self,iorb,ispin,isite) result(string)
     class(block)                 :: self
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,optional             :: iorb,isite,ispin
     integer                      :: iorb_,isite_,ispin_
     character(len=:),allocatable :: string
@@ -493,6 +565,7 @@ contains
     if(iorb_==0.AND.ispin_==0)stop "Okey_Block ERROR: iorb == ispin == 0"
     string = okey(iorb_,ispin_,isite_)
     !
+<<<<<<< HEAD
 =======
     integer                      :: iorb
     integer,optional             :: ispin,isite
@@ -514,18 +587,24 @@ contains
     string = okey(iorb_,ispin_,isite_)
     !
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
   end function okey_block
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   function OpName_block(self) result(string)
     class(block)                  :: self
     character(len=:),allocatable :: string
     allocate(string, source=self%OpName)
   end function OpName_block
+<<<<<<< HEAD
 =======
   function KeyLink_block(self) result(string)
     class(block)                  :: self
@@ -540,11 +619,14 @@ contains
     allocate(string, source=self%OpName)
   end function OpName_block
 >>>>>>> 9660a95 (2.0.0 STABLE UPDATED CODE + BUG FIXED):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   function SiteType_block(self) result(string)
     class(block)                  :: self
     character(len=:),allocatable :: string
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
     string = to_lower(str(self%SiteType))
@@ -560,6 +642,11 @@ contains
   end function SiteType_block
 
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
+=======
+    string = to_lower(str(self%SiteType))
+  end function SiteType_block
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   !##################################################################
@@ -571,8 +658,11 @@ contains
     class(block)              :: self
     character(len=*),optional :: fmt
     logical,optional          :: wOP,wOMAT
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     character(len=*),optional :: file
     character(len=32)         :: fmt_
     logical                   :: wOP_,wOMAT_
@@ -580,6 +670,7 @@ contains
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     wOP_  =.false.;if(present(wOP))  wOP_  =wOP
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     character(len=*),optional       :: file
@@ -593,12 +684,15 @@ contains
     wOP_  =.false.;if(present(wOP))  wOP_  =wOP
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
 >>>>>>> 94f42f9 (development version.):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     unit_=6;if(present(file))open(free_unit(unit_),file=str(file))
     !
     write(unit_,"(A15,I6)")"Block Length  =",self%length
     write(unit_,"(A15,I6)")"Block Dim     =",self%Dim
     write(unit_,"(A16,A)") "Block Type    = ",self%SiteType
     write(unit_,"(A15,I6)")"Block Sectors =",size(self%sectors)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
     write(*,"(A15,I6)")"Block Length  =",self%length
@@ -608,23 +702,31 @@ contains
 >>>>>>> 7f27ed5 (Intermediate commit.):BLOCKS.f90
 =======
 >>>>>>> 94f42f9 (development version.):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,size(self%sectors)
        write(unit_,"(A14,I6)")"Block Sector  =",i
        call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
        write(unit_,"(A15,A)")"Op Name    = ",self%OpName
        write(unit_,"(A14)")"Block Operators:"
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
+=======
+       write(unit_,"(A15,A)")"Op Name    = ",self%OpName
+       write(unit_,"(A14)")"Block Operators:"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
     if(wOMAT_)then
        write(unit_,"(A14)")"Block Omats   :"
        call self%omatrices%show(fmt=fmt_,unit=unit_)
+<<<<<<< HEAD
 =======
        write(*,"(A15,A)")"Link Name    = ",self%KeyLink
        write(*,"(A14)")"Block Ops     :"
@@ -649,6 +751,8 @@ contains
        write(unit_,"(A14)")"Block Omats   :"
        call self%omatrices%show(fmt=fmt_,unit=unit_)
 >>>>>>> 94f42f9 (development version.):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     endif
     if(present(file))close(unit_)
   end subroutine show_block
@@ -680,6 +784,7 @@ END MODULE BLOCKS
 !##################################################################
 #ifdef _TEST
 program testBLOCKS
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
   USE SCIFOR
@@ -689,6 +794,9 @@ program testBLOCKS
 =======
   USE SCIFOR
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+  USE SCIFOR
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   USE MATRIX_SPARSE
   USE LIST_OPERATORS
   USE TUPLE_BASIS
@@ -696,10 +804,13 @@ program testBLOCKS
   USE SITES
   USE BLOCKS
   implicit none
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   type(block)                         :: my_block,a
   type(block),allocatable             :: my_blocks(:)
   type(operators_list)                :: op
@@ -721,6 +832,7 @@ program testBLOCKS
   real(8),dimension(2,2),parameter    :: Splus=reshape([zero,zero,one,zero],[2,2])
   real(8),dimension(4,4)              :: Gamma13,Gamma03
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/DOTS/BLOCKS.f90
 =======
 
@@ -758,6 +870,11 @@ program testBLOCKS
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):BLOCKS.f90
+=======
+
+  Gamma13=kron(Sx,Sz)
+  Gamma03=kron(S0,Sz)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)

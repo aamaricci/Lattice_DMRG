@@ -9,8 +9,11 @@ MODULE MATRIX_BLOCKS
   type block_type
      integer                               :: index=0
      real(8),dimension(:),allocatable      :: qn
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
      integer,dimension(:),allocatable      :: map
      real(8),dimension(:),allocatable      :: E
 #ifdef _CMPLX
@@ -18,6 +21,7 @@ MODULE MATRIX_BLOCKS
 #else
      real(8),dimension(:,:),allocatable    :: M
 #endif
+<<<<<<< HEAD
 =======
      real(8),dimension(:),allocatable      :: E
      integer,dimension(:),allocatable      :: map
@@ -40,6 +44,8 @@ MODULE MATRIX_BLOCKS
      real(8),dimension(:,:),allocatable    :: M
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
      type(block_type),pointer              :: next=>null()
   end type block_type
 
@@ -157,16 +163,20 @@ contains
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
   function construct_blocks_matrix(matrix,qn,map) result(self)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
@@ -176,6 +186,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     type(blocks_matrix)                  :: self
@@ -192,16 +204,20 @@ contains
     class(blocks_matrix),intent(inout)   :: self
     real(8),dimension(:)                 :: qn
     integer,dimension(:)                 :: map
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
@@ -211,6 +227,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call self%free()
     allocate(self%root)
     call self%append(matrix,qn,map)
@@ -263,16 +281,20 @@ contains
   !+------------------------------------------------------------------+
   subroutine append_blocks_matrix(self,matrix,qn,map)
     class(blocks_matrix),intent(inout)   :: self
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
@@ -282,6 +304,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     integer                              :: Dim
@@ -325,16 +349,20 @@ contains
   !+------------------------------------------------------------------+
   subroutine push_blocks_matrix(self,matrix,qn,map)
     class(blocks_matrix),intent(inout)   :: self
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
@@ -344,6 +372,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8),dimension(:),intent(in)      :: qn
     integer,dimension(:)                 :: map
     logical                              :: iupdate
@@ -400,16 +430,20 @@ contains
   function get_block_blocks_matrix(self,index,m) result(matrix)
     class(blocks_matrix)                  :: self
     integer,optional                      :: index,m
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: matrix
 #else
     real(8),dimension(:,:),allocatable    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),allocatable :: matrix
@@ -419,6 +453,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer                               :: index_,m_
     logical                               :: ifound
     type(block_type),pointer              :: c
@@ -478,6 +514,7 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
@@ -496,6 +533,8 @@ contains
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -514,6 +553,7 @@ contains
     class(blocks_matrix)             :: self
     integer,optional                 :: index
     integer,optional                 :: m
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
@@ -521,6 +561,8 @@ contains
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,dimension(:),allocatable :: map
     integer                          :: index_,q,m_,i
     type(block_type),pointer         :: c
@@ -536,6 +578,7 @@ contains
        stop "get_qn_blocks_matrix error: !present(index) + !present(m)"
     endif
     if(index_>self%Nblock.OR.index_<=0)stop "get_qn_blocks_matrix error: block_index !in [1,self.size]"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
@@ -553,6 +596,8 @@ contains
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     c => self%root
     do i=1,index_               !index_ should in in [1,Nblock]
        c => c%next
@@ -560,6 +605,7 @@ contains
     !
     if(allocated(map))deallocate(map)
     allocate(map, source=c%map)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
@@ -567,6 +613,8 @@ contains
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> 6b8bcf7 (intermediate commit.):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     c=>null()
   end function get_map_blocks_matrix
@@ -607,16 +655,20 @@ contains
   !+------------------------------------------------------------------+
   function dump_blocks_matrix(self) result(matrix)
     class(blocks_matrix),intent(inout)    :: self
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: matrix,mtmp
 #else
     real(8),dimension(:,:),allocatable    :: matrix,mtmp
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:,:),allocatable :: matrix,mtmp
@@ -626,6 +678,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer                               :: Offset1,Offset2
     integer                               :: N1,N2
     type(block_type),pointer              :: c
@@ -668,17 +722,21 @@ contains
     type(sparse_matrix)                 :: sparse
     integer,dimension(2)                :: dims
     integer                             :: i,it
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,dimension(:),allocatable    :: self_map
 #ifdef _CMPLX
     complex(8),dimension(:),allocatable :: self_vec
 #else
     real(8),dimension(:),allocatable    :: self_vec
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:),allocatable :: self_vec
@@ -693,6 +751,8 @@ contains
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     dims = self%shape()
     call sparse%init(dims(1),dims(2))
     do it=1,dims(2)
@@ -729,17 +789,21 @@ contains
     type(sparse_matrix)                 :: sparse
     integer,dimension(2)                :: dims
     integer                             :: i,it
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,dimension(:),allocatable    :: self_map
 #ifdef _CMPLX
     complex(8),dimension(:),allocatable :: self_vec
 #else
     real(8),dimension(:),allocatable    :: self_vec
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:),allocatable :: self_vec
@@ -756,6 +820,8 @@ contains
 >>>>>>> adec2ad (intermediate commit.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call sparse%init(n,m)
     do it=1,m
        self_vec = self%evec(m=it) !returns the smallest it-th evector
@@ -784,12 +850,15 @@ contains
     logical                                   :: sort_,reverse_
     real(8),dimension(:),allocatable          :: Rtmp
     integer,dimension(:),allocatable          :: Itmp
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
     logical                                   :: sort_,reverse_
     real(8),dimension(:),allocatable          :: Rtmp
     integer,dimension(:),allocatable          :: Itmp
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     type(block_type),pointer                  :: c
     integer                                   :: i,Nloc,Offset,N
     !
@@ -811,6 +880,7 @@ contains
        if(any(shape(c%M)/=[Nloc,Nloc]))stop "eigh block matrix ERROR: local block is not square"
        if(allocated(c%E))deallocate(c%E)
        allocate(c%E(Nloc));c%E=0d0
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
@@ -820,6 +890,9 @@ contains
 =======
        call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
 >>>>>>> e5e5680 (Intermediate commit.):MATRIX_BLOCKS.f90
+=======
+       call eigh(c%M,c%E)  !<- overwrites blocks with eigenvec matrix
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        !
        where(c%E<0d0)c%E=1d-20
        self%evalues(Offset+1:Offset+Nloc) = c%E
@@ -888,16 +961,20 @@ contains
   function evec_blocks_matrix(self,m) result(vec)
     class(blocks_matrix)                :: self
     integer                             :: m
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:),allocatable :: vec
 #else
     real(8),dimension(:),allocatable    :: vec
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8),dimension(:),allocatable :: vec
@@ -907,6 +984,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer                             :: m_,i,q,pos
     type(block_type),pointer            :: c
     !
@@ -1129,16 +1208,20 @@ contains
     character(len=12)               :: fmt_
     integer                         :: i,j,unit_
     character(len=64)               :: format
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
     real(8)                         :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
     complex(8)                      :: val
@@ -1148,20 +1231,26 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     type(block_type),pointer        :: c
     !
     unit_=6
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
     if(present(file))open(free_unit(unit_),file=str(file))
     !
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
 #else
     format='('//str(fmt_)//'1x)'
 #endif
+<<<<<<< HEAD
 =======
     format='(A1,'//str(fmt_)//',A1,'//str(fmt_)//',A1,1x)'
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
@@ -1176,6 +1265,8 @@ contains
     format='('//str(fmt_)//'1x)'
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     write(unit_,"(A6,I12)")"Size :",size(self)
     write(unit_,"(A6,2I6)")"Shape:",shape(self)
@@ -1192,18 +1283,22 @@ contains
        do i=1,size(c%M,1)
           do j=1,size(c%M,2)
              val = c%M(i,j)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
              write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')&
                   "(",dreal(val),",",dimag(val),")"
 #else
              write(unit_,"("//str(self%Ncol)//"(F12.4,1X))",advance='no')val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
              write(unit_,"("//str(self%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
@@ -1217,6 +1312,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           enddo
           write(unit_,*)
        enddo
@@ -1241,16 +1338,20 @@ contains
     integer                          :: i    
     call adg%free()
     do i=1,size(a)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
        call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
 #else
        call adg%append(transpose(a%block(index=i)),a%qn(index=i), a%map(index=i) )
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 =======
        call adg%append( conjg(transpose(a%block(index=i))), a%qn(index=i), a%map(index=i))
@@ -1260,11 +1361,14 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_BLOCKS.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     enddo
   end function dgr_blocks_matrix
 
 
   function transpose_blocks_matrix(a) result(at)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
     class(blocks_matrix), intent(in) :: a
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
@@ -1276,12 +1380,19 @@ contains
     integer                          :: i    
     call adg%free()
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
+=======
+    class(blocks_matrix), intent(in) :: a
+    type(blocks_matrix)              :: at
+    integer                          :: i    
+    call at%free()
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,size(a)
        call at%append(transpose(a%block(index=i)), a%qn(index=i), a%map(index=i))
     enddo
   end function transpose_blocks_matrix
 
   function hconjg_blocks_matrix(a) result(adg)
+<<<<<<< HEAD
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
     class(blocks_matrix), intent(in) :: a
@@ -1303,6 +1414,8 @@ contains
   end function hconjg_blocks_matrix
 
   function hconjg_blocks_matrix(a) result(adg)
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     class(blocks_matrix), intent(in) :: a
     type(blocks_matrix)              :: adg
     integer                          :: i    
@@ -1362,6 +1475,7 @@ program testBLOCK_MATRICES
   type(tbasis)                          :: a_basis
   type(sectors_list)                    :: a_sector
   integer,dimension(:),allocatable      :: a_map
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
@@ -1417,6 +1531,8 @@ program testBLOCK_MATRICES
   Gamma03=kron(zeye(2),Sz)
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_BLOCKS.f90
 =======
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   real(8),dimension(:),allocatable      :: evals
   integer,dimension(:),allocatable      :: eorder,Dq
   integer                               :: i,j,q,N,count
@@ -1442,7 +1558,10 @@ program testBLOCK_MATRICES
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
+<<<<<<< HEAD
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   !Here we create a fake basis, a fake sector to use when building block_matrices
   a_basis  = tbasis([0,0, 1,0, 0,1, 1,1],Qdim=2)
@@ -1463,6 +1582,7 @@ program testBLOCK_MATRICES
   print*,""
 
   print*,"test CONSTRUCTOR 3: append (two elements [2x2],[4x4])"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%append(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
@@ -1475,6 +1595,10 @@ program testBLOCK_MATRICES
   call a%append(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
   call a%append(kron(S0,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+  call a%append(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+  call a%append(kron(S0,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%show()
   bvec(1)=a
   call a%free()
@@ -1483,6 +1607,7 @@ program testBLOCK_MATRICES
 
 
   print*,"test GET BLOCK MATRIX:"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%load(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
@@ -1492,6 +1617,9 @@ program testBLOCK_MATRICES
 =======
   call a%load(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+  call a%load(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%append(kron(Sz,Sx),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
   bvec(2)=a
   call a%show()
@@ -1515,6 +1643,7 @@ program testBLOCK_MATRICES
 
   print*,"test EQUALITY:"
   call a%load(Sx,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%append(kron(S0,Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
@@ -1524,6 +1653,9 @@ program testBLOCK_MATRICES
 =======
   call a%append(kron(S0,Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+  call a%append(kron(S0,Sx),qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%show()
   blH = a
   bvec(3)=a
@@ -1543,6 +1675,7 @@ program testBLOCK_MATRICES
 
 
   print*,"test PUSH:"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   a = as_blocks(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
@@ -1552,6 +1685,9 @@ program testBLOCK_MATRICES
 =======
   a = as_blocks(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+  a = as_blocks(S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%show()  
   call a%push(kron(Sx,Sz),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))
   call a%push(Sx,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
@@ -1563,6 +1699,7 @@ program testBLOCK_MATRICES
   print*,""
 
   print*,"test DGR:"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   a = blocks_matrix(Splus,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
@@ -1572,6 +1709,9 @@ program testBLOCK_MATRICES
 =======
   a = blocks_matrix(Splus,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+  a = blocks_matrix(Splus,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%append(kron(Splus,Sz),qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
   call a%show()
   adg = a%dgr()
@@ -1583,6 +1723,7 @@ program testBLOCK_MATRICES
 
 
   print*,"test EIGH:"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_BLOCKS.f90
   call a%append(mersenne()*S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
@@ -1592,6 +1733,9 @@ program testBLOCK_MATRICES
 =======
   call a%append(mersenne()*S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_BLOCKS.f90
+=======
+  call a%append(mersenne()*S0,qn=[0d0,0d0],map=a_sector%map(qn=[0d0,0d0]))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%append(mersenne()*Sx,qn=[1d0,0d0],map=a_sector%map(qn=[1d0,0d0]))
   call a%append(mersenne()*Sz,qn=[0d0,1d0],map=a_sector%map(qn=[0d0,1d0]))
   call a%append(mersenne()*kron(Sz,Sx),qn=[1d0,1d0],map=a_sector%map(qn=[1d0,1d0]))

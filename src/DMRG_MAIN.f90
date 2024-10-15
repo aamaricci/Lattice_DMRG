@@ -21,7 +21,11 @@ contains
 
 
   !##################################################################
+<<<<<<< HEAD
   !              INIT DMRG ALGORITHM
+=======
+  !              INIT/FINALIZE DMRG ALGORITHM
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
 #ifdef _CMPLX
@@ -30,10 +34,13 @@ contains
     real(8),dimension(:,:)    :: Hij
 #endif
     type(site)                :: ModelDot
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: init DMRG"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
     allocate(HopH, source=Hij)
@@ -45,6 +52,7 @@ contains
     init_called =.true.
   end subroutine init_dmrg
 
+<<<<<<< HEAD
   
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
@@ -54,6 +62,10 @@ contains
     write(LOGfile,*)"DEBUG: Finalize DMRG"
 #endif
     !
+=======
+
+  subroutine finalize_dmrg()
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(allocated(HopH))deallocate(HopH)    
     call dot%free()
     call init_left%free()
@@ -76,6 +88,7 @@ contains
   !##################################################################
   subroutine infinite_DMRG()
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Infinite Algorithm"
 #endif
@@ -87,6 +100,20 @@ contains
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
+=======
+    if(.not.init_called)&
+         stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
+    left=init_left
+    right=init_right
+    !
+    suffix = label_DMRG('i',1)
+    !
+    do while (left%length < Ldmrg)
+       call step_dmrg()
+       call write_energy()
+       call write_truncation()
+       call write_entanglement()
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     enddo
   end subroutine infinite_DMRG
 
@@ -97,12 +124,15 @@ contains
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
     integer                                :: j
+<<<<<<< HEAD
     logical                                :: ExitSweep
     integer :: m_rleft,m_rright
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     if(mod(Ldmrg,2)/=0)&
          stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
@@ -110,6 +140,7 @@ contains
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     !
+<<<<<<< HEAD
     left =init_left
     right=init_right
     !
@@ -123,6 +154,24 @@ contains
     blocks_list(right_label,1)=right
     do while (left%length < Ldmrg)
        call step_dmrg('i')
+=======
+    left=init_left
+    right=init_right
+    !
+    left_label=1
+    right_label=2
+    !Infinite DMRG
+    !
+    suffix = label_DMRG('i',1)
+    !
+    allocate(blocks_list(2,Ldmrg))
+    blocks_list(left_label,1)=left
+    blocks_list(right_label,1)=right
+    do while (2*left%length <= Ldmrg)
+       call step_dmrg()
+       call write_energy()
+       call write_entanglement()
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        blocks_list(left_label,left%length)=left
        blocks_list(right_label,right%length)=right
     enddo
@@ -139,10 +188,16 @@ contains
        else
           write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
+<<<<<<< HEAD
        !
        ExitSweep=.false.
        sweep: do while(.true.)
           right = blocks_list(right_label,2*Ldmrg - left%length)
+=======
+       suffix = label_DMRG('f',im)
+       sweep: do while(.true.)
+          right = blocks_list(right_label,Ldmrg - left%length)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           if(right%length==1)then
              right_label= 3-right_label
              left_label = 3-left_label
@@ -150,15 +205,27 @@ contains
              left       = right
              right      = tmp
              call tmp%free()
+<<<<<<< HEAD
              ExitSweep  = .true.
           endif
           !
           call step_dmrg('f',left_label,im)
+=======
+          endif
+          !
+          call step_dmrg(left_label,im)
+          call write_energy()
+          call write_entanglement()
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           !
           blocks_list(left_label,left%length) = left
           print*,""
           print*,""
+<<<<<<< HEAD
           if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
+=======
+          if(left_label==1.AND.left%length==Ldmrg/2)exit sweep
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        enddo sweep
     enddo
     !
@@ -178,6 +245,7 @@ contains
   !##################################################################
   !              WORKHORSE: STEP DMRG 
   !##################################################################
+<<<<<<< HEAD
   subroutine step_dmrg(type,label,sweep)
     character(len=1) :: type
     integer,optional :: label,sweep
@@ -209,6 +277,30 @@ contains
        stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
     end select
     !
+=======
+  subroutine step_dmrg(label,isweep)
+    integer,optional                   :: label,isweep
+    integer                            :: iLabel
+    integer                            :: m_sb
+    integer                            :: m_rleft,m_rright
+    integer                            :: m_es,m_ee
+    integer                            :: m_left,m_right
+    integer                            :: m_eleft,m_eright
+    integer                            :: current_L
+    !
+    iLabel=0;if(present(label))iLabel=label
+    !2Bremoved
+    suffix = label_DMRG('i',1)
+    !
+    Mstates=Mdmrg
+    Estates=Edmrg
+    if(present(isweep))then
+       if(isweep>Nsweep)stop "step_dmrg ERROR: isweep > Nsweep"
+       if(isweep<1)stop "step_dmrg ERROR: isweep < 1"
+       Mstates = Msweep(isweep)
+       Estates = Esweep(isweep)
+    endif
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     if(.not.left%is_valid(.true.))stop "single_dmrg_step error: left is not a valid block"
     if(.not.right%is_valid(.true.))stop "single_dmrg_step error: right is not a valid block"
@@ -221,18 +313,29 @@ contains
     call dmrg_graphic(iLabel)    
     call start_timer()
     !
+<<<<<<< HEAD
     ! !#################################
     ! !    Renormalize BLOCKS
     ! !#################################
     ! call renormalize_block('left',m_rleft)
     ! call renormalize_block('right',m_rright)
+=======
+    !#################################
+    !    Renormalize BLOCKS
+    !#################################
+    call renormalize_block('left',m_rleft)
+    call renormalize_block('right',m_rright)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     !
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
     !#################################
+<<<<<<< HEAD
     Lleft =left%length
     Lright=right%length
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call enlarge_block(left,dot,grow='left')
     call enlarge_block(right,dot,grow='right')
     !
@@ -248,6 +351,7 @@ contains
     call sb_get_states()
     m_sb = size(sb_states)
     !
+<<<<<<< HEAD
     !
     !#################################
     !       DIAG SUPER-BLOCK
@@ -287,6 +391,16 @@ contains
     !#################################
     write(LOGfile,"(A,I12,12X,I12)")&
          "         Blocks Length               :",Lleft,Lright
+=======
+    write(LOGfile,"(A,I12,12X,I12)")&
+         "Blocks Length                        :",left%length-1,right%length-1
+    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
+         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
+    write(LOGfile,"(A,L12,12X,L12)")&
+         "Truncating                           :",Mstates<=m_left,Mstates<=m_right
+    write(LOGfile,"(A,2ES24.15)")&
+         "Truncation Errors                    :",truncation_error_left,truncation_error_right
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     write(LOGfile,"(A,I12,12X,I12)")&
          "Enlarged Blocks Length               :",left%length,right%length
     write(LOGfile,"(A,I12,12X,I12)")&
@@ -304,6 +418,7 @@ contains
          "Filling                              :",sum(current_target_QN)/current_L
     write(LOGfile,"(A,3x,G24.15)")&
          "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
+<<<<<<< HEAD
     if(renormalize)then
        write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
             "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
@@ -313,6 +428,24 @@ contains
             "Truncation Errors                    :",truncation_error_left,truncation_error_right
     endif
     !
+=======
+    !
+    !
+    !#################################
+    !       DIAG SUPER-BLOCK
+    !#################################
+    call sb_diag()
+    !
+    !#################################
+    !      BUILD RDM
+    !#################################
+    call sb_get_rdm()
+    !
+    !
+    !#################################
+    !      WRITE AND EXIT
+    !#################################
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     select case(left%type())
     case ("fermion","f")
        write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
@@ -321,11 +454,15 @@ contains
        write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
             "Energies/L                           :",gs_energy/current_L
     end select
+<<<<<<< HEAD
     !
     call write_energy()
     call write_truncation()
     call write_entanglement()
     !
+=======
+    call stop_timer("dmrg_step")
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     !Clean memory:
     call spHsb%free()

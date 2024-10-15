@@ -3,9 +3,14 @@ SET(USER $ENV{USER})
 
 STRING(TOLOWER "${CMAKE_Fortran_COMPILER_ID}" FC_ID)
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE)
+<<<<<<< HEAD
 STRING(TOLOWER "${CMAKE_PRECISION}" PRECISION)
 
 #default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<precision>/<version>
+=======
+
+#default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<version>
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 SET(PREFIX_DEF_LOC "$ENV{HOME}/opt")
 SET(PREFIX_PROJ "${PROJECT_NAME}")
 SET(PREFIX_PATH "${FC_ID}")
@@ -24,6 +29,7 @@ IF( (NOT GIT_BRANCH MATCHES "master") )
 ENDIF()
 
 #If DEBUG, add /debug to
+<<<<<<< HEAD
 IF("${BUILD_TYPE}" MATCHES "debug" OR "${BUILD_TYPE}" MATCHES "aggressive")
   SET(PREFIX_PATH  "${PREFIX_PATH}/${BUILD_TYPE}")
 ENDIF()
@@ -31,6 +37,12 @@ ENDIF()
 
 SET(PREFIX_PATH  "${PREFIX_PATH}/${PRECISION}")
 
+=======
+IF("${BUILD_TYPE}" MATCHES "debug")
+  SET(PREFIX_PATH  "${PREFIX_PATH}/${BUILD_TYPE}")
+ENDIF()
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #set default prefix:
 SET(FULL_VER "${PREFIX_PATH}/${VERSION}")
 SET(VERSION_PATH "${PREFIX_PROJ}/${PREFIX_PATH}")

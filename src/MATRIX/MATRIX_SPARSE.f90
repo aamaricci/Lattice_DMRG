@@ -1,4 +1,5 @@
 MODULE MATRIX_SPARSE  
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -19,6 +20,10 @@ MODULE MATRIX_SPARSE
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
   USE AUX_FUNCS, only: show_fmt,append
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+  USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
+  USE AUX_FUNCS, only: show_fmt,append
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   implicit none
   private
 
@@ -34,6 +39,7 @@ MODULE MATRIX_SPARSE
 
   !SPARSE ROW OF THE SPARSE MATRIX: note this is dynamic array
   type sparse_row
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
      integer                             :: size
@@ -41,12 +47,16 @@ MODULE MATRIX_SPARSE
 =======
      integer                             :: size
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+     integer                             :: size
+>>>>>>> 7e90d6a (Updating Cmake library construction)
      integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
      complex(8),dimension(:),allocatable :: vals
 #else
      real(8),dimension(:),allocatable    :: vals
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
      complex(8),dimension(:),allocatable :: vals
@@ -59,6 +69,8 @@ MODULE MATRIX_SPARSE
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end type sparse_row
 
   !SPARSE MATRIX STRUCTURE
@@ -122,9 +134,12 @@ MODULE MATRIX_SPARSE
   interface operator(*)
      module procedure :: sp_left_product_matrix_i
      module procedure :: sp_left_product_matrix_d
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
      module procedure :: sp_left_product_matrix_c
 #endif
@@ -134,6 +149,7 @@ MODULE MATRIX_SPARSE
 #ifdef _CMPLX
      module procedure :: sp_right_product_matrix_c
 #endif
+<<<<<<< HEAD
 =======
      module procedure :: sp_left_product_matrix_c
      !
@@ -159,12 +175,15 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_right_product_matrix_c
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end interface operator(*)
 
   !SCALAR DIVISION
   interface operator(/)
      module procedure :: sp_right_division_matrix_i
      module procedure :: sp_right_division_matrix_d
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -182,6 +201,11 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_right_division_matrix_c
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#ifdef _CMPLX
+     module procedure :: sp_right_division_matrix_c
+#endif
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end interface operator(/)
 
 
@@ -218,6 +242,7 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_hconjg_matrix
   end interface hconjg
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
@@ -225,6 +250,8 @@ MODULE MATRIX_SPARSE
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
 =======
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   intrinsic :: matmul
   interface matmul
      module procedure :: sp_matmul_matrix
@@ -235,10 +262,13 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_filter_matrix_1
      module procedure :: sp_filter_matrix_2
   end interface sp_filter
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 
 =======
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   public :: sparse_matrix
   public :: as_sparse
@@ -258,10 +288,14 @@ MODULE MATRIX_SPARSE
   public :: matmul
   public :: sp_eye
   public :: sp_filter
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 contains       
 
@@ -294,6 +328,7 @@ contains
     sparse%status=.true.
   end subroutine sp_init_matrix
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 
@@ -309,11 +344,16 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+
+  function sp_construct_matrix(matrix) result(self)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
@@ -323,6 +363,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     type(sparse_matrix)                  :: self
     call self%load(matrix)
   end function sp_construct_matrix
@@ -356,17 +398,21 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_load_matrix(sparse,matrix)
     class(sparse_matrix),intent(inout)   :: sparse
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(in) :: matrix
 #else
     real(8),dimension(:,:),intent(in)    :: matrix
 #endif
     integer                              :: Ndim1,Ndim2
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8),dimension(:,:),intent(in) :: matrix
@@ -377,6 +423,8 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     call sparse%free()
     Ndim1=size(matrix,1)
@@ -396,17 +444,21 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_dump_matrix(sparse,matrix)
     class(sparse_matrix),intent(in)         :: sparse
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),intent(inout) :: matrix
 #else
     real(8),dimension(:,:),intent(inout)    :: matrix
 #endif
     integer                                 :: Ndim1,Ndim2
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8),dimension(:,:),intent(inout) :: matrix
@@ -417,6 +469,8 @@ contains
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     Ndim1=size(matrix,1)
     Ndim2=size(matrix,2)
     call assert_shape(matrix,[sparse%Nrow,sparse%Ncol],"sp_dump_matrix","Matrix")
@@ -434,11 +488,14 @@ contains
   !+------------------------------------------------------------------+
   function sp_as_matrix(sparse) result(matrix)
     class(sparse_matrix),intent(in)               :: sparse
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
 #else
@@ -446,6 +503,7 @@ contains
 #endif
     matrix = zero
     if(.not.sparse%status)return
+<<<<<<< HEAD
 =======
     complex(8),dimension(sparse%Nrow,sparse%Ncol) :: matrix
 =======
@@ -458,6 +516,8 @@ contains
 =======
     if(.not.sparse%status)return
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,sparse%Nrow
        do j=1,sparse%row(i)%Size
           matrix(i,sparse%row(i)%cols(j)) = sparse%row(i)%vals(j)
@@ -471,16 +531,20 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),intent(in)              :: value
 #else
     real(8),intent(in)                 :: value
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8),intent(in)              :: value
@@ -490,6 +554,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     logical                            :: iadd
@@ -518,16 +584,20 @@ contains
   !no addition, no check... wild cow-boy 
   subroutine sp_fast_insert_element(sparse,value,i,j)
     class(sparse_matrix),intent(inout) :: sparse
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),intent(in)              :: value
 #else
     real(8),intent(in)                 :: value
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8),intent(in)              :: value
@@ -537,6 +607,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,intent(in)                 :: i,j
     integer                            :: column,pos
     !
@@ -554,15 +626,21 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE: get the element value at position (i,j) in the sparse matrix
   !+------------------------------------------------------------------+
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   function sp_get_element(sparse,i,j) result(val)
     class(sparse_matrix),intent(in) :: sparse    
     integer,intent(in)              :: i,j
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8)                         :: val
 #endif
     integer                         :: pos
@@ -571,6 +649,7 @@ contains
     if(.not.any(sparse%row(i)%cols==j))return
     pos=binary_search(sparse%row(i)%cols,j)
     val=sparse%row(i)%vals(pos)
+<<<<<<< HEAD
 =======
   function sp_get_element(sparse,i,j) result(value)
     class(sparse_matrix),intent(inout) :: sparse    
@@ -605,6 +684,8 @@ contains
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end function sp_get_element
 
 
@@ -626,10 +707,13 @@ contains
 
   function sp_filter_matrix_1(A,states) result(Ak)
     class(sparse_matrix), intent(in) :: A
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,dimension(:),intent(in)  :: states
     type(sparse_matrix)              :: Ak
     integer                          :: istate,jstate
@@ -638,6 +722,7 @@ contains
 #else
     real(8)                          :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     integer,dimension(:),intent(in)     :: states
@@ -647,6 +732,8 @@ contains
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
     !
@@ -658,6 +745,7 @@ contains
        do jstate=1,size(states)
           j=states(jstate)
           val = A%get(i,j)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           if(val==zero)cycle
@@ -667,6 +755,9 @@ contains
 =======
           if(val==zero)cycle
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+          if(val==zero)cycle
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -677,10 +768,13 @@ contains
 
   function sp_filter_matrix_2(A,Istates,Jstates) result(Ak)
     class(sparse_matrix), intent(in) :: A
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,dimension(:),intent(in)  :: Istates,Jstates
     type(sparse_matrix)              :: Ak
     integer                          :: istate,jstate
@@ -689,6 +783,7 @@ contains
 #else
     real(8)                          :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     integer,dimension(:),intent(in)     :: Istates,Jstates
@@ -704,6 +799,9 @@ contains
     !
 =======
 >>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
+=======
+    !
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call Ak%free()
     call Ak%init(size(Istates),size(Jstates))
     !
@@ -712,6 +810,7 @@ contains
        do jstate=1,size(Jstates)
           j=Jstates(jstate)
           val = A%get(i,j)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           if(val==zero)cycle
@@ -729,6 +828,9 @@ contains
 =======
           if(val==zero)cycle
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+          if(val==zero)cycle
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           call append(Ak%row(istate)%vals,val)
           call append(Ak%row(istate)%cols,jstate)
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
@@ -753,17 +855,23 @@ contains
     integer                   :: unit_
     integer                   :: Ns,NN
     character(len=64)         :: format
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                :: val
 #else
     real(8)                   :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     unit_=6
     if(present(file))open(free_unit(unit_),file=str(file))
     fmt_=str(show_fmt);if(present(fmt))fmt_=str(fmt)
@@ -773,6 +881,7 @@ contains
     format='(A1,'//str(fmt_)//',1x)'
 #endif
     if(.not.sparse%status)return
+<<<<<<< HEAD
 =======
     complex(8)                :: val
     unit_=6
@@ -801,10 +910,13 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.sparse%status)return
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
           val = sp_get_element(sparse,i,j)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -812,11 +924,14 @@ contains
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
           write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
 #else
           write(unit_,"("//str(sparse%Ncol)//"F5.1)",advance='no')val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
           write(unit_,"("//str(sparse%Ncol)//str(format)//")",advance='no')"(",dreal(val),",",dimag(val),")"
@@ -833,6 +948,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        enddo
        write(unit_,*)
     enddo
@@ -844,16 +961,20 @@ contains
     integer              :: unit_
     integer              :: Ns
     character(len=20)    :: fmtR,fmtI
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)           :: val
 #else
     real(8)              :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8)           :: val
@@ -863,6 +984,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     unit_=6
     fmtI='(I10)'
     fmtR='(ES10.3)'
@@ -870,12 +993,16 @@ contains
     do i=1,sparse%Nrow
        Ns = size(sparse%row(i)%cols)
        if(Ns==0)cycle
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        do j=1,Ns
           write(unit_,"(A1,2I5,A1,2F8.3)",advance='no')"[",i,sparse%row(i)%cols(j),"]",sparse%row(i)%vals(j)
        enddo
        write(unit_,"(A1)",advance='yes')""
+<<<<<<< HEAD
 =======
        write(unit_,"("//str(Ns)//"(I10))",advance='yes')sparse%row(i)%cols
        write(unit_,"("//str(Ns)//"(2F10.3))",advance='yes')sparse%row(i)%vals
@@ -891,6 +1018,8 @@ contains
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        write(unit_,*)
     enddo
   end subroutine sp_display_matrix
@@ -964,11 +1093,14 @@ contains
     type(sparse_matrix)             :: AxB
     integer                         :: i,icol,j,k,kcol,l
     integer                         :: indx_row,indx_col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                      :: value
 #else
@@ -976,6 +1108,7 @@ contains
 #endif
     if(.not.A%status)stop "sp_kron_matrix: A.status=F"
     if(.not.B%status)stop "sp_kron_matrix: B.status=F"
+<<<<<<< HEAD
 =======
     complex(8)                      :: value
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
@@ -987,6 +1120,8 @@ contains
     if(.not.A%status)stop "sp_kron_matrix: A.status=F"
     if(.not.B%status)stop "sp_kron_matrix: B.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call AxB%free()
     call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
     do indx_row = 1,A%Nrow*B%Nrow
@@ -1009,23 +1144,30 @@ contains
   end function sp_kron_matrix
 
   function sp_restricted_kron_matrix(A,B,states) result(AxB)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     type(sparse_matrix), intent(in) :: A,B
     integer,dimension(:),intent(in) :: states
     type(sparse_matrix)             :: AxB,Ap,Bp
     integer                         :: i,icol,j,k,kcol,l,istate,jstate
     integer                         :: indx_row,indx_col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                      :: val,Aval,Bval
 #else
     real(8)                         :: val,Aval,Bval
 #endif
     !
+<<<<<<< HEAD
 =======
     type(sparse_matrix), intent(in)  :: A,B
     integer,dimension(:),intent(in)  :: states
@@ -1068,10 +1210,16 @@ contains
     call AxB%init(size(states),size(states))
     !
 >>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
+=======
+    call AxB%free()
+    call AxB%init(size(states),size(states))
+    !
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do istate = 1,size(states)
        indx_row=states(istate)
        i = (indx_row-1)/B%Nrow+1
        k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
@@ -1095,6 +1243,8 @@ contains
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
 =======
 >>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        do jstate=1,size(states)
           indx_col=states(jstate)
           j = (indx_col-1)/B%Ncol+1
@@ -1105,6 +1255,7 @@ contains
                (.not.any(B%row(k)%cols==l)) )cycle
           Aval = A%get(i,j)
           Bval = B%get(k,l)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
           call append(AxB%row(istate)%vals,Aval*Bval)
@@ -1118,6 +1269,9 @@ contains
 =======
           call append(AxB%row(istate)%vals,Aval*Bval)
 >>>>>>> f0a84af (Intermediate commig, cleaning kron_hm_1d):MATRIX_SPARSE.f90
+=======
+          call append(AxB%row(istate)%vals,Aval*Bval)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
           call append(AxB%row(istate)%cols,jstate)
           AxB%row(istate)%Size = AxB%row(istate)%Size + 1
        enddo
@@ -1131,16 +1285,20 @@ contains
     type(sparse_matrix), intent(in) :: A,B
     type(sparse_matrix)             :: Bt,AxB
     integer                         :: i,icol,j,jcol,k
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                      :: value
 #else
     real(8)                         :: value
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     !
     if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
@@ -1153,6 +1311,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
     if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
@@ -1184,11 +1344,14 @@ contains
 
   function sp_matmul_vector(H,v) result(Hv)
     class(sparse_matrix), intent(in)    :: H
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     integer                             :: Nloc
 #ifdef _CMPLX
     complex(8),dimension(:)             :: v
@@ -1203,6 +1366,7 @@ contains
     !
     if(.not.H%status)stop "sp_matmul_vector: H.status=F"
     !
+<<<<<<< HEAD
 =======
     complex(8),dimension(:)             :: v
     complex(8),dimension(:),allocatable :: Hv
@@ -1220,6 +1384,8 @@ contains
     if(.not.H%status)stop "sp_matmul_vector: H.status=F"
     !
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(allocated(Hv))deallocate(Hv)
     allocate(Hv(size(v)))
     Hv=zero
@@ -1245,17 +1411,21 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
     real(8)                          :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     real(8)                       :: val
@@ -1277,18 +1447,26 @@ contains
 =======
     call c%init(a%Ncol,a%Nrow)       !hconjg
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
+=======
+    if(.not.a%status)stop "sp_dgr_matrix: A.status=F"
+    call c%init(a%Ncol,a%Nrow)       !hconjg
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
           val = a%row(i)%vals(j)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
           call c%insert(conjg(val),col,i)
 #else
           call c%insert(val,col,i)
 #endif
+<<<<<<< HEAD
 =======
           call c%insert(conjg(val),col,i)
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
@@ -1303,6 +1481,8 @@ contains
           call c%insert(val,col,i)
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
        enddo
     enddo
   end function sp_dgr_matrix
@@ -1312,17 +1492,21 @@ contains
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
     integer                          :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
     real(8)                          :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     real(8)                       :: val
@@ -1344,6 +1528,10 @@ contains
 =======
     call c%init(a%Ncol,a%Nrow)       !tranpose
 >>>>>>> 500ccfe (Code updated. Port to CMPLX: completed.):MATRIX_SPARSE.f90
+=======
+    if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
+    call c%init(a%Ncol,a%Nrow)       !tranpose
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
@@ -1378,6 +1566,7 @@ contains
     enddo
   end function sp_hconjg_matrix
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   function sp_hconjg_matrix(a) result(c)
@@ -1411,6 +1600,9 @@ contains
 =======
 
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
+=======
+
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix equality spA = spB. Deep copy
   !+------------------------------------------------------------------+
@@ -1418,16 +1610,20 @@ contains
     type(sparse_matrix),intent(inout) :: a
     type(sparse_matrix),intent(in)    :: b
     integer                           :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                        :: val
 #else
     real(8)                           :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
 =======
@@ -1444,6 +1640,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call a%free()
     call a%init(b%Nrow,b%Ncol)
     do i=1,b%Nrow
@@ -1461,11 +1660,14 @@ contains
   !+------------------------------------------------------------------+
   subroutine sp_matrix_equal_scalar(a,c)
     type(sparse_matrix),intent(inout) :: a
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                        :: val
     complex(8),intent(in)             :: c
@@ -1473,6 +1675,7 @@ contains
     real(8)                           :: val
     real(8),intent(in)                :: c
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
 =======
@@ -1490,6 +1693,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           a%row(i)%vals(j) = c
@@ -1506,11 +1712,14 @@ contains
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
     integer                         :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
@@ -1518,6 +1727,7 @@ contains
 #endif
     if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
     if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
+<<<<<<< HEAD
 =======
     complex(8)                      :: val
 =======
@@ -1532,6 +1742,8 @@ contains
     if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
     if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
     c=a                         !copy a into c
@@ -1552,21 +1764,28 @@ contains
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
     integer                         :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                      :: val
 #else
     real(8)                         :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.a%status)stop "sp_minus_matrix error: a.status=F"
     if(.not.b%status)stop "sp_minus_matrix error: b.status=F"
     if(a%Nrow/=b%Nrow)stop "sp_minus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_minus_matrix error: a.Ncol != b.Ncol"
+<<<<<<< HEAD
 =======
     complex(8)                      :: val
 =======
@@ -1586,6 +1805,8 @@ contains
     if(a%Nrow/=b%Nrow)stop "sp_minus_matrix error: a.Nrow != b.Nrow"
     if(a%Ncol/=b%Ncol)stop "sp_minus_matrix error: a.Ncol != b.Ncol"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     c=a                         !copy a into c
     do i=1,b%Nrow
        do j=1,b%row(i)%size
@@ -1608,16 +1829,20 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
     real(8)                        :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 =======
@@ -1634,6 +1859,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1650,16 +1878,20 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
     real(8)                        :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 =======
@@ -1676,6 +1908,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1687,6 +1922,7 @@ contains
     enddo
   end function sp_left_product_matrix_d
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -1696,12 +1932,16 @@ contains
 =======
 #ifdef _CMPLX
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#ifdef _CMPLX
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   function sp_left_product_matrix_c(C,A) result(B)
     complex(8),intent(in)          :: C
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
     complex(8)                     :: val
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
@@ -1711,6 +1951,9 @@ contains
 =======
     if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_left_product_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1721,6 +1964,7 @@ contains
        enddo
     enddo
   end function sp_left_product_matrix_c
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #endif
@@ -1750,6 +1994,9 @@ contains
 =======
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#endif
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -1762,16 +2009,20 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
     real(8)                        :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 =======
@@ -1788,6 +2039,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1804,16 +2058,20 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
     real(8)                        :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 =======
@@ -1830,6 +2088,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1841,6 +2102,7 @@ contains
     enddo
   end function sp_right_product_matrix_d
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -1850,12 +2112,16 @@ contains
 =======
 #ifdef _CMPLX
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#ifdef _CMPLX
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   function sp_right_product_matrix_c(A,C) result(B)
     complex(8),intent(in)          :: C
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
     complex(8)                     :: val
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
@@ -1865,6 +2131,9 @@ contains
 =======
     if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_right_product_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1875,6 +2144,7 @@ contains
        enddo
     enddo
   end function sp_right_product_matrix_c
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #endif
@@ -1904,6 +2174,9 @@ contains
 =======
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#endif
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -1916,16 +2189,20 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
     real(8)                        :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 =======
@@ -1942,6 +2219,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1958,16 +2238,20 @@ contains
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8)                     :: val
 #else
     real(8)                        :: val
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 =======
@@ -1984,6 +2268,9 @@ contains
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 >>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -1995,6 +2282,7 @@ contains
     enddo
   end function sp_right_division_matrix_d
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -2004,12 +2292,16 @@ contains
 =======
 #ifdef _CMPLX
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#ifdef _CMPLX
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   function sp_right_division_matrix_c(A,C) result(B)
     complex(8),intent(in)          :: C
     type(sparse_matrix),intent(in) :: A
     type(sparse_matrix)            :: B
     integer                        :: col
     complex(8)                     :: val
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
@@ -2019,6 +2311,9 @@ contains
 =======
     if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+    if(.not.A%status)stop "sp_right_division_matrix error: A.status=F"
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
@@ -2029,6 +2324,7 @@ contains
        enddo
     enddo
   end function sp_right_division_matrix_c
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 #endif
@@ -2058,6 +2354,9 @@ contains
 =======
 #endif
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+#endif
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   !+------------------------------------------------------------------+
@@ -2077,16 +2376,20 @@ contains
   function sp_eye(ndim) result(self)
     type(sparse_matrix) :: self
     integer             :: ndim
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     call self%load(zeye(ndim))
 #else
     call self%load(eye(ndim))
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     call self%load(zeye(ndim))
@@ -2096,6 +2399,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end function sp_eye
 
 
@@ -2234,16 +2539,20 @@ program testSPARSE_MATRICES
 
   integer                                      :: i,j
   type(sparse_matrix)                          :: spH,spK,a,b,c,avec(2)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
   complex(8),dimension(4,4)                    :: GammaX
   complex(8),dimension(:,:),allocatable        :: Amat,Bmat,Cmat
   complex(8),dimension(2,2),parameter          :: Hzero=reshape([zero,zero,zero,zero],[2,2])
   complex(8),dimension(2,2),parameter          :: S0=pauli_0
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
   complex(8),dimension(4,4)                    :: GammaX
@@ -2253,14 +2562,19 @@ program testSPARSE_MATRICES
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   complex(8),dimension(2,2),parameter          :: Sz=pauli_z
   complex(8),dimension(2,2),parameter          :: Sx=pauli_x
   complex(8),dimension(2,2),parameter          :: Splus=reshape([zero,zero,one,zero],[2,2])
   complex(8),dimension(4,4)                    :: Gamma13,Gamma03
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   complex(8)                                   :: myone=dcmplx(1d0,0d0),myzero=dcmplx(0d0,0d0)
 #else
   real(8),dimension(4,4)                       :: GammaX
@@ -2273,6 +2587,7 @@ program testSPARSE_MATRICES
   real(8),dimension(4,4)                       :: Gamma13,Gamma03
   real(8)                                      :: myone=1d0,myzero=0d0
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 =======
@@ -2289,11 +2604,14 @@ program testSPARSE_MATRICES
 >>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   type(sparse_matrix),dimension(:),allocatable :: Olist
 
   !
 
   Gamma13=kron(Sx,Sz)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -2307,6 +2625,9 @@ program testSPARSE_MATRICES
 =======
   Gamma03=kron(S0,Sz)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  Gamma03=kron(S0,Sz)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,"test INIT"
   call spH%init(2,2)
@@ -2355,6 +2676,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test LOAD and PRINT"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   call spH%load(kron(S0,Sz))
@@ -2364,6 +2686,9 @@ program testSPARSE_MATRICES
 =======
   call spH%load(kron(S0,Sz))
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  call spH%load(kron(S0,Sz))
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call spH%show()
   print*,"spH.NNZ=",spH%nnz()
   print*,""
@@ -2375,6 +2700,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test INSERT ELEMENT"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   call spH%insert(myone,1,4)
@@ -2387,6 +2713,10 @@ program testSPARSE_MATRICES
   call spH%insert(myone,1,4)
   call spH%insert(-myone,4,4)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  call spH%insert(myone,1,4)
+  call spH%insert(-myone,4,4)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call spH%show()  
   print*,""
 
@@ -2397,6 +2727,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test DUMP"
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   gammaX=myzero
@@ -2406,6 +2737,9 @@ program testSPARSE_MATRICES
 =======
   gammaX=myzero
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  gammaX=myzero
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   do i=1,4
      write(*,*)(gammaX(i,j),j=1,4)
   enddo
@@ -2415,6 +2749,7 @@ program testSPARSE_MATRICES
      write(*,*)(gammaX(i,j),j=1,4)
   enddo
 
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   gammaX=myzero
@@ -2424,6 +2759,9 @@ program testSPARSE_MATRICES
 =======
   gammaX=myzero
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  gammaX=myzero
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   do i=1,4
      write(*,*)(gammaX(i,j),j=1,4)
   enddo
@@ -2442,6 +2780,7 @@ program testSPARSE_MATRICES
 
 
   print*,"test spH=zero"  
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
   spH=myzero
@@ -2451,6 +2790,9 @@ program testSPARSE_MATRICES
 =======
   spH=myzero
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  spH=myzero
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call spH%show()
   spH=spK
 
@@ -2459,6 +2801,7 @@ program testSPARSE_MATRICES
   print*,"test ADDITION a+b=c"
   print*,"a=sigma_0"
   call a%init(2,2)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -2472,6 +2815,9 @@ program testSPARSE_MATRICES
 =======
   call a%load(S0)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  call a%load(S0)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%show()
 
   print*,"b=sigma_X"  
@@ -2492,6 +2838,7 @@ program testSPARSE_MATRICES
   print*,"test SUBTRACTION a-b=c"
   print*,"a=sigma_0"
   call a%init(2,2)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -2505,6 +2852,9 @@ program testSPARSE_MATRICES
 =======
   call a%load(S0)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  call a%load(S0)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%show()
 
   print*,"b=sigma_Z"  
@@ -2527,6 +2877,7 @@ program testSPARSE_MATRICES
   print*,"test LEFT SCALAR PRODUCT b=a*const"
   print*,"a=sigma_0"
   call a%init(2,2)
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
@@ -2540,6 +2891,9 @@ program testSPARSE_MATRICES
 =======
   call a%load(S0)
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+  call a%load(S0)
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   call a%show()
 
   print*,"b=2*a"  
@@ -2781,16 +3135,20 @@ contains
 
   subroutine append_matrix(self,matrix)
     type(sparse_matrix),dimension(:),allocatable,intent(inout) :: self
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:)                                  :: matrix
 #else
     real(8),dimension(:,:)                                  :: matrix
 #endif
+<<<<<<< HEAD
 <<<<<<< HEAD:src/MATRIX/MATRIX_SPARSE.f90
 =======
     complex(8),dimension(:,:)                                     :: matrix
@@ -2800,6 +3158,8 @@ contains
 >>>>>>> f63915b (Testing the code.):MATRIX_SPARSE.f90
 =======
 >>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):MATRIX_SPARSE.f90
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     type(sparse_matrix),dimension(:),allocatable               :: tmp
     integer                                                    :: N
     if(allocated(self))then

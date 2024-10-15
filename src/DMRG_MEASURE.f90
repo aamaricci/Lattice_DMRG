@@ -44,11 +44,14 @@ contains
   !          INIT / END MEASUREMENT: allocate/deallocate
   !##################################################################
   subroutine Init_Measure_dmrg
+<<<<<<< HEAD
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: init measure"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
     allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
@@ -67,9 +70,12 @@ contains
   end subroutine Init_Measure_dmrg
 
   subroutine End_measure_DMRG
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: end measure"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(allocated(Dls))deallocate(Dls)
     if(allocated(Drs))deallocate(Drs)
     if(allocated(Offset))deallocate(Offset)
@@ -91,9 +97,12 @@ contains
     integer                        :: pos
     type(sparse_matrix)            :: Oi
     real(8)                        :: avOp
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: measure Op"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.measure_status)call Init_Measure_DMRG()
     Oi   = Build_Op_dmrg(Op,pos)
     Oi   = Advance_Op_dmrg(Oi,pos)
@@ -121,9 +130,12 @@ contains
     type(sparse_matrix)                       :: Oi
     integer                                   :: it,j,dims(2)
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: measure scalar"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     L = left%length ; R = right%length
     Np = L+R;if(present(pos))Np= size(pos)
@@ -165,10 +177,13 @@ contains
     integer                                     :: it,j,dims(2)
     !
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: measure vector"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     M  = size(Op)
     L  = left%length
     R  = right%length
@@ -221,10 +236,13 @@ contains
     integer                        :: i,dB(2),d
     logical                        :: set_basis_
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Build Op"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     set_basis_ = .false. ;if(present(set_basis))set_basis_=set_basis
     !
     !The lenght of the last block contributing to the SB construction-> \psi
@@ -283,10 +301,13 @@ contains
     integer                          :: L,R,N
     integer                          :: i,istart,iend,it
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Advance Op"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
     R = right%length
@@ -348,10 +369,13 @@ contains
     type(sparse_matrix)              :: Psi
     integer                          :: L,R,N
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Average Op"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
     R = right%length
@@ -462,10 +486,13 @@ contains
     integer                          :: L,R,N
     integer                          :: i,istart,iend,it
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Advance Correlator"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length             !
     R = right%length            !

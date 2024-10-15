@@ -51,11 +51,14 @@ contains
     integer                         :: m_left,m_right
     character(len=:),allocatable    :: type
     type(sparse_matrix)             :: H2
+<<<<<<< HEAD
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Sparse"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -101,10 +104,13 @@ contains
   subroutine Setup_SuperBlock_Direct()
     character(len=:),allocatable                 :: type
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -141,10 +147,13 @@ contains
     real(8),dimension(:,:),allocatable           :: Hij
 #endif
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - spin"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -262,10 +271,13 @@ contains
     real(8),dimension(:,:),allocatable           :: Hij
 #endif
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&

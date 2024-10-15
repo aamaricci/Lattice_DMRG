@@ -287,9 +287,12 @@ contains
     real(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
 #endif
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Spin SITE with SU"//str(sun)
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     h_ = zero; if(present(hvec))h_=hvec
     !
     call self%free()
@@ -364,9 +367,12 @@ contains
     integer                                              :: iorb,ispin
     character(len=:),allocatable                         :: key
     !
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ELECTRON SITE"
 #endif
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
     call self%free()
     self%SiteType="FERMION"
     self%OpName="C"
@@ -405,8 +411,11 @@ contains
     Basis = Build_BasisStates()
     self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
     !
+<<<<<<< HEAD
     call Delete_LocalFock_Space()
     !
+=======
+>>>>>>> 7e90d6a (Updating Cmake library construction)
   end function electron_site
 
 
