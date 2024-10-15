@@ -4,3 +4,4 @@ repo
 git_version.inc
 .DS_Store
 test
+build

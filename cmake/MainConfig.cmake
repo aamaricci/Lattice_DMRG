@@ -3,8 +3,9 @@ SET(USER $ENV{USER})
 
 STRING(TOLOWER "${CMAKE_Fortran_COMPILER_ID}" FC_ID)
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" BUILD_TYPE)
+STRING(TOLOWER "${CMAKE_PRECISION}" PRECISION)
 
-#default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<version>
+#default prefix is $HOME/opt/<libname>/<fc_id>/[<git_branch>[/<debug>]]/<precision>/<version>
 SET(PREFIX_DEF_LOC "$ENV{HOME}/opt")
 SET(PREFIX_PROJ "${PROJECT_NAME}")
 SET(PREFIX_PATH "${FC_ID}")
@@ -23,9 +24,12 @@ IF( (NOT GIT_BRANCH MATCHES "master") )
 ENDIF()
 
 #If DEBUG, add /debug to
-IF("${BUILD_TYPE}" MATCHES "debug")
+IF("${BUILD_TYPE}" MATCHES "debug" OR "${BUILD_TYPE}" MATCHES "aggressive")
   SET(PREFIX_PATH  "${PREFIX_PATH}/${BUILD_TYPE}")
 ENDIF()
+
+
+SET(PREFIX_PATH  "${PREFIX_PATH}/${PRECISION}")
 
 #set default prefix:
 SET(FULL_VER "${PREFIX_PATH}/${VERSION}")
