@@ -1,5 +1,6 @@
-#
-#Based on the work of Samuele Giuli
+# This workflow is entirely based on the original work of:
+# Samuele Giuli (for SciFortran project)
+# It is adapted here to the DMRG case + using a local action to setup OS
 #
 name: CI DMRG workflow 
 
