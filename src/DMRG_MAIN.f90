@@ -106,7 +106,7 @@ contains
     allocate(blocks_list(2,Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
-    do while (2*left%length <= Ldmrg)
+    do while (left%length <= Ldmrg)
        call step_dmrg()
        call write_energy()
        call write_entanglement()
