@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # This workflow is entirely based on the original work of:
 # Samuele Giuli (for SciFortran project)
 # It is adapted here to the DMRG case + using a local action to setup OS
@@ -8,6 +9,11 @@
 #
 #Based on the work of Samuele Giuli
 >>>>>>> 7fd23fe (Test testing update)
+=======
+# This workflow is entirely based on the original work of:
+# Samuele Giuli (for SciFortran project)
+# It is adapted here to the DMRG case + using a local action to setup OS
+>>>>>>> 9fd8735 (3.1.0 UPDATE: TESTING ADDED (infinite DMRG only).)
 #
 name: CI DMRG workflow 
 =======
