@@ -1,8 +1,13 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # This workflow is entirely based on the original work of:
 # Samuele Giuli (for SciFortran project)
 # It is adapted here to the DMRG case + using a local action to setup OS
+=======
+#
+#Based on the work of Samuele Giuli
+>>>>>>> 7fd23fe (Test testing update)
 #
 name: CI DMRG workflow 
 =======
@@ -42,6 +47,7 @@ jobs:
       - uses: actions/checkout@main
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Setup OS
       - uses: ./.github/actions
 =======
@@ -53,13 +59,17 @@ jobs:
       - uses: ./.github/actions
       # # - uses: QcmPlab/TestSetup@master
 >>>>>>> b9bb505 (Testing test)
+=======
+# Setup OS
+      - uses: ./.github/actions
+>>>>>>> 7fd23fe (Test testing update)
         with:
           pack-type: open
 
 
 
 #********* BUILD PART **********
-
+l
 # Build SciFortran
       - name: Cloning SciFortran
         run: git clone https://github.com/aamaricci/SciFortran.git scifor
