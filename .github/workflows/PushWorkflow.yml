@@ -1,3 +1,6 @@
+#
+#Based on the work of Samuele Giuli
+#
 name: CI DMRG workflow 
 
 on: push
@@ -21,16 +24,15 @@ jobs:
 # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@main
 
-# QcmPlab setup
+# Setup OS
       - uses: ./.github/actions
-      # # - uses: QcmPlab/TestSetup@master
         with:
           pack-type: open
 
 
 
 #********* BUILD PART **********
-
+l
 # Build SciFortran
       - name: Cloning SciFortran
         run: git clone https://github.com/aamaricci/SciFortran.git scifor
