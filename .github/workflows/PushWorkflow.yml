@@ -32,7 +32,7 @@ jobs:
 
 
 #********* BUILD PART **********
-l
+
 # Build SciFortran
       - name: Cloning SciFortran
         run: git clone https://github.com/aamaricci/SciFortran.git scifor
