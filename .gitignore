@@ -3,7 +3,5 @@ repo
 *.mod
 git_version.inc
 .DS_Store
-test
-build
-build3.0.0
+*build*
 cmplx3.0.0
