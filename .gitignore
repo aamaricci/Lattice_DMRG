@@ -9,4 +9,9 @@ cmplx3.0.0
 =======
 test
 build
+<<<<<<< HEAD
 >>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
+=======
+build3.0.0
+cmplx3.0.0
+>>>>>>> b9bb505 (Testing test)
