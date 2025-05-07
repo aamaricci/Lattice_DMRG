@@ -30,6 +30,10 @@ contains
     real(8),dimension(:),allocatable :: left_qn,right_qn
     integer,dimension(:),allocatable :: left_map,right_map
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: SuperBlock get states"
+#endif
+    !
     call start_timer("Get SB states")
     !
     if(allocated(sb_states))deallocate(sb_states)
@@ -37,7 +41,7 @@ contains
     call sb_sector%free()
     !
 #ifdef _DEBUG
-    unit = fopen('SB_list_'//str(left%length)//'.dat')
+    if(verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
 #endif
     do ileft=1,size(left%sectors(1))
        left_qn   = left%sectors(1)%qn(index=ileft)
@@ -48,9 +52,11 @@ contains
        right_map = right%sectors(1)%map(qn=right_qn)
        !
 #ifdef _DEBUG
-       write(unit,*)""
-       write(unit,*)left_qn,right_qn
-       write(unit,*)size(left_map),size(right_map)
+       if(verbose>5)then
+          write(unit,*)""
+          write(unit,*)left_qn,right_qn
+          write(unit,*)size(left_map),size(right_map)
+       endif
 #endif
        do i=1,size(left_map)
           do j=1,size(right_map)
@@ -58,14 +64,13 @@ contains
              call append(sb_states, istate)
              call sb_sector%append(qn=left_qn,istate=size(sb_states))
 #ifdef _DEBUG
-             write(unit,*)left_map(i),right_map(j),istate
+             if(verbose>5)write(unit,*)left_map(i),right_map(j),istate
 #endif
           enddo
        enddo
-       ! call eta(ileft,size(left%sectors(1)))
     enddo
 #ifdef _DEBUG
-    close(unit)
+    if(verbose>5)close(unit)
 #endif
     !
     call stop_timer()
@@ -88,7 +93,11 @@ contains
     real(8),dimension(:,:),allocatable    :: Hsb
 #endif
     logical                               :: exist,lanc_solve
-    !    
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
+#endif
+    !
     m_sb = size(sb_states)
     if(m_sb==0)stop "sb_diag ERROR: size(sb_states)==0"
     !
@@ -119,8 +128,8 @@ contains
        call sb_build_Hv(Hsb)
        allocate(evals(m_sb))
        call eigh(Hsb,evals)
-       gs_vector(:,1:Lanc_Neigen) = Hsb(:,1:Lanc_Neigen)
-       gs_energy(1:Lanc_Neigen)   = evals(1:Lanc_Neigen)
+       gs_vector(:,1:Neigen) = Hsb(:,1:Neigen)
+       gs_energy(1:Neigen)   = evals(1:Neigen)
        deallocate(Hsb,evals)
     endif
     call stop_timer()
@@ -173,7 +182,11 @@ contains
     real(8),dimension(:,:),allocatable,optional :: Hmat
 #endif
     integer                                        :: m_sb
-
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: SuperBlock build H*v"
+#endif
+    !
     if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
     m_sb = size(sb_states)
 
