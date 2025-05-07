@@ -98,10 +98,9 @@ contains
     real(8)                  :: eps=1d-6
     integer                  :: M=50
     !
-    call wait(50)
     !call lefttem("clear")
     !call execute_command_line("clear")
-    Ltot = Ldmrg!/2
+    Ltot = Ldmrg
     Ldot = bold_green('=')
     Rdot = bold_red('-')
     ! if(Ltot>M)then

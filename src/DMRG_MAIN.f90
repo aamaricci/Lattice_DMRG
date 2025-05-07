@@ -30,6 +30,10 @@ contains
     real(8),dimension(:,:)    :: Hij
 #endif
     type(site)                :: ModelDot
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: init DMRG"
+#endif
+    !
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
     allocate(HopH, source=Hij)
@@ -43,6 +47,10 @@ contains
 
 
   subroutine finalize_dmrg()
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Finalize DMRG"
+#endif
+    !
     if(allocated(HopH))deallocate(HopH)    
     call dot%free()
     call init_left%free()
@@ -65,18 +73,20 @@ contains
   !##################################################################
   subroutine infinite_DMRG()
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Infinite Algorithm"
+#endif
+    !
     if(.not.init_called)&
          stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
-    left=init_left
+    left =init_left
     right=init_right
     !
-    suffix = label_DMRG('i',1)
-    !
     do while (left%length < Ldmrg)
-       call step_dmrg()
-       call write_energy()
-       call write_truncation()
-       call write_entanglement()
+       call step_dmrg('i')
+       ! call write_energy()
+       ! call write_truncation()
+       ! call write_entanglement()
     enddo
   end subroutine infinite_DMRG
 
@@ -87,6 +97,12 @@ contains
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
     integer                                :: j
+    logical                                :: ExitSweep
+    integer :: m_rleft,m_rright
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Finite Algorithm"
+#endif
     !
     if(mod(Ldmrg,2)/=0)&
          stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
@@ -101,15 +117,11 @@ contains
     right_label=2
     !Infinite DMRG
     !
-    suffix = label_DMRG('i',1)
-    !
-    allocate(blocks_list(2,Ldmrg))
+    allocate(blocks_list(2,2*Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
-    do while (left%length <= Ldmrg)
-       call step_dmrg()
-       call write_energy()
-       call write_entanglement()
+    do while (left%length < Ldmrg)
+       call step_dmrg('i')
        blocks_list(left_label,left%length)=left
        blocks_list(right_label,right%length)=right
     enddo
@@ -126,9 +138,10 @@ contains
        else
           write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
-       suffix = label_DMRG('f',im)
+       !
+       ExitSweep=.false.
        sweep: do while(.true.)
-          right = blocks_list(right_label,Ldmrg - left%length)
+          right = blocks_list(right_label,2*Ldmrg - left%length)
           if(right%length==1)then
              right_label= 3-right_label
              left_label = 3-left_label
@@ -136,16 +149,15 @@ contains
              left       = right
              right      = tmp
              call tmp%free()
+             ExitSweep  = .true.
           endif
           !
-          call step_dmrg(left_label,im)
-          call write_energy()
-          call write_entanglement()
+          call step_dmrg('f',left_label,im)
           !
           blocks_list(left_label,left%length) = left
           print*,""
           print*,""
-          if(left_label==1.AND.left%length==Ldmrg/2)exit sweep
+          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg)exit sweep
        enddo sweep
     enddo
     !
@@ -165,28 +177,37 @@ contains
   !##################################################################
   !              WORKHORSE: STEP DMRG 
   !##################################################################
-  subroutine step_dmrg(label,isweep)
-    integer,optional                   :: label,isweep
-    integer                            :: iLabel
-    integer                            :: m_sb
-    integer                            :: m_rleft,m_rright
-    integer                            :: m_es,m_ee
-    integer                            :: m_left,m_right
-    integer                            :: m_eleft,m_eright
-    integer                            :: current_L
+  subroutine step_dmrg(type,label,sweep)
+    character(len=1) :: type
+    integer,optional :: label,sweep
+    integer          :: iLabel
+    integer          :: m_sb
+    integer          :: m_rleft,m_rright
+    integer          :: m_es,m_ee
+    integer          :: m_left,m_right
+    integer          :: m_eleft,m_eright
+    integer          :: current_L
+    integer          :: Lleft,Lright
+    logical          :: renormalize
     !
+    !just 4 DMRG_graphic
     iLabel=0;if(present(label))iLabel=label
-    !2Bremoved
-    suffix = label_DMRG('i',1)
     !
-    Mstates=Mdmrg
-    Estates=Edmrg
-    if(present(isweep))then
-       if(isweep>Nsweep)stop "step_dmrg ERROR: isweep > Nsweep"
-       if(isweep<1)stop "step_dmrg ERROR: isweep < 1"
-       Mstates = Msweep(isweep)
-       Estates = Esweep(isweep)
-    endif
+    select case(to_lower(type))
+    case('f')
+       if(.not.present(sweep))stop "step_dmrg ERROR: type=F but no sweep-index provided"
+       if(sweep>Nsweep.OR.sweep<1)stop "step_dmrg ERROR: isweep < 1 OR isweep > Nsweep"
+       Mstates = Msweep(sweep)
+       Estates = Esweep(sweep)
+       suffix  = label_DMRG(type,sweep)
+    case('i')
+       Mstates=Mdmrg
+       Estates=Edmrg
+       suffix = label_DMRG(type)
+    case default
+       stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
+    end select
+    !
     !
     if(.not.left%is_valid(.true.))stop "single_dmrg_step error: left is not a valid block"
     if(.not.right%is_valid(.true.))stop "single_dmrg_step error: right is not a valid block"
@@ -199,16 +220,18 @@ contains
     call dmrg_graphic(iLabel)    
     call start_timer()
     !
-    !#################################
-    !    Renormalize BLOCKS
-    !#################################
-    call renormalize_block('left',m_rleft)
-    call renormalize_block('right',m_rright)
+    ! !#################################
+    ! !    Renormalize BLOCKS
+    ! !#################################
+    ! call renormalize_block('left',m_rleft)
+    ! call renormalize_block('right',m_rright)
     !
     !
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
     !#################################
+    Lleft =left%length
+    Lright=right%length
     call enlarge_block(left,dot,grow='left')
     call enlarge_block(right,dot,grow='right')
     !
@@ -224,14 +247,45 @@ contains
     call sb_get_states()
     m_sb = size(sb_states)
     !
+    !
+    !#################################
+    !       DIAG SUPER-BLOCK
+    !#################################
+    call sb_diag()
+    !
+    !#################################
+    !      BUILD RDM
+    !#################################
+    call sb_get_rdm()
+    !
+    !#################################
+    !    Renormalize BLOCKS
+    !#################################
+    !What are the conditions to skip Renormalization:
+    ! 1. Infinite algorithm:
+    !   - only at the last loop which is when *enlarged* blocks have length=N, i.e. L.len=N
+    !      if(to_lower(type)=='i'.AND.left%length==Ldmrg)
+    ! 2. Finite algorithm:
+    !   - sweep is made of
+    !      [label=1]: L(N/2->N-1)>R,
+    !      [lable=2]: R(1->N)->L,
+    !      [label=1]: L(1->N/2)->R
+    !     so if label=1 and L.len=N:
+    !      if(left_label==1.AND.left%length==Ldmrg)
+    renormalize=.not.((iLabel==1.OR.to_lower(type)=='i').AND.Lleft==Ldmrg)
+    if(renormalize)then
+       call renormalize_block('left',m_rleft)
+       call renormalize_block('right',m_rright)
+    endif
+    !
+    !> STOP DMRG STEP:
+    call stop_timer("dmrg_step")
+    !
+    !#################################
+    !      WRITE AND EXIT
+    !#################################
     write(LOGfile,"(A,I12,12X,I12)")&
-         "Blocks Length                        :",left%length-1,right%length-1
-    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
-         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
-    write(LOGfile,"(A,L12,12X,L12)")&
-         "Truncating                           :",Mstates<=m_left,Mstates<=m_right
-    write(LOGfile,"(A,2ES24.15)")&
-         "Truncation Errors                    :",truncation_error_left,truncation_error_right
+         "         Blocks Length               :",Lleft,Lright
     write(LOGfile,"(A,I12,12X,I12)")&
          "Enlarged Blocks Length               :",left%length,right%length
     write(LOGfile,"(A,I12,12X,I12)")&
@@ -249,22 +303,15 @@ contains
          "Filling                              :",sum(current_target_QN)/current_L
     write(LOGfile,"(A,3x,G24.15)")&
          "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
+    if(renormalize)then
+       write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
+            "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
+       write(LOGfile,"(A,L12,12X,L12)")&
+            "Truncating                           :",Mstates<=m_left,Mstates<=m_right
+       write(LOGfile,"(A,2ES24.15)")&
+            "Truncation Errors                    :",truncation_error_left,truncation_error_right
+    endif
     !
-    !
-    !#################################
-    !       DIAG SUPER-BLOCK
-    !#################################
-    call sb_diag()
-    !
-    !#################################
-    !      BUILD RDM
-    !#################################
-    call sb_get_rdm()
-    !
-    !
-    !#################################
-    !      WRITE AND EXIT
-    !#################################
     select case(left%type())
     case ("fermion","f")
        write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
@@ -273,7 +320,11 @@ contains
        write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
             "Energies/L                           :",gs_energy/current_L
     end select
-    call stop_timer("dmrg_step")
+    !
+    call write_energy()
+    call write_truncation()
+    call write_entanglement()
+    !
     !
     !Clean memory:
     call spHsb%free()

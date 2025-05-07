@@ -44,6 +44,11 @@ contains
   !          INIT / END MEASUREMENT: allocate/deallocate
   !##################################################################
   subroutine Init_Measure_dmrg
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: init measure"
+#endif
+    !
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
     allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
@@ -62,6 +67,9 @@ contains
   end subroutine Init_Measure_dmrg
 
   subroutine End_measure_DMRG
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: end measure"
+#endif
     if(allocated(Dls))deallocate(Dls)
     if(allocated(Drs))deallocate(Drs)
     if(allocated(Offset))deallocate(Offset)
@@ -83,6 +91,9 @@ contains
     integer                        :: pos
     type(sparse_matrix)            :: Oi
     real(8)                        :: avOp
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: measure Op"
+#endif
     if(.not.measure_status)call Init_Measure_DMRG()
     Oi   = Build_Op_dmrg(Op,pos)
     Oi   = Advance_Op_dmrg(Oi,pos)
@@ -110,6 +121,9 @@ contains
     type(sparse_matrix)                       :: Oi
     integer                                   :: it,j,dims(2)
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: measure scalar"
+#endif
     !
     L = left%length ; R = right%length
     Np = L+R;if(present(pos))Np= size(pos)
@@ -150,6 +164,10 @@ contains
     type(sparse_matrix)                         :: Oi
     integer                                     :: it,j,dims(2)
     !
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: measure vector"
+#endif
     !
     M  = size(Op)
     L  = left%length
@@ -202,6 +220,10 @@ contains
     integer                        :: L,R,N
     integer                        :: i,dB(2),d
     logical                        :: set_basis_
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Build Op"
+#endif
     !
     set_basis_ = .false. ;if(present(set_basis))set_basis_=set_basis
     !
@@ -260,6 +282,10 @@ contains
     character(len=1)                 :: label
     integer                          :: L,R,N
     integer                          :: i,istart,iend,it
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Advance Op"
+#endif
     !
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
@@ -321,6 +347,10 @@ contains
     real(8)                          :: Oval
     type(sparse_matrix)              :: Psi
     integer                          :: L,R,N
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Average Op"
+#endif
     !
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
@@ -431,6 +461,10 @@ contains
     character(len=1)                 :: label
     integer                          :: L,R,N
     integer                          :: i,istart,iend,it
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Advance Correlator"
+#endif
     !
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length             !
