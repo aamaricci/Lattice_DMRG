@@ -287,6 +287,9 @@ contains
     real(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
 #endif
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Spin SITE with SU"//str(sun)
+#endif
     h_ = zero; if(present(hvec))h_=hvec
     !
     call self%free()
@@ -361,6 +364,9 @@ contains
     integer                                              :: iorb,ispin
     character(len=:),allocatable                         :: key
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ELECTRON SITE"
+#endif
     call self%free()
     self%SiteType="FERMION"
     self%OpName="C"

@@ -108,8 +108,8 @@ contains
        label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG")
        if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
     case('f')
-       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im)
-       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im))//"_sweep"//str(im)
+       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
+       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
     end select
     label=str(label)//".dmrg"
   end function label_dmrg

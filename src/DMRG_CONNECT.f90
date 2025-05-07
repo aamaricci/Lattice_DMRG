@@ -28,6 +28,10 @@ contains
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
+#endif
+    !
     call start_timer("Enlarge blocks "//str(grow_))
     !
     if(.not.self%operators%has_key("H"))&
@@ -40,6 +44,9 @@ contains
          stop "Enlarge_Block ERROR: Dot.Type != Self.Type"
     !    
     !> Update Hamiltonian:
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ENLARGE block: update H"
+#endif
     select case(str(grow_))
     case ("left","l")
        Hb = self%operators%op("H").x.id(dot%dim)
@@ -65,6 +72,9 @@ contains
     call self%put_op("H", Hb +  Hd + H2, type="bosonic")
     !
     !> Update all the other operators in the list:
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
+#endif
     do i=1,size(self%operators)
        key   = str(self%operators%key(index=i))
        otype = str(self%operators%type(index=i))
@@ -119,7 +129,7 @@ contains
     end select
     !
 #ifdef _DEBUG
-    call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+    if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 #endif
     !
     if(.not.self%is_valid())then
@@ -157,6 +167,10 @@ contains
 #else
     real(8),dimension(:,:),allocatable        :: Hij
     real(8)                                   :: Tr,Tl
+#endif
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
     !Hij is shared:
@@ -229,6 +243,10 @@ contains
     complex(8),dimension(:,:),allocatable :: Hij
 #else
     real(8),dimension(:,:),allocatable    :: Hij
+#endif
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
     !Hij is shared:

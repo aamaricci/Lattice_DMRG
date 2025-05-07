@@ -51,6 +51,11 @@ contains
     integer                         :: m_left,m_right
     character(len=:),allocatable    :: type
     type(sparse_matrix)             :: H2
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Setup SB Sparse"
+#endif
+    !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -96,6 +101,10 @@ contains
   subroutine Setup_SuperBlock_Direct()
     character(len=:),allocatable                 :: type
     !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Setup SB Direct"
+#endif
+    !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -130,6 +139,10 @@ contains
     complex(8),dimension(:,:),allocatable        :: Hij
 #else
     real(8),dimension(:,:),allocatable           :: Hij
+#endif
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Setup SB Direct - spin"
 #endif
     !
     if(.not.left%operators%has_key("H"))&
@@ -247,6 +260,10 @@ contains
     complex(8),dimension(:,:),allocatable        :: Hij
 #else
     real(8),dimension(:,:),allocatable           :: Hij
+#endif
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
     !
     if(.not.left%operators%has_key("H"))&
