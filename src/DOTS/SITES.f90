@@ -288,11 +288,17 @@ contains
 #endif
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Spin SITE with SU"//str(sun)
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Spin SITE with SU"//str(sun)
+#endif
+>>>>>>> d733a73 (Updated code.)
     h_ = zero; if(present(hvec))h_=hvec
     !
     call self%free()
@@ -368,11 +374,17 @@ contains
     character(len=:),allocatable                         :: key
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ELECTRON SITE"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ELECTRON SITE"
+#endif
+>>>>>>> d733a73 (Updated code.)
     call self%free()
     self%SiteType="FERMION"
     self%OpName="C"

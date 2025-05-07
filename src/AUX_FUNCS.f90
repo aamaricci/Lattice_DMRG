@@ -223,12 +223,17 @@ contains
        if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
     case('f')
 <<<<<<< HEAD
+<<<<<<< HEAD
        label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
        if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
 =======
        label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im)
        if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im))//"_sweep"//str(im)
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
+       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
+>>>>>>> d733a73 (Updated code.)
     end select
     label=str(label)//".dmrg"
   end function label_dmrg

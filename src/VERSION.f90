@@ -13,6 +13,10 @@ MODULE VERSION
 >>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 =======
   !GIT VERSION
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "aa4dff1a4ebd51d4dfa912ed8d9bee5bba8fc943"	
 >>>>>>> b9bb505 (Testing test)
+=======
+  character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
+>>>>>>> d733a73 (Updated code.)
 END MODULE VERSION

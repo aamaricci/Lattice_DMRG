@@ -45,13 +45,19 @@ contains
   !##################################################################
   subroutine Init_Measure_dmrg
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: init measure"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
     allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
@@ -71,11 +77,17 @@ contains
 
   subroutine End_measure_DMRG
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: end measure"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: end measure"
+#endif
+>>>>>>> d733a73 (Updated code.)
     if(allocated(Dls))deallocate(Dls)
     if(allocated(Drs))deallocate(Drs)
     if(allocated(Offset))deallocate(Offset)
@@ -98,11 +110,17 @@ contains
     type(sparse_matrix)            :: Oi
     real(8)                        :: avOp
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: measure Op"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: measure Op"
+#endif
+>>>>>>> d733a73 (Updated code.)
     if(.not.measure_status)call Init_Measure_DMRG()
     Oi   = Build_Op_dmrg(Op,pos)
     Oi   = Advance_Op_dmrg(Oi,pos)
@@ -131,11 +149,17 @@ contains
     integer                                   :: it,j,dims(2)
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: measure scalar"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: measure scalar"
+#endif
+>>>>>>> d733a73 (Updated code.)
     !
     L = left%length ; R = right%length
     Np = L+R;if(present(pos))Np= size(pos)
@@ -178,12 +202,18 @@ contains
     !
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: measure vector"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     M  = size(Op)
     L  = left%length
     R  = right%length
@@ -237,12 +267,18 @@ contains
     logical                        :: set_basis_
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Build Op"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     set_basis_ = .false. ;if(present(set_basis))set_basis_=set_basis
     !
     !The lenght of the last block contributing to the SB construction-> \psi
@@ -302,12 +338,18 @@ contains
     integer                          :: i,istart,iend,it
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Advance Op"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
     R = right%length
@@ -370,12 +412,18 @@ contains
     integer                          :: L,R,N
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Average Op"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
     R = right%length
@@ -487,12 +535,18 @@ contains
     integer                          :: i,istart,iend,it
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Advance Correlator"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length             !
     R = right%length            !

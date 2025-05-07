@@ -2,10 +2,14 @@
 # LATTICE DMRG PROJECT
 ##################################################
 <<<<<<< HEAD
+<<<<<<< HEAD
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
 =======
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5.0)
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
+>>>>>>> d733a73 (Updated code.)
 PROJECT(dmrg Fortran)
 SET(VERSION 1.4.1)
 

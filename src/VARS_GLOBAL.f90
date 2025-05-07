@@ -99,6 +99,7 @@ contains
     integer                  :: M=50
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
     !call lefttem("clear")
     !call execute_command_line("clear")
     Ltot = Ldmrg
@@ -108,6 +109,11 @@ contains
     !call execute_command_line("clear")
     Ltot = Ldmrg!/2
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+    !call lefttem("clear")
+    !call execute_command_line("clear")
+    Ltot = Ldmrg
+>>>>>>> d733a73 (Updated code.)
     Ldot = bold_green('=')
     Rdot = bold_red('-')
     ! if(Ltot>M)then

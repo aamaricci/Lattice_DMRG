@@ -29,12 +29,18 @@ contains
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     call start_timer("Enlarge blocks "//str(grow_))
     !
     if(.not.self%operators%has_key("H"))&
@@ -48,11 +54,17 @@ contains
     !    
     !> Update Hamiltonian:
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ENLARGE block: update H"
+#endif
+>>>>>>> d733a73 (Updated code.)
     select case(str(grow_))
     case ("left","l")
        Hb = self%operators%op("H").x.id(dot%dim)
@@ -79,11 +91,17 @@ contains
     !
     !> Update all the other operators in the list:
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
+#endif
+>>>>>>> d733a73 (Updated code.)
     do i=1,size(self%operators)
        key   = str(self%operators%key(index=i))
        otype = str(self%operators%type(index=i))
@@ -139,10 +157,14 @@ contains
     !
 #ifdef _DEBUG
 <<<<<<< HEAD
+<<<<<<< HEAD
     if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 =======
     call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+    if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+>>>>>>> d733a73 (Updated code.)
 #endif
     !
     if(.not.self%is_valid())then
@@ -183,12 +205,18 @@ contains
 #endif
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)
@@ -262,12 +290,18 @@ contains
 #endif
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)

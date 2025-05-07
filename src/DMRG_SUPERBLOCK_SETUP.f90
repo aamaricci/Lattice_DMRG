@@ -52,13 +52,19 @@ contains
     character(len=:),allocatable    :: type
     type(sparse_matrix)             :: H2
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Sparse"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -105,12 +111,18 @@ contains
     character(len=:),allocatable                 :: type
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -148,12 +160,18 @@ contains
 #endif
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - spin"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -272,12 +290,18 @@ contains
 #endif
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
     !
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+>>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
