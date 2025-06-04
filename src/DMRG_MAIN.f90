@@ -22,10 +22,14 @@ contains
 
   !##################################################################
 <<<<<<< HEAD
+<<<<<<< HEAD
   !              INIT DMRG ALGORITHM
 =======
   !              INIT/FINALIZE DMRG ALGORITHM
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+  !              INIT DMRG ALGORITHM
+>>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
 #ifdef _CMPLX
@@ -59,6 +63,9 @@ contains
   end subroutine init_dmrg
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
   
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
@@ -117,6 +124,7 @@ contains
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
+<<<<<<< HEAD
 =======
 =======
 >>>>>>> d733a73 (Updated code.)
@@ -138,6 +146,8 @@ contains
        ! call write_truncation()
        ! call write_entanglement()
 >>>>>>> d733a73 (Updated code.)
+=======
+>>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
     enddo
   end subroutine infinite_DMRG
 
@@ -171,6 +181,7 @@ contains
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
     left =init_left
     right=init_right
     !
@@ -186,12 +197,16 @@ contains
        call step_dmrg('i')
 =======
     left=init_left
+=======
+    left =init_left
+>>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
     right=init_right
     !
-    left_label=1
+    left_label =1 
     right_label=2
-    !Infinite DMRG
     !
+    !
+    !Infinite DMRG
     allocate(blocks_list(2,2*Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
@@ -270,6 +285,7 @@ contains
           print*,""
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
           if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
 =======
           if(left_label==1.AND.left%length==Ldmrg/2)exit sweep
@@ -277,6 +293,9 @@ contains
 =======
           if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg)exit sweep
 >>>>>>> d733a73 (Updated code.)
+=======
+          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
+>>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
        enddo sweep
     enddo
     !
