@@ -21,7 +21,7 @@ contains
 
 
   !##################################################################
-  !              INIT/FINALIZE DMRG ALGORITHM
+  !              INIT DMRG ALGORITHM
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
 #ifdef _CMPLX
@@ -45,7 +45,10 @@ contains
     init_called =.true.
   end subroutine init_dmrg
 
-
+  
+  !##################################################################
+  !              FINALIZE DMRG ALGORITHM
+  !##################################################################
   subroutine finalize_dmrg()
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Finalize DMRG"
@@ -84,9 +87,6 @@ contains
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
-       ! call write_energy()
-       ! call write_truncation()
-       ! call write_entanglement()
     enddo
   end subroutine infinite_DMRG
 
@@ -110,13 +110,14 @@ contains
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     !
-    left=init_left
+    left =init_left
     right=init_right
     !
-    left_label=1
+    left_label =1 
     right_label=2
-    !Infinite DMRG
     !
+    !
+    !Infinite DMRG
     allocate(blocks_list(2,2*Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
@@ -157,7 +158,7 @@ contains
           blocks_list(left_label,left%length) = left
           print*,""
           print*,""
-          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg)exit sweep
+          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
        enddo sweep
     enddo
     !
