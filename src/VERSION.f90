@@ -2,6 +2,7 @@ MODULE VERSION
   implicit none
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
@@ -19,4 +20,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 >>>>>>> d733a73 (Updated code.)
+=======
+  character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
+>>>>>>> c06c2d8 (Added MATRIX_GRAPH.)
 END MODULE VERSION
