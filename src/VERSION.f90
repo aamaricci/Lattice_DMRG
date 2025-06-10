@@ -3,6 +3,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
@@ -23,4 +24,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 >>>>>>> c06c2d8 (Added MATRIX_GRAPH.)
+=======
+  character(len=41),parameter :: git_code_version = "c06c2d8f2389dbf9afd0f44f9dfd0ffac5a09af2"	
+>>>>>>> f042964 (Updated version of MATRIX_GRAPH adapted to DMRG problem.)
 END MODULE VERSION
