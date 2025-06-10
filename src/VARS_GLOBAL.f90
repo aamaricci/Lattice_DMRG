@@ -2,6 +2,7 @@ MODULE VARS_GLOBAL
   USE SCIFOR
   USE INPUT_VARS
   USE AUX_FUNCS
+  USE MATRIX_GRAPH
   USE MATRIX_SPARSE, id=>sp_eye
   USE MATRIX_BLOCKS
   USE TUPLE_BASIS
@@ -24,6 +25,7 @@ MODULE VARS_GLOBAL
   ! procedure(UserHconnect),pointer,public  :: Hmodel=>null()
   ! !
 
+  type(hij_matrix)                      :: Hij
 #ifdef _CMPLX
   complex(8),dimension(:,:),allocatable :: HopH
 #else
@@ -43,6 +45,7 @@ MODULE VARS_GLOBAL
      end subroutine sparse_HxV
   end interface
   procedure(sparse_HxV),pointer,public  :: spHtimesV_p=>null()
+
 
 
   type(sparse_matrix)                   :: spHsb

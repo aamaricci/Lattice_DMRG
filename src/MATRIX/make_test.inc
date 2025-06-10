@@ -3,7 +3,7 @@ FC=mpif90
 SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
 
-TYPE=DBLE
+TYPE=CMPLX
 
 FLAG= -cpp -D_DEBUG -D_$(TYPE) -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
 
@@ -23,8 +23,12 @@ FOCK=../FOCK
 LIST=../LIST
 MATRIX=../MATRIX
 
-test: matrix_sparse matrix_blocks
+test: matrix_graph matrix_sparse matrix_blocks
 
+
+matrix_graph: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
+matrix_graph: VERSION.o INPUT_VARS.o AUX_FUNCS.o
+	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_GRAPH.f90 -o $(HOME)/.bin/testMATRIX_GRAPH ${SF_INC} ${SF_LIB}
 
 matrix_sparse: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
 matrix_sparse: VERSION.o INPUT_VARS.o AUX_FUNCS.o

@@ -1,5 +1,4 @@
 MODULE VERSION
   implicit none
-  !GIT VERSION
-  character(len=41),parameter :: git_code_version = "aa4dff1a4ebd51d4dfa912ed8d9bee5bba8fc943"	
+  character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 END MODULE VERSION
