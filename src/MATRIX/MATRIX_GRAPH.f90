@@ -1,5 +1,5 @@
 module MATRIX_GRAPH
-  USE SCIFOR, only: free_unit,reg,file_length,assert_shape
+  USE SCIFOR, only: free_unit,reg,file_length,assert_shape,print_matrix,zeye
   USE AUX_FUNCS, only: show_fmt,append
   implicit none
   private
@@ -12,52 +12,54 @@ module MATRIX_GRAPH
 #endif
 
 
+
+  !This represents the Operator T_\delta between two sites Ri and Rj, possibly the same. 
   type link
-     integer            :: siteI,siteJ
-     integer            :: orbI,orbJ
-     integer            :: spin
+     integer                :: Nso         !Norb*max(Npsin,2)
+     integer                :: siteI,siteJ !Ri and Rj <Ri|T_ij|Rj>
 #ifdef _CMPLX
-     complex(8)         :: Hval
+     complex(8),allocatable :: Hval(:,:)   !The operator CMPLX
 #else
-     real(8)            :: Hval
+     real(8),allocatable    :: Hval(:,:)   !The operator DBLE
 #endif
-     type(link),pointer :: next !link to next box (chain)
+     type(link),pointer     :: next !link to next box (chain)
   end type link
 
 
   type hij_matrix
-     type(link),pointer                      :: root     !head/root of the list
-     character(len=:),allocatable            :: file     !Name of the W90 file 
-     integer                                 :: Size=0   !Number of hopping elements
-     integer,allocatable,dimension(:)        :: Nsites   !Number of sites per orbital
-     integer                                 :: Ns=0     !Number of levels per spin 
-     integer                                 :: Norb=0   !Number of orbitals
-     integer                                 :: Nspin=0  !Number of spin channels (1 or 2)
+     type(link),pointer                        :: root     !head/root of the list
+     character(len=:),allocatable              :: file     !Name of the output file 
+     integer                                   :: Size=0   !Number of hopping elements
+     integer,dimension(:),allocatable          :: Nsites   !Number of sites per dimesion
+     integer                                   :: Ndim=0   !Number of lattice dimensions
+     integer                                   :: Nlat=0   !Number of sites
+     integer                                   :: Norb=0   !Number of orbitals
+     integer                                   :: Nspin=0  !Number of spin channels (1 or 2)
+     integer                                   :: Nso=0    !Number of degrees of freedom
 #ifdef _CMPLX
-     complex(8),allocatable,dimension(:,:,:) :: Hij      !The H(Ri,Rj)_ab^ss Hamiltonian
-     complex(8),allocatable,dimension(:,:,:) :: Hloc     !The local part of H(Ri,Ri)_ab^ss
+     complex(8),allocatable,dimension(:,:,:,:) :: Hij      !The non-local Hamiltonian H(Ri,Rj)-H(Ri,Ri)
+     complex(8),allocatable,dimension(:,:,:) :: Hloc     !The local Hamiltonian     H(Ri,Ri) 
 #else
-     real(8),allocatable,dimension(:,:,:)    :: Hij      !The H(Ri,Rj)_ab^ss Hamiltonian
+     real(8),allocatable,dimension(:,:,:,:)    :: Hij      !The H(Ri,Rj)_ab^ss Hamiltonian
      real(8),allocatable,dimension(:,:,:)    :: Hloc     !The local part of H(Ri,Ri)_ab^ss
 #endif
-     logical                                 :: built  =.false. !Hij is built
-     logical                                 :: status =.false. !Allocated
+     logical                                   :: built  =.false. !Hij is built
+     logical                                   :: status =.false. !Allocated
+
    contains
      procedure,pass :: init       => hij_init_matrix
      procedure,pass :: free       => hij_free_matrix
      procedure,pass :: info       => hij_info_matrix
      procedure,pass :: write      => hij_write_matrix
-     procedure,pass :: read       => hij_read_matrix
-     procedure,pass :: add_link   => hij_add_link_matrix
+     generic        :: add_link   => hij_add_link_scalar_matrix,hij_add_link_array_matrix
      procedure,pass :: build      => hij_build_matrix
-     generic        :: get_Hij    => Hij_get_Hij_main_matrix,Hij_get_Hij_spin_matrix
-     generic        :: get_Hloc   => Hij_get_Hloc_main_matrix,Hij_get_Hloc_spin_matrix
-     procedure,pass :: pack_Hij   => Hij_get_Hij_pack_matrix
-     procedure,pass :: pack_Hloc  => Hij_get_Hloc_pack_matrix
-     procedure,pass :: &
-          Hij_get_Hij_main_matrix ,Hij_get_Hij_spin_matrix,&
-          Hij_get_Hloc_main_matrix,Hij_get_Hloc_spin_matrix
-
+     procedure,pass :: get        => Hij_get_matrix
+     procedure,pass :: get_Hij    => Hij_get_Hij_matrix
+     procedure,pass :: get_Hloc   => Hij_get_Hloc_matrix
+     procedure,pass :: pack       => Hij_pack_matrix
+     procedure,pass :: pack_Hij   => Hij_pack_Hij_matrix
+     procedure,pass :: pack_Hloc  => Hij_pack_Hloc_matrix
+     procedure,pass :: hij_add_link_scalar_matrix,hij_add_link_array_matrix
   end type hij_matrix
 
 
@@ -68,7 +70,7 @@ module MATRIX_GRAPH
 
   public :: hij_matrix
 
-  
+
 contains
 
 
@@ -76,35 +78,35 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  initialize the Hij structure: constructor
   !+------------------------------------------------------------------+
-  subroutine hij_init_matrix(self,Nsites,Nspin)
+  subroutine hij_init_matrix(self,Nsites,Norb,Nspin)
     class(hij_matrix),intent(inout) :: self
     integer,dimension(:),intent(in) :: Nsites
-    integer,intent(in),optional     :: Nspin
-    integer                         :: Nspin_
-    integer                         :: Ns
-    integer                         :: Norb
+    integer,intent(in),optional     :: Norb,Nspin
+    integer                         :: Norb_,Nspin_,Nso,Nlat,Ndim
     !
-    Nspin_ = 1; if(present(Nspin))Nspin_=Nspin
+    Norb_  = 1; if(present(Norb))Norb_=Norb
+    Nspin_ = 2; if(present(Nspin))Nspin_=Nspin
+    Nso    = Norb_*Nspin_
+    Nlat   = product(Nsites)
+    Ndim   = size(Nsites)
     !
     if(self%status)call self%free()
-    !
-    Norb = size(Nsites)
-    Ns   = sum(Nsites)
     !
     allocate(Self%root)
     Self%root%next => null()
     !
-    allocate(Self%Nsites(Norb))
-    Self%Nsites  = Nsites
     Self%file   = ""
     Self%size   = 0
-    Self%Ns     = Ns
-    Self%Norb   = Norb
+    allocate(Self%Nsites, source=Nsites)
+    Self%Nlat   = Nlat
+    Self%Ndim   = Ndim
+    Self%Norb   = Norb_
     Self%Nspin  = Nspin_
+    Self%Nso    = Nso
     !
-    allocate( Self%Hij(Nspin_,Ns,Ns) )
+    allocate( Self%Hij(Nlat,Nlat,Nso,Nso) )
     Self%Hij    = zero
-    allocate( Self%Hloc(Nspin_,Ns,Ns) )
+    allocate( Self%Hloc(Nlat,Nso,Nso) ) !local part
     Self%Hloc   = zero
     Self%built  =.false.
     Self%status =.true.
@@ -112,14 +114,15 @@ contains
   end subroutine hij_init_matrix
   !
 
-  function hij_constructor_matrix(Nsites,Nspin) result(self)
-    integer,dimension(:),intent(in) :: Nsites
-    integer,intent(in),optional     :: Nspin
-    integer                         :: Nspin_
+  function hij_constructor_matrix(Nsites,Norb,Nspin) result(self)
     type(hij_matrix)                :: self
+    integer,dimension(:),intent(in) :: Nsites
+    integer,intent(in),optional     :: Norb,Nspin
+    integer                         :: Norb_,Nspin_,Nso
     !
-    Nspin_ = 1; if(present(Nspin))Nspin_=Nspin
-    call self%init(Nsites,Nspin_)
+    Norb_  = 1; if(present(Norb))Norb_=Norb
+    Nspin_ = 2; if(present(Nspin))Nspin_=Nspin
+    call self%init(Nsites,Norb_,Nspin_)
   end function hij_constructor_matrix
   !
 
@@ -130,7 +133,7 @@ contains
   !+------------------------------------------------------------------+
   subroutine hij_free_matrix(self)
     class(hij_matrix),intent(inout) :: self
-    type(link),pointer                 :: p,c
+    type(link),pointer              :: p,c
     !
     if(.not.Self%status)return
     !
@@ -149,7 +152,9 @@ contains
     deallocate(Self%Hij)
     deallocate(Self%Hloc)
     Self%size   = 0
-    Self%Ns     = 0
+    Self%Nso    = 0
+    Self%Nlat   = 0
+    Self%Ndim   = 0
     Self%Norb   = 0
     Self%Nspin  = 0
     Self%built  =.false.
@@ -176,9 +181,11 @@ contains
     endif
     !
     write(*,"(A,10I8)")"Nsites  =",Self%Nsites
-    write(*,"(A,I8)")  "Ns      =",Self%Ns
+    write(*,"(A,I8)")  "Nlat    =",Self%Nlat
+    write(*,"(A,I8)")  "Dim     =",Self%Ndim
     write(*,"(A,I8)")  "Nspin   =",Self%Nspin
     write(*,"(A,I8)")  "Norb    =",Self%Norb
+    write(*,"(A,I8)")  "Nso     =",Self%Nso
     write(*,"(A,I8)")  "# link  =",Self%size
     if(Self%file /= "")&
          write(*,"(A,1x,A)")"file    =",Self%file
@@ -215,40 +222,40 @@ contains
     if(present(file))close(unit_)
     return
   end subroutine hij_write_matrix
-  !
 
-  !+------------------------------------------------------------------+
-  !PURPOSE:  Read  graph matrix from file
-  !+------------------------------------------------------------------+  
-  subroutine Hij_read_matrix(self,file)
-    class(hij_matrix),intent(inout) :: self
-    character(len=*)                :: file
-    integer                         :: Nsize
-    integer                         :: unitIO
-    integer                         :: ih,i,j,a,b,spin
-    real(8)                         :: re,im
-    !
-    if(.not.Self%status)stop "Hij_read ERROR: Self not allocated"
-    !
-    !Read from file initial info OR reconstruct them is Header is missing
-    open(free_unit(unitIO),file=reg(file),status="old",action="read")
-    Nsize = file_length(reg(file))
-    Self%file = reg(file)
-    Self%Size = Nsize
-    !
-    do ih=1,Self%Size
-#ifdef _CMPLX
-       read(unitIO,*)i,j,a,b,spin,re,im
-       call self%add_link(i,j,a,b,spin,dcmplx(re,im))
-#else
-       read(unitIO,*)i,j,a,b,spin,re
-       call self%add_link(i,j,a,b,spin,re)
-#endif
-    enddo
-    close(unitIO)
-    return
-  end subroutine Hij_read_matrix
-  !
+
+  !   !+------------------------------------------------------------------+
+  !   !PURPOSE:  Read  graph matrix from file
+  !   !+------------------------------------------------------------------+  
+  !   subroutine Hij_read_matrix(self,file)
+  !     class(hij_matrix),intent(inout) :: self
+  !     character(len=*)                :: file
+  !     integer                         :: Nsize
+  !     integer                         :: unitIO
+  !     integer                         :: ih,i,j,a,b,spin
+  !     real(8)                         :: re,im
+  !     !
+  !     if(.not.Self%status)stop "Hij_read ERROR: Self not allocated"
+  !     !
+  !     !Read from file initial info OR reconstruct them is Header is missing
+  !     open(free_unit(unitIO),file=reg(file),status="old",action="read")
+  !     Nsize = file_length(reg(file))
+  !     Self%file = reg(file)
+  !     Self%Size = Nsize
+  !     !
+  !     do ih=1,Self%Size
+  ! #ifdef _CMPLX
+  !        read(unitIO,*)i,j,a,b,spin,re,im
+  !        call self%add_link(i,j,a,b,spin,dcmplx(re,im))
+  ! #else
+  !        read(unitIO,*)i,j,a,b,spin,re
+  !        call self%add_link(i,j,a,b,spin,re)
+  ! #endif
+  !     enddo
+  !     close(unitIO)
+  !     return
+  !   end subroutine Hij_read_matrix
+  !   !
 
 
 
@@ -262,29 +269,29 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  add link to graph matrix to build the lattice structure
   !+------------------------------------------------------------------+  
-  subroutine Hij_add_link_matrix(self,siteI,siteJ,orbI,orbJ,spin,Hval)
+  subroutine Hij_add_link_scalar_matrix(self,siteI,siteJ,t)
     class(hij_matrix),intent(inout) :: self
-    integer                         :: siteI,siteJ
-    integer                         :: orbI,orbJ
-    integer                         :: spin
+    integer,intent(in)              :: siteI,siteJ
 #ifdef _CMPLX
-    complex(8) ,intent(in)          :: Hval
+    complex(8),intent(in)           :: t
+    complex(8),allocatable          :: Hval(:,:)
 #else
-    real(8) ,intent(in)             :: Hval
+    real(8),intent(in)              :: t
+    real(8),allocatable             :: Hval(:,:)
 #endif
     type(link),pointer              :: p,c
     integer                         :: k
     !
     !
     if(.not.Self%status)stop "Hij_add_link_matrix ERROR: Self not allocated"
+    if( siteI < 0  .OR. siteJ < 0 )&
+         stop "Hij_add_link_matrix ERROR: any(siteI) or any(siteJ)  < 0"
+    if( any(siteI>Self%Nsites) .OR. any(siteJ>Self%Nsites) )&
+         stop "Hij_add_link_matrix ERROR: any(siteI) or any(siteJ)  > Nsites"
     !
     !
-    if(spin>Self%Nspin .OR. spin<=0)&
-         stop "Hij_add_link_matrix ERROR: spin index either > Nspin OR < 0"
-    if(orbI>Self%Norb  .OR. orbJ>Self%Norb  .OR. orbI<=0 .OR. orbJ<=0)&
-         stop "Hij_add_link_matrix ERROR: orbI or orbJ either > Norb OR < 0"
-    if(siteI>Self%Nsites(orbI) .OR. siteJ>Self%Nsites(orbJ) .OR. siteI<=0 .OR. siteI<=0 )&
-         stop "Hij_add_link_matrix ERROR: siteI or siteJ either > Nlat OR < 0"
+    allocate(Hval(self%Nso,self%Nso))
+    Hval = t*zeye(self%Nso)
     !
     p => Self%root
     c => p%next
@@ -293,23 +300,76 @@ contains
        p => c
        c => c%next
     end do
+    !   
     allocate(p%next)
+    call set_link(p%next, siteI, siteJ, Hval)
+    c=>p%next
     !
-    p%next%siteI = siteI
-    p%next%siteJ = siteJ
-    p%next%orbI  = orbI
-    p%next%orbJ  = orbJ
-    p%next%spin  = spin
-    p%next%Hval  = Hval
-    Self%size=Self%size+1
+    if(siteI/=siteJ)then
+       allocate(p%next%next)
+#ifdef _CMPLX
+       call set_link(p%next%next, siteJ, siteI, conjg(transpose((Hval))) )
+#else
+       call set_link(p%next%next, siteJ, siteI, transpose((Hval)) )
+#endif
+       c=>p%next%next
+    endif
     !
-    if(.not.associated(c))then !end of the Self special case (current=>current%next)
-       p%next%next  => null()
-    else
-       p%next%next  => c      !the %next of the new node come to current
-    end if
-  end subroutine Hij_add_link_matrix
+    c%next  => null()
+    !
+    Self%size=Self%size+2
+  end subroutine Hij_add_link_scalar_matrix
+
+
+  subroutine Hij_add_link_array_matrix(self,siteI,siteJ,Hval)
+    class(hij_matrix),intent(inout) :: self
+    integer,intent(in)              :: siteI,siteJ
+#ifdef _CMPLX
+    complex(8),intent(in)           :: Hval(:,:)
+#else
+    real(8),intent(in)              :: Hval(:,:)
+#endif
+    type(link),pointer              :: p,c
+    integer                         :: k
+    !
+    !
+    if(.not.Self%status)stop "Hij_add_link_matrix ERROR: Self not allocated"
+    if( siteI < 0  .OR. siteJ < 0 )&
+         stop "Hij_add_link_matrix ERROR: any(siteI) or any(siteJ)  < 0"
+    if( any(siteI>Self%Nsites) .OR. any(siteJ>Self%Nsites) )&
+         stop "Hij_add_link_matrix ERROR: any(siteI) or any(siteJ)  > Nsites"
+    !
+    call assert_shape(Hval,[Self%Nso,Self%Nso],"Hij_add_link_matrices","Hij")
+    if(.not.herm_check(Hval,1d-6))stop "Hij_add_link_matrix ERROR: Hval is not hermitian"
+    !
+    p => Self%root
+    c => p%next
+    do k=1,Self%size
+       if(.not.associated(c))exit
+       p => c
+       c => c%next
+    end do
+    !   
+    allocate(p%next)
+    call set_link(p%next, siteI, siteJ, Hval)
+    c=>p%next
+    !
+    if(siteI/=siteJ)then
+       allocate(p%next%next)
+#ifdef _CMPLX
+       call set_link(p%next%next, siteJ, siteI, conjg(transpose((Hval))) )
+#else
+       call set_link(p%next%next, siteJ, siteI, transpose((Hval)) )
+#endif
+       c=>p%next%next
+    endif
+    !
+    c%next  => null()
+    !
+    Self%size=Self%size+2
+  end subroutine Hij_add_link_array_matrix
   !
+
 
 
 
@@ -329,9 +389,9 @@ contains
     integer                         :: i,j,a,b,spin
     integer                         :: io,jo
 #ifdef _CMPLX
-    complex(8)                      :: val
+    complex(8),allocatable          :: val(:,:)
 #else
-    real(8)                         :: val
+    real(8),allocatable             :: val(:,:)
 #endif
     !
     if(.not.Self%status)stop "Hij_build ERROR: Self not allocated"
@@ -339,31 +399,19 @@ contains
     c => Self%root%next
     do
        if(.not.associated(c))exit
-       call get_link(c,i,j,a,b,spin,val)
-       io = indices_link(i,a,spin)
-       jo = indices_link(j,b,spin)
-       Self%Hij(spin,io,jo) = val
-       if(i==j)Self%Hloc(spin,io,jo) = val
+       call get_link(c,i,j,val)
+       if(i==j)then
+          Self%Hloc(i,:,:) = val
+       else
+          Self%Hij(i,j,:,:) = val
+       endif
+       if(allocated(val))deallocate(val)
        c => c%next
     enddo
-    do spin=1,Self%Nspin
-       if(.not.herm_check(Self%Hij(spin,:,:),1d-6))stop "Hij_build ERROR: Hij is not Hermitian"
-    enddo
+
+    if(.not.herm_check( pack_matrix(self%Hij,Self%Nlat,Self%Nso) ,1d-6))stop "Hij_build ERROR: Hij is not Hermitian"    
     Self%built=.true.
     return
-  contains
-    function indices_link(siteI,orbI,spin) result(Indx)
-      integer,intent(in)          :: siteI,orbI
-      integer,intent(in),optional :: spin
-      integer                     :: Indx
-      select case(orbI)
-      case(1)
-         Indx = siteI
-      case default
-         Indx = siteI + (orbI-1)*Self%Nsites(orbI-1)
-      end select
-      if(present(spin))Indx = Indx + (spin-1)*Self%Ns
-    end function indices_link
   end subroutine Hij_build_matrix
   !
 
@@ -381,94 +429,72 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Retrieve the  actual Hij matrix from graph matrix type
   !+------------------------------------------------------------------+  
-  function Hij_get_Hij_main_matrix(self) result(Hij)
+  function Hij_get_Hij_matrix(self) result(Hij)
     class(hij_matrix),intent(inout)           :: self
 #ifdef _CMPLX
-    complex(8),dimension(:,:,:),allocatable :: Hij
+    complex(8),dimension(:,:,:,:),allocatable :: Hij
 #else
-    real(8),dimension(:,:,:),allocatable    :: Hij
+    real(8),dimension(:,:,:,:),allocatable    :: Hij
 #endif
-    integer                                   :: Nlso,Nspin
     !
     if(.not.Self%status)stop "Hij_get_Hij_matrix ERROR: Self not allocated"
     !
-    Nlso = Self%Ns
-    Nspin= Self%Nspin
-    if(allocated(Hij))deallocate(Hij)
-    allocate(Hij(Nspin,Nlso,Nlso))
     if(.not.Self%built)call self%build()
-    Hij = Self%Hij
-  end function Hij_get_Hij_main_matrix
-
-  function Hij_get_Hij_spin_matrix(self,spin) result(Hij)
-    class(hij_matrix),intent(inout)       :: self
-    integer,intent(in)                    :: spin
-#ifdef _CMPLX
-    complex(8),dimension(:,:),allocatable :: Hij
-#else
-    real(8),dimension(:,:),allocatable    :: Hij
-#endif
-    integer                               :: Nlso
-    !
-    if(.not.Self%status)stop "Hij_get_Hij_ispin_matrix ERROR: Self not allocated"
-    !
-    Nlso = Self%Ns
     if(allocated(Hij))deallocate(Hij)
-    allocate(Hij(Nlso,Nlso))
-    if(.not.Self%built)call self%build()
-    Hij = Self%Hij(spin,:,:)
-  end function Hij_get_Hij_spin_matrix
-
-
-
-
-
-
-
-
+    allocate(Hij,  source=Self%Hij)
+  end function Hij_get_Hij_matrix
 
 
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Retrieve the actual Hloc matrix from graph matrix type
   !+------------------------------------------------------------------+  
-  function Hij_get_Hloc_main_matrix(self) result(Hloc)
+  function Hij_get_Hloc_matrix(self) result(Hloc)
     class(hij_matrix),intent(inout)           :: self
 #ifdef _CMPLX
     complex(8),dimension(:,:,:),allocatable :: Hloc
 #else
     real(8),dimension(:,:,:),allocatable    :: Hloc
 #endif
-    integer                                   :: Nlso,Nspin
     !
     if(.not.Self%status)stop "Hij_get_Hloc_matrix ERROR: Self not allocated"
     !
-    Nlso = Self%Ns
-    Nspin= Self%Nspin
-    if(allocated(Hloc))deallocate(Hloc)
-    allocate(Hloc(Nspin,Nlso,Nlso))
     if(.not.Self%built)call self%build()
-    Hloc = Self%Hloc
-  end function Hij_get_Hloc_main_matrix
+    if(allocated(Hloc))deallocate(Hloc)
+    allocate(Hloc, source=Self%Hloc)
+  end function Hij_get_Hloc_matrix
 
-  function Hij_get_Hloc_spin_matrix(self,spin) result(Hloc)
-    class(hij_matrix),intent(inout)       :: self
-    integer,intent(in)                    :: spin
+
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Retrieve the  actual Hij matrix from graph matrix type
+  !+------------------------------------------------------------------+  
+  function Hij_get_matrix(self) result(H)
+    class(hij_matrix),intent(inout)           :: self
 #ifdef _CMPLX
-    complex(8),dimension(:,:),allocatable :: Hloc
+    complex(8),dimension(:,:,:,:),allocatable :: H
 #else
-    real(8),dimension(:,:),allocatable    :: Hloc
+    real(8),dimension(:,:,:,:),allocatable    :: H
 #endif
-    integer                               :: Nlso
+    integer                                   :: ilat,is,js,io,jo
     !
-    if(.not.Self%status)stop "Hij_get_Hloc_ispin_matrix ERROR: Self not allocated"
+    if(.not.Self%status)stop "Hij_get_Hij_matrix ERROR: Self not allocated"
     !
-    Nlso = Self%Ns
-    if(allocated(Hloc))deallocate(Hloc)
-    allocate(Hloc(Nlso,Nlso))
     if(.not.Self%built)call self%build()
-    Hloc = Self%Hloc(spin,:,:)
-  end function Hij_get_Hloc_spin_matrix
+    if(allocated(H))deallocate(H)
+    allocate(H(self%Nlat,self%Nlat,self%Nso,self%Nso))
+
+    H = self%Hij
+    do ilat=1,Self%Nlat
+       H(ilat,ilat,:,:) = H(ilat,ilat,:,:) +  Self%Hloc(ilat,:,:)
+    enddo
+  end function Hij_get_matrix
+
+
+
+
 
 
 
@@ -478,7 +504,7 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Pack graph matrix Hij component into a Hij matrix
   !+------------------------------------------------------------------+  
-  function Hij_get_Hij_pack_matrix(self) result(Hij)
+  function Hij_pack_Hij_matrix(self) result(Hij)
     class(hij_matrix),intent(inout)       :: self
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Hij
@@ -488,38 +514,79 @@ contains
     integer                               :: Nlso
     !
     if(.not.Self%status)stop "Hij_get_Hij_ispin_matrix ERROR: Self not allocated"
-    !
-    Nlso = self%Nspin*Self%Ns
+    !      
+    Nlso = self%Nlat*Self%Nso
+    if(.not.Self%built)call self%build()
     if(allocated(Hij))deallocate(Hij)
     allocate(Hij(Nlso,Nlso))
-    if(.not.Self%built)call self%build()
-    Hij = pack_matrix(Self%Hij,Self%Ns,Self%Nspin)
-  end function Hij_get_Hij_pack_matrix
-
-
+    Hij = pack_matrix(Self%Hij,Self%Nlat,Self%Nso)
+  end function Hij_pack_Hij_matrix
 
 
 
   !+------------------------------------------------------------------+
   !PURPOSE:  Pack graph matrix Hloc component into a Hloc matrix
   !+------------------------------------------------------------------+  
-  function Hij_get_Hloc_pack_matrix(self) result(Hloc)
+  function Hij_pack_Hloc_matrix(self) result(Hloc)
     class(hij_matrix),intent(inout)       :: self
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Hloc
 #else
     real(8),dimension(:,:),allocatable    :: Hloc
 #endif
-    integer                               :: Nlso
+    integer                               :: Nlso,ilat,is,js,io,jo
     !
     if(.not.Self%status)stop "Hij_get_Hloc_ispin_matrix ERROR: Self not allocated"
     !
-    Nlso = self%Nspin*Self%Ns
+    Nlso = self%Nlat*Self%Nso
+    if(.not.Self%built)call self%build()
     if(allocated(Hloc))deallocate(Hloc)
     allocate(Hloc(Nlso,Nlso))
+    do concurrent(ilat=1:Self%Nlat,is=1:Self%Nso,js=1:Self%Nso)
+       io = is + (ilat-1)*Self%Nso
+       jo = js + (ilat-1)*Self%Nso
+       Hloc(io,jo) = Self%Hloc(ilat,is,js)
+    enddo
+  end function Hij_pack_Hloc_matrix
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE:  Pack graph matrix Hij component into a Hij matrix
+  !+------------------------------------------------------------------+  
+  function Hij_pack_matrix(self) result(H)
+    class(hij_matrix),intent(inout)       :: self
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: H
+#else
+    real(8),dimension(:,:),allocatable    :: H
+#endif
+    integer                               :: Nlso
+    !
+    if(.not.Self%status)stop "Hij_get_Hij_ispin_matrix ERROR: Self not allocated"
+    !      
+    Nlso = self%Nlat*Self%Nso
     if(.not.Self%built)call self%build()
-    Hloc = pack_matrix(Self%Hloc,Self%Ns,Self%Nspin)
-  end function Hij_get_Hloc_pack_matrix
+    if(allocated(H))deallocate(H)
+    allocate(H(Nlso,Nlso))
+    H = self%pack_Hij() + self%pack_Hloc()
+  end function Hij_pack_matrix
 
 
 
@@ -530,88 +597,52 @@ contains
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  !##################################################################
-  !                   COMPUTATIOAL ROUTINES
-  !##################################################################
+  !   !##################################################################
+  !   !                   COMPUTATIOAL ROUTINES
+  !   !##################################################################
 
   !Set/Get/Delete link: INTERNAL USE
-  subroutine set_link(self,siteI,siteJ,orbI,orbJ,spin,Hval)
+  subroutine set_link(self,siteI,siteJ,Hval)
     type(link),intent(inout) :: self
     integer,intent(in)       :: siteI,siteJ
-    integer,intent(in)       :: orbI,orbJ
-    integer,intent(in)       :: spin
 #ifdef _CMPLX
-    complex(8),intent(in)    :: Hval
+    complex(8),intent(in)    :: Hval(:,:)
 #else
-    real(8),intent(in)       :: Hval
-#endif
-    self%siteI = siteI
-    self%siteJ = siteJ
-    self%orbI  = orbI
-    self%orbJ  = orbJ
-    self%spin  = spin
-    self%Hval  = Hval
+    real(8),intent(in)       :: Hval(:,:)
+#endif    
+    self%siteI=siteI
+    self%siteJ=siteJ
+    allocate(self%Hval,  source=Hval)
   end subroutine set_link
-  !
+  !   !
 
-  subroutine get_link(self,siteI,siteJ,orbI,orbJ,spin,Hval)
-    type(link),intent(inout) :: self
-    integer,intent(inout)    :: siteI,siteJ
-    integer,intent(inout)    :: orbI,orbJ
-    integer,intent(inout)    :: spin
+  subroutine get_link(self,siteI,siteJ,Hval)
+    type(link),intent(inout)             :: self
+    integer,intent(inout)                :: siteI,siteJ
 #ifdef _CMPLX
-    complex(8),intent(inout) :: Hval
+    complex(8),allocatable,intent(inout) :: Hval(:,:)
 #else
-    real(8),intent(inout)    :: Hval
+    real(8),allocatable,intent(inout)    :: Hval(:,:)
 #endif
     siteI = self%siteI
     siteJ = self%siteJ
-    orbI  = self%orbI
-    orbJ  = self%orbJ
-    spin  = self%spin
-    Hval  = self%Hval
+    if(allocated(Hval))deallocate(Hval)
+    allocate(Hval, source=self%Hval)
   end subroutine get_link
   !
   subroutine del_link(self)
     type(link),intent(inout) :: self
-    self%siteI = 0
-    self%siteJ = 0
-    self%orbI  = 0
-    self%orbJ  = 0
-    self%spin  = 0
-    self%Hval  = zero
+    if(allocated(self%Hval))deallocate(self%Hval)
+    self%siteI=0
+    self%siteJ=0
     self%next  => null()
   end subroutine del_link
   !
   subroutine print_link(self,unit)
     type(link),intent(in) :: self
     integer               :: unit
-#ifdef _CMPLX
-    write(unit,"(5I6,2F12.4)")&
-         self%siteI,self%siteJ,&
-         self%orbI,self%orbJ,&
-         self%spin,dreal(self%Hval),dimag(self%Hval)
-#else
-    write(unit,"(5I6,F12.4)")&
-         self%siteI,self%siteJ,&
-         self%orbI,self%orbJ,&
-         self%spin,self%Hval
-#endif
+    write(unit,"(2I6)")self%siteI,self%siteJ
+    call print_matrix(self%Hval)
   end subroutine print_link
   !
 
@@ -648,47 +679,39 @@ contains
   end function herm_check
 
 
-  function pack_matrix(Hin,Ns,Nspin) result(Hout)
+  function pack_matrix(Hin,Nlat,Nso) result(Hout)
 #ifdef _CMPLX
-    complex(8),dimension(Nspin,Ns,Ns)       :: Hin
-    complex(8),dimension(Nspin*Ns,Nspin*Ns) :: Hout
+    complex(8),dimension(Nlat,Nlat,Nso,Nso) :: Hin
+    complex(8),dimension(Nlat*Nso,Nlat*Nso) :: Hout
 #else
-    real(8),dimension(Nspin,Ns,Ns)          :: Hin
-    real(8),dimension(Nspin*Ns,Nspin*Ns)    :: Hout
+    real(8),dimension(Nlat,Nlat,Nso,Nso)    :: Hin
+    real(8),dimension(Nlat*Nso,Nlat*Nso)    :: Hout
 #endif
-    integer                                 :: Ns,Nspin
-    integer                                 :: ispin,is,js
+    integer                                 :: Nlat,Nso
+    integer                                 :: ilat,jlat,is,js
     integer                                 :: io,jo
-    do ispin=1,Nspin
-       do is=1,Ns
-          do js=1,Ns
-             io = is + (ispin-1)*Ns
-             jo = js + (ispin-1)*Ns
-             Hout(io,jo) = Hin(ispin,is,js)
-          enddo
-       enddo
+    do concurrent(ilat=1:Nlat,jlat=1:Nlat,is=1:Nso,js=1:Nso)
+       io = is + (ilat-1)*Nso
+       jo = js + (jlat-1)*Nso
+       Hout(io,jo) = Hin(ilat,jlat,is,js)
     enddo
   end function pack_matrix
   !
-  function unpack_matrix(Hin,Ns,Nspin) result(Hout)
+  function unpack_matrix(Hin,Nlat,Nso) result(Hout)
 #ifdef _CMPLX
-    complex(8),dimension(Nspin*Ns,Nspin*Ns) :: Hin
-    complex(8),dimension(Nspin,Ns,Ns)       :: Hout
+    complex(8),dimension(Nlat*Nso,Nlat*Nso) :: Hin
+    complex(8),dimension(Nlat,Nlat,Nso,Nso) :: Hout
 #else
-    real(8),dimension(Nspin*Ns,Nspin*Ns)    :: Hin
-    real(8),dimension(Nspin,Ns,Ns)          :: Hout
+    real(8),dimension(Nlat*Nso,Nlat*Nso)    :: Hin
+    real(8),dimension(Nlat,Nlat,Nso,Nso)    :: Hout
 #endif
-    integer                                 :: Ns,Nspin
-    integer                                 :: ispin,is,js
+    integer                                 :: Nlat,Nso
+    integer                                 :: ilat,jlat,is,js
     integer                                 :: io,jo
-    do ispin=1,Nspin
-       do is=1,Ns
-          do js=1,Ns
-             io = is + (ispin-1)*Ns
-             jo = js + (ispin-1)*Ns
-             Hout(ispin,is,js) = Hin(io,jo)
-          enddo
-       enddo
+    do concurrent(ilat=1:Nlat,jlat=1:Nlat,is=1:Nso,js=1:Nso)
+       io = is + (ilat-1)*Nso
+       jo = js + (jlat-1)*Nso
+       Hout(ilat,jlat,is,js) = Hin(io,jo)
     enddo
   end function unpack_matrix
 
@@ -736,40 +759,49 @@ program testGRAPH_MATRIX
   USE SCIFOR
   implicit none
 
-  type(hij_matrix)                        :: H
+  type(hij_matrix)                          :: H
 #ifdef _CMPLX
-  complex(8)                              :: eloc=dcmplx(0.2d0,0d0)
-  complex(8)                              :: v=dcmplx(0d0,0.1d0)
-  complex(8)                              :: ts=dcmplx(-1d0,0d0)
-  complex(8),dimension(:,:,:),allocatable :: Hij,Hloc
-  complex(8),dimension(:,:),allocatable   :: Hs
+  complex(8)                                :: eloc=dcmplx(0.2d0,0d0)
+  complex(8)                                :: v=dcmplx(0.1d0,0d0)
+  complex(8)                                :: ts=dcmplx(-1d0,0d0)
+  complex(8),dimension(:,:),allocatable     :: e,t
+  complex(8),dimension(:,:,:,:),allocatable :: Hij
+  complex(8),dimension(:,:,:),allocatable   :: Hloc
+  complex(8),dimension(:,:),allocatable     :: Hs
 #else
-  real(8)                                 :: eloc=0.2d0
-  real(8)                                 :: v=0.1d0
-  real(8)                                 :: ts=-1d0
-  real(8),dimension(:,:,:),allocatable    :: Hij,Hloc
-  real(8),dimension(:,:),allocatable      :: Hs
+  real(8)                                   :: eloc=0.2d0
+  real(8)                                   :: v=0.1d0
+  real(8)                                   :: ts=-1d0
+  real(8),dimension(:,:),allocatable        :: e,t
+  real(8),dimension(:,:,:,:),allocatable    :: Hij
+  real(8),dimension(:,:,:),allocatable      :: Hloc
+  real(8),dimension(:,:),allocatable        :: Hs
 #endif
-  integer                                 :: iorb
+  integer                                   :: iorb
 
-  H = hij_matrix([4])
+  !chain of 4 sites, spin=1
 
 
-  !> ionic potential
-  call H%add_link(1,1,1,1,1, eloc)
-  call H%add_link(2,2,1,1,1,-eloc)
-  call H%add_link(3,3,1,1,1, eloc)
-  call H%add_link(4,4,1,1,1,-eloc)
+  print*,""
+  print*," ---------------------- "
+  print*," 4 sites chaing, spin=1 "
+  print*," ---------------------- "
+  print*,""
+
+  H = hij_matrix([4],Nspin=1)
+
+  ! !> ionic potential
+  call H%add_link(1,1, eloc)
+  call H%add_link(2,2,-eloc)
+  call H%add_link(3,3, eloc)
+  call H%add_link(4,4,-eloc)
+
   !> hoppings
-  call H%add_link(1,2,1,1,1,ts)
-  call H%add_link(1,4,1,1,1,ts)
-  call H%add_link(2,1,1,1,1,ts)
-  call H%add_link(2,3,1,1,1,ts)
-  call H%add_link(3,2,1,1,1,ts)
-  call H%add_link(3,4,1,1,1,ts)
-  call H%add_link(4,1,1,1,1,ts)
-  call H%add_link(4,3,1,1,1,ts)
-  !
+  call H%add_link(1,2,ts)
+  call H%add_link(2,3,ts)
+  call H%add_link(3,4,ts)
+  call H%add_link(4,1,ts)
+
   print*,"H.info"
   call H%info()
   print*,"H.write"
@@ -779,60 +811,152 @@ program testGRAPH_MATRIX
   call H%build()
 
 
-  print*,"H.get_Hij"
+  print*,"H.get_Hij (print 1,2)"
   Hij = H%get_hij()
-  call print_matrix(Hij(1,:,:))
+  call print_matrix(Hij(1,2,:,:))
   print*,""
 
-  print*,"H.get_Hloc"
+  print*,"H.get_Hloc (print 2,2)"
   Hloc = H%get_hloc()
-  call print_matrix(Hloc(1,:,:))
+  call print_matrix(Hloc(2,:,:))
   print*,""
 
-  print*,"H.get_Hspin=1"  
-  Hs = H%get_hij(1)
-  call print_matrix(Hs)
+  print*,"H.get "
+  Hij = H%get()
+  call print_matrix(Hij(1,2,:,:))
+  call print_matrix(Hij(2,2,:,:))
   print*,""
 
 
 
   print*,"H.pack_Hij"  
   Hs = H%pack_hij()
+  call print_matrix(Hs)
+  print*,""
+
+  print*,"H.pack_Hloc"  
+  Hs = H%pack_hloc()
+  call print_matrix(Hs)
+  print*,""
+
+  print*,"H.pack"  
+  Hs = H%pack()
   call print_matrix(Hs)
   print*,""
 
 
   call H%free()
   print*,H%status
+  print*,""
+  print*,""
+  print*,""
 
 
 
 
 
+  print*,""
+  print*," ---------------------- "
+  print*," 4 sites chaing, spin=2 "
+  print*," ---------------------- "
+  print*,""
 
+  !Op are 2x2 by spin:
+  allocate(e(2,2),t(2,2))
+  e = diag([eloc,eloc])
+  t = diag([ts,ts])
 
+  H = hij_matrix([4],Nspin=2)
 
-
-  H = hij_matrix([2,2])
-
-
-  !> crystal field potential
-  call H%add_link(1,1,1,1,1, eloc)
-  call H%add_link(1,1,2,2,1,-eloc)
-  call H%add_link(2,2,1,1,1, eloc)
-  call H%add_link(2,2,2,2,1,-eloc)
-
-  call H%add_link(1,1,1,2,1, v)
-  call H%add_link(1,1,2,1,1, conjg(v))
-  call H%add_link(2,2,1,2,1, v)
-  call H%add_link(2,2,2,1,1, conjg(v))
+  ! !> ionic potential
+  call H%add_link(1,1, e)
+  call H%add_link(2,2,-eloc)
+  call H%add_link(3,3, eloc)
+  call H%add_link(4,4,-e)
 
   !> hoppings
-  call H%add_link(1,2,1,1,1,ts)
-  call H%add_link(2,1,1,1,1,ts)
-  !
-  call H%add_link(1,2,2,2,1,-ts)
-  call H%add_link(2,1,2,2,1,-ts)
+  call H%add_link(1,2,ts)
+  call H%add_link(2,3,t)
+  call H%add_link(3,4,t)
+  call H%add_link(4,1,ts)
+
+  print*,"H.info"
+  call H%info()
+  print*,"H.write"
+  call H%write()
+
+  print*,"H.build (silent)"
+  call H%build()
+
+
+  print*,"H.get_Hij (print 1,2)"
+  Hij = H%get_hij()
+  call print_matrix(Hij(1,2,:,:))
+  print*,""
+
+  print*,"H.get_Hloc (print 2,2)"
+  Hloc = H%get_hloc()
+  call print_matrix(Hloc(2,:,:))
+  print*,""
+
+  print*,"H.get "
+  Hij = H%get()
+  call print_matrix(Hij(1,2,:,:))
+  call print_matrix(Hij(2,2,:,:))
+  print*,""
+
+
+
+  print*,"H.pack_Hij"  
+  Hs = H%pack_hij()
+  call print_matrix(Hs)
+  print*,""
+
+  print*,"H.pack_Hloc"  
+  Hs = H%pack_hloc()
+  call print_matrix(Hs)
+  print*,""
+
+  print*,"H.pack"  
+  Hs = H%pack()
+  call print_matrix(Hs)
+  print*,""
+
+
+  call H%free()
+  print*,H%status
+  print*,""
+  print*,""
+  print*,""
+
+
+
+
+
+
+  print*,""
+  print*," ---------------------- "
+  print*," 3 sites chain OBC, spin=1 "
+  print*," ---------------------- "
+  print*,""
+
+
+  e = diag([eloc,-eloc])
+#ifdef _CMPLX
+  t = ts*pauli_tau_z + v*pauli_tau_y
+#else
+  t = ts*pauli_tau_z + v*pauli_tau_x
+#endif
+  H = hij_matrix([3],Norb=2,Nspin=1)
+
+  ! !> crystal field potential
+  call H%add_link(1,1, e)
+  call H%add_link(2,2, e)
+  call H%add_link(3,3, e)
+  !> hoppings
+  call H%add_link(1,2,t)
+  call H%add_link(2,3,t)
+
   !
   print*,"H.info"
   call H%info()
@@ -844,27 +968,18 @@ program testGRAPH_MATRIX
 
   print*,"H.build (silent)"
   call H%build()
-
-
-  print*,"H.get_Hij"
-  Hij = H%get_hij()
-  call print_matrix(Hij(1,:,:))
-  print*,""
-
-  print*,"H.get_Hloc"
-  Hloc = H%get_hloc()
-  call print_matrix(Hloc(1,:,:))
-  print*,""
-
-  print*,"H.get_Hspin=1"  
-  Hs = H%get_hij(1)
+  print*,"H.pack_Hij"  
+  Hs = H%pack_hij()
   call print_matrix(Hs)
   print*,""
 
+  print*,"H.pack_Hloc"  
+  Hs = H%pack_hloc()
+  call print_matrix(Hs)
+  print*,""
 
-
-  print*,"H.pack_Hij"  
-  Hs = H%pack_hij()
+  print*,"H.pack"  
+  Hs = H%pack()
   call print_matrix(Hs)
   print*,""
 
