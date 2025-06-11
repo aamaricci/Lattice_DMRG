@@ -25,26 +25,47 @@ contains
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
 #ifdef _CMPLX
-    complex(8),dimension(:,:) :: Hij
+    complex(8),dimension(:,:)   :: Hij
 #else
-    real(8),dimension(:,:)    :: Hij
+    real(8),dimension(:,:)      :: Hij
 #endif
-    type(site)                :: ModelDot
-    call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
-    if(allocated(HopH))deallocate(HopH)
+    type(site),dimension(:)     :: ModelDot
+    integer                     :: ilat
+    !
+    !SETUP the Hopping Hamiltonian term:
+    !
+    call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"Init_DMRG","Hij")
     allocate(HopH, source=Hij)
     !
+    !SETUP the Dots 
+    allocate(dot(2*Ldmrg))
+    select case(size(ModelDot))
+    case (1)
+       do ilat=1,2*Ldmrg
+          dot(ilat) = ModelDot(1)
+       enddo
+    case default
+       if(size(ModelDot)/=2*Ldmrg)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg or 1"
+       do ilat=1,2*Ldmrg
+          dot(ilat) = ModelDot(ilat)
+       enddo
+    end select
+    !
+    !SETUP the initial DMRG structure
     allocate(target_qn, source=DMRG_QN)
-    dot         = ModelDot
-    init_left   = block(dot)
-    init_right  = block(dot)
+    init_left   = block(dot(1))
+    init_right  = block(dot(1))
     init_called =.true.
   end subroutine init_dmrg
 
 
   subroutine finalize_dmrg()
+    integer :: ilat
     if(allocated(HopH))deallocate(HopH)    
-    call dot%free()
+    do ilat=1,2*Ldmrg
+       call dot(ilat)%free()
+    enddo
+    deallocate(dot)
     call init_left%free()
     call init_right%free()
     call left%free()
@@ -209,8 +230,8 @@ contains
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
     !#################################
-    call enlarge_block(left,dot,grow='left')
-    call enlarge_block(right,dot,grow='right')
+    call enlarge_block(left,dot(left%length+1),grow='left')
+    call enlarge_block(right,dot(left%length+2),grow='right')
     !
     !
     !#################################
@@ -312,7 +333,7 @@ contains
     integer                   :: Eunit
     current_L = left%length + right%length
     Eunit     = fopen("energyVSleft.length_"//str(suffix),append=.true.)
-    write(Eunit,*)left%length,gs_energy/current_L/Norb
+    write(Eunit,*)current_L,gs_energy/current_L/Norb
     close(Eunit)
   end subroutine write_energy
 
@@ -325,7 +346,7 @@ contains
     integer                   :: Eunit
     current_L = left%length + right%length
     Eunit     = fopen("truncationVSleft.length_"//str(suffix),append=.true.)
-    write(Eunit,*)left%length,&
+    write(Eunit,*)current_L,&
          truncation_error_left/current_L/Norb,&
          truncation_error_right/current_L/Norb
     close(Eunit)

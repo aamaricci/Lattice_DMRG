@@ -9,13 +9,13 @@ program hubbard_1d
   integer                                        :: i,unit,iorb,ispin,L
   character(len=1)                               :: DMRGtype
   real(8)                                        :: ts(2),Mh(2)
-  type(site)                                     :: Dot
+  type(site),dimension(:),allocatable            :: Dot
   real(8),dimension(:,:),allocatable             :: Hloc,Hlr
   type(sparse_matrix),dimension(:,:),allocatable :: Nop,Cop
   type(sparse_matrix),dimension(:),allocatable   :: dens,docc,s2z
-  real(8),dimension(:,:),allocatable   :: avO
-  real(8),dimension(:),allocatable   :: x,data,data_
-  real(8),dimension(:),allocatable   :: n,d,m,e,s
+  real(8),dimension(:,:),allocatable             :: avO
+  real(8),dimension(:),allocatable               :: x,data,data_
+  real(8),dimension(:),allocatable               :: n,d,m,e,s
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
@@ -27,8 +27,12 @@ program hubbard_1d
 
 
   Nso = Nspin*Norb
-  allocate(Hloc(Nso,Nso))
+
+  ! allocate(Hloc(Nso,Nso))
   Hloc = diag([Mh(1:Norb),Mh(1:Norb)])
+
+
+  allocate(Dot(1))
   Dot = electron_site()
 
   if(allocated(Hlr))deallocate(Hlr)
@@ -46,7 +50,7 @@ program hubbard_1d
   allocate(Cop(Norb,Nspin),Nop(Norb,Nspin))
   do ispin=1,Nspin
      do iorb=1,Norb
-        Cop(iorb,ispin) = dot%operators%op(key="C"//dot%okey(iorb,ispin))
+        Cop(iorb,ispin) = dot(1)%operators%op(key="C"//dot(1)%okey(iorb,ispin))
         Nop(iorb,ispin) = matmul(Cop(iorb,ispin)%dgr(),Cop(iorb,ispin))
      enddo
   enddo
