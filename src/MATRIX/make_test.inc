@@ -3,7 +3,7 @@ FC=mpif90
 SF_INC:=$(shell pkg-config --cflags scifor)
 SF_LIB:=$(shell pkg-config --libs scifor)
 
-TYPE=CMPLX
+TYPE=DBLE
 
 FLAG= -cpp -D_DEBUG -D_$(TYPE) -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
 

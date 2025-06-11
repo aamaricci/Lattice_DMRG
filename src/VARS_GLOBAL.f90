@@ -25,12 +25,14 @@ MODULE VARS_GLOBAL
   ! procedure(UserHconnect),pointer,public  :: Hmodel=>null()
   ! !
 
-  type(hij_matrix)                      :: Hij
 #ifdef _CMPLX
-  complex(8),dimension(:,:),allocatable :: HopH
+  complex(8),dimension(:,:),allocatable   :: HopH
 #else
-  real(8),dimension(:,:),allocatable    :: HopH
+  real(8),dimension(:,:),allocatable      :: HopH
 #endif
+
+
+
 
   abstract interface
      subroutine sparse_HxV(Nloc,v,Hv)
@@ -69,7 +71,7 @@ MODULE VARS_GLOBAL
   type(blocks_matrix)                   :: rho_right
   !GLOBAL LEFT & RIGHT & DOT 
   type(block)                           :: left,right
-  type(site)                            :: dot
+  type(site),dimension(:),allocatable   :: dot
   !
   !SUPERBLOCK SHARED THINGS
   integer,dimension(:),allocatable      :: sb_states
@@ -78,7 +80,7 @@ MODULE VARS_GLOBAL
   integer                               :: Mstates
   real(8)                               :: Estates
 
-  
+
 contains
 
 

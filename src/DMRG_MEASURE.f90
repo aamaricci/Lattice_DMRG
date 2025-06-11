@@ -381,13 +381,13 @@ contains
        do it=istart,iend
           U  = left%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot%dim)
+          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r") 
        do it=istart,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot%dim).x.Oi
+          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
     call U%free()
@@ -578,13 +578,13 @@ contains
        do it=istart+1,iend
           U  = left%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot%dim)
+          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r")
        do it=istart+1,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot%dim).x.Oi
+          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
     call U%free()
