@@ -27,7 +27,9 @@ MODULE INPUT_VARS
   integer              :: Norb
   !# of orbitals
   integer              :: Nspin=2
-  !Nspin=# spins 
+  !Nspin=# spins
+  ! integer              :: SUn
+  ! !Spin representation 
   real(8),allocatable  :: Uloc(:)
   !local interactions
   real(8)              :: Ust
@@ -163,6 +165,10 @@ contains
          default=1,&
          comment="Number of impurity orbitals.")
 
+    ! call parse_input_variable(SUn,"SUN",INPUTunit,&
+    !      default=2,&
+    !      comment="Dimension of the spin representation.")
+    
     !>Interaction parameters:
     allocate(Uloc(Norb))
     call parse_input_variable(uloc,"ULOC",INPUTunit,&

@@ -23,8 +23,12 @@ FOCK=../FOCK
 LIST=../LIST
 MATRIX=../MATRIX
 
-test: matrix_sparse matrix_blocks
+test: matrix_graph matrix_sparse matrix_blocks
 
+
+matrix_graph: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
+matrix_graph: VERSION.o INPUT_VARS.o AUX_FUNCS.o
+	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_GRAPH.f90 -o $(HOME)/.bin/testMATRIX_GRAPH ${SF_INC} ${SF_LIB}
 
 matrix_sparse: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
 matrix_sparse: VERSION.o INPUT_VARS.o AUX_FUNCS.o

@@ -2,6 +2,7 @@ MODULE VARS_GLOBAL
   USE SCIFOR
   USE INPUT_VARS
   USE AUX_FUNCS
+  USE MATRIX_GRAPH
   USE MATRIX_SPARSE, id=>sp_eye
   USE MATRIX_BLOCKS
   USE TUPLE_BASIS
@@ -25,10 +26,13 @@ MODULE VARS_GLOBAL
   ! !
 
 #ifdef _CMPLX
-  complex(8),dimension(:,:),allocatable :: HopH
+  complex(8),dimension(:,:),allocatable   :: HopH
 #else
-  real(8),dimension(:,:),allocatable    :: HopH
+  real(8),dimension(:,:),allocatable      :: HopH
 #endif
+
+
+
 
   abstract interface
      subroutine sparse_HxV(Nloc,v,Hv)
@@ -43,6 +47,7 @@ MODULE VARS_GLOBAL
      end subroutine sparse_HxV
   end interface
   procedure(sparse_HxV),pointer,public  :: spHtimesV_p=>null()
+
 
 
   type(sparse_matrix)                   :: spHsb
@@ -66,7 +71,7 @@ MODULE VARS_GLOBAL
   type(blocks_matrix)                   :: rho_right
   !GLOBAL LEFT & RIGHT & DOT 
   type(block)                           :: left,right
-  type(site)                            :: dot
+  type(site),dimension(:),allocatable   :: dot
   !
   !SUPERBLOCK SHARED THINGS
   integer,dimension(:),allocatable      :: sb_states
@@ -75,7 +80,7 @@ MODULE VARS_GLOBAL
   integer                               :: Mstates
   real(8)                               :: Estates
 
-  
+
 contains
 
 

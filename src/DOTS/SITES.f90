@@ -274,17 +274,17 @@ contains
   !##################################################################
   !##################################################################
   function spin_site(sun,hvec) result(self)
-    integer                            :: sun
-    real(8),dimension(3),optional      :: hvec
-    type(site)                         :: self
-    character(len=:),allocatable       :: key
-    integer                            :: ispin
+    integer                               :: sun
+    real(8),dimension(2),optional         :: hvec
+    type(site)                            :: self
+    character(len=:),allocatable          :: key
+    integer                               :: ispin
 #ifdef _CMPLX
-    complex(8),dimension(3)            :: h_
+    complex(8),dimension(2)               :: h_
     complex(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
 #else
-    real(8),dimension(3)               :: h_
-    real(8),dimension(:,:),allocatable :: H,Sz,Sp,Sx
+    real(8),dimension(2)                  :: h_
+    real(8),dimension(:,:),allocatable    :: H,Sz,Sp,Sx
 #endif
     !
 #ifdef _DEBUG
@@ -301,7 +301,7 @@ contains
     case (2)
        self%Dim = 2
        !
-       allocate(H(2,2));H=h_(1)*pauli_x+h_(3)*pauli_z
+       allocate(H(2,2));H=h_(1)*pauli_x+h_(2)*pauli_z
        call self%put("H",sparse(H),'bosonic')
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
@@ -321,7 +321,7 @@ contains
        allocate(Sp(3,3));Sp=zero;Sp(1,2)=one*sqrt(2d0);Sp(2,3)=one*sqrt(2d0)
        allocate(Sx(3,3));Sx=reshape([zero,one,zero,one,zero,one,zero,one,zero],[3,3])/sqrt(2d0)
        !
-       allocate(H(3,3));H=h_(1)*Sx+h_(3)*Sz
+       allocate(H(3,3));H=h_(1)*Sx+h_(2)*Sz
        call self%put("H",sparse(H),'bosonic')
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
