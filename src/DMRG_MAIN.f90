@@ -232,7 +232,7 @@ contains
     allocate(blocks_list(2,2*Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
-    do while (left%length < Ldmrg) !Ldmrg=3 => L.len=3->4
+    do while (left%length < Ldmrg)
        call step_dmrg('i')
 <<<<<<< HEAD
 =======
@@ -267,9 +267,7 @@ contains
        blocks_list(right_label,right%length)=right
     enddo
     print*,""
-    print*,""
     print*,"START FINITE DMRG:"
-    print*,""
     print*,""
     !
     !Finite DMRG: start sweep forth&back:
@@ -354,6 +352,7 @@ contains
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
+<<<<<<< HEAD
        ! ExitSweep=.false.
        ! sweep: do while(.true.)
        !    right = blocks_list(right_label,2*Ldmrg - left%length)
@@ -375,6 +374,8 @@ contains
        !    if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
        ! enddo sweep
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
+=======
+>>>>>>> 77e1b95 (Cleaning code.)
     enddo
     !
   end subroutine finite_DMRG
@@ -490,6 +491,7 @@ contains
     !
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> d733a73 (Updated code.)
     ! !#################################
@@ -508,6 +510,8 @@ contains
 =======
 >>>>>>> d733a73 (Updated code.)
     !
+=======
+>>>>>>> 77e1b95 (Cleaning code.)
     !
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
@@ -600,17 +604,6 @@ contains
     !#################################
     !    Renormalize BLOCKS
     !#################################
-    !What are the conditions to skip Renormalization:
-    ! 1. Infinite algorithm:
-    !   - only at the last loop which is when *enlarged* blocks have length=N, i.e. L.len=N
-    !      if(to_lower(type)=='i'.AND.left%length==Ldmrg)
-    ! 2. Finite algorithm:
-    !   - sweep is made of
-    !      [label=1]: L(N/2->N-1)>R,
-    !      [label=2]: R(1->N)->L,
-    !      [label=1]: L(1->N/2)->R
-    !     so if label=1 and L.len=N:
-    !      if(left_label==1.AND.left%length-1==Ldmrg)
     if(to_lower(type)=='i')then
        renormalize = left%length/=Ldmrg
     else
@@ -715,6 +708,7 @@ contains
     !> STOP DMRG STEP:
     call stop_timer("dmrg_step")
     !
+<<<<<<< HEAD
     ! !#################################
     ! !      WRITE AND EXIT
     ! !#################################
@@ -755,10 +749,13 @@ contains
     ! end select
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
     !
+=======
+>>>>>>> 77e1b95 (Cleaning code.)
     call write_energy()
     call write_truncation()
     call write_entanglement()
     !
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -770,6 +767,8 @@ contains
     call wait(100)
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
     !
+=======
+>>>>>>> 77e1b95 (Cleaning code.)
     !Clean memory:
     call spHsb%free()
     !

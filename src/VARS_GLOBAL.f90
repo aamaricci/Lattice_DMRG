@@ -132,7 +132,7 @@ contains
     N = int(Ltot/(M+eps))+1
     !
     ! call execute_command_line("clear")
-    do i=1,10
+    do i=1,3
        write(LOGfile,*)""
     enddo
     select case(label)
@@ -190,6 +190,7 @@ contains
        endif
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
 =======
@@ -215,6 +216,8 @@ contains
        !            index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
        !    endif
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
+=======
+>>>>>>> 77e1b95 (Cleaning code.)
     case(2)
        Mleft  = int(left%length/(N+eps))+1
        Mright = int(right%length/(N+eps))+1
@@ -253,6 +256,7 @@ contains
 <<<<<<< HEAD
     end select
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
     end select
@@ -271,6 +275,9 @@ contains
 =======
     call wait(100)
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
+=======
+    call wait(250)
+>>>>>>> 77e1b95 (Cleaning code.)
   end subroutine dmrg_graphic
 
 
