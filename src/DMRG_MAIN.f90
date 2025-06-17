@@ -143,15 +143,13 @@ contains
     allocate(blocks_list(2,2*Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
-    do while (left%length < Ldmrg) !Ldmrg=3 => L.len=3->4
+    do while (left%length < Ldmrg)
        call step_dmrg('i')
        blocks_list(left_label , left%length)=left
        blocks_list(right_label,right%length)=right
     enddo
     print*,""
-    print*,""
     print*,"START FINITE DMRG:"
-    print*,""
     print*,""
     !
     !Finite DMRG: start sweep forth&back:
@@ -177,26 +175,6 @@ contains
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
-       ! ExitSweep=.false.
-       ! sweep: do while(.true.)
-       !    right = blocks_list(right_label,2*Ldmrg - left%length)
-       !    if(right%length==1)then
-       !       right_label= 3-right_label
-       !       left_label = 3-left_label
-       !       tmp        = left
-       !       left       = right
-       !       right      = tmp
-       !       call tmp%free()
-       !       ExitSweep  = .true.
-       !    endif
-       !    !
-       !    call step_dmrg('f',left_label,im)
-       !    !
-       !    blocks_list(left_label,left%length) = left
-       !    print*,""
-       !    print*,""
-       !    if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
-       ! enddo sweep
     enddo
     !
   end subroutine finite_DMRG
@@ -257,12 +235,6 @@ contains
     !> START DMRG STEP:
     call dmrg_graphic(iLabel)    
     call start_timer()
-    !
-    ! !#################################
-    ! !    Renormalize BLOCKS
-    ! !#################################
-    ! call renormalize_block('left',m_rleft)
-    ! call renormalize_block('right',m_rright)
     !
     !
     !#################################
@@ -330,17 +302,6 @@ contains
     !#################################
     !    Renormalize BLOCKS
     !#################################
-    !What are the conditions to skip Renormalization:
-    ! 1. Infinite algorithm:
-    !   - only at the last loop which is when *enlarged* blocks have length=N, i.e. L.len=N
-    !      if(to_lower(type)=='i'.AND.left%length==Ldmrg)
-    ! 2. Finite algorithm:
-    !   - sweep is made of
-    !      [label=1]: L(N/2->N-1)>R,
-    !      [label=2]: R(1->N)->L,
-    !      [label=1]: L(1->N/2)->R
-    !     so if label=1 and L.len=N:
-    !      if(left_label==1.AND.left%length-1==Ldmrg)
     if(to_lower(type)=='i')then
        renormalize = left%length/=Ldmrg
     else
@@ -361,50 +322,9 @@ contains
     !> STOP DMRG STEP:
     call stop_timer("dmrg_step")
     !
-    ! !#################################
-    ! !      WRITE AND EXIT
-    ! !#################################
-    ! write(LOGfile,"(A,I12,12X,I12)")&
-    !      "         Blocks Length               :",Lleft,Lright
-    ! write(LOGfile,"(A,I12,12X,I12)")&
-    !      "Enlarged Blocks Length               :",left%length,right%length
-    ! write(LOGfile,"(A,I12,12X,I12)")&
-    !      "Enlarged Blocks Dim                  :",m_eleft,m_eright  
-    ! write(LOGfile,"(A,I12)")&
-    !      "SuperBlock Length                    :",current_L
-    ! write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
-    !      "SuperBlock Dimension  (tot)          :", &
-    !      m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
-    ! write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
-    !      "Target_QN                            :",current_target_QN
-    ! write(LOGfile,"(A,3x,G24.15)")&
-    !      "Total                                :",sum(current_target_QN)
-    ! write(LOGfile,"(A,3x,G24.15)")&
-    !      "Filling                              :",sum(current_target_QN)/current_L
-    ! write(LOGfile,"(A,3x,G24.15)")&
-    !      "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-    ! if(renormalize)then
-    !    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
-    !         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
-    !    write(LOGfile,"(A,L12,12X,L12)")&
-    !         "Truncating                           :",Mstates<=m_left,Mstates<=m_right
-    !    write(LOGfile,"(A,2ES24.15)")&
-    !         "Truncation Errors                    :",truncation_error_left,truncation_error_right
-    ! endif
-    ! select case(left%type())
-    ! case ("fermion","f")
-    !    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-    !         "Energies/N                           :",gs_energy/sum(current_target_QN)
-    ! case ("spin","s")
-    !    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-    !         "Energies/L                           :",gs_energy/current_L
-    ! end select
-    !
     call write_energy()
     call write_truncation()
     call write_entanglement()
-    !
-    call wait(100)
     !
     !Clean memory:
     call spHsb%free()

@@ -114,7 +114,7 @@ contains
     N = int(Ltot/(M+eps))+1
     !
     ! call execute_command_line("clear")
-    do i=1,10
+    do i=1,3
        write(LOGfile,*)""
     enddo
     select case(label)
@@ -157,25 +157,6 @@ contains
           write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
                index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
        endif
-       ! case(2)
-       !    Mleft  = int(right%length/(N+eps))+1
-       !    Mright = int(left%length/(N+eps))+1
-       !    LMleft = 0
-       !    LMright= 0
-       !    index=nint(mod(dble(right%length),N+eps))
-       !    write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
-       !         "left; right=",right%length,left%length,"|"
-       !    if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
-       !    write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
-       !    write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
-       !    write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
-       !    if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
-       !    if(Ltot<=M)then
-       !       write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",right%length+1,left%length+1
-       !    else
-       !       write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",right%length+1,left%length+1, &
-       !            index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
-       !    endif
     case(2)
        Mleft  = int(left%length/(N+eps))+1
        Mright = int(right%length/(N+eps))+1
@@ -196,7 +177,7 @@ contains
                index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
        endif
     end select
-    call wait(100)
+    call wait(250)
   end subroutine dmrg_graphic
 
 
