@@ -29,11 +29,11 @@ contains
 #else
     real(8),dimension(:,:)      :: Hij
 #endif
+    type(site),dimension(:)     :: ModelDot
+    integer                     :: ilat
     !
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
-    type(site),dimension(:)     :: ModelDot
-    integer                     :: ilat
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: init DMRG"
@@ -44,15 +44,15 @@ contains
     allocate(HopH, source=Hij)
     !
     !SETUP the Dots 
-    allocate(dot(2*Ldmrg))
+    allocate(dot(2*Ldmrg+2))
     select case(size(ModelDot))
     case (1)
-       do ilat=1,2*Ldmrg
+       do ilat=1,2*Ldmrg+2
           dot(ilat) = ModelDot(1)
        enddo
     case default
-       if(size(ModelDot)/=2*Ldmrg)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg or 1"
-       do ilat=1,2*Ldmrg
+       if(size(ModelDot)/=2*Ldmrg+2)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg+2 or 1"
+       do ilat=1,2*Ldmrg+2
           dot(ilat) = ModelDot(ilat)
        enddo
     end select
@@ -126,8 +126,8 @@ contains
     write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
     !
-    if(mod(Ldmrg,2)/=0)&
-         stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
+    ! if(mod(Ldmrg,2)/=0)&
+    !      stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
     !
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
@@ -143,9 +143,9 @@ contains
     allocate(blocks_list(2,2*Ldmrg))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
-    do while (left%length < Ldmrg)
+    do while (left%length < Ldmrg) !Ldmrg=3 => L.len=3->4
        call step_dmrg('i')
-       blocks_list(left_label,left%length)=left
+       blocks_list(left_label , left%length)=left
        blocks_list(right_label,right%length)=right
     enddo
     print*,""
@@ -162,26 +162,41 @@ contains
           write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
        !
-       ExitSweep=.false.
-       sweep: do while(.true.)
+       do while(left%length < 2*Ldmrg)
           right = blocks_list(right_label,2*Ldmrg - left%length)
-          if(right%length==1)then
-             right_label= 3-right_label
-             left_label = 3-left_label
-             tmp        = left
-             left       = right
-             right      = tmp
-             call tmp%free()
-             ExitSweep  = .true.
-          endif
-          !
-          call step_dmrg('f',left_label,im)
-          !
-          blocks_list(left_label,left%length) = left
-          print*,""
-          print*,""
-          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
-       enddo sweep
+          call step_dmrg('f',1,im)
+          blocks_list(1,left%length) = left
+       enddo
+       do while(right%length < 2*Ldmrg)
+          left = blocks_list(left_label,2*Ldmrg - right%length)
+          call step_dmrg('f',2,im)
+          blocks_list(2,right%length)= right
+       enddo
+       do while(left%length <= Ldmrg)
+          right = blocks_list(right_label,2*Ldmrg - left%length)
+          call step_dmrg('f',1,im)
+          blocks_list(1,left%length) = left
+       enddo
+       ! ExitSweep=.false.
+       ! sweep: do while(.true.)
+       !    right = blocks_list(right_label,2*Ldmrg - left%length)
+       !    if(right%length==1)then
+       !       right_label= 3-right_label
+       !       left_label = 3-left_label
+       !       tmp        = left
+       !       left       = right
+       !       right      = tmp
+       !       call tmp%free()
+       !       ExitSweep  = .true.
+       !    endif
+       !    !
+       !    call step_dmrg('f',left_label,im)
+       !    !
+       !    blocks_list(left_label,left%length) = left
+       !    print*,""
+       !    print*,""
+       !    if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
+       ! enddo sweep
     enddo
     !
   end subroutine finite_DMRG
@@ -211,7 +226,7 @@ contains
     integer          :: m_eleft,m_eright
     integer          :: current_L
     integer          :: Lleft,Lright
-    logical          :: renormalize
+    logical          :: bool1,bool2,renormalize
     !
     !just 4 DMRG_graphic
     iLabel=0;if(present(label))iLabel=label
@@ -253,6 +268,8 @@ contains
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
     !#################################
+    Lleft =left%length
+    Lright=right%length
     call enlarge_block(left,dot(left%length+1),grow='left')
     call enlarge_block(right,dot(left%length+2),grow='right')
     !
@@ -267,12 +284,43 @@ contains
     !
     call sb_get_states()
     m_sb = size(sb_states)
-    !
+    !#################################
+    !      WRITE AND EXIT
+    !#################################
+    write(LOGfile,"(A,I12,12X,I12)")&
+         "         Blocks Length               :",Lleft,Lright
+    write(LOGfile,"(A,I12,12X,I12)")&
+         "Enlarged Blocks Length               :",left%length,right%length
+    write(LOGfile,"(A,I12,12X,I12)")&
+         "Enlarged Blocks Dim                  :",m_eleft,m_eright
+    write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
+         "Target_QN                            :",current_target_QN
+    write(LOGfile,"(A,3x,G24.15)")&
+         "Total                                :",sum(current_target_QN)
+    write(LOGfile,"(A,3x,G24.15)")&
+         "Filling                              :",sum(current_target_QN)/current_L
+    write(LOGfile,"(A,3x,G24.15)")&
+         "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
+    write(LOGfile,"(A,I12)")&
+         "SuperBlock Length                    :",current_L
+    write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
+         "SuperBlock Dimension  (tot)          :", &
+         m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
     !
     !#################################
     !       DIAG SUPER-BLOCK
     !#################################
     call sb_diag()
+    write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
+    select case(left%type())
+    case ("fermion","f")
+       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+            "Energies/N                           :",gs_energy/sum(current_target_QN)
+    case ("spin","s")
+       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+            "Energies/L                           :",gs_energy/current_L
+    end select
+    write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
     !
     !#################################
     !      BUILD RDM
@@ -289,42 +337,19 @@ contains
     ! 2. Finite algorithm:
     !   - sweep is made of
     !      [label=1]: L(N/2->N-1)>R,
-    !      [lable=2]: R(1->N)->L,
+    !      [label=2]: R(1->N)->L,
     !      [label=1]: L(1->N/2)->R
     !     so if label=1 and L.len=N:
-    !      if(left_label==1.AND.left%length==Ldmrg)
-    renormalize=.not.((iLabel==1.OR.to_lower(type)=='i').AND.Lleft==Ldmrg)
-    if(renormalize)then
-       call renormalize_block('left',m_rleft)
-       call renormalize_block('right',m_rright)
+    !      if(left_label==1.AND.left%length-1==Ldmrg)
+    if(to_lower(type)=='i')then
+       renormalize = left%length/=Ldmrg
+    else
+       renormalize=.not.((left%length==Ldmrg+1).AND.(iLabel==1))
     endif
     !
-    !> STOP DMRG STEP:
-    call stop_timer("dmrg_step")
-    !
-    !#################################
-    !      WRITE AND EXIT
-    !#################################
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "         Blocks Length               :",Lleft,Lright
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Enlarged Blocks Length               :",left%length,right%length
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Enlarged Blocks Dim                  :",m_eleft,m_eright  
-    write(LOGfile,"(A,I12)")&
-         "SuperBlock Length                    :",current_L
-    write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
-         "SuperBlock Dimension  (tot)          :", &
-         m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
-    write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
-         "Target_QN                            :",current_target_QN
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Total                                :",sum(current_target_QN)
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Filling                              :",sum(current_target_QN)/current_L
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-    if(renormalize)then
+    if(renormalize )then
+       call renormalize_block('left',m_rleft)
+       call renormalize_block('right',m_rright)
        write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
             "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
        write(LOGfile,"(A,L12,12X,L12)")&
@@ -333,19 +358,53 @@ contains
             "Truncation Errors                    :",truncation_error_left,truncation_error_right
     endif
     !
-    select case(left%type())
-    case ("fermion","f")
-       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-            "Energies/N                           :",gs_energy/sum(current_target_QN)
-    case ("spin","s")
-       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-            "Energies/L                           :",gs_energy/current_L
-    end select
+    !> STOP DMRG STEP:
+    call stop_timer("dmrg_step")
+    !
+    ! !#################################
+    ! !      WRITE AND EXIT
+    ! !#################################
+    ! write(LOGfile,"(A,I12,12X,I12)")&
+    !      "         Blocks Length               :",Lleft,Lright
+    ! write(LOGfile,"(A,I12,12X,I12)")&
+    !      "Enlarged Blocks Length               :",left%length,right%length
+    ! write(LOGfile,"(A,I12,12X,I12)")&
+    !      "Enlarged Blocks Dim                  :",m_eleft,m_eright  
+    ! write(LOGfile,"(A,I12)")&
+    !      "SuperBlock Length                    :",current_L
+    ! write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
+    !      "SuperBlock Dimension  (tot)          :", &
+    !      m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
+    ! write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
+    !      "Target_QN                            :",current_target_QN
+    ! write(LOGfile,"(A,3x,G24.15)")&
+    !      "Total                                :",sum(current_target_QN)
+    ! write(LOGfile,"(A,3x,G24.15)")&
+    !      "Filling                              :",sum(current_target_QN)/current_L
+    ! write(LOGfile,"(A,3x,G24.15)")&
+    !      "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
+    ! if(renormalize)then
+    !    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
+    !         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
+    !    write(LOGfile,"(A,L12,12X,L12)")&
+    !         "Truncating                           :",Mstates<=m_left,Mstates<=m_right
+    !    write(LOGfile,"(A,2ES24.15)")&
+    !         "Truncation Errors                    :",truncation_error_left,truncation_error_right
+    ! endif
+    ! select case(left%type())
+    ! case ("fermion","f")
+    !    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+    !         "Energies/N                           :",gs_energy/sum(current_target_QN)
+    ! case ("spin","s")
+    !    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+    !         "Energies/L                           :",gs_energy/current_L
+    ! end select
     !
     call write_energy()
     call write_truncation()
     call write_entanglement()
     !
+    call wait(100)
     !
     !Clean memory:
     call spHsb%free()
@@ -384,7 +443,7 @@ contains
     integer                   :: Eunit
     current_L = left%length + right%length
     Eunit     = fopen("energyVSleft.length_"//str(suffix),append=.true.)
-    write(Eunit,*)current_L,gs_energy/current_L/Norb
+    write(Eunit,*)left%length,gs_energy/current_L/Norb,right%length
     close(Eunit)
   end subroutine write_energy
 
@@ -397,9 +456,9 @@ contains
     integer                   :: Eunit
     current_L = left%length + right%length
     Eunit     = fopen("truncationVSleft.length_"//str(suffix),append=.true.)
-    write(Eunit,*)current_L,&
+    write(Eunit,*)left%length,&
          truncation_error_left/current_L/Norb,&
-         truncation_error_right/current_L/Norb
+         truncation_error_right/current_L/Norb,right%length
     close(Eunit)
   end subroutine write_truncation
 
@@ -418,7 +477,7 @@ contains
        entropy = entropy-rho_left_evals(i)*log(rho_left_evals(i))
     enddo
     Eunit     = fopen("SentropyVSleft.length_"//str(suffix),append=.true.)
-    write(Eunit,*)left%length,entropy
+    write(Eunit,*)left%length,entropy,right%length
     close(Eunit)
   end subroutine write_entanglement
 

@@ -241,11 +241,7 @@ contains
        enddo
        !>truncation-rotation matrices:
        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
-       print*,truncation_error_right
-       print*,m_right,m_e
-       print*,shape(rho_right)
        trRho_right            = rho_right%sparse(m_right,m_e)
-       print*,shape(trRho_right)
        !>Store all the rotation/truncation matrices:
        call right%put_omat(str(right%length),trRho_right,'')
        !>Renormalize Blocks:
