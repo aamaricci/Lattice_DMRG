@@ -7,6 +7,7 @@ MODULE VERSION
 <<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 =======
   character(len=41),parameter :: git_code_version = "d3539b5739443ef1f31a074d28933824469fe053"	
@@ -36,4 +37,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "53d720f95f18f4dcba8fe797c2b1388d423dfcb5"	
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
+=======
+  character(len=41),parameter :: git_code_version = "77e1b958ccb22498e453f47b1c4b33794fabf5b6"	
+>>>>>>> 2a3b907 (3.2.0 Code working with infinite and finite DMRG algorithm.)
 END MODULE VERSION

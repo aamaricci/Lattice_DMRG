@@ -91,6 +91,7 @@ where the matrices $A_p$, $B_p$ are the connecting operators (i.e. $c_{i\sigma}$
 
 
 #### Milestone 6
+- [X] Further development of *finite* DMRG algorithm.
 - [ ] Implement parallel strategies. Different ideas can be followed:  
 i) parallel execution of the tensor product for $H_{sb}$ for `sparse_H=T`, see [Large-Scale Implementation of the Density Matrix Renormalization Group Algorithm](https://iris.sissa.it/handle/20.500.11767/68070).  
 ii) parallel execution of the little matrix-vector and matrix-matrix products for `sparse_H=F`. We can also profit of the matrix structure of the SB vector as done in massively parallel Exact Diagonalization algorithm, see  [EDIpack: A parallel exact diagonalization package for quantum impurity problems](https://doi.org/10.1016/j.cpc.2021.108261).   
@@ -103,11 +104,12 @@ iii) distributed storage of the vectors and sparse matrices.
 Here are some results for the Heisenberg model:  
 $H = J_z \sum_{i} S_z(i)S_z(i+1) + J_{xy} \sum_{i,a=x,y} S_a(i)S_a(i+1)$
 
-![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/figs.png)
+![plot](https://github.com/aamaricci/Lattice_DMRG/blob/main/.plot/figs.png)
 
 In the top panels we show the groundstate energy $E(j)$ and the entanglement entropy of the left block sites $S_L(j) = -{\mathrm Tr}[{\rho_L}\ln{\rho_L}]$ as a function the chain sites in a Spin 1/2 chain of 300 sites. The nearest-neighbor spin-spin correlation $\langle \vec{S}(j)\cdot \vec{S}(j+1)\rangle$ for the same system is reported in the bottom-left panel. Compare this result to the fig.6 of [Density-matrix algorithms for quantum renormalization groups](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.48.10345) (S.White, Phys. Rev. B 48, 10345).  
 Finally, in the bottom-right panel we report the spatial distribution of the local magnetization for a Spin 1 chain with open boundary conditions, showing Spin 1/2 edge modes.
 
+<<<<<<< HEAD
 ![gif](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/DMRG_record.gif)
 <<<<<<< HEAD
 
@@ -123,6 +125,9 @@ In the top-left panel we compare the energy per site $E(j)$ with respect to the 
 
 =======
 >>>>>>> f63915b (Testing the code.)
+=======
+![gif](https://github.com/aamaricci/Lattice_DMRG/blob/main/.plot/DMRG_record.gif)
+>>>>>>> 2a3b907 (3.2.0 Code working with infinite and finite DMRG algorithm.)
 
 
 
@@ -130,7 +135,7 @@ Results for the Hubbard model $H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{
 U \sum_{i} n_{i\uparrow} n_{i\downarrow}$
 are available here: 
 
-![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/figH.png)
+![plot](https://github.com/aamaricci/Lattice_DMRG/blob/main/.plot/figH.png)
 
 In the top-left panel we compare the energy per site $E(j)$ with respect to the exact solution $E_0=-4t/\pi$ and the exact numberical solution for the non-interacting case at one electron per site $\langle N\rangle=1$. We used $M=40$ states to reach a satisfactory convergence of the ground state energy. In the top-right panel we report the occupation profile per spin. In the bottom-left panel we show the evolution of the entanglement entropy per site $S(j)$, while the last panel bottom-right displayes the profile of the double occupation.  
 
