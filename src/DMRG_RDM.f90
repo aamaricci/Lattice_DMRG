@@ -284,6 +284,7 @@ contains
        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> d733a73 (Updated code.)
        print*,truncation_error_right
@@ -297,6 +298,9 @@ contains
 >>>>>>> 7e90d6a (Updating Cmake library construction)
 =======
 >>>>>>> d733a73 (Updated code.)
+=======
+       trRho_right            = rho_right%sparse(m_right,m_e)
+>>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
        !>Store all the rotation/truncation matrices:
        call right%put_omat(str(right%length),trRho_right,'')
        !>Renormalize Blocks:

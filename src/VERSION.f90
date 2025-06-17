@@ -30,6 +30,10 @@ MODULE VERSION
 >>>>>>> f042964 (Updated version of MATRIX_GRAPH adapted to DMRG problem.)
 =======
   !GIT VERSION
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "f0429647289f0a5317545d0b38a591ae7789fec0"	
 >>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
+=======
+  character(len=41),parameter :: git_code_version = "53d720f95f18f4dcba8fe797c2b1388d423dfcb5"	
+>>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
 END MODULE VERSION

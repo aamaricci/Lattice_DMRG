@@ -112,7 +112,7 @@ contains
 <<<<<<< HEAD
 <<<<<<< HEAD
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: measure Op"
+    write(LOGfile,*)"DEBUG: measure Op",pos
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
@@ -173,7 +173,9 @@ contains
     do i=1,Np
        ipos    = pos_(i)
        vals(i) = Measure_Op_DMRG(Op,ipos)
+#ifdef _DEBUG
        write(LOGfile,*)ipos,vals(i)
+#endif
     enddo
     call End_measure_dmrg()
     call stop_timer("Done "//str(file))
@@ -231,7 +233,9 @@ contains
        do j=1,M
           vals(j,i) = Measure_Op_DMRG(Op(j),ipos)
        enddo
+#ifdef _DEBUG
        write(LOGfile,*)ipos,(vals(j,i),j=1,M)
+#endif
     enddo
     call End_measure_dmrg()
     call stop_timer("Done "//str(file))
@@ -482,6 +486,8 @@ contains
     integer                          :: ia,ib,ic,ja,jb,jc,jcol
     !
     Ov=zero
+
+    
     !> loop over all the SB sectors:
     select case(to_lower(direction))
     case("l","left","sys","s")

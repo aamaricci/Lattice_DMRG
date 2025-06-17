@@ -165,7 +165,7 @@ contains
     !
     !Decide how to operate on H_sb
     lanc_solve  = .true.
-    if(Lanc_Neigen==m_sb)lanc_solve=.false.
+    if(Neigen==m_sb)lanc_solve=.false.
     if(m_sb <= lanc_dim_threshold)lanc_solve=.false.
     !
     !Allocate EigPairs

@@ -105,8 +105,11 @@ contains
     !
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     !call lefttem("clear")
     !call execute_command_line("clear")
+=======
+>>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
     Ltot = Ldmrg
 =======
     call wait(50)
@@ -128,8 +131,10 @@ contains
     !
     N = int(Ltot/(M+eps))+1
     !
-    write(LOGfile,*)""
-    write(LOGfile,*)""
+    ! call execute_command_line("clear")
+    do i=1,10
+       write(LOGfile,*)""
+    enddo
     select case(label)
     case default; stop "dmrg_graphic error: label != 1(L),2(R)"
     case(0)
@@ -184,17 +189,40 @@ contains
                index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
        endif
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
 =======
 >>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
+=======
+       ! case(2)
+       !    Mleft  = int(right%length/(N+eps))+1
+       !    Mright = int(left%length/(N+eps))+1
+       !    LMleft = 0
+       !    LMright= 0
+       !    index=nint(mod(dble(right%length),N+eps))
+       !    write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+       !         "left; right=",right%length,left%length,"|"
+       !    if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
+       !    write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
+       !    write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
+       !    write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
+       !    if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
+       !    if(Ltot<=M)then
+       !       write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",right%length+1,left%length+1
+       !    else
+       !       write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",right%length+1,left%length+1, &
+       !            index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
+       !    endif
+>>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
     case(2)
-       Mleft  = int(right%length/(N+eps))+1
-       Mright = int(left%length/(N+eps))+1
+       Mleft  = int(left%length/(N+eps))+1
+       Mright = int(right%length/(N+eps))+1
        LMleft = 0
        LMright= 0
-       index=nint(mod(dble(right%length),N+eps))
+       index=nint(mod(dble(left%length),N+eps))
        write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             "left; right=",right%length,left%length,"|"
@@ -204,6 +232,9 @@ contains
 =======
             "left; right=",right%length,left%length,"|"
 >>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
+=======
+            "left; right=",left%length,right%length,"|"
+>>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
        if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
        write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
        write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
@@ -214,13 +245,14 @@ contains
 =======
 >>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
        if(Ltot<=M)then
-          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",right%length+1,left%length+1
+          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
        else
-          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",right%length+1,left%length+1, &
+          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
                index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
        endif
 <<<<<<< HEAD
     end select
+<<<<<<< HEAD
 
 =======
     end select
@@ -236,6 +268,9 @@ contains
 
 >>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
     call wait(150)
+=======
+    call wait(100)
+>>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
   end subroutine dmrg_graphic
 
 
