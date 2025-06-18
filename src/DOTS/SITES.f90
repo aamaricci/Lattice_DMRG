@@ -405,6 +405,8 @@ contains
     Basis = Build_BasisStates()
     self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
     !
+    call Delete_LocalFock_Space()
+    !
   end function electron_site
 
 
