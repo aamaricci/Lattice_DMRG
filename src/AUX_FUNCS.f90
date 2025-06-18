@@ -35,14 +35,15 @@ contains
 
 
 
-  function okey(iorb,ispin,isite) result(string)
-    integer,optional             :: iorb,isite,ispin
-    integer                      :: iorb_,isite_,ispin_
+  function okey(iorb,ispin,isite,verse) result(string)
+    integer,optional             :: iorb,isite,ispin,verse
+    integer                      :: iorb_,isite_,ispin_,verse_
     character(len=:),allocatable :: string,str_orb,str_spin,str_site
     !
     iorb_ =0;if(present(iorb))iorb_=iorb
     ispin_=0;if(present(ispin))ispin_=ispin
     isite_=0;if(present(isite))isite_=isite
+    verse_=0;if(present(verse))verse_=verse
     !
     if(iorb_==0.AND.ispin_==0)stop "Okey ERROR: iorb = ispin = 0"
     if(iorb_==0)then

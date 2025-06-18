@@ -14,6 +14,8 @@ MODULE INPUT_VARS
   real(8)              :: Edmrg
   !Threshold energy used to evaluate the number of states to keep.
   !If 0d0 use fixed Mdmrg.
+  logical              :: PBCdmrg
+  !Set the Periodic(T) or Open(F) boundary conditions. Default F (OBC)
   integer              :: QNdim
   !Number of Conserved quantum numbers to consider:
   real(8),allocatable  :: Dmrg_QN(:)
@@ -111,19 +113,9 @@ contains
   !PURPOSE  : READ THE INPUT FILE AND SETUP GLOBAL VARIABLES
   !+-------------------------------------------------------------------+
   subroutine read_input(INPUTunit)
-#ifdef _MPI
-    USE MPI
-    USE SF_MPI
-#endif
     character(len=*) :: INPUTunit
     logical          :: master=.true.
     integer          :: i,rank=0,add,dim
-#ifdef _MPI
-    if(check_MPI())then
-       master=get_Master_MPI(MPI_COMM_WORLD)
-       rank  =get_Rank_MPI(MPI_COMM_WORLD)
-    endif
-#endif
     !
     !Store the name of the input file:
     input_file=str(INPUTunit)
@@ -140,6 +132,10 @@ contains
     call parse_input_variable(Edmrg,"Edmrg",INPUTunit,&
          default=1d-8,&
          comment="Threshold energy for truncation. If 0d0 use fixed Mdmrg.")
+
+    call parse_input_variable(PBCdmrg,"PBCdmrg",INPUTunit,&
+         default=.false.,&
+         comment="Set the Periodic(T) or Open(F) boundary conditions. Default F (OBC)")
 
     call parse_input_variable(Nsweep,"Nsweep",INPUTunit,default=1,&
          comment="Number of DMRG sweep to take for finite DMRG algorithm (min 1).")
@@ -165,10 +161,6 @@ contains
          default=1,&
          comment="Number of impurity orbitals.")
 
-    ! call parse_input_variable(SUn,"SUN",INPUTunit,&
-    !      default=2,&
-    !      comment="Dimension of the spin representation.")
-    
     !>Interaction parameters:
     allocate(Uloc(Norb))
     call parse_input_variable(uloc,"ULOC",INPUTunit,&
@@ -227,20 +219,6 @@ contains
          default=1024,comment="Dimension threshold for Lapack use.")
     !
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")
-
-
-#ifdef _MPI
-    if(check_MPI())then
-       if(.not.master)then
-          LOGfile=1000-rank
-          open(LOGfile,file="stdOUT.rank"//str(rank)//".ed")
-          do i=1,get_Size_MPI(MPI_COMM_WORLD)
-             if(i==rank)write(*,"(A,I0,A,I0)")"Rank ",rank," writing to unit: ",LOGfile
-          enddo
-       endif
-    endif
-#endif
-    !
     !
     if(master)then
        call print_input()
