@@ -424,10 +424,15 @@ contains
     self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
     call Delete_LocalFock_Space()
     !
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+    call Delete_LocalFock_Space()
+    !
+>>>>>>> fd1accd (3.2.1 Bug fix in SITES/electron_sites.)
   end function electron_site
 
 
