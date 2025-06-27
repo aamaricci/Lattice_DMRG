@@ -71,7 +71,7 @@ MODULE VARS_GLOBAL
   type(blocks_matrix)                   :: rho_right
   !GLOBAL LEFT & RIGHT & DOT 
   type(block)                           :: left,right
-  type(site),dimension(:),allocatable   :: dot
+  type(site),dimension(:),allocatable   :: dots
   !
   !SUPERBLOCK SHARED THINGS
   integer,dimension(:),allocatable      :: sb_states

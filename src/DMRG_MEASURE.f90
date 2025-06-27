@@ -322,13 +322,13 @@ contains
        do it=istart,iend
           U  = left%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot(it)%dim)
+          Oi = Oi.x.Id(dots(it)%dim)
        enddo
     case ("r") 
        do it=istart,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot(it)%dim).x.Oi
+          Oi = Id(dots(it)%dim).x.Oi
        enddo
     end select
     call U%free()
@@ -503,13 +503,13 @@ contains
        do it=istart+1,iend
           U  = left%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot(it)%dim)
+          Oi = Oi.x.Id(dots(it)%dim)
        enddo
     case ("r")
        do it=istart+1,iend
           U  = right%omatrices%op(index=it)
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot(it)%dim).x.Oi
+          Oi = Id(dots(it)%dim).x.Oi
        enddo
     end select
     call U%free()
@@ -689,7 +689,7 @@ END MODULE DMRG_MEASURE
 !   enddo
 !   Oi = sp_kron(Oi,I_R,sb_states)
 !   print*,shape(Oi)
-!   val = dot_product(gs_vector(:,1),Oi%dot(gs_vector(:,1)))
+!   val = dot_product(gs_vector(:,1),Oi%dots(gs_vector(:,1)))
 !   print*,pos,val    
 
 
@@ -706,7 +706,7 @@ END MODULE DMRG_MEASURE
 !   enddo
 !   Oi = sp_kron(I_L,Oi,sb_states)
 !   print*,shape(Oi)
-!   val = dot_product(gs_vector(:,1),OI%dot(gs_vector(:,1)))
+!   val = dot_product(gs_vector(:,1),OI%dots(gs_vector(:,1)))
 !   print*,pos,val    
 
 

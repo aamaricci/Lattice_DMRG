@@ -1,5 +1,5 @@
 MODULE AUX_FUNCS
-  USE SCIFOR, only: free_unit,str,to_lower,one,zero
+  USE SCIFOR, only: free_unit,str,to_lower,one,zero,to_upper
   USE INPUT_VARS
   implicit none
   private
@@ -35,18 +35,21 @@ contains
 
 
 
-  function okey(iorb,ispin,isite,verse) result(string)
-    integer,optional             :: iorb,isite,ispin,verse
-    integer                      :: iorb_,isite_,ispin_,verse_
-    character(len=:),allocatable :: string,str_orb,str_spin,str_site
+  function okey(iorb,ispin,isite,ilink) result(string)
+    integer,optional             :: iorb,isite,ispin
+    integer                      :: iorb_,isite_,ispin_
+    character(len=1),optional    :: ilink
+    character(len=1)             :: ilink_
+    character(len=:),allocatable :: string,str_orb,str_spin,str_site,str_link
     !
-    iorb_ =0;if(present(iorb))iorb_=iorb
-    ispin_=0;if(present(ispin))ispin_=ispin
-    isite_=0;if(present(isite))isite_=isite
-    verse_=0;if(present(verse))verse_=verse
+    iorb_ =0 ;if(present(iorb))iorb_=iorb
+    ispin_=0 ;if(present(ispin))ispin_=ispin
+    isite_=0 ;if(present(isite))isite_=isite
+    ilink_="";if(present(ilink))ilink_=ilink
     !
-    if(iorb_==0.AND.ispin_==0)stop "Okey ERROR: iorb = ispin = 0"
-    if(iorb_==0)then
+    !
+    ! if(iorb_==0.AND.ispin_==0.and.isite_=0.AND.ilink_=="")stop "Okey ERROR: iorb = ispin = 0"
+    if(iorb_==0)then         !Spin case
        str_orb =""
        !
        select case(ispin_)
@@ -72,8 +75,15 @@ contains
        case (0)    ;str_site=""
        end select
     endif
-
-    string = trim(str_orb)//trim(str_spin)//trim(str_site)
+    !
+    select case(to_upper(ilink_))
+    case ("L")  ;str_link="_L"
+    case ("R")  ;str_link="_R"
+    case default;str_link=""
+    end select
+    !
+    string = str(trim(str_orb)//trim(str_spin)//trim(str_site)//trim(str_link))
+    !
   end function okey
 
 

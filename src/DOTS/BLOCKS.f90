@@ -16,8 +16,9 @@ MODULE BLOCKS
      type(sectors_list),dimension(:),allocatable :: sectors
      type(operators_list)                        :: operators
      type(operators_list)                        :: omatrices
-     character(len=:),allocatable                :: Opname
+     character(len=:),allocatable                :: OpName
      character(len=:),allocatable                :: SiteType
+     character(len=:),allocatable                :: BlockTag
    contains
      procedure,pass :: free        => free_block
      procedure,pass :: put_op      => put_op_block
@@ -30,6 +31,7 @@ MODULE BLOCKS
      procedure,pass :: okey        => okey_block
      procedure,pass :: name        => Opname_block
      procedure,pass :: type        => SiteType_block
+     procedure,pass :: tag         => tag_block
   end type block
 
 
@@ -78,6 +80,7 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
+    if(allocated(self%BlockTag))deallocate(self%BlockTag)
     if(allocated(self%Opname))deallocate(self%Opname)
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_block
@@ -87,15 +90,18 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
-  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
-    integer,intent(in)              :: length
-    integer,intent(in)              :: Dim
-    type(sectors_list),intent(in)   :: sectors(:)
-    type(operators_list),intent(in) :: operators
-    type(operators_list),intent(in) :: omatrices
-    character(len=:),allocatable    :: OpName
-    character(len=:),allocatable    :: SiteType
-    type(block)                     :: self
+  function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType,BlockTag) result(self)
+    integer,intent(in)                   :: length
+    integer,intent(in)                   :: Dim
+    type(sectors_list),intent(in)        :: sectors(:)
+    type(operators_list),intent(in)      :: operators
+    type(operators_list),intent(in)      :: omatrices
+    character(len=*),intent(in)          :: OpName
+    character(len=*),intent(in)          :: SiteType
+    character(len=*),intent(in),optional :: BlockTag
+    character(len=:),allocatable         :: BlockTag_
+    type(block)                          :: self
+    BlockTag_="";if(present(BlockTag))BlockTag_=BlockTag
     self%length    = length
     self%Dim       = Dim
     self%operators = operators
@@ -104,14 +110,18 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i) = sectors(i)
     enddo
+    allocate(self%BlockTag, source=BlockTag_)
     allocate(self%OpName, source=OpName)
     allocate(self%SiteType, source=SiteType)
   end function constructor_from_scrath
 
 
-  function constructor_from_site(ssite) result(self)
-    type(site),intent(in) :: ssite
-    type(block)           :: self
+  function constructor_from_site(ssite,BlockTag) result(self)
+    type(site),intent(in)       :: ssite
+    character(len=*),intent(in),optional :: BlockTag
+    character(len=:),allocatable         :: BlockTag_
+    type(block)                          :: self
+    BlockTag_="";if(present(BlockTag))BlockTag_=BlockTag
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
@@ -124,6 +134,7 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
     enddo
+    allocate(self%BlockTag, source=BlockTag_)
     allocate(self%OpName, source=ssite%OpName)
     allocate(self%SiteType, source=ssite%SiteType)
   end function constructor_from_site
@@ -270,6 +281,7 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i) = B%sectors(i)
     enddo
+    allocate(A%BlockTag, source=B%BlockTag)
     allocate(A%OpName, source=B%OpName)
     allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_block
@@ -301,18 +313,20 @@ contains
   end function is_valid_block
 
 
-  function okey_block(self,iorb,ispin,isite) result(string)
+  function okey_block(self,iorb,ispin,isite,ilink) result(string)
     class(block)                 :: self
     integer,optional             :: iorb,isite,ispin
+    character(len=1),optional    :: ilink
     integer                      :: iorb_,isite_,ispin_
+    character(len=1)             :: ilink_
     character(len=:),allocatable :: string
     iorb_ =0;if(present(iorb))iorb_=iorb
     ispin_=0;if(present(ispin))ispin_=ispin
     isite_=0;if(present(isite))isite_=isite
+    ilink_="";if(present(ilink))ilink_=ilink
     !
     if(iorb_==0.AND.ispin_==0)stop "Okey_Block ERROR: iorb == ispin == 0"
-    string = okey(iorb_,ispin_,isite_)
-    !
+    string = okey(iorb_,ispin_,isite_,ilink_)
     !
   end function okey_block
 
@@ -330,6 +344,17 @@ contains
     string = to_lower(str(self%SiteType))
   end function SiteType_block
 
+  
+  function Tag_block(self,n) result(string)
+    class(block)                  :: self
+    integer,optional              :: n
+    character(len=:),allocatable :: string
+    if(present(n))then
+       allocate(string, source=self%BlockTag(1:n))
+    else
+       allocate(string, source=self%BlockTag)
+    endif
+  end function tag_block
 
 
   !##################################################################
@@ -350,22 +375,23 @@ contains
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
     unit_=6;if(present(file))open(free_unit(unit_),file=str(file))
     !
-    write(unit_,"(A15,I6)")"Block Length  =",self%length
-    write(unit_,"(A15,I6)")"Block Dim     =",self%Dim
+    write(unit_,"(A16,A)") "Block TAG     = ",self%BlockTag
+    write(unit_,"(A16,I6)")"Block Length  = ",self%length
+    write(unit_,"(A16,I6)")"Block Dim     = ",self%Dim
     write(unit_,"(A16,A)") "Block Type    = ",self%SiteType
-    write(unit_,"(A15,I6)")"Block Sectors =",size(self%sectors)
+    write(unit_,"(A16,I6)")"Block Sectors = ",size(self%sectors)
     do i=1,size(self%sectors)
-       write(unit_,"(A14,I6)")"Block Sector  =",i
+       write(unit_,"(A14,I6)")"Block Sector  = ",i
        call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
-       write(unit_,"(A15,A)")"Op Name    = ",self%OpName
-       write(unit_,"(A14)")"Block Operators:"
+       write(unit_,"(A16,A)")"Op Name    = ",self%OpName
+       write(unit_,"(A16)")"Block Operators:"
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
     if(wOMAT_)then
-       write(unit_,"(A14)")"Block Omats   :"
+       write(unit_,"(A16)")"Block Omats   :"
        call self%omatrices%show(fmt=fmt_,unit=unit_)
     endif
     if(present(file))close(unit_)
@@ -431,12 +457,18 @@ program testBLOCKS
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
 
+  ! print*,reverse("HelLO_L")
+  ! print*,reverse(to_lower("HelLO_L"))
+  ! print*,reverse(to_lower("HelLO_L"),4)
+  ! print*,reverse(to_lower("HelLO_L"),1)
+  ! stop
 
   sz_basis = tbasis([0.5d0,-0.5d0],Qdim=1)
 
   print*,"TEST Constructor 1: from_scratch"
   my_block=block(&
-       length=1, &       
+       BlockTag="system",&
+       length=1, & 
        dim=2,&
        sectors=[sectors_list(sz_basis)],&
        operators=operators_list(['H0','Sz','Sp'],&
@@ -447,7 +479,13 @@ program testBLOCKS
   call my_block%show()
   print*,""
 
-
+  print*,"Show block%tag(1:n):"
+  print*,my_block%tag(1)," 1:1"
+  print*,my_block%tag(2)," 1:2"
+  print*,my_block%tag()," full"
+  print*,reverse(my_block%tag())," full"
+  print*,""
+  
   print*,"Check my_block is valid"
   print*,my_block%is_valid()
   print*,""
@@ -461,7 +499,7 @@ program testBLOCKS
 
 
   print*,"TEST Constructor 2: from_site"
-  my_block=block(spin_site(2))
+  my_block=block(spin_site(2),"right")
   print*,"Showing the operator list:"
   call my_block%show()
   print*,""
@@ -479,6 +517,7 @@ program testBLOCKS
   call a%show()
   print*,""
 
+  
 
   ! print*,"Free the block"
   ! call my_block%free()
@@ -505,11 +544,11 @@ program testBLOCKS
   print*,"Check allocatable array of blocks:"
   allocate(my_blocks(5))
   print*,"Copy spin 1/2 into BlockArray(1:5)"
-  my_blocks(1)=block(spin_site(2))
-  my_blocks(2)=block(spin_site(2))
-  my_blocks(3)=block(spin_site(3))
-  my_blocks(4)=block(spin_site(3))
-  my_blocks(5)=block(spin_site(2))
+  my_blocks(1)=block(spin_site(2),"spin_2")
+  my_blocks(2)=block(spin_site(2),"spin_2")
+  my_blocks(3)=block(spin_site(3),"spin_3")
+  my_blocks(4)=block(spin_site(3),"spin_3")
+  my_blocks(5)=block(spin_site(2),"spin_2")
   !
   print*,"Check each of the block is correct" 
   do i=2,5

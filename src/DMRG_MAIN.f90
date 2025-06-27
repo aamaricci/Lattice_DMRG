@@ -16,6 +16,9 @@ MODULE DMRG_MAIN
   public :: write_energy
   public :: write_truncation
 
+
+  type(block),dimension(:,:),allocatable :: blocks_list
+
 contains
 
 
@@ -32,39 +35,34 @@ contains
     type(site),dimension(:)     :: ModelDot
     integer                     :: ilat
     !
-    call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
-    if(allocated(HopH))deallocate(HopH)
-    !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: init DMRG"
 #endif
-    !SETUP the Hopping Hamiltonian term:
     !
+    !SETUP the Hopping Hamiltonian term:
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"Init_DMRG","Hij")
+    if(allocated(HopH))deallocate(HopH)
     allocate(HopH, source=Hij)
     !
-    !SETUP the Dots 
-    allocate(dot(2*Ldmrg+2))
-    select case(size(ModelDot))
-    case (1)
-       do ilat=1,2*Ldmrg+2
-          dot(ilat) = ModelDot(1)
-       enddo
-    case default
-       if(size(ModelDot)/=2*Ldmrg+2)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg+2 or 1"
-       do ilat=1,2*Ldmrg+2
-          dot(ilat) = ModelDot(ilat)
-       enddo
-    end select
+    !SETUP the Dots
+    if(size(ModelDot)/=2*Ldmrg+2.OR.size(ModelDot)/=1)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg+2 or 1"
+    allocate(dots(2*Ldmrg+2))
+    do ilat=1,size(dots)
+       select case(size(ModelDot))
+       case (1)    ;dots(ilat) = ModelDot(1)
+       case default;dots(ilat) = ModelDot(ilat)
+       end select
+    enddo
     !
     !SETUP the initial DMRG structure
     allocate(target_qn, source=DMRG_QN)
-    init_left   = block(dot(1))
-    init_right  = block(dot(1))
+    init_left   = block(dots(1),BlockTag='left')
+    init_right  = block(dots(1),BlockTag='right')
+    !
     init_called =.true.
   end subroutine init_dmrg
 
-  
+
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
   !##################################################################
@@ -74,10 +72,10 @@ contains
     write(LOGfile,*)"DEBUG: Finalize DMRG"
 #endif
     if(allocated(HopH))deallocate(HopH)    
-    do ilat=1,2*Ldmrg
-       call dot(ilat)%free()
+    do ilat=1,size(dots)
+       call dots(ilat)%free()
     enddo
-    deallocate(dot)
+    deallocate(dots)
     call init_left%free()
     call init_right%free()
     call left%free()
@@ -94,64 +92,75 @@ contains
 
 
   !##################################################################
-  !              FINITE/INFINITE DMRG ALGORITHM
+  !              RUN DMRG ALGORITHM
+  !##################################################################
+  subroutine DMRG()
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Launching DMRG"
+#endif
+    if(.not.init_called)&
+         stop "DMRG ERROR: DMRG not initialized. Call init_dmrg first."
+    !
+    select case(to_lower(DMRGtype))
+    case('i');call infinite_DMRG()
+    case('f');call finite_DMRG()
+    case default;stop "ERROR DMRG: unsupported DMRGtype: DMRGtype !=['i','f']"
+    end select
+  end subroutine DMRG
+
+
+
+
+
+
+
+
+  !##################################################################
+  !              INFINITE/FINITE DMRG ALGORITHM
   !##################################################################
   subroutine infinite_DMRG()
-    !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Infinite Algorithm"
+    write(LOGfile,*)"DEBUG: Infinite Algorithm - ",allocated(blocks_list)
 #endif
     !
-    if(.not.init_called)&
-         stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     left =init_left
     right=init_right
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
+       if(allocated(blocks_list))then
+          blocks_list(1, left%length)=left
+          blocks_list(2,right%length)=right
+       endif
     enddo
   end subroutine infinite_DMRG
 
 
 
   subroutine finite_DMRG()
-    integer                                :: i,im,right_label,left_label,current_L
-    type(block),dimension(:,:),allocatable :: blocks_list
-    type(block)                            :: tmp
-    integer                                :: j
-    logical                                :: ExitSweep
-    integer :: m_rleft,m_rright
+    integer :: i,im,current_L
+    integer :: j
+    logical :: ExitSweep
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
     !
-    ! if(mod(Ldmrg,2)/=0)&
-    !      stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
+    if(PBCdmrg)stop "ERROR DMRG: PBC+Finite DMRG algorithm is not supported"
     !
-    if(.not.init_called)&
-         stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
-    !
-    left =init_left
-    right=init_right
-    !
-    left_label =1 
-    right_label=2
-    !
-    !
-    !Infinite DMRG
     allocate(blocks_list(2,2*Ldmrg))
-    blocks_list(left_label,1)=left
-    blocks_list(right_label,1)=right
-    do while (left%length < Ldmrg)
-       call step_dmrg('i')
-       blocks_list(left_label , left%length)=left
-       blocks_list(right_label,right%length)=right
-    enddo
+    !
+    blocks_list(1,1)=init_left
+    blocks_list(2,1)=init_left
+    !
+    print*,""
+    print*,"RUN IN-FINITE DMRG:"
+    print*,""
+    call infinite_DMRG()
+    !
     print*,""
     print*,"START FINITE DMRG:"
     print*,""
-    !
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
        if(Esweep(im)==0)then
@@ -161,17 +170,17 @@ contains
        endif
        !
        do while(left%length < 2*Ldmrg)
-          right = blocks_list(right_label,2*Ldmrg - left%length)
+          right = blocks_list(2,2*Ldmrg - left%length)
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
        do while(right%length < 2*Ldmrg)
-          left = blocks_list(left_label,2*Ldmrg - right%length)
+          left = blocks_list(1,2*Ldmrg - right%length)
           call step_dmrg('f',2,im)
           blocks_list(2,right%length)= right
        enddo
        do while(left%length <= Ldmrg)
-          right = blocks_list(right_label,2*Ldmrg - left%length)
+          right = blocks_list(2,2*Ldmrg - left%length)
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
@@ -230,7 +239,9 @@ contains
     !
     !> dimension of the incoming L/R BLOCKS
     m_left  = left%dim
+    Lleft   = left%length
     m_right = right%dim
+    Lright  = right%length
     !
     !> START DMRG STEP:
     call dmrg_graphic(iLabel)    
@@ -240,10 +251,10 @@ contains
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
     !#################################
-    Lleft =left%length
-    Lright=right%length
-    call enlarge_block(left,dot(left%length+1),grow='left')
-    call enlarge_block(right,dot(left%length+2),grow='right')
+    ! call enlarge_block(left,dots(left%length+1),grow='left')
+    ! call enlarge_block(right,dots(left%length+2),grow='right')
+    call enlarge_block(left)
+    call enlarge_block(right)
     !
     !
     !#################################
@@ -413,441 +424,3 @@ END MODULE DMRG_MAIN
 
 
 
-
-! !##################################################################
-! !              WORKHORSE: STEP DMRG 
-! !##################################################################
-! subroutine step_dmrg(label,isweep)
-!   integer,optional                   :: label,isweep
-!   integer                            :: iLabel
-!   integer                            :: Mstates,j_
-!   real(8)                            :: Estates,e_,err
-!   integer                            :: m_sb,m_s,m_e
-!   integer                            :: m_left,m_right,Nleft,Nright
-!   integer                            :: isb,m_err(1),m_threshold
-!   integer                            :: i,j,r,l,iqn,im,unit,current_L,istate,pos
-!   integer,dimension(:),allocatable   :: left_map,right_map,sb_map
-!   real(8),dimension(:),allocatable   :: sb_qn,qn
-!   type(tbasis)                       :: left_basis,right_basis
-!   type(sparse_matrix)                :: trRho_left,trRho_right
-
-
-!   real(8),dimension(:),allocatable   :: El,Er
-!   real(8),dimension(:,:),allocatable   :: Ml,Mr
-
-!   !
-!   iLabel=0;if(present(label))iLabel=label
-!   Mstates=Mdmrg
-!   Estates=Edmrg
-!   if(present(isweep))then
-!      if(isweep>Nsweep)stop "step_dmrg ERROR: isweep > Nsweep"
-!      if(isweep<1)stop "step_dmrg ERROR: isweep < 1"
-!      Mstates = Msweep(isweep)
-!      Estates = Esweep(isweep)
-!   endif
-!   !
-!   !Start DMRG step timer
-!   call start_timer()
-!   !
-!   !
-!   !Check if blocks are valid ones
-!   if(.not.left%is_valid(.true.))stop "single_dmrg_step error: left is not a valid block"
-!   if(.not.right%is_valid(.true.))stop "single_dmrg_step error: right is not a valid block"
-!   !
-!   !Enlarge the Blocks:
-!   call start_timer()
-!   write(LOGfile,"(A22,2I12)")"Blocks Length (L-R) = ",left%length,right%length
-!   call enlarge_block(left,dot,grow='left')
-!   call enlarge_block(right,dot,grow='right')
-!   call stop_timer("Enlarge blocks")
-!   !
-!   print*,"Enl LEFT:"
-!   call left%show(file="EnlLEFT_"//str(left%length)//".dat")
-!   print*,"Enl RIGHT:"
-!   call right%show(file="EnlRIGHT_"//str(right%length)//".dat")
-
-!   m_left  = left%dim
-!   m_right = right%dim
-!   if(.not.left%is_valid())stop "dmrg_step error: enlarged_left is not a valid block"
-!   if(.not.right%is_valid())stop "dmrg_step error: enlarged_right is not a valid block"
-
-
-!   !#################################
-!   !    Build SUPER-BLOCK Sector
-!   !#################################
-!   current_L         = left%length + right%length
-!   current_target_QN = int(target_qn*current_L*Norb)
-!   write(LOGfile,"(A22,I12)")"SuperBlock Length = ",current_L
-!   write(LOGfile,"(A22,"//str(size(current_target_QN))//"F12.7)")"Target_QN = ",current_target_QN
-!   write(LOGfile,"(A22,G12.7)")"Total         = ",sum(current_target_QN)
-!   write(LOGfile,"(A22,G12.7)")"Filling       = ",sum(current_target_QN)/current_L
-!   write(LOGfile,"(A22,G12.7)")"Filling/Norb  = ",sum(current_target_QN)/current_L/Norb
-!   !
-!   call sb_get_states()
-!   !
-!   m_sb = size(sb_states)
-!   write(LOGfile,"(A,I12,I12))")&
-!        "Enlarged Blocks dimensions           :",m_left,m_right  
-!   write(LOGfile,"(A,I12,A1,I12,A1,F10.5,A1)")&
-!        "SuperBlock Dimension  (tot)          :", &
-!        m_sb,"(",m_left*m_right,")",100*dble(m_sb)/m_left/m_right,"%"
-
-
-
-!   !#################################
-!   !       DIAG SUPER-BLOCK
-!   !#################################
-!   call sb_diag()
-
-
-
-
-
-!   !#################################
-!   !      BUILD RHO and PSI
-!   !#################################
-!   call start_timer()
-!   call rho_left%free()
-!   call rho_right%free()
-!   call psi_left%free()
-!   call psi_right%free()
-!   do isb=1,size(sb_sector)
-!      sb_qn  = sb_sector%qn(index=isb) !this is really the Left qn
-!      sb_map = sb_sector%map(index=isb)
-!      Nleft  = size(left%sectors(1)%map(qn=sb_qn))
-!      Nright = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
-!      if(Nleft*Nright==0)cycle
-!      !
-!      print*,sb_qn,current_target_qn - sb_qn,Nleft,Nright,Nleft*Nright,size(sb_map)
-!      qn = sb_qn
-!      call rho_left%append(&
-!           build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
-!           qn=qn,map=left%sectors(1)%map(qn=qn))
-!      call psi_left%append(&
-!           build_PsiMat(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
-!           qn=qn,map=left%sectors(1)%map(qn=qn))
-!      !
-!      qn = current_target_qn-sb_qn
-!      call rho_right%append(&
-!           build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
-!           qn=qn,map=right%sectors(1)%map(qn=qn))
-!      call psi_right%append(&
-!           build_PsiMat(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
-!           qn=qn,map=right%sectors(1)%map(qn=qn))
-!   enddo
-!   !
-!   print*,"rho_Left:"
-!   call rho_left%show(file="Rho_L_"//str(left%length)//".dat")
-
-!   print*,"rho_Right"
-!   call rho_right%show(file="Rho_R_"//str(right%length)//".dat")
-!   !
-
-
-!   !Build Truncated Density Matrices:
-!   call rho_left%eigh(sort=.true.,reverse=.true.)
-!   call rho_right%eigh(sort=.true.,reverse=.true.)
-!   rho_left_evals  = rho_left%evals()
-!   rho_right_evals = rho_right%evals()
-!   !
-!   if(Mstates/=0)then
-!      m_s   = min(Mstates,m_left,size(rho_left_evals))
-!      m_e   = min(Mstates,m_right,size(rho_right_evals))
-!   elseif(Estates/=0d0)then
-!      m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
-!      m_s   = m_err(1)
-!      m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
-!      m_e   = m_err(1)
-!   else
-!      stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
-!   endif
-!   !
-!   e_=rho_left_evals(m_s)
-!   j_=m_s
-!   do i=j_+1,size(rho_left_evals)
-!      err=abs(rho_left_evals(i)-e_)/e_
-!      if(err<=1d-1)m_s=m_s+1
-!   enddo
-!   e_=rho_right_evals(m_e)
-!   j_=m_e
-!   do i=j_+1,size(rho_right_evals)
-!      err=abs(rho_right_evals(i)-e_)/e_
-!      if(err<=1d-1)m_e=m_e+1
-!   enddo
-!   !
-!   !
-!   truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
-!   truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
-!   !
-!   !
-!   print*,"Left_RhoEig"
-!   call rho_left%show(file="EighRho_L_"//str(left%length)//".dat")
-!   print*,"RIght_RhoEig"
-!   call rho_right%show(file="EighRho_R_"//str(right%length)//".dat")
-
-!   !>truncation-rotation matrices:
-!   trRho_left  = rho_left%sparse(m_left,m_s)
-!   trRho_right = rho_right%sparse(m_right,m_e)
-
-!   print*,"Left_RhoTr"
-!   call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
-!   print*,"Right_RhoTr"
-!   call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-!   !
-!   !>Store all the rotation/truncation matrices:
-!   call left%put_omat(str(left%length),trRho_left)
-!   call right%put_omat(str(right%length),trRho_right)
-!   !
-!   !>Renormalize Blocks:
-!   call left%renormalize(as_matrix(trRho_left))
-!   call right%renormalize(as_matrix(trRho_right))
-!   !
-!   !>Prepare output and update basis state
-!   do im=1,m_s
-!      call left_basis%append( qn=rho_left%qn(m=im) )
-!   enddo
-!   do im=1,m_e
-!      call right_basis%append( qn=rho_right%qn(m=im) )
-!   enddo
-!   call left%set_basis(basis=left_basis)
-!   call right%set_basis(basis=right_basis)
-
-
-!   print*,"Left_NewBasis"
-!   call rho_left%show(file="NewBasis_L_"//str(left%length)//".dat")
-!   print*,"RIght_NewBasis"
-!   call rho_right%show(file="NewBasis_R_"//str(right%length)//".dat")
-
-!   call stop_timer("Get Rho, U->Renormalize, Setup New Basis")
-!   !
-!   !
-!   !
-!   write(LOGfile,"(A,L12,12X,L12)")&
-!        "Truncating                           :",Mstates<=m_left,Mstates<=m_right
-!   write(LOGfile,"(A,I12,12X,I12)")&
-!        "Truncation Dim                       :",m_s,m_e
-!   write(LOGfile,"(A,2ES24.15)")&
-!        "Truncation Errors                    :",truncation_error_left,truncation_error_right
-!   select case(left%type())
-!   case ("fermion","f")
-!      write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-!           "Energies/N                           :",gs_energy/sum(current_target_QN)
-!   case ("spin","s")
-!      write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-!           "Energies/L                           :",gs_energy/current_L
-!   end select
-!   call stop_timer("dmrg_step")
-!   call dmrg_graphic(iLabel)
-!   !
-!   !Clean memory:
-!   if(allocated(left_map))deallocate(left_map)
-!   if(allocated(right_map))deallocate(right_map)
-!   if(allocated(sb_map))deallocate(sb_map)
-!   if(allocated(sb_qn))deallocate(sb_qn)
-!   if(allocated(qn))deallocate(qn)
-!   call rho_left%free()
-!   call rho_right%free()
-!   call left_basis%free()
-!   call right_basis%free()
-!   call trRho_left%free()
-!   call trRho_right%free()
-!   call spHsb%free()
-!   !
-!   return
-! end subroutine step_dmrg
-
-
-
-
-
-
-! !##################################################################
-! !              RESHAPE GROUND STATE AS MATRIX 
-! !##################################################################
-! function build_PsiMat(Nleft,Nright,psi,map,direction) result(psi_mat)
-!   integer                            :: Nleft,Nright
-!   real(8),dimension(:)               :: psi
-!   integer,dimension(nleft*nright)       :: map
-!   character(len=*)                   :: direction
-!   real(8),dimension(:,:),allocatable :: psi_mat
-!   if(allocated(psi_mat))deallocate(psi_mat)
-!   select case(to_lower(str(direction)))
-!   case ('left','l')
-!      allocate(psi_mat(nleft,nright));psi_mat=zero
-!      psi_mat = transpose(reshape(psi(map), [nright,nleft]))
-!   case ('right','r')
-!      allocate(psi_mat(nright,nleft));psi_mat=zero
-!      psi_mat = reshape(psi(map), [nright,nleft])
-!   end select
-! end function build_psimat
-
-
-
-
-
-!     call start_timer("Get Rho")
-!     call rho_left%free()
-!     call rho_right%free()
-!     do isb=1,size(sb_sector)
-!        sb_qn  = sb_sector%qn(index=isb)
-!        sb_map = sb_sector%map(index=isb)
-!        Nleft   = size(left%sectors(1)%map(qn=sb_qn))
-!        Nright  = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
-!        if(Nleft*Nright==0)cycle
-!        !
-!        qn = sb_qn
-!        call rho_left%append(&
-!             build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left'),&
-!             qn=qn,map=left%sectors(1)%map(qn=qn))
-!        !
-!        qn = current_target_qn-sb_qn
-!        call rho_right%append(&
-!             build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right'),&
-!             qn=qn,map=right%sectors(1)%map(qn=qn))
-!     enddo
-!     call stop_timer()
-! #ifdef _DEBUG
-!     write(LOGfile,*)"Show Rho_L/R:"
-!     call rho_left%show(file="Rho_L_"//str(left%length)//".dat")
-!     call rho_right%show(file="Rho_R_"//str(right%length)//".dat")
-! #endif
-
-
-
-
-
-
-! !##################################################################
-! !              BUILD REDUCED DENSITY MATRIX 
-! !##################################################################
-! function build_density_matrix(Nleft,Nright,psi,map,direction) result(rho)
-!   integer                            :: Nleft,Nright
-!   real(8),dimension(:)               :: psi
-!   integer,dimension(nleft*nright)    :: map
-!   character(len=*)                   :: direction
-!   real(8),dimension(:,:),allocatable :: rho
-!   real(8),dimension(nleft,nright)    :: psi_tmp
-!   integer                            :: il,ir,i
-!   !
-!   if(allocated(rho))deallocate(rho)
-!   !
-!   !psi_tmp = transpose(reshape(psi(map), [nright,nleft]))
-!   do concurrent(il=1:Nleft,ir=1:Nright)
-!      i = map(ir + (il-1)*Nright)
-!      psi_tmp(il,ir) = psi(i)
-!   enddo
-!   !
-!   select case(to_lower(str(direction)))
-!   case ('left','l')
-!      allocate(rho(nleft,nleft));rho=zero
-!      rho  = matmul(psi_tmp,  (transpose(psi_tmp)) )
-!   case ('right','r')
-!      allocate(rho(nright,nright));rho=zero
-!      rho  = matmul((transpose(psi_tmp)), psi_tmp  )
-!   end select
-! end function build_density_matrix
-
-
-
-
-
-
-
-
-!        call start_timer("Diag Rho")
-!        call rho_left%eigh(sort=.true.,reverse=.true.)
-!        call rho_right%eigh(sort=.true.,reverse=.true.)
-!        rho_left_evals  = rho_left%evals()
-!        rho_right_evals = rho_right%evals()
-!        call stop_timer()
-!        !
-!        call start_timer("Renormalize Blocks + Setup Basis")
-!        !Build Truncated Density Matrices:
-!        if(Mstates/=0)then
-!           m_s = min(Mstates,m_left,size(rho_left_evals))
-!           m_e = min(Mstates,m_right,size(rho_right_evals))       
-!        elseif(Estates/=0d0)then
-!           m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
-!           m_s   = m_err(1)
-!           m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
-!           m_e   = m_err(1)
-!        else
-!           stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
-!        endif
-!        !
-!        e_=rho_left_evals(m_s)
-!        j_=m_s
-!        do i=j_+1,size(rho_left_evals)
-!           err=abs(rho_left_evals(i)-e_)/e_
-!           if(err<=1d-1)m_s=m_s+1
-!        enddo
-!        e_=rho_right_evals(m_e)
-!        j_=m_e
-!        do i=j_+1,size(rho_right_evals)          
-!           err=abs(rho_right_evals(i)-e_)/e_
-!           if(err<=1d-1)m_e=m_e+1
-!        enddo
-!        !
-!        truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
-!        truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
-!        !
-!        !>truncation-rotation matrices:
-!        trRho_left  = rho_left%sparse(m_left,m_s)
-!        trRho_right = rho_right%sparse(m_right,m_e)
-!        !
-!        !
-!        !>Store all the rotation/truncation matrices:
-!        call left%put_omat(str(left%length),trRho_left)
-!        call right%put_omat(str(right%length),trRho_right)
-!        !
-!        !>Renormalize Blocks:
-!        call left%renormalize(as_matrix(trRho_left))
-!        call right%renormalize(as_matrix(trRho_right))
-!        !
-!        !>Prepare output and update basis state
-!        do im=1,m_s
-!           call left_basis%append( qn=rho_left%qn(m=im) )
-!        enddo
-!        do im=1,m_e
-!           call right_basis%append( qn=rho_right%qn(m=im) )
-!        enddo
-!        call left%set_basis(basis=left_basis)
-!        call right%set_basis(basis=right_basis)
-!        !
-! #ifdef _DEBUG
-!        unit     = fopen("lambdas_L_"//str(left%length)//".dat")       
-!        do i=1,m_s
-!           write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i))))
-!        enddo
-!        write(unit,*)" "
-!        do i=m_s+1,size(rho_left_evals)
-!           write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i))))
-!        enddo
-!        close(unit)
-!        !
-!        unit     = fopen("lambdas_R_"//str(left%length)//".dat")       
-!        do i=1,m_e
-!           write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i))))
-!        enddo
-!        write(unit,*)" "
-!        do i=m_s+1,size(rho_right_evals)
-!           write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i))))
-!        enddo
-!        close(unit)
-!        !
-!        call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
-!        call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-!        !
-!        call rho_left%show(file="NewBasis_L_"//str(left%length)//".dat")
-!        call rho_right%show(file="NewBasis_R_"//str(right%length)//".dat")
-! #endif
-!        !
-!        call stop_timer()
-!        write(LOGfile,"(A,2ES24.15)")"Truncation Errors                    :",&
-!             truncation_error_left,truncation_error_right
-!        call left_basis%free()
-!        call right_basis%free()
-!        call trRho_left%free()
-!        call trRho_right%free()
-!        call rho_left%free()
-!        call rho_right%free()

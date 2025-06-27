@@ -169,17 +169,20 @@ contains
   end subroutine set_basis_site
 
 
-  function okey_site(self,iorb,ispin,isite) result(string)
+  function okey_site(self,iorb,ispin,isite,ilink) result(string)
     class(site)                  :: self
     integer,optional             :: iorb,isite,ispin
+    character(len=1),optional    :: ilink
     integer                      :: iorb_,isite_,ispin_
+    character(len=1)             :: ilink_
     character(len=:),allocatable :: string
     iorb_ =0;if(present(iorb))iorb_=iorb
     ispin_=0;if(present(ispin))ispin_=ispin
     isite_=0;if(present(isite))isite_=isite
+    ilink_="";if(present(ilink))ilink_=ilink
     !
     if(iorb_==0.AND.ispin_==0)stop "Okey_Site ERROR: iorb == ispin == 0"
-    string = okey(iorb_,ispin_,isite_)
+    string = okey(iorb_,ispin_,isite_,ilink_)
     !
   end function okey_site
 
@@ -307,8 +310,15 @@ contains
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
        allocate(Sz(2,2));Sz=reshape([one,zero,zero,-one]/2,[2,2])
        allocate(Sp(2,2));Sp=reshape([zero,zero,one,zero],[2,2])
-       call self%put(self%OpName//self%okey(0,1),sparse(Sz),"bosonic")
-       call self%put(self%OpName//self%okey(0,2),sparse(Sp),"bosonic")
+       if(PBCdmrg)then
+          call self%put(self%OpName//self%okey(0,1,ilink="L"),sparse(Sz),"spin")  !S_z_L
+          call self%put(self%OpName//self%okey(0,2,ilink="L"),sparse(Sp),"spin")  !S_p_L
+          call self%put(self%OpName//self%okey(0,1,ilink="R"),sparse(Sz),"spin")  !S_z_R
+          call self%put(self%OpName//self%okey(0,2,ilink="R"),sparse(Sp),"spin")  !S_p_R
+       else
+          call self%put(self%OpName//self%okey(0,1),sparse(Sz),"spin")
+          call self%put(self%OpName//self%okey(0,2),sparse(Sp),"spin")
+       endif
        !
        !> Build Sectors:
        allocate(self%sectors(1))
@@ -325,8 +335,15 @@ contains
        call self%put("H",sparse(H),'bosonic')
        !
        !> Build all the S operators (Sz=S(spin=1), S+=S(spin=2), S-=H.c. S+ )
-       call self%put(self%OpName//self%okey(0,1),sparse(Sz),"bosonic")
-       call self%put(self%OpName//self%okey(0,2),sparse(Sp),"bosonic")
+       if(PBCdmrg)then
+          call self%put(self%OpName//self%okey(0,1,ilink="L"),sparse(Sz),"spin")  !S_z_L
+          call self%put(self%OpName//self%okey(0,2,ilink="L"),sparse(Sp),"spin")  !S_p_L
+          call self%put(self%OpName//self%okey(0,1,ilink="R"),sparse(Sz),"spin")  !S_z_R
+          call self%put(self%OpName//self%okey(0,2,ilink="R"),sparse(Sp),"spin")  !S_p_R
+       else
+          call self%put(self%OpName//self%okey(0,1),sparse(Sz),"spin")
+          call self%put(self%OpName//self%okey(0,2),sparse(Sp),"spin")
+       endif
        !
        !> Build Sectors:       
        allocate(self%sectors(1))
@@ -388,18 +405,34 @@ contains
     call self%put("H",sparse(H),"bosonic")
     !
     !> Build all the C operators (Cdg is obtained by H.C.)
-    do ispin=1,2
-       do iorb=1,Norb
-          Op = build_C_operator(iorb,ispin)
-          Key= self%OpName//self%okey(iorb,ispin)
-          call self%put(Key,sparse(Op),"fermionic")
+    !> Build fermionic sign operator P
+    if(PBCdmrg)then
+       do ispin=1,2
+          do iorb=1,Norb
+             Op = build_C_operator(iorb,ispin)
+             Key= self%OpName//self%okey(iorb,ispin,ilink="L")
+             call self%put(Key,sparse(Op),"fermionic")
+             Key= self%OpName//self%okey(iorb,ispin,ilink="R")
+             call self%put(Key,sparse(Op),"fermionic")
+          enddo
        enddo
-    enddo
-    !
-    !> Build fermionic sign operator
-    P = Build_FermionicSign()
-    call self%put("P",sparse(P),"sign")
-    !
+       P = Build_FermionicSign()
+       Key= "P"//self%okey(0,0,ilink="L")
+       call self%put(key,sparse(P),"psign")
+       Key= "P"//self%okey(0,0,ilink="R")
+       call self%put(key,sparse(P),"psign")
+    else
+       do ispin=1,2
+          do iorb=1,Norb
+             Op = build_C_operator(iorb,ispin)
+             Key= self%OpName//self%okey(iorb,ispin)
+             call self%put(Key,sparse(Op),"fermionic")
+          enddo
+       enddo
+       P = Build_FermionicSign()
+       Key= "P"//self%okey(0,0)
+       call self%put(key,sparse(P),"psign")
+    endif
     !> Build QN for the local basis:
     allocate(self%sectors(1))
     Basis = Build_BasisStates()

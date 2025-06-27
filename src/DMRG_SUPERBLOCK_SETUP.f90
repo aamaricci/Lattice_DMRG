@@ -68,12 +68,11 @@ contains
     m_left = left%dim
     m_right= right%dim
     !
-    select case(to_lower(type))
+    select case(to_lower(type(1:1)))
     case default;stop "Setup_SuperBlock_Sparse ERROR: wrong left/right.Type"
-    case ("spin","s")
-       H2 = connect_spin_blocks(left,right,sb_states)
-    case ("fermion","f,","electron","e")
-       H2 = connect_fermion_blocks(left,right,sb_states)
+    case ("s"); H2 = connect_spin_blocks(left,right,sb_states)
+    case ("f"); H2 = connect_fermion_blocks(left,right,sb_states)
+    ! case ("b"); H2 = connect_boson_blocks(left,right,sb_states)
     end select
     !
     spHsb = H2 & 
@@ -84,6 +83,8 @@ contains
 
 
 
+
+  
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                       DIRECT MODE
@@ -115,15 +116,27 @@ contains
          stop "Setup_SuperBlock_Direct ERROR: left.Type != right.Type"
     !
     !
-    select case(to_lower(type))
+    select case(to_lower(type(1:1)))
     case default;stop "Setup_SuperBlock_Direct ERROR: wrong left/right.Type"
-    case ("spin","s")
-       call Setup_SuperBlock_Spin_Direct()
-    case ("fermion","f,","electron","e")
-       call Setup_SuperBlock_Fermion_Direct()
+    case ("s"); call Setup_SuperBlock_Spin_Direct()
+    case ("f"); call Setup_SuperBlock_Fermion_Direct()
+    ! case ("b"); call Setup_SuperBlock_boson_Direct()
     end select
   end subroutine Setup_SuperBlock_Direct
 
+
+
+
+
+
+
+
+
+
+
+
+
+  
   !##################################################################
   !                          SPIN CASE
   !##################################################################

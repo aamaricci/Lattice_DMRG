@@ -7,7 +7,7 @@ MODULE DMRG_RDM
   public :: sb_get_rdm
   public :: renormalize_block
 
-  
+
 contains
 
 
@@ -280,6 +280,15 @@ contains
 
 
 
+
+
+
+
+
+
+
+
+
 END MODULE DMRG_RDM
 
 
@@ -290,101 +299,3 @@ END MODULE DMRG_RDM
 
 
 
-
-!     call start_timer("Diag Rho")
-!     call rho_left%eigh(sort=.true.,reverse=.true.)
-!     call rho_right%eigh(sort=.true.,reverse=.true.)
-!     rho_left_evals  = rho_left%evals()
-!     rho_right_evals = rho_right%evals()
-!     call stop_timer()
-!     !
-!     call start_timer("Renormalize Blocks + Setup Basis")
-!     !Build Truncated Density Matrices:
-!     if(Mstates/=0)then
-!        m_s = min(Mstates,m_left,size(rho_left_evals))
-!        m_e = min(Mstates,m_right,size(rho_right_evals))       
-!     elseif(Estates/=0d0)then
-!        m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
-!        m_s   = m_err(1)
-!        m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
-!        m_e   = m_err(1)
-!     else
-!        stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
-!     endif
-!     !
-!     e_=rho_left_evals(m_s)
-!     j_=m_s
-!     do i=j_+1,size(rho_left_evals)
-!        err=abs(rho_left_evals(i)-e_)/e_
-!        if(err<=1d-1)m_s=m_s+1
-!     enddo
-!     e_=rho_right_evals(m_e)
-!     j_=m_e
-!     do i=j_+1,size(rho_right_evals)          
-!        err=abs(rho_right_evals(i)-e_)/e_
-!        if(err<=1d-1)m_e=m_e+1
-!     enddo
-!     !
-!     truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
-!     truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
-!     !
-!     !>truncation-rotation matrices:
-!     trRho_left  = rho_left%sparse(m_left,m_s)
-!     trRho_right = rho_right%sparse(m_right,m_e)
-!     !
-!     !
-!     !>Store all the rotation/truncation matrices:
-!     call left%put_omat(str(left%length),trRho_left)
-!     call right%put_omat(str(right%length),trRho_right)
-!     !
-!     !>Renormalize Blocks:
-!     call left%renormalize(as_matrix(trRho_left))
-!     call right%renormalize(as_matrix(trRho_right))
-!     !
-!     !>Prepare output and update basis state
-!     do im=1,m_s
-!        call left_basis%append( qn=rho_left%qn(m=im) )
-!     enddo
-!     do im=1,m_e
-!        call right_basis%append( qn=rho_right%qn(m=im) )
-!     enddo
-!     call left%set_basis(basis=left_basis)
-!     call right%set_basis(basis=right_basis)
-!     !
-! #ifdef _DEBUG
-!     unit     = fopen("lambdas_L_"//str(left%length)//".dat")       
-!     do i=1,m_s
-!        write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i))))
-!     enddo
-!     write(unit,*)" "
-!     do i=m_s+1,size(rho_left_evals)
-!        write(unit,*)i,rho_left_evals(i),floor(log10(abs(rho_left_evals(i))))
-!     enddo
-!     close(unit)
-!     !
-!     unit     = fopen("lambdas_R_"//str(left%length)//".dat")       
-!     do i=1,m_e
-!        write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i))))
-!     enddo
-!     write(unit,*)" "
-!     do i=m_s+1,size(rho_right_evals)
-!        write(unit,*)i,rho_right_evals(i),floor(log10(abs(rho_right_evals(i))))
-!     enddo
-!     close(unit)
-!     !
-!     call trRho_left%show(file="TrRho_L_"//str(left%length)//".dat")
-!     call trRho_right%show(file="TrRho_R_"//str(right%length)//".dat")
-!     !
-!     call rho_left%show(file="NewBasis_L_"//str(left%length)//".dat")
-!     call rho_right%show(file="NewBasis_R_"//str(right%length)//".dat")
-! #endif
-!     !
-!     call stop_timer()
-!     write(LOGfile,"(A,2ES24.15)")"Truncation Errors                    :",&
-!          truncation_error_left,truncation_error_right
-!     call left_basis%free()
-!     call right_basis%free()
-!     call trRho_left%free()
-!     call trRho_right%free()
-!     call rho_left%free()
-!     call rho_right%free()

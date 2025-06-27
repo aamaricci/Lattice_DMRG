@@ -7,6 +7,10 @@ MODULE INPUT_VARS
 
   !input variables
   !=========================================================
+  character(len=1)     :: DMRGtype
+  !Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i
+  logical              :: PBCdmrg
+  !Set the Periodic(T) or Open(F) boundary conditions. Default F (OBC)
   integer              :: Ldmrg
   !# of iDMRG steps to take, Ldmrg=max length of the SB.
   integer              :: Mdmrg
@@ -14,8 +18,6 @@ MODULE INPUT_VARS
   real(8)              :: Edmrg
   !Threshold energy used to evaluate the number of states to keep.
   !If 0d0 use fixed Mdmrg.
-  logical              :: PBCdmrg
-  !Set the Periodic(T) or Open(F) boundary conditions. Default F (OBC)
   integer              :: QNdim
   !Number of Conserved quantum numbers to consider:
   real(8),allocatable  :: Dmrg_QN(:)
@@ -121,6 +123,11 @@ contains
     input_file=str(INPUTunit)
     !
     !DEFAULT VALUES OF THE PARAMETERS:
+    !
+    call parse_input_variable(DMRGtype,"DMRGtype",INPUTunit,&
+         default='i',&
+         comment="Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i")
+
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&
          comment="iDMRG steps to take=max length of the SB.")
