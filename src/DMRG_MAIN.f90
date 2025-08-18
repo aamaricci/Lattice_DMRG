@@ -32,6 +32,11 @@ contains
     type(site),dimension(:)     :: ModelDot
     integer                     :: ilat
     !
+    !
+#ifdef _MPI
+    call dmrg_set_MpiComm()
+#endif
+    !
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
     !
@@ -89,6 +94,9 @@ contains
     if(allocated(gs_vector))deallocate(gs_vector)
     if(allocated(sb_states))deallocate(sb_states)
     init_called  = .false.
+#ifdef _MPI
+    call dmrg_del_MpiComm()
+#endif
   end subroutine finalize_dmrg
 
 

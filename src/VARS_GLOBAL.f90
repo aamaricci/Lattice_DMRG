@@ -10,6 +10,10 @@ MODULE VARS_GLOBAL
   USE LIST_SECTORS
   USE SITES
   USE BLOCKS
+#ifdef _MPI
+  USE MPI
+  USE SF_MPI
+#endif
   implicit none
 
 
@@ -26,9 +30,9 @@ MODULE VARS_GLOBAL
   ! !
 
 #ifdef _CMPLX
-  complex(8),dimension(:,:),allocatable   :: HopH
+  complex(8),dimension(:,:),allocatable :: HopH
 #else
-  real(8),dimension(:,:),allocatable      :: HopH
+  real(8),dimension(:,:),allocatable    :: HopH
 #endif
 
 
@@ -79,6 +83,47 @@ MODULE VARS_GLOBAL
   !
   integer                               :: Mstates
   real(8)                               :: Estates
+
+
+
+  !This is the internal Mpi Communicator and variables.
+  !=========================================================
+#ifdef _MPI
+  integer                               :: MpiComm_Global=MPI_COMM_NULL
+  integer                               :: MpiComm=MPI_COMM_NULL
+  integer                               :: MpiGroup_Global=MPI_GROUP_NULL
+  integer                               :: MpiGroup=MPI_GROUP_NULL
+#else
+  integer                               :: MpiComm_Global=0
+  integer                               :: MpiComm=0
+  integer                               :: MpiGroup_Global=0
+  integer                               :: MpiGroup=0
+#endif
+  logical                               :: MpiStatus=.false.
+  logical                               :: MpiMaster=.true.
+  integer                               :: MpiRank=0
+  integer                               :: MpiSize=1
+  integer,allocatable,dimension(:)      :: MpiMembers
+
+
+  integer,allocatable,dimension(:)      :: mpiQleft
+  integer,allocatable,dimension(:)      :: mpiRleft
+  integer,allocatable,dimension(:)      :: mpiTleft
+  integer,allocatable,dimension(:)      :: mpiSleft
+  integer,allocatable,dimension(:)      :: mpiQright
+  integer,allocatable,dimension(:)      :: mpiRright
+  integer,allocatable,dimension(:)      :: mpiTright
+  integer,allocatable,dimension(:)      :: mpiSright
+  integer                               :: mpiQ=0
+  integer                               :: mpiR=0
+  integer                               :: mpiS=0
+  integer                               :: mpiT=0
+  integer,allocatable,dimension(:)      :: mpiIstart
+  integer,allocatable,dimension(:)      :: mpiIend
+  integer,allocatable,dimension(:)      :: mpiIshift
+  logical                               :: mpiAllThreads=.true.
+  !
+
 
 
 contains
@@ -179,6 +224,45 @@ contains
     end select
     call wait(250)
   end subroutine dmrg_graphic
+
+
+
+
+
+  !=========================================================
+  subroutine dmrg_set_MpiComm()
+#ifdef _MPI
+    integer :: ierr
+    MpiComm_Global = MPI_COMM_WORLD
+    MpiComm        = MPI_COMM_WORLD
+    call Mpi_Comm_group(MpiComm_Global,MpiGroup_Global,ierr)
+    MpiStatus      = .true.
+    MpiSize        = get_Size_MPI(MpiComm_Global)
+    MpiRank        = get_Rank_MPI(MpiComm_Global)
+    MpiMaster      = get_Master_MPI(MpiComm_Global)
+#ifdef _DEBUG
+    write(Logfile,"(A)")"DEBUG dmrg_set_MpiComm: setting MPI comm"
+#endif
+#endif
+  end subroutine dmrg_set_MpiComm
+
+  subroutine dmrg_del_MpiComm()
+#ifdef _MPI    
+    MpiComm_Global = MPI_UNDEFINED
+    MpiComm        = MPI_UNDEFINED
+    MpiGroup_Global= MPI_GROUP_NULL
+    MpiStatus      = .false.
+    MpiSize        = 1
+    MpiRank        = 0
+    MpiMaster      = .true.
+#ifdef _DEBUG
+    write(Logfile,"(A)")"DEBUG dmrg_del_MpiComm: deleting MPI comm"
+#endif
+#endif
+  end subroutine dmrg_del_MpiComm
+  !=========================================================
+
+
 
 
 END MODULE VARS_GLOBAL
