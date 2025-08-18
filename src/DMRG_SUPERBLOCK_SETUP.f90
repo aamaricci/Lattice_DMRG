@@ -6,7 +6,7 @@ MODULE DMRG_SUPERBLOCK_SETUP
 
   !Memory pool:
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
+  type(sparse_matrix),allocatable,dimension(:,:) :: A,B,At
   integer,dimension(:),allocatable               :: Dls,Drs,Offset
   integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
   !
@@ -30,11 +30,11 @@ MODULE DMRG_SUPERBLOCK_SETUP
   !-> used in DMRG_SUPERBLOCK to deallocate
   public :: Hleft
   public :: Hright
-  public :: A,B
+  public :: A,B,At
   public :: Dls,Drs,Offset
   public :: RowOffset,ColOffset
 
-  
+
 contains
 
 
@@ -189,14 +189,33 @@ contains
     Nsb  = size(sb_sector)
     !
     !Massive allocation
+    if(allocated(tMap))deallocate(tMap)
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(Offset))deallocate(Offset)
+    if(allocated(AI))deallocate(AI)
+    if(allocated(BI))deallocate(BI)
+    if(allocated(AJ))deallocate(AJ)
+    if(allocated(BJ))deallocate(BJ)
+    if(allocated(A))deallocate(A)
+    if(allocated(B))deallocate(B)
+    if(allocated(At))deallocate(At)
+    if(allocated(Hleft))deallocate(Hleft)
+    if(allocated(Hright))deallocate(Hright)
+    if(allocated(RowOffset))deallocate(RowOffset)
+    if(allocated(ColOffset))deallocate(ColOffset)
+    if(allocated(Sleft))deallocate(Sleft)
+    if(allocated(Sright))deallocate(Sright)
+
     allocate(tMap(tNso,1,1))
     allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
     allocate(AI(Nsb),BI(Nsb))
     allocate(AJ(Nsb),BJ(Nsb))
-    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb),At(tNso,Nsb))
     allocate(Hleft(Nsb),Hright(Nsb))
     allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
     allocate(Sleft(Nspin),Sright(Nspin))
+
     !
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
@@ -213,10 +232,18 @@ contains
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+
+
+       print*,int(qn), Drs(isb),Dls(isb),Dls(isb)*Drs(isb),Offset(isb)
+
     enddo
+
+    print*,""
+
+
     !
     dq=[1d0]
-    do isb=1,size(sb_sector)
+    do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
        BI(isb)%states = sb2block_states(qn,'right')
@@ -232,37 +259,64 @@ contains
        Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
     enddo
     !
-    do isb=1,size(sb_sector)
+
+    do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
        !> get: H*^L  and H*^R
        Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
        Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+
+
        !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets       
        it=tMap(1,1,1)
        A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
        B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
+       At(it,isb)= A(it,isb)%t()
+       qm  = qn
+       jsb = isb
        RowOffset(it,isb)=Offset(isb)           
        ColOffset(it,isb)=Offset(isb)
+       !
+       print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"B, A^T:",shape(B(it,isb)),shape(At(it,isb)),"-",Drs(isb),Dls(isb),B(it,isb)%Nrow,At(it,isb)%Ncol
+
+       !
        !
        dq = [1d0]
        qm = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
        jsb = sb_sector%index(qn=qm)
+       !
        !> get: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
        it=tMap(2,1,1)
        A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
        B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
+       At(it,isb)= A(it,isb)%t()
        RowOffset(it,isb)=Offset(isb)
        ColOffset(it,isb)=Offset(jsb)
+       !
+       print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"B, A^T:",shape(B(it,isb)),shape(At(it,isb)),"-",Drs(isb),Dls(isb),B(it,isb)%Nrow,At(it,isb)%Ncol
+       !       
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
        A(it,isb) = hconjg(A(tMap(2,1,1),isb))
        B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+       At(it,isb)= A(it,isb)%t()
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
+       !
+       print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"B, A^T:",shape(B(it,isb)),shape(At(it,isb)),"-",Drs(jsb),Dls(jsb),B(it,isb)%Nrow,At(it,isb)%Ncol
+       !
+
+       print*,""
+
     enddo
   end subroutine Setup_SuperBlock_Spin_Direct
+
+
+
+
+
 
 
 
@@ -422,6 +476,11 @@ contains
 
 
 
+
+
+
+
+
   !##################################################################
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
@@ -450,12 +509,18 @@ contains
 
 
 
+
+
+
+
+
+
   !##################################################################
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
   !##################################################################
 
-  subroutine spMatVec_direct_main(Nloc,v,Hv)
+  subroutine spMatVec_direct_main_(Nloc,v,Hv)
     integer                    :: Nloc
 #ifdef _CMPLX
     complex(8),dimension(Nloc) :: v
@@ -471,28 +536,31 @@ contains
     integer                    :: i,j,k,n
     integer                    :: ir,il,jr,jl,it
     integer                    :: arow,brow,acol,bcol,jcol
-    integer                    :: ia,ib,ic,ja,jb,jc
+    integer                    :: ia,ib,ic,ja,jb,jc,sum
     !
     Hv=zero
     !> loop over all the SB sectors:
     sector: do k=1,size(sb_sector)
        !
        !> apply the 1^L x H^r
-       do il=1,Drs(k)
-          do ir=1,Dls(k)
-             i = il + (ir-1)*Drs(k) + offset(k)           
-             do jcol=1,Hright(k)%row(il)%Size
-                val = Hright(k)%row(il)%vals(jcol)
-                jl  = Hright(k)%row(il)%cols(jcol)
-                j   = jl + (ir-1)*Drs(k) + offset(k)
+       do il=1,Dls(k)           !Fix the column il: v_il 
+          !
+          do ir=1,Drs(k)        !H^r.v_il
+             i = ir + (il-1)*Drs(k) + offset(k)
+             do jcol=1,Hright(k)%row(ir)%Size
+                val = Hright(k)%row(ir)%vals(jcol)
+                jr  = Hright(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Drs(k) + offset(k)
                 Hv(i) = Hv(i) + val*v(j)
              end do
           enddo
+          !
        enddo
        !
-       !> apply the H^L x 1^r: need to T v and Hv
-       do ir=1,Drs(k)
-          do il=1,Dls(k)
+       !> apply the H^L x 1^r
+       do ir=1,Drs(k)           !Fix the row ir: v_ir
+          !
+          do il=1,Dls(k)        !H^l.v_ir
              i = ir + (il-1)*Drs(k) + offset(k)
              do jcol=1,Hleft(k)%row(il)%Size
                 val = Hleft(k)%row(il)%vals(jcol)
@@ -501,6 +569,7 @@ contains
                 Hv(i) = Hv(i) + val*v(j)
              end do
           enddo
+          !
        enddo
        !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
@@ -524,8 +593,135 @@ contains
           enddo
        enddo
     enddo sector
-  end subroutine spMatVec_direct_main
+  end subroutine spMatVec_direct_main_
 
+
+
+
+
+  subroutine spMatVec_direct_main(Nloc,v,Hv)
+    integer                    :: Nloc
+#ifdef _CMPLX
+    complex(8),dimension(Nloc) :: v
+    complex(8),dimension(Nloc) :: Hv
+    complex(8)                 :: val
+    complex(8)                 :: aval,bval
+#else
+    real(8),dimension(Nloc)    :: v
+    real(8),dimension(Nloc)    :: Hv
+    real(8)                    :: val
+    real(8)                    :: aval,bval
+#endif
+    integer                    :: i,j,k,q,n
+    integer                    :: ir,il,jr,jl,it
+    integer                    :: arow,brow,acol,bcol,jcol
+    integer                    :: ia,ib,ic,ja,jb,jc,sum
+    integer :: is,ie,Mv,Nv
+    real(8),dimension(:,:),allocatable :: X,C
+    !
+    Hv=zero
+    !> loop over all the SB sectors:
+    sector: do k=1,size(sb_sector)
+       !
+       !> apply the 1^L x H^r
+       do il=1,Dls(k)           !Fix the column il: v_il 
+          !
+          do ir=1,Drs(k)        !H^r.v_il
+             i = ir + (il-1)*Drs(k) + offset(k)
+             do jcol=1,Hright(k)%row(ir)%Size
+                val = Hright(k)%row(ir)%vals(jcol)
+                jr  = Hright(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Drs(k) + offset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+          !
+       enddo
+       !
+       !> apply the H^L x 1^r
+       do ir=1,Drs(k)           !Fix the row ir: v_ir
+          !
+          do il=1,Dls(k)        !H^l.v_ir
+             i = ir + (il-1)*Drs(k) + offset(k)
+             do jcol=1,Hleft(k)%row(il)%Size
+                val = Hleft(k)%row(il)%vals(jcol)
+                jl  = Hleft(k)%row(il)%cols(jcol)
+                j   = ir + (jl-1)*Drs(k) + offset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+          !
+       enddo
+       !
+       !> apply the term sum_k sum_it A_it(k).x.B_it(k)
+       do it=1,tNso          
+          if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+          !
+          ! !ic = 1,Drs(k)*Dls(k) = brow + (arow-1)*B.Nrow
+          ! !jc = 1,Dls(q)*Drs(q) = bcol + (acol-1)*B.Ncol
+          ! ! i => ic + RowOffset(k)
+          ! ! j => jc + ColOffset(k)       
+          !Hv = (A.x.B)vec(v) --> (A.x.B).V  -> vec(B.V.A^t)
+          !           [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
+          !                           [B.Nrow,A.Ncol].[A.Ncol,A.Nrow] =^t=> [[A.Nrow,A.Ncol].[A.Ncol,B.Nrow]]^t
+          !              [B.Nrow,A.Nrow] = vec(Hv)
+          !1. extract v and get into matrix form V
+          X  = Vmat(v,B(it,k)%Ncol,A(it,k)%Ncol,ColOffset(it,k))
+          allocate(C(B(it,k)%Nrow,A(it,k)%Ncol));C=0d0
+          !2. evaluate MMP: B.V=C
+          !   \sum_b` B(b,b`)V(b`,a`)=C(b,a`)
+          do brow=1,B(it,k)%Nrow
+             if(B(it,k)%row(brow)%Size==0)cycle
+             do acol=1,A(it,k)%Ncol
+                !
+                do jb=1,B(it,k)%row(brow)%Size
+                   bcol = B(it,k)%row(brow)%cols(jb)
+                   bval = B(it,k)%row(brow)%vals(jb)
+                   C(brow,acol) = C(brow,acol) + bval*X(bcol,acol)
+                enddo
+                !
+             enddo
+          enddo
+          !3. evaluate MMP: C.A^t
+          !   \sum C(b,a`)A^t(a`,a)
+          !   C.A^t = (A.C^t)^t
+          !   [\sum_a A(arow,b)Ct(b,brow)]^t
+          do arow=1,A(it,k)%Nrow
+             if(A(it,k)%row(arow)%Size==0)cycle
+             do brow=1,B(it,k)%Nrow
+                !
+                ic =  brow + (arow-1)*B(it,k)%Nrow
+                i  =  ic + RowOffset(it,k)
+                !
+                do ja=1,A(it,k)%row(arow)%Size
+                   acol = A(it,k)%row(arow)%cols(ja)
+                   aval = A(it,k)%row(arow)%vals(ja)
+                   Hv(i) = Hv(i) + aval*C(brow,acol)
+                enddo
+                !
+             enddo
+          enddo
+          deallocate(C)
+       enddo
+    enddo sector
+
+
+
+  contains
+
+    function Vmat(vec,nrow,ncol,off) result(mat)
+      real(8),dimension(Ncol)            :: vec
+      integer                            :: nrow,ncol
+      integer                            :: off
+      integer                            :: istart,iend
+      real(8),dimension(:,:),allocatable :: mat
+      istart = off+1
+      iend   = off+Nrow*Ncol
+      if(allocated(mat))deallocate(mat)
+      allocate(mat(Nrow,Ncol), source=reshape(vec(istart:iend),[Nrow,Ncol]))
+    end function Vmat
+
+  end subroutine spMatVec_direct_main
 
 
 
