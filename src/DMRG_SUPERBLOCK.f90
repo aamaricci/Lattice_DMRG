@@ -202,6 +202,89 @@ contains
     call stop_timer()
     !    
     !Free Memory
+    call sb_delete_Hv()
+  end subroutine sb_diag
+
+
+
+
+
+
+
+
+
+  !##################################################################
+  !         SETUP THE SUPERBLOCK HAMILTONIAN PROBLEM
+  ! . if Hmat: returb H^SB as dense matrix there for Lapack use
+  ! . if sparse_H = T: build H^SB as sparse matrix
+  ! . if sparse_H = F: setup H^SB terms and blocks for H*v procedure
+  !##################################################################
+  subroutine sb_build_Hv(Hmat)
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable,optional :: Hmat
+#else
+    real(8),dimension(:,:),allocatable,optional    :: Hmat
+#endif
+    integer                                        :: m_sb
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: SuperBlock build H*v"
+#endif
+    !
+    if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
+    m_sb = size(sb_states)
+
+
+
+    !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
+    if(present(Hmat))then
+       if(allocated(Hmat))deallocate(Hmat)
+       allocate(Hmat(m_sb,m_sb));Hmat=zero
+       !Nullify HxV function pointer:
+       spHtimesV_p => null()
+       !
+       !>Build Sparse Hsb:
+       call start_timer("get H_sb Dense: LAPACK")
+       call Setup_SuperBlock_Sparse() !<- no MPI here
+       call stop_timer()
+       !
+       !Dump Hsb to dense matrix as required:
+       call spHsb%dump(Hmat)
+       return
+    endif
+    !
+    !Build SuperBLock HxV operation: stored or direct
+    select case(sparse_H)
+    case(.true.)
+       call start_timer("get H_sb Sparse: ARPACK")
+       call Setup_SuperBlock_Sparse() !<- no MPI here yet
+       call stop_timer()
+       !
+       !Set HxV function pointer:
+       spHtimesV_p => spMatVec_sparse_main
+#ifdef _MPI
+       if(MpiStatus)spHtimesV_p => spMatVec_MPI_sparse_main
+#endif
+       !
+    case(.false.)
+       call start_timer("get H_sb Direct: ARPACK")
+       call Setup_SuperBlock_Direct() !<- SETUP MPI here
+       call stop_timer()
+       !
+       !Set HxV function pointer:
+       spHtimesV_p => spMatVec_direct_main
+#ifdef _MPI
+       if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
+#endif
+       !
+    end select
+  end subroutine sb_build_Hv
+
+
+
+
+
+  subroutine sb_delete_Hv()
     call spHsb%free()
     if(allocated(Hleft))then
        do concurrent(i=1:size(Hleft))
@@ -232,6 +315,7 @@ contains
     if(allocated(Offset))deallocate(Offset)
     if(allocated(RowOffset))deallocate(RowOffset)
     if(allocated(ColOffset))deallocate(ColOffset)    
+<<<<<<< HEAD
   end subroutine sb_diag
 
 
@@ -307,6 +391,9 @@ contains
 
 
 
+=======
+  end subroutine sb_delete_Hv
+>>>>>>> 6adc5a4 (Updated code, importing MPI)
 
 
 

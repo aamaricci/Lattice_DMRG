@@ -47,6 +47,10 @@ contains
   ! 
   ! * sparse: get the sparse global SB Hamiltonian spHsb
   !##################################################################
+  !POSSIBLY INCLUDE MPI HERE... this is probably a less efficient version
+  !note that only the SB Hamiltonian needs to be constructed in parallel form
+  !the other operators (small) are stored by each cpu.
+  !In principle one could store any sparse matrix in parallel and build H^SB as MPI too.
   subroutine Setup_SuperBlock_Sparse()
     integer                         :: m_left,m_right
     character(len=:),allocatable    :: type
@@ -93,11 +97,15 @@ contains
 
 
 
+
+
+  
+
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                       DIRECT MODE
   !    H^SB = H^L x 1^R  + 1^L x H^R + H^LR
-  !    H^LR = sum_p A_p x B_p
+  !    H^LR = sum_k A_k x B_k; k={q,p}, Q.N. + elements in H^LR
   ! 
   ! * direct: get vec{A},vec{B},vec{Hleft},vec{Hright}
   !   the sparse matrices which reconstruct H^SB above in terms of
@@ -142,6 +150,10 @@ contains
     end select
   end subroutine Setup_SuperBlock_Direct
 
+
+
+
+  
   !##################################################################
   !                          SPIN CASE
   !##################################################################
@@ -519,105 +531,25 @@ contains
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
   !##################################################################
-
-  subroutine spMatVec_direct_main_(Nloc,v,Hv)
-    integer                    :: Nloc
-#ifdef _CMPLX
-    complex(8),dimension(Nloc) :: v
-    complex(8),dimension(Nloc) :: Hv
-    complex(8)                 :: val
-    complex(8)                 :: aval,bval
-#else
-    real(8),dimension(Nloc)    :: v
-    real(8),dimension(Nloc)    :: Hv
-    real(8)                    :: val
-    real(8)                    :: aval,bval
-#endif
-    integer                    :: i,j,k,n
-    integer                    :: ir,il,jr,jl,it
-    integer                    :: arow,brow,acol,bcol,jcol
-    integer                    :: ia,ib,ic,ja,jb,jc,sum
-    !
-    Hv=zero
-    !> loop over all the SB sectors:
-    sector: do k=1,size(sb_sector)
-       !
-       !> apply the 1^L x H^r
-       do il=1,Dls(k)           !Fix the column il: v_il 
-          !
-          do ir=1,Drs(k)        !H^r.v_il
-             i = ir + (il-1)*Drs(k) + offset(k)
-             do jcol=1,Hright(k)%row(ir)%Size
-                val = Hright(k)%row(ir)%vals(jcol)
-                jr  = Hright(k)%row(ir)%cols(jcol)
-                j   = jr + (il-1)*Drs(k) + offset(k)
-                Hv(i) = Hv(i) + val*v(j)
-             end do
-          enddo
-          !
-       enddo
-       !
-       !> apply the H^L x 1^r
-       do ir=1,Drs(k)           !Fix the row ir: v_ir
-          !
-          do il=1,Dls(k)        !H^l.v_ir
-             i = ir + (il-1)*Drs(k) + offset(k)
-             do jcol=1,Hleft(k)%row(il)%Size
-                val = Hleft(k)%row(il)%vals(jcol)
-                jl  = Hleft(k)%row(il)%cols(jcol)
-                j   = ir + (jl-1)*Drs(k) + offset(k)
-                Hv(i) = Hv(i) + val*v(j)
-             end do
-          enddo
-          !
-       enddo
-       !
-       !> apply the term sum_k sum_it A_it(k).x.B_it(k)
-       do it=1,tNso          
-          if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
-          do ic=1,A(it,k)%Nrow*B(it,k)%Nrow
-             arow = (ic-1)/B(it,k)%Nrow+1
-             brow = mod(ic,B(it,k)%Nrow);if(brow==0)brow=B(it,k)%Nrow
-             if(A(it,k)%row(arow)%Size==0.OR.B(it,k)%row(brow)%Size==0)cycle
-             i = ic + RowOffset(it,k)
-             do ja=1,A(it,k)%row(arow)%Size
-                acol = A(it,k)%row(arow)%cols(ja)
-                aval = A(it,k)%row(arow)%vals(ja)
-                do jb=1,B(it,k)%row(brow)%Size
-                   bcol = B(it,k)%row(brow)%cols(jb)
-                   bval = B(it,k)%row(brow)%vals(jb)
-                   j = bcol+(acol-1)*B(it,k)%Ncol + ColOffset(it,k)
-                   Hv(i) = Hv(i) + aval*bval*v(j)
-                enddo
-             enddo
-          enddo
-       enddo
-    enddo sector
-  end subroutine spMatVec_direct_main_
-
-
-
-
-
   subroutine spMatVec_direct_main(Nloc,v,Hv)
-    integer                    :: Nloc
+    integer                               :: Nloc
 #ifdef _CMPLX
-    complex(8),dimension(Nloc) :: v
-    complex(8),dimension(Nloc) :: Hv
-    complex(8)                 :: val
-    complex(8)                 :: aval,bval
+    complex(8),dimension(Nloc)            :: v
+    complex(8),dimension(Nloc)            :: Hv
+    complex(8)                            :: val
+    complex(8)                            :: aval,bval
+    complex(8),dimension(:,:),allocatable :: C
 #else
-    real(8),dimension(Nloc)    :: v
-    real(8),dimension(Nloc)    :: Hv
-    real(8)                    :: val
-    real(8)                    :: aval,bval
+    real(8),dimension(Nloc)               :: v
+    real(8),dimension(Nloc)               :: Hv
+    real(8)                               :: val
+    real(8)                               :: aval,bval
+    real(8),dimension(:,:),allocatable    :: C
 #endif
-    integer                    :: i,j,k,q,n
-    integer                    :: ir,il,jr,jl,it
-    integer                    :: arow,brow,acol,bcol,jcol
-    integer                    :: ia,ib,ic,ja,jb,jc,sum
-    integer :: is,ie,Mv,Nv
-    real(8),dimension(:,:),allocatable :: X,C
+    integer                               :: i,j,k,q,n
+    integer                               :: ir,il,jr,jl,it
+    integer                               :: arow,brow,acol,bcol,jcol
+    integer                               :: ia,ib,ic,ja,jb,jc,sum
     !
     Hv=zero
     !> loop over all the SB sectors:
@@ -654,42 +586,40 @@ contains
        enddo
        !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
+       !Hv = (A.x.B)vec(v) --> (A.x.B).V  -> vec(B.V.A^T)
+       !  B.V.A^T : [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
+       !   C.A^T  : [B.Nrow,A.Ncol].[A.Ncol,A.Nrow]
+       !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
+       !              [B.Nrow,A.Nrow] = vec(Hv)
        do it=1,tNso          
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
-          !
-          ! !ic = 1,Drs(k)*Dls(k) = brow + (arow-1)*B.Nrow
-          ! !jc = 1,Dls(q)*Drs(q) = bcol + (acol-1)*B.Ncol
-          ! ! i => ic + RowOffset(k)
-          ! ! j => jc + ColOffset(k)       
-          !Hv = (A.x.B)vec(v) --> (A.x.B).V  -> vec(B.V.A^t)
-          !           [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
-          !                           [B.Nrow,A.Ncol].[A.Ncol,A.Nrow] =^t=> [[A.Nrow,A.Ncol].[A.Ncol,B.Nrow]]^t
-          !              [B.Nrow,A.Nrow] = vec(Hv)
-          !1. extract v and get into matrix form V
-          X  = Vmat(v,B(it,k)%Ncol,A(it,k)%Ncol,ColOffset(it,k))
           allocate(C(B(it,k)%Nrow,A(it,k)%Ncol));C=0d0
-          !2. evaluate MMP: B.V=C
-          !   \sum_b` B(b,b`)V(b`,a`)=C(b,a`)
+          !
+          !1. evaluate MMP: C = B.vec(V)
+          !   \sum_bcol B(brow,bcol)V_q(bcol,acol)=C(brow,acol)
+          !   j[bcol] = bcol+(acol-1)B.Ncol + ColOffset_q
+          !   \sum_bcol B(brow,bcol)v_q(j[bcol])=C(brow,acol)
           do brow=1,B(it,k)%Nrow
              if(B(it,k)%row(brow)%Size==0)cycle
+             !
              do acol=1,A(it,k)%Ncol
-                !
                 do jb=1,B(it,k)%row(brow)%Size
                    bcol = B(it,k)%row(brow)%cols(jb)
                    bval = B(it,k)%row(brow)%vals(jb)
-                   C(brow,acol) = C(brow,acol) + bval*X(bcol,acol)
+                   jc   = bcol + (acol-1)*B(it,k)%Ncol
+                   j    = jc + ColOffset(it,k)
+                   C(brow,acol) = C(brow,acol) + bval*v(j)
                 enddo
                 !
              enddo
           enddo
-          !3. evaluate MMP: C.A^t
-          !   \sum C(b,a`)A^t(a`,a)
-          !   C.A^t = (A.C^t)^t
-          !   [\sum_a A(arow,b)Ct(b,brow)]^t
+          !2. evaluate MMP: C.A^t
+          !   \sum_acol C(brow,acol)A^t(acol,arow)
+          !  =\sum_acol [A(arow,acol)C^t(acol,brow)]^T
+          !  =\sum_acol a(arow,acol)[Ct(acol,brow)]^T
           do arow=1,A(it,k)%Nrow
              if(A(it,k)%row(arow)%Size==0)cycle
              do brow=1,B(it,k)%Nrow
-                !
                 ic =  brow + (arow-1)*B(it,k)%Nrow
                 i  =  ic + RowOffset(it,k)
                 !
@@ -704,23 +634,6 @@ contains
           deallocate(C)
        enddo
     enddo sector
-
-
-
-  contains
-
-    function Vmat(vec,nrow,ncol,off) result(mat)
-      real(8),dimension(Ncol)            :: vec
-      integer                            :: nrow,ncol
-      integer                            :: off
-      integer                            :: istart,iend
-      real(8),dimension(:,:),allocatable :: mat
-      istart = off+1
-      iend   = off+Nrow*Ncol
-      if(allocated(mat))deallocate(mat)
-      allocate(mat(Nrow,Ncol), source=reshape(vec(istart:iend),[Nrow,Ncol]))
-    end function Vmat
-
   end subroutine spMatVec_direct_main
 
 
@@ -777,6 +690,91 @@ contains
 END MODULE DMRG_SUPERBLOCK_SETUP
 
 
+
+
+
+
+
+
+
+
+
+
+
+!   subroutine spMatVec_direct_main_(Nloc,v,Hv)
+!     integer                    :: Nloc
+! #ifdef _CMPLX
+!     complex(8),dimension(Nloc) :: v
+!     complex(8),dimension(Nloc) :: Hv
+!     complex(8)                 :: val
+!     complex(8)                 :: aval,bval
+! #else
+!     real(8),dimension(Nloc)    :: v
+!     real(8),dimension(Nloc)    :: Hv
+!     real(8)                    :: val
+!     real(8)                    :: aval,bval
+! #endif
+!     integer                    :: i,j,k,n
+!     integer                    :: ir,il,jr,jl,it
+!     integer                    :: arow,brow,acol,bcol,jcol
+!     integer                    :: ia,ib,ic,ja,jb,jc,sum
+!     !
+!     Hv=zero
+!     !> loop over all the SB sectors:
+!     sector: do k=1,size(sb_sector)
+!        !
+!        !> apply the 1^L x H^r
+!        do il=1,Dls(k)           !Fix the column il: v_il 
+!           !
+!           do ir=1,Drs(k)        !H^r.v_il
+!              i = ir + (il-1)*Drs(k) + offset(k)
+!              do jcol=1,Hright(k)%row(ir)%Size
+!                 val = Hright(k)%row(ir)%vals(jcol)
+!                 jr  = Hright(k)%row(ir)%cols(jcol)
+!                 j   = jr + (il-1)*Drs(k) + offset(k)
+!                 Hv(i) = Hv(i) + val*v(j)
+!              end do
+!           enddo
+!           !
+!        enddo
+!        !
+!        !> apply the H^L x 1^r
+!        do ir=1,Drs(k)           !Fix the row ir: v_ir
+!           !
+!           do il=1,Dls(k)        !H^l.v_ir
+!              i = ir + (il-1)*Drs(k) + offset(k)
+!              do jcol=1,Hleft(k)%row(il)%Size
+!                 val = Hleft(k)%row(il)%vals(jcol)
+!                 jl  = Hleft(k)%row(il)%cols(jcol)
+!                 j   = ir + (jl-1)*Drs(k) + offset(k)
+!                 Hv(i) = Hv(i) + val*v(j)
+!              end do
+!           enddo
+!           !
+!        enddo
+!        !
+!        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
+!        do it=1,tNso          
+!           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+!           do ic=1,A(it,k)%Nrow*B(it,k)%Nrow
+!              arow = (ic-1)/B(it,k)%Nrow+1
+!              brow = mod(ic,B(it,k)%Nrow);if(brow==0)brow=B(it,k)%Nrow
+!              if(A(it,k)%row(arow)%Size==0.OR.B(it,k)%row(brow)%Size==0)cycle
+!              i = ic + RowOffset(it,k)
+!              do ja=1,A(it,k)%row(arow)%Size
+!                 acol = A(it,k)%row(arow)%cols(ja)
+!                 aval = A(it,k)%row(arow)%vals(ja)
+!                 do jb=1,B(it,k)%row(brow)%Size
+!                    bcol = B(it,k)%row(brow)%cols(jb)
+!                    bval = B(it,k)%row(brow)%vals(jb)
+!                    j = bcol+(acol-1)*B(it,k)%Ncol + ColOffset(it,k)
+!                    Hv(i) = Hv(i) + aval*bval*v(j)
+!                 enddo
+!              enddo
+!           enddo
+!        enddo
+!     enddo sector
+!   end subroutine spMatVec_direct_main_
 
 
 
