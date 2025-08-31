@@ -7,6 +7,8 @@ MODULE INPUT_VARS
 
   !input variables
   !=========================================================
+  character(len=1)     :: DMRGtype
+  !Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i
   integer              :: Ldmrg
   !# of iDMRG steps to take, Ldmrg=max length of the SB.
   integer              :: Mdmrg
@@ -129,6 +131,10 @@ contains
     input_file=str(INPUTunit)
     !
     !DEFAULT VALUES OF THE PARAMETERS:
+    call parse_input_variable(DMRGtype,"DMRGtype",INPUTunit,&
+         default='i',&
+         comment="Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i")
+
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&
          comment="iDMRG steps to take=max length of the SB.")
@@ -168,7 +174,7 @@ contains
     ! call parse_input_variable(SUn,"SUN",INPUTunit,&
     !      default=2,&
     !      comment="Dimension of the spin representation.")
-    
+
     !>Interaction parameters:
     allocate(Uloc(Norb))
     call parse_input_variable(uloc,"ULOC",INPUTunit,&

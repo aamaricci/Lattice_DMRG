@@ -8,10 +8,7 @@ MODULE DMRG_MAIN
 
   public :: init_DMRG
   public :: finalize_DMRG
-  public :: step_DMRG
-  !
-  public :: infinite_DMRG
-  public :: finite_DMRG
+  public :: run_DMRG
   !
   public :: write_energy
   public :: write_truncation
@@ -50,16 +47,22 @@ contains
     !
     !
 #ifdef _MPI
-    call dmrg_set_MpiComm()
+    if(check_MPI())call dmrg_set_MpiComm()
+    if(check_MPI().AND.sparse_H)stop "INIT_DMRG ERROR: MPI is still incompatible with sparse_H=T"
+
 #endif
     !
+<<<<<<< HEAD
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
     if(allocated(HopH))deallocate(HopH)
     !
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
+=======
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: init DMRG"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: init DMRG"
 #endif
+<<<<<<< HEAD
     !
 <<<<<<< HEAD
 =======
@@ -73,7 +76,10 @@ contains
     integer                     :: ilat
     !
     !SETUP the Hopping Hamiltonian term:
+=======
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
     !
+    !SETUP the Hopping Hamiltonian term:
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"Init_DMRG","Hij")
 >>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
     allocate(HopH, source=Hij)
@@ -96,20 +102,25 @@ contains
     allocate(target_qn, source=DMRG_QN)
     init_left   = block(dot(1))
     init_right  = block(dot(1))
+    !
     init_called =.true.
   end subroutine init_dmrg
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
   
+=======
+
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
   !##################################################################
   subroutine finalize_dmrg()
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Finalize DMRG"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Finalize DMRG"
 #endif
     !
 =======
@@ -144,9 +155,31 @@ contains
     if(allocated(sb_states))deallocate(sb_states)
     init_called  = .false.
 #ifdef _MPI
-    call dmrg_del_MpiComm()
+    if(check_MPI())call dmrg_del_MpiComm()
 #endif
   end subroutine finalize_dmrg
+
+
+
+
+  !##################################################################
+  !              RUN DMRG ALGORITHM
+  !##################################################################
+  subroutine run_DMRG()
+#ifdef _DEBUG
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Launching DMRG"
+#endif
+    if(.not.init_called)&
+         stop "DMRG ERROR: DMRG not initialized. Call init_dmrg first."
+    !
+    select case(to_lower(DMRGtype))
+    case('i');call infinite_DMRG()
+    case('f');call finite_DMRG()
+    case default;stop "ERROR DMRG: unsupported DMRGtype: DMRGtype !=['i','f']"
+    end select
+  end subroutine RUN_DMRG
+
+
 
 
 
@@ -213,7 +246,7 @@ contains
     integer :: m_rleft,m_rright
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Finite Algorithm"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
 <<<<<<< HEAD
 =======
@@ -274,16 +307,16 @@ contains
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
        blocks_list(right_label,right%length)=right
     enddo
-    print*,""
-    print*,"START FINITE DMRG:"
-    print*,""
+    if(MpiMaster)print*,""
+    if(MpiMaster)print*,"START FINITE DMRG:"
+    if(MpiMaster)print*,""
     !
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
        if(Esweep(im)==0)then
-          write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
+          if(MpiMaster)write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
        else
-          write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
+          if(MpiMaster)write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -494,8 +527,8 @@ contains
     m_right = right%dim
     !
     !> START DMRG STEP:
-    call dmrg_graphic(iLabel)    
-    call start_timer()
+    if(MpiMaster)call dmrg_graphic(iLabel)    
+    if(MpiMaster)call start_timer()
     !
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -568,6 +601,7 @@ contains
     !#################################
     !      WRITE AND EXIT
     !#################################
+<<<<<<< HEAD
     write(LOGfile,"(A,I12,12X,I12)")&
          "         Blocks Length               :",Lleft,Lright
     write(LOGfile,"(A,I12,12X,I12)")&
@@ -588,21 +622,46 @@ contains
          "SuperBlock Dimension  (tot)          :", &
          m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
+=======
+    if(MpiMaster)then
+       write(LOGfile,"(A,I12,12X,I12)")&
+            "         Blocks Length               :",Lleft,Lright
+       write(LOGfile,"(A,I12,12X,I12)")&
+            "Enlarged Blocks Length               :",left%length,right%length
+       write(LOGfile,"(A,I12,12X,I12)")&
+            "Enlarged Blocks Dim                  :",m_eleft,m_eright
+       write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
+            "Target_QN                            :",current_target_QN
+       write(LOGfile,"(A,3x,G24.15)")&
+            "Total                                :",sum(current_target_QN)
+       write(LOGfile,"(A,3x,G24.15)")&
+            "Filling                              :",sum(current_target_QN)/current_L
+       write(LOGfile,"(A,3x,G24.15)")&
+            "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
+       write(LOGfile,"(A,I12)")&
+            "SuperBlock Length                    :",current_L
+       write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
+            "SuperBlock Dimension  (tot)          :", &
+            m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
+    endif
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
     !
     !#################################
     !       DIAG SUPER-BLOCK
     !#################################
     call sb_diag()
-    write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
-    select case(left%type())
-    case ("fermion","f")
-       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-            "Energies/N                           :",gs_energy/sum(current_target_QN)
-    case ("spin","s")
-       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-            "Energies/L                           :",gs_energy/current_L
-    end select
-    write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
+    if(MpiMaster)then
+       write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
+       select case(left%type())
+       case ("fermion","f")
+          write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+               "Energies/N                           :",gs_energy/sum(current_target_QN)
+       case ("spin","s")
+          write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
+               "Energies/L                           :",gs_energy/current_L
+       end select
+       write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
+    endif
     !
     !#################################
     !      BUILD RDM
@@ -668,12 +727,16 @@ contains
     if(renormalize )then
        call renormalize_block('left',m_rleft)
        call renormalize_block('right',m_rright)
+<<<<<<< HEAD
 >>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
        write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
+=======
+       if(MpiMaster)write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
             "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
-       write(LOGfile,"(A,L12,12X,L12)")&
+       if(MpiMaster)write(LOGfile,"(A,L12,12X,L12)")&
             "Truncating                           :",Mstates<=m_left,Mstates<=m_right
-       write(LOGfile,"(A,2ES24.15)")&
+       if(MpiMaster)write(LOGfile,"(A,2ES24.15)")&
             "Truncation Errors                    :",truncation_error_left,truncation_error_right
     endif
 <<<<<<< HEAD
@@ -714,8 +777,9 @@ contains
 >>>>>>> d733a73 (Updated code.)
 =======
     !> STOP DMRG STEP:
-    call stop_timer("dmrg_step")
+    if(MpiMaster)call stop_timer("dmrg_step")
     !
+<<<<<<< HEAD
 <<<<<<< HEAD
     ! !#################################
     ! !      WRITE AND EXIT
@@ -762,6 +826,13 @@ contains
     call write_energy()
     call write_truncation()
     call write_entanglement()
+=======
+    if(MpiMaster)then
+       call write_energy()
+       call write_truncation()
+       call write_entanglement()
+    endif
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
     !
 <<<<<<< HEAD
 <<<<<<< HEAD

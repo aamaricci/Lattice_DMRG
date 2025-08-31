@@ -9,6 +9,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 =======
   character(len=41),parameter :: git_code_version = "d3539b5739443ef1f31a074d28933824469fe053"	
@@ -44,4 +45,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "fd1accdfa32e80b0a27821426a127dd1f81ad922"	
 >>>>>>> a8ed1a6 (Implemented newer algorithm for MVP used in ARPACK.)
+=======
+  character(len=41),parameter :: git_code_version = "6adc5a4d3c7b766d3c113966c126d4f09939941e"	
+>>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
 END MODULE VERSION

@@ -6,9 +6,10 @@ MODULE DMRG_SUPERBLOCK_SETUP
 
   !Memory pool:
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B,At
+  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
   integer,dimension(:),allocatable               :: Dls,Drs,Offset
-  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
+  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset,isb2jsb
+  logical,dimension(:,:),allocatable             :: IsHconjg
   !
   !Local variables
   integer                                        :: tNso
@@ -30,7 +31,7 @@ MODULE DMRG_SUPERBLOCK_SETUP
   !-> used in DMRG_SUPERBLOCK to deallocate
   public :: Hleft
   public :: Hright
-  public :: A,B,At
+  public :: A,B
   public :: Dls,Drs,Offset
   public :: RowOffset,ColOffset
 
@@ -202,8 +203,6 @@ contains
     !
     !Massive allocation
     if(allocated(tMap))deallocate(tMap)
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
     if(allocated(Offset))deallocate(Offset)
     if(allocated(AI))deallocate(AI)
     if(allocated(BI))deallocate(BI)
@@ -211,21 +210,23 @@ contains
     if(allocated(BJ))deallocate(BJ)
     if(allocated(A))deallocate(A)
     if(allocated(B))deallocate(B)
-    if(allocated(At))deallocate(At)
     if(allocated(Hleft))deallocate(Hleft)
     if(allocated(Hright))deallocate(Hright)
     if(allocated(RowOffset))deallocate(RowOffset)
     if(allocated(ColOffset))deallocate(ColOffset)
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
     if(allocated(Sleft))deallocate(Sleft)
     if(allocated(Sright))deallocate(Sright)
-
     allocate(tMap(tNso,1,1))
-    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
+    allocate(Offset(Nsb))
     allocate(AI(Nsb),BI(Nsb))
     allocate(AJ(Nsb),BJ(Nsb))
-    allocate(A(tNso,Nsb),B(tNso,Nsb),At(tNso,Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
     allocate(Hleft(Nsb),Hright(Nsb))
     allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
+    allocate(isb2jsb(tNso,Nsb))
+    allocate(IsHconjg(tNso,Nsb))
     allocate(Sleft(Nspin),Sright(Nspin))
 
     !
@@ -244,15 +245,9 @@ contains
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-
-
-       print*,int(qn), Drs(isb),Dls(isb),Dls(isb)*Drs(isb),Offset(isb)
-
+       if(MpiMaster)print*,int(qn), Drs(isb),Dls(isb),Dls(isb)*Drs(isb),Offset(isb)
     enddo
-
-    print*,""
-
-
+    if(MpiMaster)print*,""
     !
     dq=[1d0]
     do isb=1,Nsb
@@ -271,27 +266,29 @@ contains
        Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
     enddo
     !
-
+    isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
        !> get: H*^L  and H*^R
        Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
        Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
-
-
+       !
        !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets       
        it=tMap(1,1,1)
        A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
        B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
-       At(it,isb)= A(it,isb)%t()
        qm  = qn
        jsb = isb
        RowOffset(it,isb)=Offset(isb)           
        ColOffset(it,isb)=Offset(isb)
+       Isb2Jsb(it,isb)=jsb
+       IsHconjg(it,isb)=.false.
        !
-       print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"B, A^T:",shape(B(it,isb)),shape(At(it,isb)),"-",Drs(isb),Dls(isb),B(it,isb)%Nrow,At(it,isb)%Ncol
-
+       if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
+            shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
+       !Drs(isb),Dls(isb),Drs(jsb),Dls(jsb)
+       !,B(it,isb)%Nrow,A(it,isb)%Nrow
        !
        !
        dq = [1d0]
@@ -303,25 +300,28 @@ contains
        it=tMap(2,1,1)
        A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
        B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
-       At(it,isb)= A(it,isb)%t()
        RowOffset(it,isb)=Offset(isb)
        ColOffset(it,isb)=Offset(jsb)
+       Isb2Jsb(it,isb)=jsb
+       IsHconjg(it,isb)=.false.
        !
-       print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"B, A^T:",shape(B(it,isb)),shape(At(it,isb)),"-",Drs(isb),Dls(isb),B(it,isb)%Nrow,At(it,isb)%Ncol
+       if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
+            shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
+       !,B(it,isb)%Nrow,A(it,isb)%Nrow
        !       
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
        A(it,isb) = hconjg(A(tMap(2,1,1),isb))
        B(it,isb) = hconjg(B(tMap(2,1,1),isb))
-       At(it,isb)= A(it,isb)%t()
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
+       Isb2Jsb(it,isb)=jsb
+       IsHconjg(it,isb)=.true.  !exchange jsb and isb
        !
-       print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"B, A^T:",shape(B(it,isb)),shape(At(it,isb)),"-",Drs(jsb),Dls(jsb),B(it,isb)%Nrow,At(it,isb)%Ncol
-       !
-
-       print*,""
-
+       if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
+            shape(A(it,isb)),shape(B(it,isb)),"-",Dls(jsb),Dls(isb),Drs(jsb),Drs(isb)
+       !,B(it,isb)%Nrow,A(it,isb)%Nrow
+       if(MpiMaster)print*,""
     enddo
   end subroutine Setup_SuperBlock_Spin_Direct
 
@@ -386,7 +386,7 @@ contains
     !
     !Massive allocation
     allocate(tMap(2,Nso,Nso))
-    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
+    allocate(Offset(Nsb))
     allocate(AI(Nsb),BI(Nsb))
     allocate(AJ(Nsb),BJ(Nsb))
     allocate(A(tNso,Nsb),B(tNso,Nsb))
@@ -538,24 +538,26 @@ contains
     complex(8),dimension(Nloc)            :: Hv
     complex(8)                            :: val
     complex(8)                            :: aval,bval
-    complex(8),dimension(:,:),allocatable :: C
+    complex(8),dimension(:,:),allocatable :: C,Ct
 #else
     real(8),dimension(Nloc)               :: v
     real(8),dimension(Nloc)               :: Hv
     real(8)                               :: val
     real(8)                               :: aval,bval
-    real(8),dimension(:,:),allocatable    :: C
+    real(8),dimension(:,:),allocatable    :: C,Ct
 #endif
     integer                               :: i,j,k,q,n
     integer                               :: ir,il,jr,jl,it
-    integer                               :: arow,brow,acol,bcol,jcol
-    integer                               :: ia,ib,ic,ja,jb,jc,sum
+    integer                               :: ai,aj,bi,bj
+    integer                               :: ia,ib,ic,ja,jb,jc
+    logical                               :: isDiag
     !
     Hv=zero
     !> loop over all the SB sectors:
     sector: do k=1,size(sb_sector)
        !
        !> apply the 1^L x H^r
+       !> this loop can be made parallel:
        do il=1,Dls(k)           !Fix the column il: v_il 
           !
           do ir=1,Drs(k)        !H^r.v_il
@@ -571,6 +573,7 @@ contains
        enddo
        !
        !> apply the H^L x 1^r
+       !> this loop can be made parallel, provided an MPI_trasposition
        do ir=1,Drs(k)           !Fix the row ir: v_ir
           !
           do il=1,Dls(k)        !H^l.v_ir
@@ -586,47 +589,68 @@ contains
        enddo
        !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
-       !Hv = (A.x.B)vec(v) --> (A.x.B).V  -> vec(B.V.A^T)
+       !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
+       !
        !  B.V.A^T : [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
+       !            [Dr(k),Dr(k')].[Dr(k'),Dl(k')].[Dl(k'),Dl(k)]
        !   C.A^T  : [B.Nrow,A.Ncol].[A.Ncol,A.Nrow]
        !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
        !              [B.Nrow,A.Nrow] = vec(Hv)
-       do it=1,tNso          
+       !
+       !A(it,k).Nrow = DLk ;if(Hconjg) DLq
+       !A(it,k).Ncol = DLq ;if(Hconjg) DLk
+       !B(it,k).Nrow = DRk ;if(Hconjg) DRq
+       !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+       !
+
+       !
+       do it=1,tNso
+          q = isb2jsb(it,k)
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+          !
+          isDiag=.false. ; if(q==k)isDiag=.true.
+          !
           allocate(C(B(it,k)%Nrow,A(it,k)%Ncol));C=0d0
           !
           !1. evaluate MMP: C = B.vec(V)
-          !   \sum_bcol B(brow,bcol)V_q(bcol,acol)=C(brow,acol)
-          !   j[bcol] = bcol+(acol-1)B.Ncol + ColOffset_q
-          !   \sum_bcol B(brow,bcol)v_q(j[bcol])=C(brow,acol)
-          do brow=1,B(it,k)%Nrow
-             if(B(it,k)%row(brow)%Size==0)cycle
+          !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
+          !   j = bj+(aj-1)B.Ncol + ColOffset_q
+          !   \sum_bcol B(bi,bj)v_q(j)=C(bi,aj)
+          !
+          !> this loop can be made parallel: A(it,k).Ncol == DLq or DLk
+          do aj=1,A(it,k)%Ncol !DLq ;if(isHconjg(k))DLk
              !
-             do acol=1,A(it,k)%Ncol
-                do jb=1,B(it,k)%row(brow)%Size
-                   bcol = B(it,k)%row(brow)%cols(jb)
-                   bval = B(it,k)%row(brow)%vals(jb)
-                   jc   = bcol + (acol-1)*B(it,k)%Ncol
+             do bi=1,B(it,k)%Nrow
+                if(B(it,k)%row(bi)%Size==0)cycle
+                !
+                do jb=1,B(it,k)%row(bi)%Size
+                   bj   = B(it,k)%row(bi)%cols(jb)
+                   val  = B(it,k)%row(bi)%vals(jb)
+                   jc   = bj + (aj-1)*B(it,k)%Ncol
                    j    = jc + ColOffset(it,k)
-                   C(brow,acol) = C(brow,acol) + bval*v(j)
+                   C(bi,aj) = C(bi,aj) + val*v(j)
                 enddo
                 !
              enddo
           enddo
           !2. evaluate MMP: C.A^t
-          !   \sum_acol C(brow,acol)A^t(acol,arow)
-          !  =\sum_acol [A(arow,acol)C^t(acol,brow)]^T
-          !  =\sum_acol a(arow,acol)[Ct(acol,brow)]^T
-          do arow=1,A(it,k)%Nrow
-             if(A(it,k)%row(arow)%Size==0)cycle
-             do brow=1,B(it,k)%Nrow
-                ic =  brow + (arow-1)*B(it,k)%Nrow
+          !   \sum_aj C(bi,aj)A^t(aj,ai)
+          !  =\sum_aj [A(ai,aj)C^t(aj,bi)]^T
+          !
+          !> this loop can be made parallel: B(it,k).Nrow == DRq or DRk
+          !Ct = transpose(C)
+          !
+          do bi=1,B(it,k)%Nrow
+             !
+             do ai=1,A(it,k)%Nrow
+                if(A(it,k)%row(ai)%Size==0)cycle
+                ic =  bi + (ai-1)*B(it,k)%Nrow
                 i  =  ic + RowOffset(it,k)
                 !
-                do ja=1,A(it,k)%row(arow)%Size
-                   acol = A(it,k)%row(arow)%cols(ja)
-                   aval = A(it,k)%row(arow)%vals(ja)
-                   Hv(i) = Hv(i) + aval*C(brow,acol)
+                do ja=1,A(it,k)%row(ai)%Size
+                   aj  = A(it,k)%row(ai)%cols(ja)
+                   val = A(it,k)%row(ai)%vals(ja)
+                   Hv(i) = Hv(i) + val*C(bi,aj)!Ct(aj,bi)
                 enddo
                 !
              enddo
