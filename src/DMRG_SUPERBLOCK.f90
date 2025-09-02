@@ -210,9 +210,18 @@ contains
     !###################################
     ! MPI VARS SETUP: whatever MPIstatus
     !###################################
+    if(allocated(mpiDls))deallocate(mpiDls)
+    if(allocated(mpiDrs))deallocate(mpiDrs)
+    if(allocated(mpiDl))deallocate(mpiDl)
+    if(allocated(mpiDr))deallocate(mpiDr)
+    if(allocated(mpiOffset))deallocate(mpiOffset)
     allocate(mpiDls(Nsb))
     allocate(mpiDrs(Nsb))
-    allocate(mpiQs(Nsb))
+    allocate(mpiDl(Nsb))
+    allocate(mpiDr(Nsb))
+    allocate(mpiOffset(Nsb))
+    !
+    mpiOffset=0
     do q=1,Nsb
        qn  = sb_sector%qn(index=q)
        Dls(q) = sector_qn_dim(left%sectors(1),qn)
@@ -220,17 +229,32 @@ contains
        !
        mpiDls(q) = Dls(q)/MpiSize
        if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
-       mpiQs(q) = Drs(q)*mpiDls(q)
+       mpiDl(q) = Drs(q)*mpiDls(q)
+       !
+       mpiDrs(q) = Drs(q)/MpiSize
+       if(MpiRank < mod(Drs(q),MpiSize))mpiDrs(q) = mpiDrs(q)+1
+       mpiDr(q) = mpiDrs(q)*Dls(q)
+       !
+       mpiOffset(q)=sum(Drs(1:q-1)*mpiDls(1:q-1))
     enddo
-    mpiQ = sum(mpiQs)
+    mpiL = sum(mpiDl)
+    mpiR = sum(mpiDr)
+
     !
 #ifdef _MPI
 #ifdef _DEBUG
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
-       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiQs - mpiQ"
+       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiDs - mpiL"
        do irank=0,MpiSize-1
           call Barrier_MPI(MpiComm)
-          if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",mpiQs,"-",mpiQ
+          if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",mpiDl,"-",mpiL,mpiOffset
+       enddo
+       call Barrier_MPI(MpiComm)
+       if(MpiMaster)write(*,*)""
+       if(MpiMaster)write(*,*)"         mpiRank,   mpiDrs -  mpiDr - mpiR"
+       do irank=0,MpiSize-1
+          call Barrier_MPI(MpiComm)
+          if(MpiRank==irank)write(*,*)MpiRank,mpiDrs,"-",mpiDr,"-",mpiR
        enddo
        call Barrier_MPI(MpiComm)
     endif
@@ -271,9 +295,9 @@ contains
        !
        !Set HxV function pointer:
        spHtimesV_p => spMatVec_direct_main
-! #ifdef _MPI
-!        if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
-! #endif
+#ifdef _MPI
+       if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
+#endif
        !
     end select
   end subroutine sb_build_Hv
@@ -318,7 +342,9 @@ contains
     if(allocated(ColOffset))deallocate(ColOffset)
     if(allocated(mpiDls))deallocate(mpiDls)
     if(allocated(mpiDrs))deallocate(mpiDrs)
-    if(allocated(mpiQs))deallocate(mpiQs)
+    if(allocated(mpiDl))deallocate(mpiDl)
+    if(allocated(mpiDr))deallocate(mpiDr)
+    if(allocated(mpiOffset))deallocate(mpiOffset)
   end subroutine sb_delete_Hv
 
 
@@ -336,18 +362,18 @@ contains
        if(MpiStatus)then
           mpiDls(q) = Dls(q)/MpiSize
           if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
-          mpiQs(q)  = Drs(q)*mpiDls(q)
+          mpiDl(q)  = Drs(q)*mpiDls(q)
        else
-          mpiQs(q) = Drs(q)*Dls(q)
+          mpiDl(q) = Drs(q)*Dls(q)
        endif
 #else
-       mpiQs(q) = Drs(q)*Dls(q)
+       mpiDl(q) = Drs(q)*Dls(q)
 #endif
     enddo
-    mpiQ   = sum(mpiQs)
-    print*,"rank,vecDim:",mpiRank,mpiQ
+    mpiL   = sum(mpiDl)
+    print*,"rank,vecDim:",mpiRank,mpiL
     ! vecDim = size(sb_states)
-    vecDim = mpiQ
+    vecDim = mpiL
     
     !
   end function sb_vecDim_Hv
