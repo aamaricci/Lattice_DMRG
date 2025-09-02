@@ -25,6 +25,12 @@ MODULE AUX_FUNCS
      module procedure :: append_C
   end interface add_to
 
+  interface cumulate
+     module procedure :: cumulate_I
+     module procedure :: cumulate_D
+     module procedure :: cumulate_C
+  end interface cumulate
+  
   public :: outsum
   public :: append
   public :: add_to
@@ -148,7 +154,19 @@ contains
 
 
 
-  function cumulate(A) result(B)
+  function cumulate_I(A) result(B)
+    integer,dimension(:)             :: A
+    integer,dimension(:),allocatable :: B
+    integer                          :: i
+    if(allocated(B))deallocate(B)
+    allocate(B(size(A)))
+    B=0d0
+    do i=1,size(A)
+       B(i) = sum(A(1:i))
+    enddo
+  end function cumulate_I
+
+  function cumulate_D(A) result(B)
     real(8),dimension(:)             :: A
     real(8),dimension(:),allocatable :: B
     integer                          :: i
@@ -158,6 +176,7 @@ contains
     do i=1,size(A)
        B(i) = sum(A(1:i))
     enddo
+<<<<<<< HEAD
   end function cumulate
 
 <<<<<<< HEAD
@@ -204,6 +223,21 @@ contains
 =======
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
+=======
+  end function cumulate_D
+
+  function cumulate_C(A) result(B)
+    complex(8),dimension(:)             :: A
+    complex(8),dimension(:),allocatable :: B
+    integer                          :: i
+    if(allocated(B))deallocate(B)
+    allocate(B(size(A)))
+    B=0d0
+    do i=1,size(A)
+       B(i) = sum(A(1:i))
+    enddo
+  end function cumulate_C
+>>>>>>> e9d8bd1 (Updated code.)
 
   
   function label_dmrg(type,im) result(label)

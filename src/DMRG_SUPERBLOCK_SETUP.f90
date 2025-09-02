@@ -24,6 +24,7 @@ MODULE DMRG_SUPERBLOCK_SETUP
   public :: Setup_SuperBlock_Direct
   public :: spMatVec_sparse_main
   public :: spMatVec_direct_main
+  public :: spMatVec_MPI_direct_main
   !
   !-> used in DMRG_MEASURE to perform H|gs>
   public :: sb2block_states
@@ -100,7 +101,7 @@ contains
 
 
 
-  
+
 
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
@@ -154,7 +155,7 @@ contains
 
 
 
-  
+
   !##################################################################
   !                          SPIN CASE
   !##################################################################
@@ -245,7 +246,8 @@ contains
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
        if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-       if(MpiMaster)print*,int(qn), Drs(isb),Dls(isb),Dls(isb)*Drs(isb),Offset(isb)
+       ! Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
+       if(MpiMaster)print*,int(qn),Drs(isb),Dls(isb),Dls(isb)*Drs(isb),Offset(isb),sum(Dls(1:isb-1)*Drs(1:isb-1))
     enddo
     if(MpiMaster)print*,""
     !
@@ -548,7 +550,7 @@ contains
 #endif
     integer                               :: i,j,k,q,n
     integer                               :: ir,il,jr,jl,it
-    integer                               :: ai,aj,bi,bj
+    integer                               :: ai,aj,bi,bj,jcol
     integer                               :: ia,ib,ic,ja,jb,jc
     logical                               :: isDiag
     !
@@ -664,7 +666,194 @@ contains
 
 
 
+  !##################################################################
+  !              SuperBlock MATRIX-VECTOR PRODUCTS
+  !              using shared quantities in GLOBAL
+  !##################################################################
+  subroutine spMatVec_MPI_direct_main(Nloc,v,Hv)
+    integer                               :: Nloc
+#ifdef _CMPLX
+    complex(8),dimension(Nloc)            :: v
+    complex(8),dimension(Nloc)            :: Hv
+    complex(8),dimension(:),allocatable   :: vt,Hvt
+    complex(8),dimension(:),allocatable   :: vin
+    complex(8)                            :: val
+    complex(8)                            :: aval,bval
+    complex(8),dimension(:,:),allocatable :: C,Ct
+#else
+    real(8),dimension(Nloc)               :: v
+    real(8),dimension(Nloc)               :: Hv
+    real(8),dimension(:),allocatable      :: vt,Hvt
+    real(8),dimension(:),allocatable      :: vin
+    real(8)                               :: val
+    real(8)                               :: aval,bval
+    real(8),dimension(:,:),allocatable    :: C,Ct
+#endif
+    integer                               :: i,j,k,q,n
+    integer                               :: ir,il,jr,jl,it
+    integer                               :: ai,aj,bi,bj,jcol
+    integer                               :: ia,ib,ic,ja,jb,jc
+    integer                               :: mpiArow,mpiAcol,mpiBrow,mpiBcol
+    integer                               :: i_start,i_end
+    logical                               :: isDiag
+    !
+    if(.not.MpiStatus)stop "spMatVec_mpi_normal_main ERROR: MpiStatus = F"
+    !
+    !
+    Hv=zero
+    !> loop over all the SB sectors: k
+    sector: do k=1,size(sb_sector)
+       !
+       !> apply the 1^L x H^r: share L columns
+       do il=1,mpiDls(k)   !Fix the column il(q): v_il(q) for each thread
+          !
+          do ir=1,Drs(k)   !H^r.v_il
+             i = ir + (il-1)*Drs(k) + mpiOffset(k)
+             do jcol=1,Hright(k)%row(ir)%Size
+                val = Hright(k)%row(ir)%vals(jcol)
+                jr  = Hright(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Drs(k) + mpiOffset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+          !
+       enddo
+       !
+       !L part: non-contiguous in memory -> MPI transposition
+       !Transpose the input vector as a whole:
+       !We use mpiDrs here
+       !> apply the H^L x 1^r
+       !> this loop can be made parallel, provided an MPI_trasposition
+       allocate(vt(mpiDrs(k)*Dls(k))) ;vt=zero
+       allocate(Hvt(mpiDrs(k)*Dls(k)));Hvt=zero
+       !transpose QN block only.  
+       i_start = 1 + (k-1)*Drs(k)*mpiDls(k)
+       i_end   = k*Drs(k)*mpiDls(k)
+       call vector_transpose_MPI(Drs(k),mpiDls(k),v(i_start:i_end),Dls(k),mpiDrs(k),vt)
+       do il=1,mpiDrs(k)  !Fix the *column* ir: v_ir(q). Transposed order
+          !
+          do ir=1,Dls(k)  !go row-by-row H^l.v_ir: Transposed order
+             i = ir + (il-1)*Dls(k)
+             do jcol=1,Hleft(k)%row(ir)%Size
+                val = Hleft(k)%row(ir)%vals(jcol)
+                jr  = Hleft(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Dls(k)
+                Hvt(i) = Hvt(i) + val*vt(j)
+             end do
+          enddo
+          !
+       enddo
+       deallocate(vt) ; allocate(vt(Drs(k)*mpiDls(k))) ; vt=zero
+       call vector_transpose_MPI(Dls(k),mpiDrs(k),Hvt,Drs(k),mpiDls(k),vt)
+       Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
+       deallocate(vt,Hvt)
+       !
+       !> apply the term sum_k sum_it A_it(k).x.B_it(k)
+       !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
+       !
+       !  B.V.A^T : [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
+       !            [Dr(k),Dr(k')].[Dr(k'),Dl(k')].[Dl(k'),Dl(k)]
+       !   C.A^T  : [B.Nrow,A.Ncol].[A.Ncol,A.Nrow]
+       !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
+       !              [B.Nrow,A.Nrow] = vec(Hv)
+       !
+       !A(it,k).Nrow = DLk ;if(Hconjg) DLq
+       !A(it,k).Ncol = DLq ;if(Hconjg) DLk
+       !B(it,k).Nrow = DRk ;if(Hconjg) DRq
+       !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+       !
 
+       !
+       do it=1,tNso
+          if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+          !
+          q = isb2jsb(it,k)
+          isDiag=.false.
+          if(q==k)isDiag=.true.
+          !
+
+          !
+          !1. evaluate MMP: C = B.vec(V)
+          !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
+          !   j = bj+(aj-1)B.Ncol + ColOffset_q
+          !   \sum_bcol B(bi,bj)v_q(j)=C(bi,aj)
+          !
+          !> this loop can be made parallel: A(it,k).Ncol == DLq or DLk
+          mpiAcol = mpiDls(q)
+          if(isHconjg(it,k))mpiAcol=mpiDls(k)
+          !
+          mpiArow = mpiDls(k)
+          if(isHconjg(it,k))mpiArow=mpiDls(q)
+          !
+          mpiBrow = mpiDrs(k)
+          if(isHconjg(it,k))mpiBrow=mpiDrs(q)
+          !
+          allocate(C(B(it,k)%Nrow,mpiAcol));C=zero
+          !
+          do aj=1,mpiAcol!A(it,k)%Ncol
+             !
+             do bi=1,B(it,k)%Nrow
+                if(B(it,k)%row(bi)%Size==0)cycle
+                !
+                do jb=1,B(it,k)%row(bi)%Size
+                   bj   = B(it,k)%row(bi)%cols(jb)
+                   val  = B(it,k)%row(bi)%vals(jb)
+                   jc   = bj + (aj-1)*B(it,k)%Ncol
+                   j    = jc + mpiColOffset(it,k) !<< ACTHUNG: get mpiColOffset!!! >> should be mpiOffset(q)
+                   C(bi,aj) = C(bi,aj) + val*v(j)
+                enddo
+                !
+             enddo
+          enddo
+          !
+          !Up to here we built "few", thread-related, columns of C(b,j*)
+          !In the next step we will need to get [A.C^T]^T
+          ! [C(b,j*)]^T = C(j*,b)
+          ! [sum_j A_ij.[C^t]_jb]^T
+          !
+          !Thus we need to know all values of j. 
+
+          !2. evaluate MMP: C.A^t
+          !   \sum_aj C(bi,aj)A^t(aj,ai)
+          !  =\sum_aj [A(ai,aj)C^t(aj,bi)]^T
+          ! = [Hvt[A.Nrow,mpiBrow]]^T
+          ! => Hv[B.Nrow,mpiArow]
+          !
+          !Get C^T
+          allocate(Ct(A(it,k)%Ncol,mpiBrow));Ct=zero
+          call vector_transpose_MPI(B(it,k)%Nrow,mpiAcol,C,A(it,k)%Nrow,mpiBrow,Ct)
+          !
+          allocate(Hvt(A(it,k)%Nrow*mpiBrow));Hvt=zero
+          do bi=1,mpiBrow!B(it,k)%Nrow
+             !
+             do ai=1,A(it,k)%Nrow
+                if(A(it,k)%row(ai)%Size==0)cycle
+                i  =  ai + (bi-1)*A(it,k)%Nrow
+                ! i  =  ic + RowOffset(it,k)
+                !
+                do ja=1,A(it,k)%row(ai)%Size
+                   aj  = A(it,k)%row(ai)%cols(ja)
+                   val = A(it,k)%row(ai)%vals(ja)
+                   Hvt(i) = Hvt(i) + val*Ct(aj,bi)
+                enddo
+                !
+             enddo
+          enddo
+          !
+          deallocate(vt) ; allocate(vt(mpiArow*B(it,k)%Nrow)) ; vt=zero
+          call vector_transpose_MPI(A(it,k)%Nrow,mpiBrow,Hvt,B(it,k)%Nrow,mpiArow,vt)
+          !Map back to correct block of Hv: which one?
+          i_start = 1 + (k-1)*Drs(k)*mpiDls(k)
+          i_end   = k*Drs(k)*mpiDls(k)
+          if(isHconjg(it,k)) i_start = 1 + (q-1)*Drs(q)*mpiDls(q)
+          if(isHconjg(it,k)) i_end   = q*Drs(q)*mpiDls(q)
+          !
+          Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
+          !
+          deallocate(C,Ct,Hvt,Vt)
+       enddo
+    enddo sector
+  end subroutine spMatVec_MPI_direct_main
 
 
 

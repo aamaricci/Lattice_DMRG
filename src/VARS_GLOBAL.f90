@@ -105,8 +105,10 @@ MODULE VARS_GLOBAL
   integer                               :: MpiSize=1
   integer,allocatable,dimension(:)      :: mpiDls
   integer,allocatable,dimension(:)      :: mpiDrs
-  integer,allocatable,dimension(:)      :: mpiQs
-  integer                               :: mpiQ=0
+  integer,allocatable,dimension(:)      :: mpiDl,mpiDr
+  integer,allocatable,dimension(:)      :: mpiOffset
+  integer,allocatable,dimension(:,:)    :: mpiRowOffset,mpiColOffset
+  integer                               :: mpiL=0,mpiR=0
   !
 
 
