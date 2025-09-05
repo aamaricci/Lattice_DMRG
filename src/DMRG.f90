@@ -16,6 +16,9 @@ MODULE DMRG
   USE DMRG_MAIN
   USE DMRG_MEASURE
   !
-  !USE VARS_GLOBAL!< uncomment this to compile kron_ tests
+  !< uncomment this to compile kron_ tests
+  USE VARS_GLOBAL
+  USE DMRG_SUPERBLOCK_SETUP
+  USE DMRG_CONNECT
   implicit none  
 END MODULE DMRG

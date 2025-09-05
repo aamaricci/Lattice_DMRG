@@ -9,7 +9,10 @@ MODULE DMRG_SUPERBLOCK
   public :: sb_get_states
   public :: sb_diag
 
-
+  public :: sb_build_Hv
+  public :: sb_vecDim_Hv
+  public :: sb_delete_Hv
+  
   integer :: i,j
   integer :: ispin
   integer :: iorb,jorb
@@ -205,59 +208,29 @@ contains
     if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
     m_sb = size(sb_states)
     Nsb  = size(sb_sector)
-    if(allocated(Dls))deallocate(Dls);allocate(Dls(Nsb))
-    if(allocated(Drs))deallocate(Drs);allocate(Drs(Nsb))
-    !###################################
-    ! MPI VARS SETUP: whatever MPIstatus
-    !###################################
-    if(allocated(mpiDls))deallocate(mpiDls)
-    if(allocated(mpiDrs))deallocate(mpiDrs)
-    if(allocated(mpiDl))deallocate(mpiDl)
-    if(allocated(mpiDr))deallocate(mpiDr)
-    if(allocated(mpiOffset))deallocate(mpiOffset)
-    allocate(mpiDls(Nsb))
-    allocate(mpiDrs(Nsb))
-    allocate(mpiDl(Nsb))
-    allocate(mpiDr(Nsb))
-    allocate(mpiOffset(Nsb))
     !
-    mpiOffset=0
+#ifdef _MPI
+#ifdef _DEBUG
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(mpiDls))deallocate(mpiDls)
+    allocate(Dls(Nsb),Drs(Nsb),mpiDls(Nsb))
     do q=1,Nsb
        qn  = sb_sector%qn(index=q)
        Dls(q) = sector_qn_dim(left%sectors(1),qn)
        Drs(q) = sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       !
        mpiDls(q) = Dls(q)/MpiSize
        if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
-       mpiDl(q) = Drs(q)*mpiDls(q)
-       !
-       mpiDrs(q) = Drs(q)/MpiSize
-       if(MpiRank < mod(Drs(q),MpiSize))mpiDrs(q) = mpiDrs(q)+1
-       mpiDr(q) = mpiDrs(q)*Dls(q)
-       !
-       mpiOffset(q)=sum(Drs(1:q-1)*mpiDls(1:q-1))
     enddo
-    mpiL = sum(mpiDl)
-    mpiR = sum(mpiDr)
-
-    !
-#ifdef _MPI
-#ifdef _DEBUG
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
-       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiDs - mpiL"
+       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiDs - mpiL - mpiOffset"
        do irank=0,MpiSize-1
           call Barrier_MPI(MpiComm)
-          if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",mpiDl,"-",mpiL,mpiOffset
-       enddo
-       call Barrier_MPI(MpiComm)
-       if(MpiMaster)write(*,*)""
-       if(MpiMaster)write(*,*)"         mpiRank,   mpiDrs -  mpiDr - mpiR"
-       do irank=0,MpiSize-1
-          call Barrier_MPI(MpiComm)
-          if(MpiRank==irank)write(*,*)MpiRank,mpiDrs,"-",mpiDr,"-",mpiR
+          if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",Drs(:)*mpiDls(:),"-",sum(Drs(:)*mpiDls(:)),"-",(sum(Drs(1:q-1)*mpiDls(1:q-1)),q=1,Nsb)
        enddo
        call Barrier_MPI(MpiComm)
     endif
+    deallocate(Dls,Drs,mpiDls)
 #endif
 #endif
     !
@@ -345,6 +318,8 @@ contains
     if(allocated(mpiDl))deallocate(mpiDl)
     if(allocated(mpiDr))deallocate(mpiDr)
     if(allocated(mpiOffset))deallocate(mpiOffset)
+    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
+    if(allocated(mpiColOffset))deallocate(mpiColOffset)
   end subroutine sb_delete_Hv
 
 
@@ -374,12 +349,12 @@ contains
     print*,"rank,vecDim:",mpiRank,mpiL
     ! vecDim = size(sb_states)
     vecDim = mpiL
-    
+
     !
   end function sb_vecDim_Hv
 
 
 
-  
+
 
 END MODULE DMRG_SUPERBLOCK
