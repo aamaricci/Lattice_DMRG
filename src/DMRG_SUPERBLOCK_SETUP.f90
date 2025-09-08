@@ -1,16 +1,10 @@
 MODULE DMRG_SUPERBLOCK_SETUP
-  USE VARS_GLOBAL
+  USE DMRG_GLOBAL
   USE DMRG_CONNECT
   implicit none
   private
 
-  !Memory pool:
-  type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
-  integer,dimension(:),allocatable               :: Dls,Drs,Offset
-  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset,isb2jsb
-  logical,dimension(:,:),allocatable             :: IsHconjg
-  !
+
   !Local variables
   integer                                        :: tNso
   integer                                        :: isb,jsb
@@ -332,10 +326,10 @@ contains
        mpiColOffset(it,isb)=mpiOffset(isb)
 #endif
        !
-       if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
-            shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
-       !Drs(isb),Dls(isb),Drs(jsb),Dls(jsb)
-       !,B(it,isb)%Nrow,A(it,isb)%Nrow
+       ! if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
+       !      shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
+       ! !Drs(isb),Dls(isb),Drs(jsb),Dls(jsb)
+       ! !,B(it,isb)%Nrow,A(it,isb)%Nrow
        !
        !
        dq = [1d0]
@@ -356,9 +350,9 @@ contains
        mpiColOffset(it,isb)=mpiOffset(jsb)
 #endif
        !
-       if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
-            shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
-       !,B(it,isb)%Nrow,A(it,isb)%Nrow
+       ! if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
+       !      shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
+       ! !,B(it,isb)%Nrow,A(it,isb)%Nrow
        !       
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
@@ -373,10 +367,10 @@ contains
        mpiColOffset(it,isb)=mpiOffset(isb)
 #endif
        !
-       if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
-            shape(A(it,isb)),shape(B(it,isb)),"-",Dls(jsb),Dls(isb),Drs(jsb),Drs(isb)
-       !,B(it,isb)%Nrow,A(it,isb)%Nrow
-       if(MpiMaster)print*,""
+       ! if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
+       !      shape(A(it,isb)),shape(B(it,isb)),"-",Dls(jsb),Dls(isb),Drs(jsb),Drs(isb)
+       ! !,B(it,isb)%Nrow,A(it,isb)%Nrow
+       ! if(MpiMaster)print*,""
     enddo
   end subroutine Setup_SuperBlock_Spin_Direct
 
@@ -493,9 +487,6 @@ contains
        enddo
     enddo
     !
-
-
-
     !
     P = left%operators%op("P")
     do ispin=1,Nspin
@@ -757,8 +748,7 @@ contains
     Hv=zero
     !> loop over all the SB sectors: k
     sector: do k=1,size(sb_sector)
-
-
+       !       
        !> apply the 1^L x H^r: share L columns
        do il=1,mpiDls(k)   !Fix the column il(q): v_il(q) for each thread
           !
@@ -773,9 +763,7 @@ contains
           enddo
           !
        enddo
-
-
-
+       !
        !> apply the H^L x 1^r
        !L part: non-contiguous in memory -> MPI transposition
        allocate(vt(mpiDrs(k)*Dls(k))) ;vt=zero
@@ -800,8 +788,7 @@ contains
        call vector_transpose_MPI(Dls(k),mpiDrs(k),Hvt,Drs(k),mpiDls(k),vt)
        Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
        deallocate(vt,Hvt)
-
-
+       !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
        !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
        !
@@ -816,8 +803,6 @@ contains
        !B(it,k).Nrow = DRk ;if(Hconjg) DRq
        !B(it,k).Ncol = DRq ;if(Hconjg) DRk
        !
-
-
        do it=1,tNso
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
           !
@@ -825,15 +810,13 @@ contains
           isDiag=.false.
           if(q==k)isDiag=.true.
           !
-          print*,it,k,q
-
+          ! print*,it,k,q
           !
           !1. evaluate MMP: C = B.vec(V)
           !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
           !   j = bj+(aj-1)B.Ncol + ColOffset_q
           !   \sum_bcol B(bi,bj)v_q(j)=C(bi,aj)
           !
-          !> this loop can be made parallel: A(it,k).Ncol == DLq or DLk
           mpiAcol = mpiDls(q)
           if(isHconjg(it,k))mpiAcol=mpiDls(k)
           !
@@ -845,7 +828,7 @@ contains
           !
           allocate(C(B(it,k)%Nrow,mpiAcol));C=zero
           !
-          do aj=1,mpiAcol!A(it,k)%Ncol
+          do aj=1,mpiAcol
              !
              do bi=1,B(it,k)%Nrow
                 if(B(it,k)%row(bi)%Size==0)cycle
@@ -854,7 +837,7 @@ contains
                    bj   = B(it,k)%row(bi)%cols(jb)
                    val  = B(it,k)%row(bi)%vals(jb)
                    jc   = bj + (aj-1)*B(it,k)%Ncol
-                   j    = jc + mpiOffset(q) !<< ACTHUNG: get mpiColOffset!!! >> should be mpiOffset(q)
+                   j    = jc + mpiOffset(q)
                    if(isHconjg(it,k))j    = jc + mpiOffset(k)
                    C(bi,aj) = C(bi,aj) + val*v(j)
                 enddo
@@ -901,15 +884,15 @@ contains
           i_start = 1 + mpiRowOffset(it,k)
           i_end   = B(it,k)%Nrow*mpiArow+mpiRowOffSet(it,k)
           !
-          print*,i_start,i_end
+          ! print*,i_start,i_end
           Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
           !
           deallocate(Ct,Hvt,Vt)
 
           deallocate(C)
        enddo
-
-       print*,""
+       !
+       ! print*,""
     enddo sector
   end subroutine spMatVec_MPI_direct_main
 

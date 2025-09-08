@@ -1,5 +1,5 @@
 MODULE DMRG_SUPERBLOCK
-  USE VARS_GLOBAL
+  USE DMRG_GLOBAL
   USE DMRG_CONNECT
   USE DMRG_SUPERBLOCK_SETUP
   implicit none
@@ -137,12 +137,19 @@ contains
     integer                               :: m_sb
     integer                               :: Nitermax,Neigen,Nblock
     real(8),dimension(:),allocatable      :: evals
+#ifdef _MPI
+#ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: mpiEvec
+#else
+    real(8),dimension(:,:),allocatable    :: mpiEvec
+#endif
+#endif       
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Hsb
 #else
     real(8),dimension(:,:),allocatable    :: Hsb
 #endif
-    integer                               :: vecDim
+    integer                               :: vecDim,Nloc,m_tmp
     logical                               :: exist,lanc_solve
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -183,30 +190,43 @@ contains
        !
        if(allocated(gs_vector))deallocate(gs_vector)
        vecDim = sb_vecDim_Hv()
-       allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        !
 #ifdef _MPI
-       if(MpiStatus)then
-          call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
-               Nblock,&
-               Nitermax,&
-               tol=lanc_tolerance,&
-               iverbose=(verbose>4))
-       else
-          call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
+       if(MpiStatus)then          
+          allocate(mpiEvec(vecDim,Neigen));mpiEvec=zero
+          call sp_eigh(MpiComm,spHtimesV_p,gs_energy,mpiEvec,&
                Nblock,&
                Nitermax,&
                tol=lanc_tolerance,&
                iverbose=(verbose>4))
 
+          m_tmp= 0
+          call AllReduce_MPI(MpiComm,vecDim,m_tmp)
+          if(m_tmp/=m_sb)stop "DMRG.sb_diag ERROR: reduced vecDim != m_sb"
+          allocate(gs_vector(m_sb,Neigen));gs_vector=zero
+          do i=1,Neigen
+             call allgather_vector_MPI(MpiComm,mpiEvec(:,i),gs_vector(:,i))
+          enddo
+       else
+
+          allocate(gs_vector(vecDim,Neigen));gs_vector=zero
+          call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
+               Nblock,&
+               Nitermax,&
+               tol=lanc_tolerance,&
+               iverbose=(verbose>4))
        endif
 #else
+       allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
             Nblock,&
             Nitermax,&
             tol=lanc_tolerance,&
             iverbose=(verbose>4))
-#endif   
+#endif
+
+
+
        !
     else !use LAPACK
        !
@@ -296,7 +316,7 @@ contains
        if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
     enddo
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
-       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiDs - mpiL - mpiOffset"
+       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiDl - mpiL - mpiOffset"
        do irank=0,MpiSize-1
           call Barrier_MPI(MpiComm)
           if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",Drs(:)*mpiDls(:),"-",sum(Drs(:)*mpiDls(:)),"-",(sum(Drs(1:q-1)*mpiDls(1:q-1)),q=1,Nsb)
@@ -494,24 +514,29 @@ contains
     real(8),dimension(:),allocatable :: qn
     integer                          :: q
     !
-    do q=1,size(sb_sector)
+
 #ifdef _MPI
-       if(MpiStatus)then
+
+    if(MpiStatus)then
+       do q=1,size(sb_sector)
           mpiDls(q) = Dls(q)/MpiSize
           if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
           mpiDl(q)  = Drs(q)*mpiDls(q)
-       else
+       enddo
+    else
+       do q=1,size(sb_sector)
           mpiDl(q) = Drs(q)*Dls(q)
-       endif
+       enddo
+       if(sum(mpiDl)/=size(sb_states))stop "sb_vecDim_Hv error: no MPI but vecDim != m_sb"
+    endif
 #else
+    do q=1,size(sb_sector)
        mpiDl(q) = Drs(q)*Dls(q)
-#endif
     enddo
-    mpiL   = sum(mpiDl)
-    print*,"rank,vecDim:",mpiRank,mpiL
-    ! vecDim = size(sb_states)
-    vecDim = mpiL
-
+    if(sum(mpiDl)/=size(sb_states))stop "sb_vecDim_Hv error: no MPI but vecDim != m_sb"
+#endif
+    !
+    vecDim = sum(mpiDl)
     !
   end function sb_vecDim_Hv
 

@@ -1,4 +1,4 @@
-MODULE VARS_GLOBAL
+MODULE DMRG_GLOBAL
   USE SCIFOR
   USE INPUT_VARS
   USE AUX_FUNCS
@@ -86,6 +86,15 @@ MODULE VARS_GLOBAL
 
 
 
+
+  !Memory pool for HxV direct product 
+  type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
+  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
+  integer,dimension(:),allocatable               :: Dls,Drs,Offset
+  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset,isb2jsb
+  logical,dimension(:,:),allocatable             :: IsHconjg
+
+
   !This is the internal Mpi Communicator and variables.
   !=========================================================
 #ifdef _MPI
@@ -112,20 +121,28 @@ MODULE VARS_GLOBAL
   !
 
 
+#ifdef _MPI
+  ! public :: scatter_vector_MPI
+  ! public :: scatter_basis_MPI
+  public :: gather_vector_MPI
+  public :: allgather_vector_MPI
+#endif
+
+
+
+
 
 contains
 
 
 
-  function sector_qn_dim(self,qn) result(dim)
-    type(sectors_list)   :: self
-    real(8),dimension(:) :: qn
-    integer              :: dim
-    dim = 0
-    if(.not.self%has_qn(qn))return
-    dim =  size(self%map(qn=qn))
-  end function sector_qn_dim
+  !##################################################################
+  !##################################################################
+  !                   MPI AUX FUNCTIONS
+  !##################################################################
+  !##################################################################
 
+<<<<<<< HEAD:src/VARS_GLOBAL.f90
 
 
   subroutine dmrg_graphic(label)
@@ -317,6 +334,8 @@ contains
 
 
   !=========================================================
+=======
+>>>>>>> 63bab1c (IT FUCKING WORKS!!!):src/DMRG_GLOBAL.f90
   subroutine dmrg_set_MpiComm()
 #ifdef _MPI
     integer :: ierr
@@ -445,7 +464,350 @@ contains
 
 
 
-END MODULE VARS_GLOBAL
+
+  !   !##################################################################
+  !   !##################################################################
+  !   !AUXILIARY COMPUTATIONAL ROUTINES ARE HERE BELOW:
+  !   !##################################################################
+  !   !##################################################################
+  ! #ifdef _MPI
+  !   !! Scatter V into the arrays Vloc on each thread: sum_threads(size(Vloc)) must be equal to size(v)
+  !   subroutine d_scatter_vector_MPI(MpiComm,v,vloc)
+  !     integer                          :: MpiComm
+  !     real(8),dimension(:)             :: v    !size[N]
+  !     real(8),dimension(:)             :: vloc !size[Nloc]
+  !     integer                          :: i,iph,irank,Nloc,N
+  !     integer                          :: v_start,v_end,vloc_start,vloc_end
+  !     integer,dimension(:),allocatable :: Counts,Offset
+  !     integer                          :: MpiSize,MpiIerr
+  !     logical                          :: MpiMaster
+  !     !
+  ! #ifdef _DEBUG
+  !     if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_vector_MPI: scatter v into vloc"
+  ! #endif
+  !     !
+  !     if( MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null )return
+  !     ! stop "scatter_vector_MPI error: MpiComm == MPI_UNDEFINED"
+  !     !
+  !     MpiSize   = get_size_MPI(MpiComm)
+  !     MpiMaster = get_master_MPI(MpiComm)
+  !     !
+  !     Nloc = size(Vloc)
+  !     N = 0
+  !     call AllReduce_MPI(MpiComm,Nloc,N)
+  !     if(MpiMaster.AND.N /= size(V)) stop "scatter_vector_MPI error: size(V) != Mpi_Allreduce(Nloc)"
+  !     !
+  !     allocate(Counts(0:MpiSize-1)) ; Counts=0
+  !     allocate(Offset(0:MpiSize-1)) ; Offset=0
+  !     !
+  !     !Get Counts;
+  !     call MPI_AllGather(Nloc/DimPh,1,MPI_INTEGER,Counts,1,MPI_INTEGER,MpiComm,MpiIerr)
+  !     !
+  !     !Get Offset:
+  !     Offset(0)=0
+  !     do i=1,MpiSize-1
+  !        Offset(i) = Offset(i-1) + Counts(i-1)
+  !     enddo
+  !     !
+  !     Vloc=0d0
+  !     do iph=1,Dimph
+  !        if(MpiMaster)then
+  !           v_start = 1 + (iph-1)*(N/Dimph)
+  !           v_end = iph*(N/Dimph)
+  !        else
+  !           v_start = 1
+  !           v_end = 1
+  !        endif
+  !        vloc_start = 1 + (iph-1)*(Nloc/Dimph)
+  !        vloc_end = iph*(Nloc/Dimph)
+  !        call MPI_Scatterv(V(v_start:v_end),Counts,Offset,MPI_DOUBLE_PRECISION,&
+  !             Vloc(vloc_start:vloc_end),Nloc/DimPh,MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
+  !     enddo
+  !     !
+  !     return
+  !   end subroutine d_scatter_vector_MPI
+
+
+  !   subroutine d_scatter_basis_MPI(MpiComm,v,vloc)
+  !     integer                :: MpiComm
+  !     real(8),dimension(:,:) :: v    !size[N,N]
+  !     real(8),dimension(:,:) :: vloc !size[Nloc,Neigen]
+  !     integer                :: N,Nloc,Neigen,i
+  !     !
+  ! #ifdef _DEBUG
+  !     if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_basis_MPI: scatter many v"
+  ! #endif
+  !     N      = size(v,1)
+  !     Nloc   = size(vloc,1)
+  !     Neigen = size(vloc,2)
+  !     if( size(v,2) < Neigen ) stop "error scatter_basis_MPI: size(v,2) < Neigen"
+  !     !
+  !     do i=1,Neigen
+  !        call scatter_vector_MPI(MpiComm,v(:,i),vloc(:,i))
+  !     end do
+  !     !
+  !     return
+  !   end subroutine d_scatter_basis_MPI
+
+
+
+
+  !! Gather Vloc on each thread into the array V: sum_threads(size(Vloc)) must be equal to size(v)
+  subroutine gather_vector_MPI(MpiComm,vloc,v)
+    integer                          :: MpiComm
+#ifdef _CMPLX
+    complex(8),dimension(:)          :: vloc !size[Nloc]
+    complex(8),dimension(:)          :: v    !size[N]
+#else
+    real(8),dimension(:)             :: vloc !size[Nloc]
+    real(8),dimension(:)             :: v    !size[N]
+#endif
+    integer                          :: i,k,irank,Nloc,N
+    integer                          :: v_start,v_end,vloc_start,vloc_end
+    integer,dimension(:),allocatable :: Counts,Offset
+    integer                          :: MpiSize,MpiIerr
+    logical                          :: MpiMaster
+    !
+#ifdef _DEBUG
+    if(verbose>4)write(Logfile,"(A)")"DEBUG d_gather_basis_MPI: gather  v"
+#endif
+    !
+    if(  MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null ) return
+    !stop "gather_vector_MPI error: MpiComm == MPI_UNDEFINED"
+    !
+    MpiSize   = get_size_MPI(MpiComm)
+    MpiMaster = get_master_MPI(MpiComm)
+    !
+    Nloc = size(Vloc)
+    N = 0
+    call AllReduce_MPI(MpiComm,Nloc,N)
+    if(MpiMaster.AND.N /= size(V)) stop "gather_vector_MPI error: size(V) != Mpi_Allreduce(Nloc)"
+    !
+    allocate(Counts(0:MpiSize-1)) ; Counts=0
+    allocate(Offset(0:MpiSize-1)) ; Offset=0
+    !
+    !Get Counts;
+    call MPI_AllGather(Nloc,1,MPI_INTEGER,Counts,1,MPI_INTEGER,MpiComm,MpiIerr)
+    !
+    !Get Offset:
+    Offset(0)=0
+    do i=1,MpiSize-1
+       Offset(i) = Offset(i-1) + Counts(i-1)
+    enddo
+    !
+    do k=1,size(sb_sector)
+       vloc_start = 1 + mpiOffset(k)
+       vloc_end   = Drs(k)*mpiDls(k)+mpiOffSet(k)
+       !
+       if(MpiMaster)then
+          v_start = 1 + Offset(k)
+          v_end = Drs(k)*Dls(k)+OffSet(k)
+       else
+          v_start = 1
+          v_end = 1
+       endif
+
+       !
+       call MPI_Gatherv(Vloc(vloc_start:vloc_end),Nloc,MPI_DOUBLE_PRECISION,&
+            V(v_start:v_end),Counts,Offset,MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
+    enddo
+    !
+    return
+  end subroutine gather_vector_MPI
+
+
+
+  !! AllGather Vloc on each thread into the array V: sum_threads(size(Vloc)) must be equal to size(v)
+  subroutine allgather_vector_MPI(MpiComm,vloc,v)
+    integer                          :: MpiComm
+#ifdef _CMPLX
+    complex(8),dimension(:)          :: vloc !size[Nloc]
+    complex(8),dimension(:)          :: v    !size[N]
+#else
+    real(8),dimension(:)             :: vloc !size[Nloc]
+    real(8),dimension(:)             :: v    !size[N]
+#endif
+    integer                          :: i,k,irank,Nloc,N
+    integer                          :: v_start,v_end,vloc_start,vloc_end
+    integer,dimension(:),allocatable :: pCounts,pOffset
+    integer                          :: MpiSize,MpiIerr
+    logical                          :: MpiMaster
+    !
+#ifdef _DEBUG
+    if(verbose>4)write(Logfile,"(A)")"DEBUG d_allgather_basis_MPI: allgather v"
+#endif
+    !
+    if(  MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null ) return
+    ! stop "gather_vector_MPI error: MpiComm == MPI_UNDEFINED"
+    !
+    MpiSize   = get_size_MPI(MpiComm)
+    MpiMaster = get_master_MPI(MpiComm)
+    !
+    Nloc = size(Vloc)
+    N    = 0
+    call AllReduce_MPI(MpiComm,Nloc,N)
+    if(MpiMaster.AND.N /= size(V)) stop "allgather_vector_MPI error: size(V) != Mpi_Allreduce(Nloc)"
+    !
+    allocate(pCounts(0:MpiSize-1)) ; pCounts=0
+    allocate(pOffset(0:MpiSize-1)) ; pOffset=0
+    !
+    V = 0d0
+    do k=1,size(sb_sector)
+       !
+       !Get Counts;
+       pCounts=0
+       pOffset=0
+       call MPI_AllGather(mpiDl(k),1,MPI_INTEGER,pCounts,1,MPI_INTEGER,MpiComm,MpiIerr)
+       !
+       !Get Offset:
+       pOffset(0)=0
+       do i=1,MpiSize-1
+          pOffset(i) = pOffset(i-1) + pCounts(i-1)
+       enddo
+
+       if(mpimaster)print*,pCounts
+       if(mpimaster)print*,pOffset
+       call Barrier_MPI(MpiComm)
+       
+       !
+       vloc_start = 1 + mpiOffset(k)
+       vloc_end   = mpiDl(k)+mpiOffSet(k)
+       !
+       v_start = 1 + Offset(k)
+       v_end = Drs(k)*Dls(k)+OffSet(k)
+       !
+       print*,mpiRank,vloc_start,vloc_end,v_start,v_end
+
+#ifdef _CMPLX
+       call MPI_AllGatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,&
+            V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,MpiComm,MpiIerr)
+#else
+       call MPI_AllGatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_PRECISION,&
+            V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_PRECISION,MpiComm,MpiIerr)
+#endif
+    enddo
+    !
+    return
+  end subroutine allgather_vector_MPI
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  function sector_qn_dim(self,qn) result(dim)
+    type(sectors_list)   :: self
+    real(8),dimension(:) :: qn
+    integer              :: dim
+    dim = 0
+    if(.not.self%has_qn(qn))return
+    dim =  size(self%map(qn=qn))
+  end function sector_qn_dim
+
+
+
+
+
+  subroutine dmrg_graphic(label)
+    integer                  :: label
+    integer                  :: i,N,Mleft,Mright,LMleft,LMright,index,Ltot
+    character(:),allocatable :: Ldot,Rdot
+    real(8)                  :: eps=1d-6
+    integer                  :: M=50
+    !
+    Ltot = Ldmrg
+    Ldot = bold_green('=')
+    Rdot = bold_red('-')
+    ! if(Ltot>M)then
+    !    Ldot = bg_green('=')
+    !    Rdot = bg_red('-')
+    ! endif
+    !
+    N = int(Ltot/(M+eps))+1
+    !
+    ! call execute_command_line("clear")
+    do i=1,3
+       write(LOGfile,*)""
+    enddo
+    select case(label)
+    case default; stop "dmrg_graphic error: label != 1(L),2(R)"
+    case(0)
+       Mleft  = int(left%length/(N+eps))+1
+       Mright = int(right%length/(N+eps))+1
+       LMleft = Ltot/N-Mleft
+       LMright= Ltot/N-Mright
+       index=nint(mod(dble(left%length),N+eps))
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+            "left; right=",left%length,right%length,"|"
+       if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
+       write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
+       write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
+       write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
+       if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
+       if(Ltot<=M)then
+          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
+       else
+          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
+               index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
+       endif
+    case(1)
+       Mleft  = int(left%length/(N+eps))+1
+       Mright = int(right%length/(N+eps))+1
+       LMleft = 0
+       LMright= 0
+       index=nint(mod(dble(left%length),N+eps))
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+            "left; right=",left%length,right%length,"|"
+       if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
+       write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
+       write(LOGfile,"(A)",advance="no")bg_green(">")//"|"//bold_red("*")
+       write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
+       if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
+       if(Ltot<=M)then
+          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
+       else
+          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
+               index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
+       endif
+    case(2)
+       Mleft  = int(left%length/(N+eps))+1
+       Mright = int(right%length/(N+eps))+1
+       LMleft = 0
+       LMright= 0
+       index=nint(mod(dble(left%length),N+eps))
+       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
+            "left; right=",left%length,right%length,"|"
+       if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
+       write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
+       write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
+       write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
+       if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
+       if(Ltot<=M)then
+          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
+       else
+          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
+               index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
+       endif
+    end select
+    call wait(250)
+  end subroutine dmrg_graphic
+
+
+
+
+
+
+
+END MODULE DMRG_GLOBAL
 
 
 
