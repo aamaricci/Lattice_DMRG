@@ -369,7 +369,12 @@ contains
 
 
 
-
+  !##################################################################
+  !##################################################################
+  !              MPI AUXILIARY FUNCTIONS
+  !##################################################################
+  !##################################################################
+  !
   !####################################################################
   !               ALL-2-ALL-V VECTOR MPI TRANSPOSITION 
   !####################################################################
@@ -451,108 +456,125 @@ contains
     !
     return
   end subroutine vector_transpose_MPI
-
-
+  !
   subroutine local_transpose(mat,nrow,ncol)
     integer                      :: nrow,ncol
     real(8),dimension(Nrow,Ncol) :: mat
     mat = transpose(reshape(mat,[Ncol,Nrow]))
   end subroutine local_transpose
-#endif
   !=========================================================
 
 
 
 
 
-  !   !##################################################################
-  !   !##################################################################
-  !   !AUXILIARY COMPUTATIONAL ROUTINES ARE HERE BELOW:
-  !   !##################################################################
-  !   !##################################################################
-  ! #ifdef _MPI
-  !   !! Scatter V into the arrays Vloc on each thread: sum_threads(size(Vloc)) must be equal to size(v)
-  !   subroutine d_scatter_vector_MPI(MpiComm,v,vloc)
-  !     integer                          :: MpiComm
-  !     real(8),dimension(:)             :: v    !size[N]
-  !     real(8),dimension(:)             :: vloc !size[Nloc]
-  !     integer                          :: i,iph,irank,Nloc,N
-  !     integer                          :: v_start,v_end,vloc_start,vloc_end
-  !     integer,dimension(:),allocatable :: Counts,Offset
-  !     integer                          :: MpiSize,MpiIerr
-  !     logical                          :: MpiMaster
-  !     !
-  ! #ifdef _DEBUG
-  !     if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_vector_MPI: scatter v into vloc"
-  ! #endif
-  !     !
-  !     if( MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null )return
-  !     ! stop "scatter_vector_MPI error: MpiComm == MPI_UNDEFINED"
-  !     !
-  !     MpiSize   = get_size_MPI(MpiComm)
-  !     MpiMaster = get_master_MPI(MpiComm)
-  !     !
-  !     Nloc = size(Vloc)
-  !     N = 0
-  !     call AllReduce_MPI(MpiComm,Nloc,N)
-  !     if(MpiMaster.AND.N /= size(V)) stop "scatter_vector_MPI error: size(V) != Mpi_Allreduce(Nloc)"
-  !     !
-  !     allocate(Counts(0:MpiSize-1)) ; Counts=0
-  !     allocate(Offset(0:MpiSize-1)) ; Offset=0
-  !     !
-  !     !Get Counts;
-  !     call MPI_AllGather(Nloc/DimPh,1,MPI_INTEGER,Counts,1,MPI_INTEGER,MpiComm,MpiIerr)
-  !     !
-  !     !Get Offset:
-  !     Offset(0)=0
-  !     do i=1,MpiSize-1
-  !        Offset(i) = Offset(i-1) + Counts(i-1)
-  !     enddo
-  !     !
-  !     Vloc=0d0
-  !     do iph=1,Dimph
-  !        if(MpiMaster)then
-  !           v_start = 1 + (iph-1)*(N/Dimph)
-  !           v_end = iph*(N/Dimph)
-  !        else
-  !           v_start = 1
-  !           v_end = 1
-  !        endif
-  !        vloc_start = 1 + (iph-1)*(Nloc/Dimph)
-  !        vloc_end = iph*(Nloc/Dimph)
-  !        call MPI_Scatterv(V(v_start:v_end),Counts,Offset,MPI_DOUBLE_PRECISION,&
-  !             Vloc(vloc_start:vloc_end),Nloc/DimPh,MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
-  !     enddo
-  !     !
-  !     return
-  !   end subroutine d_scatter_vector_MPI
-
-
-  !   subroutine d_scatter_basis_MPI(MpiComm,v,vloc)
-  !     integer                :: MpiComm
-  !     real(8),dimension(:,:) :: v    !size[N,N]
-  !     real(8),dimension(:,:) :: vloc !size[Nloc,Neigen]
-  !     integer                :: N,Nloc,Neigen,i
-  !     !
-  ! #ifdef _DEBUG
-  !     if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_basis_MPI: scatter many v"
-  ! #endif
-  !     N      = size(v,1)
-  !     Nloc   = size(vloc,1)
-  !     Neigen = size(vloc,2)
-  !     if( size(v,2) < Neigen ) stop "error scatter_basis_MPI: size(v,2) < Neigen"
-  !     !
-  !     do i=1,Neigen
-  !        call scatter_vector_MPI(MpiComm,v(:,i),vloc(:,i))
-  !     end do
-  !     !
-  !     return
-  !   end subroutine d_scatter_basis_MPI
 
 
 
+  !! Scatter V into the arrays Vloc on each thread: sum_threads(size(Vloc)) must be equal to size(v)
+  subroutine scatter_vector_MPI(MpiComm,v,vloc)
+    integer                          :: MpiComm
+#ifdef _CMPLX
+    complex(8),dimension(:)          :: v    !size[N]
+    complex(8),dimension(:)          :: vloc !size[Nloc]
+#else
+    real(8),dimension(:)             :: v    !size[N]
+    real(8),dimension(:)             :: vloc !size[Nloc]
+#endif
+    integer                          :: i,k,irank,Nloc,N
+    integer                          :: v_start,v_end,vloc_start,vloc_end
+    integer,dimension(:),allocatable :: pCounts,pOffset
+    integer                          :: MpiSize,MpiIerr
+    logical                          :: MpiMaster
+    !
+#ifdef _DEBUG
+    if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_vector_MPI: scatter v into vloc"
+#endif
+    !
+    if( MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null )return
+    ! stop "scatter_vector_MPI error: MpiComm == MPI_UNDEFINED"
+    !
+    MpiSize   = get_size_MPI(MpiComm)
+    MpiMaster = get_master_MPI(MpiComm)
+    !
+    Nloc = size(Vloc)
+    N = 0
+    call AllReduce_MPI(MpiComm,Nloc,N)
+    if(MpiMaster.AND.N /= size(V)) stop "scatter_vector_MPI error: size(V) != Mpi_Allreduce(Nloc)"
+    !
+    allocate(pCounts(0:MpiSize-1)) ; pCounts=0
+    allocate(pOffset(0:MpiSize-1)) ; pOffset=0
+    !
+    Vloc=0d0
+    do k=1,size(sb_sector)
+       !
+       !Get Counts;
+       pCounts=0
+       pOffset=0
+       call MPI_AllGather(mpiDl(k),1,MPI_INTEGER,pCounts,1,MPI_INTEGER,MpiComm,MpiIerr)
+       !
+       !Get Offset:
+       pOffset(0)=0
+       do i=1,MpiSize-1
+          pOffset(i) = pOffset(i-1) + pCounts(i-1)
+       enddo
+       !
+       if(MpiMaster)then
+          v_start = 1 + Offset(k)
+          v_end = Drs(k)*Dls(k)+OffSet(k)
+       else
+          v_start = 1
+          v_end = 1
+       endif
+       !
+       vloc_start = 1 + mpiOffset(k)
+       vloc_end   = mpiDl(k)+mpiOffSet(k)
+       !
+#ifdef _CMPLX
+       call MPI_Scatterv(V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,&
+            Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,0,MpiComm,MpiIerr)
+#else
+       call MPI_Scatterv(V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_PRECISION,&
+            Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
+#endif
+    enddo
+    !
+    return
+  end subroutine scatter_vector_MPI
 
-  !! Gather Vloc on each thread into the array V: sum_threads(size(Vloc)) must be equal to size(v)
+
+
+  subroutine scatter_basis_MPI(MpiComm,v,vloc)
+    integer                   :: MpiComm
+#ifdef _CMPLX
+    complex(8),dimension(:,:) :: v    !size[N,N]
+    complex(8),dimension(:,:) :: vloc !size[Nloc,Neigen]
+#else
+    real(8),dimension(:,:)    :: v    !size[N,N]
+    real(8),dimension(:,:)    :: vloc !size[Nloc,Neigen]
+#endif
+    integer                   :: N,Nloc,Neigen,i
+    !
+#ifdef _DEBUG
+    if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_basis_MPI: scatter many v"
+#endif
+    N      = size(v,1)
+    Nloc   = size(vloc,1)
+    Neigen = size(vloc,2)
+    if( size(v,2) < Neigen ) stop "error scatter_basis_MPI: size(v,2) < Neigen"
+    !
+    do i=1,Neigen
+       call scatter_vector_MPI(MpiComm,v(:,i),vloc(:,i))
+    end do
+    !
+    return
+  end subroutine scatter_basis_MPI
+
+
+
+
+
+  !! gather Vloc on each thread into the array V: sum_threads(size(Vloc)) must be equal to size(v)
   subroutine gather_vector_MPI(MpiComm,vloc,v)
     integer                          :: MpiComm
 #ifdef _CMPLX
@@ -564,7 +586,7 @@ contains
 #endif
     integer                          :: i,k,irank,Nloc,N
     integer                          :: v_start,v_end,vloc_start,vloc_end
-    integer,dimension(:),allocatable :: Counts,Offset
+    integer,dimension(:),allocatable :: pCounts,pOffset
     integer                          :: MpiSize,MpiIerr
     logical                          :: MpiMaster
     !
@@ -583,21 +605,25 @@ contains
     call AllReduce_MPI(MpiComm,Nloc,N)
     if(MpiMaster.AND.N /= size(V)) stop "gather_vector_MPI error: size(V) != Mpi_Allreduce(Nloc)"
     !
-    allocate(Counts(0:MpiSize-1)) ; Counts=0
-    allocate(Offset(0:MpiSize-1)) ; Offset=0
+    allocate(pCounts(0:MpiSize-1)) ; pCounts=0
+    allocate(pOffset(0:MpiSize-1)) ; pOffset=0
     !
-    !Get Counts;
-    call MPI_AllGather(Nloc,1,MPI_INTEGER,Counts,1,MPI_INTEGER,MpiComm,MpiIerr)
-    !
-    !Get Offset:
-    Offset(0)=0
-    do i=1,MpiSize-1
-       Offset(i) = Offset(i-1) + Counts(i-1)
-    enddo
-    !
+    V = 0d0
     do k=1,size(sb_sector)
+       !
+       !Get Counts;
+       pCounts=0
+       pOffset=0
+       call MPI_AllGather(mpiDl(k),1,MPI_INTEGER,pCounts,1,MPI_INTEGER,MpiComm,MpiIerr)
+       !
+       !Get Offset:
+       pOffset(0)=0
+       do i=1,MpiSize-1
+          pOffset(i) = pOffset(i-1) + pCounts(i-1)
+       enddo
+       !
        vloc_start = 1 + mpiOffset(k)
-       vloc_end   = Drs(k)*mpiDls(k)+mpiOffSet(k)
+       vloc_end   = mpiDl(k)+mpiOffSet(k)
        !
        if(MpiMaster)then
           v_start = 1 + Offset(k)
@@ -606,14 +632,19 @@ contains
           v_start = 1
           v_end = 1
        endif
-
        !
-       call MPI_Gatherv(Vloc(vloc_start:vloc_end),Nloc,MPI_DOUBLE_PRECISION,&
-            V(v_start:v_end),Counts,Offset,MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
+#ifdef _CMPLX
+       call MPI_Gatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,&
+            V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,0,MpiComm,MpiIerr)
+#else
+       call MPI_Gatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_PRECISION,&
+            V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
+#endif
     enddo
     !
     return
   end subroutine gather_vector_MPI
+
 
 
 
@@ -664,11 +695,6 @@ contains
        do i=1,MpiSize-1
           pOffset(i) = pOffset(i-1) + pCounts(i-1)
        enddo
-
-       if(mpimaster)print*,pCounts
-       if(mpimaster)print*,pOffset
-       call Barrier_MPI(MpiComm)
-       
        !
        vloc_start = 1 + mpiOffset(k)
        vloc_end   = mpiDl(k)+mpiOffSet(k)
@@ -676,8 +702,6 @@ contains
        v_start = 1 + Offset(k)
        v_end = Drs(k)*Dls(k)+OffSet(k)
        !
-       print*,mpiRank,vloc_start,vloc_end,v_start,v_end
-
 #ifdef _CMPLX
        call MPI_AllGatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,&
             V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,MpiComm,MpiIerr)
@@ -691,7 +715,7 @@ contains
   end subroutine allgather_vector_MPI
 
 
-
+#endif
 
 
 

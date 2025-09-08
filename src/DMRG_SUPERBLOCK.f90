@@ -316,10 +316,12 @@ contains
        if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
     enddo
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
-       if(MpiMaster)write(*,*)"         mpiRank,   mpiDls -  mpiDl - mpiL - mpiOffset"
+       if(MpiMaster)write(*,*)"         mpiRank,          mpiDls        -        mpiDl        -      mpiL    -   mpiOffset"
        do irank=0,MpiSize-1
           call Barrier_MPI(MpiComm)
-          if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",Drs(:)*mpiDls(:),"-",sum(Drs(:)*mpiDls(:)),"-",(sum(Drs(1:q-1)*mpiDls(1:q-1)),q=1,Nsb)
+          if(MpiRank==irank)write(*,*)MpiRank,mpiDls,"-",&
+               Drs(:)*mpiDls(:),"-",sum(Drs(:)*mpiDls(:)),"-",&
+               (sum(Drs(1:q-1)*mpiDls(1:q-1)),q=1,Nsb)
        enddo
        call Barrier_MPI(MpiComm)
     endif

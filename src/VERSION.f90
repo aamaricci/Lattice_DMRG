@@ -11,6 +11,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 =======
   character(len=41),parameter :: git_code_version = "d3539b5739443ef1f31a074d28933824469fe053"	
@@ -52,4 +53,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "4eb4ad922369f2c56dfbc8c99bbd632b30640423"	
 >>>>>>> 63bab1c (IT FUCKING WORKS!!!)
+=======
+  character(len=41),parameter :: git_code_version = "63bab1c89f09185fd3562a5a6430e6b8c54f9ef7"	
+>>>>>>> 23e6e0f (Code cleaning)
 END MODULE VERSION
