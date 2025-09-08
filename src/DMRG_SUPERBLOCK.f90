@@ -34,17 +34,17 @@ contains
     integer,dimension(:),allocatable :: left_map,right_map
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: SuperBlock get states"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
 #endif
     !
-    call start_timer("Get SB states")
+    if(MpiMaster)call start_timer("Get SB states")
     !
     if(allocated(sb_states))deallocate(sb_states)
     !
     call sb_sector%free()
     !
 #ifdef _DEBUG
-    if(verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
+    if(MpiMaster.AND.verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
 #endif
     do ileft=1,size(left%sectors(1))
        left_qn   = left%sectors(1)%qn(index=ileft)
@@ -55,7 +55,7 @@ contains
        right_map = right%sectors(1)%map(qn=right_qn)
        !
 #ifdef _DEBUG
-       if(verbose>5)then
+       if(MpiMaster.AND.verbose>5)then
           write(unit,*)""
           write(unit,*)left_qn,right_qn
           write(unit,*)size(left_map),size(right_map)
@@ -67,13 +67,13 @@ contains
              call append(sb_states, istate)
              call sb_sector%append(qn=left_qn,istate=size(sb_states))
 #ifdef _DEBUG
-             if(verbose>5)write(unit,*)left_map(i),right_map(j),istate
+             if(MpiMaster.AND.verbose>5)write(unit,*)left_map(i),right_map(j),istate
 #endif
           enddo
        enddo
     enddo
 #ifdef _DEBUG
-    if(verbose>5)close(unit)
+    if(MpiMaster.AND.verbose>5)close(unit)
 #endif
     !
     call stop_timer()
@@ -106,7 +106,7 @@ contains
     logical                               :: exist,lanc_solve
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
 #endif
     !
     m_sb = size(sb_states)
@@ -126,7 +126,7 @@ contains
     if(allocated(gs_energy))deallocate(gs_energy)
     allocate(gs_energy(Neigen));gs_energy=0d0
     !
-    call start_timer("Diag H_sb")
+    if(MpiMaster)call start_timer("Diag H_sb")
     if(lanc_solve)then          !Use (P)-Arpack
        !
        call sb_build_Hv()
@@ -150,6 +150,7 @@ contains
           do i=1,Neigen
              call allgather_vector_MPI(MpiComm,mpiEvec(:,i),gs_vector(:,i))
           enddo
+          deallocate(mpiEvec)
        else
 
           allocate(gs_vector(vecDim,Neigen));gs_vector=zero
@@ -167,8 +168,6 @@ contains
             tol=lanc_tolerance,&
             iverbose=(verbose>4))
 #endif
-
-
 
        !
     else !use LAPACK
@@ -222,7 +221,7 @@ contains
     integer                                        :: q,m_sb,Nsb,irank
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: SuperBlock build H*v"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock build H*v"
 #endif
     !
     if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
@@ -264,9 +263,9 @@ contains
        spHtimesV_p => null()
        !
        !>Build Sparse Hsb:
-       call start_timer("get H_sb Dense: LAPACK")
+       if(MpiMaster)call start_timer("get H_sb Dense: LAPACK")
        call Setup_SuperBlock_Sparse() !<- no MPI here
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        !Dump Hsb to dense matrix as required:
        call spHsb%dump(Hmat)
@@ -276,17 +275,17 @@ contains
     !Build SuperBLock HxV operation: stored or direct
     select case(sparse_H)
     case(.true.)
-       call start_timer("get H_sb Sparse: ARPACK")
+       if(MpiMaster)call start_timer("get H_sb Sparse: ARPACK")
        call Setup_SuperBlock_Sparse() !<- no MPI here yet
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        !Set HxV function pointer:
        spHtimesV_p => spMatVec_sparse_main
        !
     case(.false.)
-       call start_timer("get H_sb Direct: ARPACK")
+       if(MpiMaster)call start_timer("get H_sb Direct: ARPACK")
        call Setup_SuperBlock_Direct() !<- SETUP MPI here
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        !Set HxV function pointer:
        spHtimesV_p => spMatVec_direct_main

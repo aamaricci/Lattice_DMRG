@@ -29,10 +29,10 @@ contains
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
 #endif
     !
-    call start_timer("Enlarge blocks "//str(grow_))
+    if(MpiMaster)call start_timer("Enlarge blocks "//str(grow_))
     !
     if(.not.self%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing self.H operator in the list"
@@ -45,7 +45,7 @@ contains
     !    
     !> Update Hamiltonian:
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update H"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
     select case(str(grow_))
     case ("left","l")
@@ -73,7 +73,7 @@ contains
     !
     !> Update all the other operators in the list:
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
 #endif
     do i=1,size(self%operators)
        key   = str(self%operators%key(index=i))
@@ -129,11 +129,11 @@ contains
     end select
     !
 #ifdef _DEBUG
-    if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+    if(MpiMaster.AND.verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 #endif
     !
     if(.not.self%is_valid())then
-       write(LOGfile,*)"dmrg_step error: enlarged_block "//str(grow_)// "is not a valid block"
+       if(MpiMaster)write(LOGfile,*)"dmrg_step error: enlarged_block "//str(grow_)// "is not a valid block"
        stop
     endif
     !
@@ -145,11 +145,14 @@ contains
     call dot_basis%free()
     call enl_basis%free()
     !
-    call stop_timer()
+    if(MpiMaster)call stop_timer()
     !
   end subroutine enlarge_block
 
 
+
+
+  
   !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
   function connect_fermion_blocks(left,right,states) result(H2)
     type(block)                               :: left
@@ -170,7 +173,7 @@ contains
 #endif
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: connect Fermion blocks"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
     !Hij is shared:
@@ -246,7 +249,7 @@ contains
 #endif
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: connect Spin blocks"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
     !Hij is shared:

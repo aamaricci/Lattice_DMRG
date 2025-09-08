@@ -27,13 +27,13 @@ contains
 #endif
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: get RDM"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: get RDM"
 #endif
     !
     call rho_left%free()
     call rho_right%free()
     !
-    call start_timer("Get Rho")
+    if(MpiMaster)call start_timer("Get Rho")
     do isb=1,size(sb_sector)
        sb_qn   = sb_sector%qn(index=isb)
        sb_map  = sb_sector%map(index=isb)
@@ -50,7 +50,7 @@ contains
        call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
        !
     enddo
-    call stop_timer()
+    if(MpiMaster)call stop_timer()
     !
     if(allocated(rho))deallocate(rho)
     if(allocated(sb_map))deallocate(sb_map)
@@ -136,7 +136,7 @@ contains
     type(sparse_matrix)         :: trRho_left,trRho_right
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: renormalize block "//str(label)
+    if(MpiMaster)write(LOGfile,*)"DEBUG: renormalize block "//str(label)
 #endif
     !
     m_left  = left%dim
@@ -150,15 +150,15 @@ contains
        mtr = m_left
        if(left%length+right%length==2)return
        !
-       call start_timer("Diag Rho "//to_lower(str(label)))
+       if(MpiMaster)call start_timer("Diag Rho "//to_lower(str(label)))
        call rho_left%eigh(sort=.true.,reverse=.true.)
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        if(allocated(rho_left_evals))deallocate(rho_left_evals)
        allocate(rho_left_evals, source=rho_left%evals())
        !
        !Build Truncated Density Matrices:
-       call start_timer("Renormalize "//to_lower(str(label)))
+       if(MpiMaster)call start_timer("Renormalize "//to_lower(str(label)))
        if(Mstates/=0)then
           m_s   = min(Mstates,m_left,size(rho_left_evals))
        elseif(Estates/=0d0)then
@@ -186,13 +186,13 @@ contains
           call left_basis%append( qn=rho_left%qn(m=im) )
        enddo
        call left%set_basis(basis=left_basis)
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        Mtr = m_s
        !
        !
 #ifdef _DEBUG
-       if(verbose>5)then
+       if(MpiMaster.AND.verbose>5)then
           unit=fopen("lambdas_L_"//str(left%length)//".dat")       
           do i=1,size(rho_left_evals)
              err = abs(e_-rho_left_evals(i))/e_
@@ -215,15 +215,15 @@ contains
        mtr  = m_right
        if(left%length+right%length==2)return
        !
-       call start_timer("Diag Rho "//to_lower(str(label)))
+       if(MpiMaster)call start_timer("Diag Rho "//to_lower(str(label)))
        call rho_right%eigh(sort=.true.,reverse=.true.)
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        if(allocated(rho_right_evals))deallocate(rho_right_evals)
        allocate(rho_right_evals, source=rho_right%evals())
        !
        !Build Truncated Density Matrices:
-       call start_timer("Renormalize "//to_lower(str(label)))
+       if(MpiMaster)call start_timer("Renormalize "//to_lower(str(label)))
        if(Mstates/=0)then
           m_e   = min(Mstates,m_right,size(rho_right_evals))
        elseif(Estates/=0d0)then
@@ -251,12 +251,12 @@ contains
           call right_basis%append( qn=rho_right%qn(m=im) )
        enddo
        call right%set_basis(basis=right_basis)
-       call stop_timer()
+       if(MpiMaster)call stop_timer()
        !
        Mtr = m_e
        !
 #ifdef _DEBUG
-       if(verbose>5)then
+       if(MpiMaster.AND.verbose>5)then
           unit = fopen("lambdas_R_"//str(left%length)//".dat")       
           do i=1,size(rho_right_evals)
              err = abs(e_-rho_right_evals(i))/e_

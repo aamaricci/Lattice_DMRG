@@ -239,7 +239,7 @@ contains
     if(check_MPI())then
        if(.not.master)then
           LOGfile=1000-rank
-          open(LOGfile,file="stdOUT.rank"//str(rank)//".ed")
+          open(LOGfile,file="stdOUT.rank"//str(rank)//".dmrg")
           do i=1,get_Size_MPI(MPI_COMM_WORLD)
              if(i==rank)write(*,"(A,I0,A,I0)")"Rank ",rank," writing to unit: ",LOGfile
           enddo

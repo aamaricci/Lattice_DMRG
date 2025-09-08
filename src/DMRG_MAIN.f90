@@ -32,9 +32,9 @@ contains
     !
 #ifdef _MPI
     if(check_MPI())call dmrg_set_MpiComm()
-    if(check_MPI().AND.sparse_H)stop "INIT_DMRG ERROR: MPI is still incompatible with sparse_H=T"
-
+    if(check_MPI().AND.sparse_H)stop "INIT_DMRG ERROR: use of MPI is incompatible with sparse_H=T"
 #endif
+    !
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init DMRG"
