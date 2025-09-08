@@ -152,7 +152,6 @@ contains
           enddo
           deallocate(mpiEvec)
        else
-
           allocate(gs_vector(vecDim,Neigen));gs_vector=zero
           call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
                Nblock,&
@@ -168,7 +167,6 @@ contains
             tol=lanc_tolerance,&
             iverbose=(verbose>4))
 #endif
-
        !
     else !use LAPACK
        !
