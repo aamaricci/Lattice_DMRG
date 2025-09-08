@@ -12,6 +12,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "9fd873586968c311b4be609a7c2aeb1970886932"	
 =======
   character(len=41),parameter :: git_code_version = "d3539b5739443ef1f31a074d28933824469fe053"	
@@ -56,4 +57,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "63bab1c89f09185fd3562a5a6430e6b8c54f9ef7"	
 >>>>>>> 23e6e0f (Code cleaning)
+=======
+  character(len=41),parameter :: git_code_version = "23e6e0f4817b4c579de590a12d33fae0e1e73620"	
+>>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
 END MODULE VERSION

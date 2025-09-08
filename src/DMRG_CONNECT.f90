@@ -33,15 +33,19 @@ contains
 =======
 >>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
 #endif
     !
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
 =======
 >>>>>>> d733a73 (Updated code.)
     call start_timer("Enlarge blocks "//str(grow_))
+=======
+    if(MpiMaster)call start_timer("Enlarge blocks "//str(grow_))
+>>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
     !
     if(.not.self%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing self.H operator in the list"
@@ -56,7 +60,7 @@ contains
 <<<<<<< HEAD
 <<<<<<< HEAD
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update H"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
@@ -93,7 +97,7 @@ contains
 <<<<<<< HEAD
 <<<<<<< HEAD
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
 #endif
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
@@ -158,6 +162,7 @@ contains
 #ifdef _DEBUG
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 =======
     call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
@@ -165,10 +170,13 @@ contains
 =======
     if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 >>>>>>> d733a73 (Updated code.)
+=======
+    if(MpiMaster.AND.verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+>>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
 #endif
     !
     if(.not.self%is_valid())then
-       write(LOGfile,*)"dmrg_step error: enlarged_block "//str(grow_)// "is not a valid block"
+       if(MpiMaster)write(LOGfile,*)"dmrg_step error: enlarged_block "//str(grow_)// "is not a valid block"
        stop
     endif
     !
@@ -180,11 +188,14 @@ contains
     call dot_basis%free()
     call enl_basis%free()
     !
-    call stop_timer()
+    if(MpiMaster)call stop_timer()
     !
   end subroutine enlarge_block
 
 
+
+
+  
   !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
   function connect_fermion_blocks(left,right,states) result(H2)
     type(block)                               :: left
@@ -209,7 +220,7 @@ contains
 =======
 >>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: connect Fermion blocks"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
 <<<<<<< HEAD
@@ -294,7 +305,7 @@ contains
 =======
 >>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: connect Spin blocks"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
 <<<<<<< HEAD

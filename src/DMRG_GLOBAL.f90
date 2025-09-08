@@ -488,7 +488,7 @@ contains
     logical                          :: MpiMaster
     !
 #ifdef _DEBUG
-    if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_vector_MPI: scatter v into vloc"
+    if(verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_vector_MPI: scatter v into vloc"
 #endif
     !
     if( MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null )return
@@ -556,7 +556,7 @@ contains
     integer                   :: N,Nloc,Neigen,i
     !
 #ifdef _DEBUG
-    if(ed_verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_basis_MPI: scatter many v"
+    if(verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_basis_MPI: scatter many v"
 #endif
     N      = size(v,1)
     Nloc   = size(vloc,1)

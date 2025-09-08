@@ -23,12 +23,6 @@ MODULE DMRG_SUPERBLOCK_SETUP
   !-> used in DMRG_MEASURE to perform H|gs>
   public :: sb2block_states
   !
-  !-> used in DMRG_SUPERBLOCK to deallocate
-  public :: Hleft
-  public :: Hright
-  public :: A,B
-  public :: Dls,Drs,Offset
-  public :: RowOffset,ColOffset
 
 
 contains
@@ -264,12 +258,10 @@ contains
        qn      = sb_sector%qn(index=isb)
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       ! if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
        Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
        !
 #ifdef _MPI
        ! MPI VARS SETUP 
-       !================
        mpiDls(isb) = Dls(isb)/MpiSize
        mpiDrs(isb) = Drs(isb)/MpiSize
        if(MpiRank < mod(Dls(isb),MpiSize))mpiDls(isb) = mpiDls(isb)+1
@@ -280,9 +272,7 @@ contains
        mpiOffset(isb)=sum(Drs(1:isb-1)*mpiDls(1:isb-1))
 #endif
        !
-       ! if(MpiMaster)print*,int(qn),Drs(isb),Dls(isb),Dls(isb)*Drs(isb),Offset(isb),sum(Dls(1:isb-1)*Drs(1:isb-1))
     enddo
-    ! if(MpiMaster)print*,""
     !
     dq=[1d0]
     do isb=1,Nsb
@@ -301,6 +291,10 @@ contains
        Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
     enddo
     !
+    !A(it,k).Nrow = DLk ;if(Hconjg) DLq
+    !A(it,k).Ncol = DLq ;if(Hconjg) DLk
+    !B(it,k).Nrow = DRk ;if(Hconjg) DRq
+    !B(it,k).Ncol = DRq ;if(Hconjg) DRk
     isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
@@ -324,12 +318,6 @@ contains
        mpiColOffset(it,isb)=mpiOffset(isb)
 #endif
        !
-       ! if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
-       !      shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
-       ! !Drs(isb),Dls(isb),Drs(jsb),Dls(jsb)
-       ! !,B(it,isb)%Nrow,A(it,isb)%Nrow
-       !
-       !
        dq = [1d0]
        qm = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
@@ -348,10 +336,6 @@ contains
        mpiColOffset(it,isb)=mpiOffset(jsb)
 #endif
        !
-       ! if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
-       !      shape(A(it,isb)),shape(B(it,isb)),"-",Dls(isb),Dls(jsb),Drs(isb),Drs(jsb)
-       ! !,B(it,isb)%Nrow,A(it,isb)%Nrow
-       !       
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
        A(it,isb) = hconjg(A(tMap(2,1,1),isb))
@@ -364,11 +348,6 @@ contains
        mpiRowOffset(it,isb)=mpiOffset(jsb)           
        mpiColOffset(it,isb)=mpiOffset(isb)
 #endif
-       !
-       ! if(MpiMaster)print*,"it,k,q,qn,qm:",it,isb,jsb,int(qn),int(qm),"A, B:",&
-       !      shape(A(it,isb)),shape(B(it,isb)),"-",Dls(jsb),Dls(isb),Drs(jsb),Drs(isb)
-       ! !,B(it,isb)%Nrow,A(it,isb)%Nrow
-       ! if(MpiMaster)print*,""
     enddo
   end subroutine Setup_SuperBlock_Spin_Direct
 
@@ -599,7 +578,6 @@ contains
     integer                               :: ir,il,jr,jl,it
     integer                               :: ai,aj,bi,bj,jcol
     integer                               :: ia,ib,ic,ja,jb,jc
-    logical                               :: isDiag
     !
     Hv=zero
     !> loop over all the SB sectors:
@@ -647,9 +625,7 @@ contains
           q = isb2jsb(it,k)
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
           !
-          isDiag=.false. ; if(q==k)isDiag=.true.
-          !
-          allocate(C(B(it,k)%Nrow,A(it,k)%Ncol));C=0d0
+          allocate(C(B(it,k)%Nrow,A(it,k)%Ncol));C=zero
           !
           !1. evaluate MMP: C = B.vec(V)
           !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
@@ -731,7 +707,6 @@ contains
     integer                               :: ia,ib,ic,ja,jb,jc
     integer                               :: mpiArow,mpiAcol,mpiBrow,mpiBcol
     integer                               :: i_start,i_end
-    logical                               :: isDiag
     !
     if(.not.MpiStatus)stop "spMatVec_mpi_normal_main ERROR: MpiStatus = F"
     !
@@ -789,16 +764,11 @@ contains
        !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
        !              [B.Nrow,A.Nrow] = vec(Hv)
        !
-       !A(it,k).Nrow = DLk ;if(Hconjg) DLq
-       !A(it,k).Ncol = DLq ;if(Hconjg) DLk
-       !B(it,k).Nrow = DRk ;if(Hconjg) DRq
-       !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+
        do it=1,tNso
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
           !
           q = isb2jsb(it,k)
-          isDiag=.false.
-          if(q==k)isDiag=.true.
           !
           !1. evaluate MMP: C = B.vec(V)
           !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
@@ -838,19 +808,18 @@ contains
           ! [C(b,j*)]^T = C(j*,b)
           ! [sum_j A_ij.[C^t]_jb]^T
           !
-          !Thus we need to know all values of j. 
-          !
           !2. evaluate MMP: C.A^t
           !   \sum_aj C(bi,aj)A^t(aj,ai)
           !  =\sum_aj [A(ai,aj)C^t(aj,bi)]^T
           ! = [Hvt[A.Nrow,mpiBrow]]^T
           ! => Hv[B.Nrow,mpiArow]
           !
-          !Get C^T
           allocate(Ct(A(it,k)%Ncol,mpiBrow));Ct=zero
           call vector_transpose_MPI(B(it,k)%Nrow,mpiAcol,C,A(it,k)%Ncol,mpiBrow,Ct)
           !
+          allocate(vt(mpiArow*B(it,k)%Nrow)) ; vt=zero
           allocate(Hvt(A(it,k)%Nrow*mpiBrow));Hvt=zero
+          !
           do bi=1,mpiBrow
              !
              do ai=1,A(it,k)%Nrow
@@ -866,7 +835,6 @@ contains
              enddo
           enddo
           !
-          allocate(vt(mpiArow*B(it,k)%Nrow)) ; vt=zero
           call vector_transpose_MPI(A(it,k)%Nrow,mpiBrow,Hvt,B(it,k)%Nrow,mpiArow,vt)
           i_start = 1 + mpiRowOffset(it,k)
           i_end   = B(it,k)%Nrow*mpiArow+mpiRowOffSet(it,k)
