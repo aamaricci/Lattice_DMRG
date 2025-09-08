@@ -1,5 +1,5 @@
 MODULE DMRG_RDM  
-  USE VARS_GLOBAL
+  USE DMRG_GLOBAL
   implicit none
   private
 
