@@ -411,16 +411,59 @@ contains
     Nsb  = size(sb_sector)
     !
     !Massive allocation
-    allocate(tMap(2,Nso,Nso))
-    allocate(Offset(Nsb))
+    !Massive allocation
+    if(allocated(tMap))deallocate(tMap)
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(Offset))deallocate(Offset)
+    if(allocated(AI))deallocate(AI)
+    if(allocated(BI))deallocate(BI)
+    if(allocated(AJ))deallocate(AJ)
+    if(allocated(BJ))deallocate(BJ)
+    if(allocated(A))deallocate(A)
+    if(allocated(B))deallocate(B)
+    if(allocated(Hleft))deallocate(Hleft)
+    if(allocated(Hright))deallocate(Hright)
+    if(allocated(RowOffset))deallocate(RowOffset)
+    if(allocated(ColOffset))deallocate(ColOffset)
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
+    if(allocated(Cleft))deallocate(Cleft)
+    if(allocated(Cright))deallocate(Cright)
+#ifdef _MPI
+    if(allocated(mpiDls))deallocate(mpiDls)
+    if(allocated(mpiDrs))deallocate(mpiDrs)
+    if(allocated(mpiDl))deallocate(mpiDl)
+    if(allocated(mpiDr))deallocate(mpiDr)
+    if(allocated(mpiOffset))deallocate(mpiOffset)
+    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
+    if(allocated(mpiColOffset))deallocate(mpiColOffset)
+#endif
+    !
     allocate(Dls(Nsb))
     allocate(Drs(Nsb))
+    allocate(tMap(2,Nso,Nso))
+    allocate(Offset(Nsb))
     allocate(AI(Nsb),BI(Nsb))
     allocate(AJ(Nsb),BJ(Nsb))
     allocate(A(tNso,Nsb),B(tNso,Nsb))
     allocate(Hleft(Nsb),Hright(Nsb))
     allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
+    allocate(isb2jsb(tNso,Nsb))
+    allocate(IsHconjg(tNso,Nsb))
     allocate(Cleft(Nso),Cright(Nso))
+#ifdef _MPI
+    allocate(mpiDls(Nsb))
+    allocate(mpiDrs(Nsb))
+    allocate(mpiDl(Nsb))
+    allocate(mpiDr(Nsb))
+    allocate(mpiOffset(Nsb))
+    allocate(mpiRowOffset(tNso,Nsb))
+    allocate(mpiColOffset(tNso,Nsb))
+    mpiOffset=0
+    mpiRowOffset=0
+    mpiColOffset=0
+#endif
     !
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
@@ -442,7 +485,21 @@ contains
        qn      = sb_sector%qn(index=isb)
        Dls(isb)= sector_qn_dim(left%sectors(1),qn)
        Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+       Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
+       ! if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+       !
+#ifdef _MPI
+       ! MPI VARS SETUP 
+       mpiDls(isb) = Dls(isb)/MpiSize
+       mpiDrs(isb) = Drs(isb)/MpiSize
+       if(MpiRank < mod(Dls(isb),MpiSize))mpiDls(isb) = mpiDls(isb)+1
+       if(MpiRank < mod(Drs(isb),MpiSize))mpiDrs(isb) = mpiDrs(isb)+1
+       mpiDl(isb) = Drs(isb)*mpiDls(isb)
+       mpiDr(isb) = mpiDrs(isb)*Dls(isb)
+       !
+       mpiOffset(isb)=sum(Drs(1:isb-1)*mpiDls(1:isb-1))
+#endif
+       !
     enddo
     !
     do isb=1,size(sb_sector)
@@ -469,6 +526,11 @@ contains
        enddo
     enddo
     !
+    !A(it,k).Nrow = DLk ;if(Hconjg) DLq
+    !A(it,k).Ncol = DLq ;if(Hconjg) DLk
+    !B(it,k).Nrow = DRk ;if(Hconjg) DRq
+    !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+    isb2jsb=0
     do isb=1,size(sb_sector)
        qn   = sb_sector%qn(index=isb)
        !
@@ -493,15 +555,27 @@ contains
                 it=tMap(1,io,jo)
                 A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
                 B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
+                Isb2Jsb(it,isb)  =jsb
+                IsHconjg(it,isb) =.false.
                 RowOffset(it,isb)=Offset(isb)           
                 ColOffset(it,isb)=Offset(jsb)
+#ifdef _MPI
+                mpiRowOffset(it,isb)=mpiOffset(isb)           
+                mpiColOffset(it,isb)=mpiOffset(jsb)
+#endif
                 !
                 !> get H.c. + Row/Col Offsets
                 it=tMap(2,io,jo)
                 A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
                 B(it,isb) = hconjg(B(tMap(1,io,jo),isb))
+                Isb2Jsb(it,isb)  =jsb
+                IsHconjg(it,isb) =.true.
                 RowOffset(it,isb)=Offset(jsb)
                 ColOffset(it,isb)=Offset(isb)
+#ifdef _MPI
+                mpiRowOffset(it,isb)=mpiOffset(jsb)           
+                mpiColOffset(it,isb)=mpiOffset(isb)
+#endif
              enddo
           enddo
           !

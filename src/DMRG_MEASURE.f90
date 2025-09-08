@@ -107,13 +107,11 @@ contains
     enddo
     suffix=label_DMRG('u')
     !
-
 #ifdef _MPI
     vecDim = sb_vecDim_Hv()
     allocate(mpiEvec(vecDim,size(gs_vector,2)))
     call scatter_basis_MPI(MpiComm,gs_vector,mpiEvec)
 #endif
-
     measure_status=.true.
   end subroutine Init_Measure_dmrg
 
@@ -551,7 +549,6 @@ contains
        select case(to_lower(direction))
        case("l","left","sys","s")
           !> apply the H^L x 1^r: need to T v and Ov
-
           do ir=1,Drs(k)
              do il=1,Dls(k)
                 i = ir + (il-1)*Drs(k) + offset(k)
