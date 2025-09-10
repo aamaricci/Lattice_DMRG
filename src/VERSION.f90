@@ -5,6 +5,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -60,4 +61,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "23e6e0f4817b4c579de590a12d33fae0e1e73620"	
 >>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
+=======
+  character(len=41),parameter :: git_code_version = "13aac1b1a1ee0eb8b38d9afa3db9c188325e5f51"	
+>>>>>>> 4cd869c (Started reducing memory use.)
 END MODULE VERSION
