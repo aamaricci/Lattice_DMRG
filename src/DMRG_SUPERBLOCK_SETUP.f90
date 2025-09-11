@@ -165,58 +165,7 @@ contains
     !
     !Massive allocation
     if(allocated(tMap))deallocate(tMap)
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
-    if(allocated(Offset))deallocate(Offset)
-    if(allocated(AI))deallocate(AI)
-    if(allocated(BI))deallocate(BI)
-    if(allocated(AJ))deallocate(AJ)
-    if(allocated(BJ))deallocate(BJ)
-    if(allocated(A))deallocate(A)
-    if(allocated(B))deallocate(B)
-    if(allocated(Hleft))deallocate(Hleft)
-    if(allocated(Hright))deallocate(Hright)
-    if(allocated(RowOffset))deallocate(RowOffset)
-    if(allocated(ColOffset))deallocate(ColOffset)
-    if(allocated(isb2jsb))deallocate(isb2jsb)
-    if(allocated(IsHconjg))deallocate(IsHconjg)
-    if(allocated(Sleft))deallocate(Sleft)
-    if(allocated(Sright))deallocate(Sright)
-#ifdef _MPI
-    if(allocated(mpiDls))deallocate(mpiDls)
-    if(allocated(mpiDrs))deallocate(mpiDrs)
-    if(allocated(mpiDl))deallocate(mpiDl)
-    if(allocated(mpiDr))deallocate(mpiDr)
-    if(allocated(mpiOffset))deallocate(mpiOffset)
-    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
-    if(allocated(mpiColOffset))deallocate(mpiColOffset)
-#endif
-    !
-    allocate(Dls(Nsb))
-    allocate(Drs(Nsb))
     allocate(tMap(tNso,1,1))
-    allocate(Offset(Nsb))
-    allocate(AI(Nsb),BI(Nsb))
-    allocate(AJ(Nsb),BJ(Nsb))
-    allocate(A(tNso,Nsb),B(tNso,Nsb))
-    allocate(Hleft(Nsb),Hright(Nsb))
-    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
-    allocate(isb2jsb(tNso,Nsb))
-    allocate(IsHconjg(tNso,Nsb))
-    allocate(Sleft(Nspin),Sright(Nspin))
-#ifdef _MPI
-    allocate(mpiDls(Nsb))
-    allocate(mpiDrs(Nsb))
-    allocate(mpiDl(Nsb))
-    allocate(mpiDr(Nsb))
-    allocate(mpiOffset(Nsb))
-    allocate(mpiRowOffset(tNso,Nsb))
-    allocate(mpiColOffset(tNso,Nsb))
-    mpiOffset=0
-    mpiRowOffset=0
-    mpiColOffset=0
-#endif
-    !
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
     ! super-block Hamiltonian.
@@ -226,26 +175,37 @@ contains
        tMap(i,1,1)=it
     enddo
     !
-    Offset=0
-    do isb=1,Nsb
-       qn      = sb_sector%qn(index=isb)
-       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
-       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
-       !
+    !
+    call sb_build_dims()
+    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
 #ifdef _MPI
-       ! MPI VARS SETUP 
-       mpiDls(isb) = Dls(isb)/MpiSize
-       mpiDrs(isb) = Drs(isb)/MpiSize
-       if(MpiRank < mod(Dls(isb),MpiSize))mpiDls(isb) = mpiDls(isb)+1
-       if(MpiRank < mod(Drs(isb),MpiSize))mpiDrs(isb) = mpiDrs(isb)+1
-       mpiDl(isb) = Drs(isb)*mpiDls(isb)
-       mpiDr(isb) = mpiDrs(isb)*Dls(isb)
-       !
-       mpiOffset(isb)=sum(Drs(1:isb-1)*mpiDls(1:isb-1))
+    allocate(mpiRowOffset(tNso,Nsb))
+    allocate(mpiColOffset(tNso,Nsb))
+    mpiRowOffset=0
+    mpiColOffset=0
 #endif
-       !
-    enddo
+    !
+    !
+    if(allocated(AI))deallocate(AI)
+    if(allocated(BI))deallocate(BI)
+    if(allocated(AJ))deallocate(AJ)
+    if(allocated(BJ))deallocate(BJ)
+    if(allocated(A))deallocate(A)
+    if(allocated(B))deallocate(B)
+    if(allocated(Hleft))deallocate(Hleft)
+    if(allocated(Hright))deallocate(Hright)
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
+    if(allocated(Sleft))deallocate(Sleft)
+    if(allocated(Sright))deallocate(Sright)
+    !    
+    allocate(AI(Nsb),BI(Nsb))
+    allocate(AJ(Nsb),BJ(Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(Hleft(Nsb),Hright(Nsb))
+    allocate(isb2jsb(tNso,Nsb))
+    allocate(IsHconjg(tNso,Nsb))
+    allocate(Sleft(Nspin),Sright(Nspin))
     !
     dq=[1d0]
     do isb=1,Nsb
@@ -259,10 +219,13 @@ contains
        BJ(jsb)%states = sb2block_states(qm,'right')
     enddo
     !
-    do ispin=1,Nspin
-       Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
-       Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
-    enddo
+    !>ROOT get basic operators. Nodes can not.
+    if(MpiMaster)then
+       do ispin=1,Nspin
+          Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
+          Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
+       enddo
+    endif
     !
     !A(it,k).Nrow = DLk ;if(Hconjg) DLq
     !A(it,k).Ncol = DLq ;if(Hconjg) DLk
@@ -272,14 +235,25 @@ contains
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
-       !> get: H*^L  and H*^R
-       Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-       Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       !> get: H*^L  and H*^R (ROOT exclusive)
+       if(MpiMaster)then
+          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
+          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       endif
+#ifdef _MPI
+       if(MpiStatus)then
+          call Hleft(isb)%bcast()
+          call Hright(isb)%bcast()
+       endif
+#endif
        !
-       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets       
+       !DIAGONAL:
+       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (ROOT exclusive)      
        it=tMap(1,1,1)
-       A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
-       B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
+       if(MpiMaster)then
+          A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
+          B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
+       endif
        qm  = qn
        jsb = isb
        Isb2Jsb(it,isb) =jsb
@@ -287,9 +261,15 @@ contains
        RowOffset(it,isb)=Offset(isb)           
        ColOffset(it,isb)=Offset(isb)
 #ifdef _MPI
-       mpiRowOffset(it,isb)=mpiOffset(isb)           
-       mpiColOffset(it,isb)=mpiOffset(isb)
+       if(MpiStatus)then
+          call A(it,isb)%bcast()
+          call B(it,isb)%bcast()
+          mpiRowOffset(it,isb)=mpiOffset(isb)           
+          mpiColOffset(it,isb)=mpiOffset(isb)
+       endif
 #endif
+       !
+       !
        !
        dq = [1d0]
        qm = qn - dq
@@ -298,30 +278,49 @@ contains
        !
        !> get: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
        it=tMap(2,1,1)
-       A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
-       B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
+       if(MpiMaster)then
+          A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
+          B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
+       endif
        Isb2Jsb(it,isb)  =jsb
        IsHconjg(it,isb) =.false.
        RowOffset(it,isb)=Offset(isb)
        ColOffset(it,isb)=Offset(jsb)
 #ifdef _MPI
-       mpiRowOffset(it,isb)=mpiOffset(isb)           
-       mpiColOffset(it,isb)=mpiOffset(jsb)
+       if(MpiStatus)then
+          call A(it,isb)%bcast()
+          call B(it,isb)%bcast()
+          mpiRowOffset(it,isb)=mpiOffset(isb)           
+          mpiColOffset(it,isb)=mpiOffset(jsb)
+       endif
 #endif
        !
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
-       A(it,isb) = hconjg(A(tMap(2,1,1),isb))
-       B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+       if(MpiMaster)then
+          A(it,isb) = hconjg(A(tMap(2,1,1),isb))
+          B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+       endif
        Isb2Jsb(it,isb)  =jsb
        IsHconjg(it,isb) =.true.  !exchange jsb and isb
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
 #ifdef _MPI
-       mpiRowOffset(it,isb)=mpiOffset(jsb)           
-       mpiColOffset(it,isb)=mpiOffset(isb)
+       if(MpiStatus)then
+          call A(it,isb)%bcast()
+          call B(it,isb)%bcast()
+          mpiRowOffset(it,isb)=mpiOffset(jsb)           
+          mpiColOffset(it,isb)=mpiOffset(isb)
+       endif
 #endif
     enddo
+    !
+    do ispin=1,Nspin
+       call Sleft(ispin)%free()
+       call Sright(ispin)%free()
+    enddo
+    deallocate(Sleft,Sright)
+    !
   end subroutine Setup_SuperBlock_Spin_Direct
 
 
@@ -377,58 +376,7 @@ contains
     !Massive allocation
     !Massive allocation
     if(allocated(tMap))deallocate(tMap)
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
-    if(allocated(Offset))deallocate(Offset)
-    if(allocated(AI))deallocate(AI)
-    if(allocated(BI))deallocate(BI)
-    if(allocated(AJ))deallocate(AJ)
-    if(allocated(BJ))deallocate(BJ)
-    if(allocated(A))deallocate(A)
-    if(allocated(B))deallocate(B)
-    if(allocated(Hleft))deallocate(Hleft)
-    if(allocated(Hright))deallocate(Hright)
-    if(allocated(RowOffset))deallocate(RowOffset)
-    if(allocated(ColOffset))deallocate(ColOffset)
-    if(allocated(isb2jsb))deallocate(isb2jsb)
-    if(allocated(IsHconjg))deallocate(IsHconjg)
-    if(allocated(Cleft))deallocate(Cleft)
-    if(allocated(Cright))deallocate(Cright)
-#ifdef _MPI
-    if(allocated(mpiDls))deallocate(mpiDls)
-    if(allocated(mpiDrs))deallocate(mpiDrs)
-    if(allocated(mpiDl))deallocate(mpiDl)
-    if(allocated(mpiDr))deallocate(mpiDr)
-    if(allocated(mpiOffset))deallocate(mpiOffset)
-    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
-    if(allocated(mpiColOffset))deallocate(mpiColOffset)
-#endif
-    !
-    allocate(Dls(Nsb))
-    allocate(Drs(Nsb))
     allocate(tMap(2,Nso,Nso))
-    allocate(Offset(Nsb))
-    allocate(AI(Nsb),BI(Nsb))
-    allocate(AJ(Nsb),BJ(Nsb))
-    allocate(A(tNso,Nsb),B(tNso,Nsb))
-    allocate(Hleft(Nsb),Hright(Nsb))
-    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
-    allocate(isb2jsb(tNso,Nsb))
-    allocate(IsHconjg(tNso,Nsb))
-    allocate(Cleft(Nso),Cright(Nso))
-#ifdef _MPI
-    allocate(mpiDls(Nsb))
-    allocate(mpiDrs(Nsb))
-    allocate(mpiDl(Nsb))
-    allocate(mpiDr(Nsb))
-    allocate(mpiOffset(Nsb))
-    allocate(mpiRowOffset(tNso,Nsb))
-    allocate(mpiColOffset(tNso,Nsb))
-    mpiOffset=0
-    mpiRowOffset=0
-    mpiColOffset=0
-#endif
-    !
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
     ! super-block Hamiltonian.
@@ -444,27 +392,36 @@ contains
     enddo
     !
     !
-    Offset=0
-    do isb=1,Nsb
-       qn      = sb_sector%qn(index=isb)
-       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
-       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
-       ! if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-       !
+    call sb_build_dims()
+    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
 #ifdef _MPI
-       ! MPI VARS SETUP 
-       mpiDls(isb) = Dls(isb)/MpiSize
-       mpiDrs(isb) = Drs(isb)/MpiSize
-       if(MpiRank < mod(Dls(isb),MpiSize))mpiDls(isb) = mpiDls(isb)+1
-       if(MpiRank < mod(Drs(isb),MpiSize))mpiDrs(isb) = mpiDrs(isb)+1
-       mpiDl(isb) = Drs(isb)*mpiDls(isb)
-       mpiDr(isb) = mpiDrs(isb)*Dls(isb)
-       !
-       mpiOffset(isb)=sum(Drs(1:isb-1)*mpiDls(1:isb-1))
+    allocate(mpiRowOffset(tNso,Nsb))
+    allocate(mpiColOffset(tNso,Nsb))
+    mpiRowOffset=0
+    mpiColOffset=0
 #endif
-       !
-    enddo
+    !
+    !
+    if(allocated(AI))deallocate(AI)
+    if(allocated(BI))deallocate(BI)
+    if(allocated(AJ))deallocate(AJ)
+    if(allocated(BJ))deallocate(BJ)
+    if(allocated(A))deallocate(A)
+    if(allocated(B))deallocate(B)
+    if(allocated(Hleft))deallocate(Hleft)
+    if(allocated(Hright))deallocate(Hright)
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
+    if(allocated(Cleft))deallocate(Cleft)
+    if(allocated(Cright))deallocate(Cright)
+    !
+    allocate(AI(Nsb),BI(Nsb))
+    allocate(AJ(Nsb),BJ(Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(Hleft(Nsb),Hright(Nsb))
+    allocate(isb2jsb(tNso,Nsb))
+    allocate(IsHconjg(tNso,Nsb))
+    allocate(Cleft(Nso),Cright(Nso))
     !
     do isb=1,size(sb_sector)
        qn             = sb_sector%qn(index=isb)
@@ -481,14 +438,16 @@ contains
     enddo
     !
     !
-    P = left%operators%op("P")
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          io = iorb+(ispin-1)*Norb
-          Cleft(io)  = left%operators%op("C"//left%okey(iorb,ispin))
-          Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
+    if(MpiMaster)then
+       P = left%operators%op("P")
+       do ispin=1,Nspin
+          do iorb=1,Norb
+             io = iorb+(ispin-1)*Norb
+             Cleft(io)  = left%operators%op("C"//left%okey(iorb,ispin))
+             Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
+          enddo
        enddo
-    enddo
+    endif
     !
     !A(it,k).Nrow = DLk ;if(Hconjg) DLq
     !A(it,k).Ncol = DLq ;if(Hconjg) DLk
@@ -499,8 +458,16 @@ contains
        qn   = sb_sector%qn(index=isb)
        !
        !> get: H*^L  and H*^R
-       Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-       Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       if(MpiMaster)then
+          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
+          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       endif
+#ifdef _MPI
+       if(MpiStatus)then
+          call Hleft(isb)%bcast()
+          call Hright(isb)%bcast()
+       endif
+#endif
        !
        !> get A.x.B terms:
        do ispin=1,Nspin
@@ -517,34 +484,59 @@ contains
                 !
                 !> get: A = H(a,b)*[Cl(a,s)^+@P] .x. B = Cr(b,s)  + Row/Col Offsets
                 it=tMap(1,io,jo)
-                A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
-                B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
+                if(MpiMaster)then
+                   A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
+                   B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
+                endif
+
                 Isb2Jsb(it,isb)  =jsb
                 IsHconjg(it,isb) =.false.
                 RowOffset(it,isb)=Offset(isb)           
                 ColOffset(it,isb)=Offset(jsb)
 #ifdef _MPI
-                mpiRowOffset(it,isb)=mpiOffset(isb)           
-                mpiColOffset(it,isb)=mpiOffset(jsb)
+                if(MpiStatus)then
+                   call A(it,isb)%bcast()
+                   call B(it,isb)%bcast()
+                   mpiRowOffset(it,isb)=mpiOffset(isb)           
+                   mpiColOffset(it,isb)=mpiOffset(jsb)
+                endif
 #endif
+                !
                 !
                 !> get H.c. + Row/Col Offsets
                 it=tMap(2,io,jo)
-                A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
-                B(it,isb) = hconjg(B(tMap(1,io,jo),isb))
+                if(MpiMaster)then
+                   A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
+                   B(it,isb) = hconjg(B(tMap(1,io,jo),isb))
+                endif
                 Isb2Jsb(it,isb)  =jsb
                 IsHconjg(it,isb) =.true.
                 RowOffset(it,isb)=Offset(jsb)
                 ColOffset(it,isb)=Offset(isb)
 #ifdef _MPI
-                mpiRowOffset(it,isb)=mpiOffset(jsb)           
-                mpiColOffset(it,isb)=mpiOffset(isb)
+                if(MpiStatus)then
+                   call A(it,isb)%bcast()
+                   call B(it,isb)%bcast()
+                   mpiRowOffset(it,isb)=mpiOffset(jsb)           
+                   mpiColOffset(it,isb)=mpiOffset(isb)
+                endif
 #endif
              enddo
           enddo
           !
        enddo
     enddo
+    !
+    call P%free()
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          io = iorb+(ispin-1)*Norb
+          call Cleft(io)%free()
+          call Cright(io)%free()
+       enddo
+    enddo
+    deallocate(Cleft,Cright)
+    !
   end subroutine Setup_SuperBlock_Fermion_Direct
 
 
@@ -711,7 +703,7 @@ contains
 
 
 
-  
+
 
 
 

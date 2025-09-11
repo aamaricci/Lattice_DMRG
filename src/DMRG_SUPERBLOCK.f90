@@ -39,13 +39,20 @@ contains
     !
     if(MpiMaster)call start_timer("Get SB states")
     !
+    !STD ARRAY:
     if(allocated(sb_states))deallocate(sb_states)
-    !
+    !SECTORS_LIST:
     call sb_sector%free()
     !
 #ifdef _DEBUG
     if(MpiMaster.AND.verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
 #endif
+    !Can we parallelize this:
+    !1: ileft=1,size(L.sectors),mpiSize
+    !2: > append to sb_states_tmp (local array)
+    ! : > append to sb_sector_tmp (local sectors_list)
+    !3: < merge&sort all sb_states_tmp into sb_states
+    ! : < merge&sort
     do ileft=1,size(left%sectors(1))
        left_qn   = left%sectors(1)%qn(index=ileft)
        right_qn  = current_target_qn - left_qn
@@ -56,7 +63,7 @@ contains
        !
 #ifdef _DEBUG
        if(MpiMaster.AND.verbose>5)then
-          write(unit,*)""
+          write(unit,*)" "
           write(unit,*)left_qn,right_qn
           write(unit,*)size(left_map),size(right_map)
        endif
@@ -76,7 +83,7 @@ contains
     if(MpiMaster.AND.verbose>5)close(unit)
 #endif
     !
-    call stop_timer()
+    if(MpiMaster)call stop_timer()
     !
   end subroutine sb_get_states
 
@@ -90,13 +97,6 @@ contains
     integer                               :: m_sb
     integer                               :: Nitermax,Neigen,Nblock
     real(8),dimension(:),allocatable      :: evals
-#ifdef _MPI
-#ifdef _CMPLX
-    complex(8),dimension(:,:),allocatable :: mpiEvec
-#else
-    real(8),dimension(:,:),allocatable    :: mpiEvec
-#endif
-#endif       
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Hsb
 #else
@@ -118,13 +118,13 @@ contains
     Nblock   = min(m_sb,lanc_ncv_factor*Lanc_Neigen+lanc_ncv_add)
     !
     !Decide how to operate on H_sb
-    lanc_solve  = .true.
+    lanc_solve = .true.
     if(Neigen==m_sb)lanc_solve=.false.
-    if(m_sb <= lanc_dim_threshold)lanc_solve=.false.
+    if(m_sb  <= lanc_dim_threshold)lanc_solve=.false.
     !
-    !Allocate EigPairs
+    !Allocate EigPairs:
     if(allocated(gs_energy))deallocate(gs_energy)
-    allocate(gs_energy(Neigen));gs_energy=0d0
+    allocate(gs_energy(Neigen));gs_energy=zero
     !
     if(MpiMaster)call start_timer("Diag H_sb")
     if(lanc_solve)then          !Use (P)-Arpack
@@ -133,26 +133,16 @@ contains
        !
        if(allocated(gs_vector))deallocate(gs_vector)
        vecDim = sb_vecDim_Hv()
+       allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        !
 #ifdef _MPI
        if(MpiStatus)then          
-          allocate(mpiEvec(vecDim,Neigen));mpiEvec=zero
-          call sp_eigh(MpiComm,spHtimesV_p,gs_energy,mpiEvec,&
+          call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
                Nblock,&
                Nitermax,&
                tol=lanc_tolerance,&
                iverbose=(verbose>4))
-
-          m_tmp= 0
-          call AllReduce_MPI(MpiComm,vecDim,m_tmp)
-          if(m_tmp/=m_sb)stop "DMRG.sb_diag ERROR: reduced vecDim != m_sb"
-          allocate(gs_vector(m_sb,Neigen));gs_vector=zero
-          do i=1,Neigen
-             call allgather_vector_MPI(MpiComm,mpiEvec(:,i),gs_vector(:,i))
-          enddo
-          deallocate(mpiEvec)
        else
-          allocate(gs_vector(vecDim,Neigen));gs_vector=zero
           call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
                Nblock,&
                Nitermax,&
@@ -160,7 +150,6 @@ contains
                iverbose=(verbose>4))
        endif
 #else
-       allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
             Nblock,&
             Nitermax,&
@@ -173,23 +162,31 @@ contains
        call sb_build_Hv(Hsb)
        !
        if(allocated(gs_vector))deallocate(gs_vector)
-       allocate(gs_vector(m_sb,Neigen));gs_vector=zero
+       vecDim = sb_vecDim_Hv()
+       allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        allocate(evals(m_sb))
-       !
+
        if(MpiMaster)call eigh(Hsb,evals)
 #ifdef _MPI
        if(MpiStatus)then
-          call Bcast_MPI(MpiComm,Hsb)
           call Bcast_MPI(MpiComm,evals)
+          call sb_build_dims()
+          call scatter_vector_MPI(MpiComm,Hsb(:,1:Neigen),gs_vector)
+          gs_energy(1:Neigen)   = evals(1:Neigen)
+          call sb_delete_dims()
+       else
+          gs_vector(:,1:Neigen) = Hsb(:,1:Neigen)
+          gs_energy(1:Neigen)   = evals(1:Neigen)
        endif
-#endif
+#else
        gs_vector(:,1:Neigen) = Hsb(:,1:Neigen)
-       gs_energy(1:Neigen)   = evals(1:Neigen)
+       gs_energy(1:Neigen)   = evals(1:Neigen)          
+#endif
        !
        deallocate(Hsb,evals)
        !
     endif
-    call stop_timer()
+    if(MpiMaster)call stop_timer()
     !    
     !Free Memory
     call sb_delete_Hv()
@@ -260,13 +257,15 @@ contains
        !Nullify HxV function pointer:
        spHtimesV_p => null()
        !
-       !>Build Sparse Hsb:
-       if(MpiMaster)call start_timer("get H_sb Dense: LAPACK")
-       call Setup_SuperBlock_Sparse() !<- no MPI here
-       if(MpiMaster)call stop_timer()
-       !
-       !Dump Hsb to dense matrix as required:
-       call spHsb%dump(Hmat)
+       !>Build Sparse Hsb: (Root only)
+       if(MpiMaster)then
+          call start_timer("get H_sb Dense: LAPACK")
+          call Setup_SuperBlock_Sparse() !<- no MPI here
+          call stop_timer()
+          !
+          !Dump Hsb to dense matrix as required:
+          call spHsb%dump(Hmat)
+       endif
        return
     endif
     !
@@ -327,18 +326,15 @@ contains
        enddo
        deallocate(B)
     endif
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
-    if(allocated(Offset))deallocate(Offset)
+    !
+    call sb_delete_dims()
     if(allocated(RowOffset))deallocate(RowOffset)
     if(allocated(ColOffset))deallocate(ColOffset)
-    if(allocated(mpiDls))deallocate(mpiDls)
-    if(allocated(mpiDrs))deallocate(mpiDrs)
-    if(allocated(mpiDl))deallocate(mpiDl)
-    if(allocated(mpiDr))deallocate(mpiDr)
-    if(allocated(mpiOffset))deallocate(mpiOffset)
+#ifdef _MPI
     if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
     if(allocated(mpiColOffset))deallocate(mpiColOffset)
+#endif
+    !
   end subroutine sb_delete_Hv
 
 
@@ -349,13 +345,22 @@ contains
   function sb_vecDim_Hv() result(vecDim)
     integer                          :: vecDim           !vector or vector chunck dimension
     real(8),dimension(:),allocatable :: qn
-    integer                          :: q
+    integer                          :: q,Nsb
     !
-
+    Nsb  = size(sb_sector)
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(mpiDls))deallocate(mpiDls)
+    if(allocated(mpiDl))deallocate(mpiDl)
+    allocate(Dls(Nsb),Drs(Nsb),mpiDls(Nsb),mpiDl(Nsb))
+    do q=1,Nsb
+       qn     = sb_sector%qn(index=q)
+       Dls(q) = sector_qn_dim(left%sectors(1),qn)
+       Drs(q) = sector_qn_dim(right%sectors(1),current_target_qn - qn)
+    enddo
 #ifdef _MPI
-
     if(MpiStatus)then
-       do q=1,size(sb_sector)
+       do q=1,Nsb
           mpiDls(q) = Dls(q)/MpiSize
           if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
           mpiDl(q)  = Drs(q)*mpiDls(q)

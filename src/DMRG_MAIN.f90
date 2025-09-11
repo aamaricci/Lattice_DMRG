@@ -44,7 +44,7 @@ contains
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"Init_DMRG","Hij")
     allocate(HopH, source=Hij)
     !
-    !SETUP the Dots 
+    !SETUP the Dots: this is unsatisfactory
     allocate(dot(2*Ldmrg+2))
     select case(size(ModelDot))
     case (1)
@@ -252,8 +252,8 @@ contains
     end select
     !
     !
-    if(.not.left%is_valid(.true.))stop "single_dmrg_step error: left is not a valid block"
-    if(.not.right%is_valid(.true.))stop "single_dmrg_step error: right is not a valid block"
+    if(MpiMaster.AND.(.not.left%is_valid(.true.)))stop "single_dmrg_step error: left is not a valid block"
+    if(MpiMaster.AND.(.not.right%is_valid(.true.)))stop "single_dmrg_step error: right is not a valid block"
     !
     !> dimension of the incoming L/R BLOCKS
     m_left  = left%dim
@@ -281,6 +281,7 @@ contains
     current_L         = left%length + right%length
     current_target_QN = int(target_qn*current_L*Norb)
     !
+    !In DMRG_SUPERBLOCK:
     call sb_get_states()
     m_sb = size(sb_states)
     !#################################
@@ -311,6 +312,7 @@ contains
     !#################################
     !       DIAG SUPER-BLOCK
     !#################################
+    !In DMRG_SUPERBLOCK:
     call sb_diag()
     if(MpiMaster)then
        write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
@@ -328,6 +330,7 @@ contains
     !#################################
     !      BUILD RDM
     !#################################
+    !In DMRG_RDM:
     call sb_get_rdm()
     !
     !#################################
@@ -362,6 +365,9 @@ contains
     !Clean memory:
     call spHsb%free()
     !
+! #ifdef _MPI
+!     call Barrier_MPI(MpiComm)
+! #endif
     return
   end subroutine step_dmrg
 

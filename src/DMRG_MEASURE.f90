@@ -38,13 +38,8 @@ MODULE DMRG_MEASURE
   type(sparse_matrix),allocatable,dimension(:) :: Olist
   type(tstates),dimension(:),allocatable       :: Li,Ri
   logical                                      :: measure_status=.false.
-#if _CMPLX
-  complex(8),dimension(:,:),allocatable        :: mpiEvec
-#else
-  real(8),dimension(:,:),allocatable           :: mpiEvec
-#endif
 
-
+  character(:),allocatable                     :: string
 
 contains
 
@@ -52,8 +47,9 @@ contains
   !##################################################################
   !          INIT / END MEASUREMENT: allocate/deallocate
   !##################################################################
-  subroutine Init_Measure_dmrg
-    !
+  subroutine Init_Measure_dmrg(msg)
+    real(8),dimension(:),allocatable :: qn
+    character(len=*),optional        :: msg
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init measure"
 #endif
@@ -61,69 +57,34 @@ contains
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
     !
-    allocate(Dls(Nsb))
-    allocate(Drs(Nsb))
-    allocate(Offset(Nsb))
+    string="";if(present(msg))string=msg
+    !
+    if(MpiMaster)call start_timer("Start measuring..."//str(string))
+    !
+    call sb_build_dims()
+    !
     allocate(LI(Nsb))
     allocate(RI(Nsb))
-    Offset=0
-#ifdef _MPI
-    allocate(mpiDls(Nsb))
-    allocate(mpiDrs(Nsb))
-    allocate(mpiDl(Nsb))
-    allocate(mpiDr(Nsb))
-    allocate(mpiOffset(Nsb))
-    mpiOffset=0
-#endif
     do isb=1,Nsb
        qn      = sb_sector%qn(index=isb)
-       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
-       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
-       ! if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-#ifdef _MPI
-       ! MPI VARS SETUP 
-       mpiDls(isb) = Dls(isb)/MpiSize
-       mpiDrs(isb) = Drs(isb)/MpiSize
-       if(MpiRank < mod(Dls(isb),MpiSize))mpiDls(isb) = mpiDls(isb)+1
-       if(MpiRank < mod(Drs(isb),MpiSize))mpiDrs(isb) = mpiDrs(isb)+1
-       mpiDl(isb) = Drs(isb)*mpiDls(isb)
-       mpiDr(isb) = mpiDrs(isb)*Dls(isb)
-       !
-       mpiOffset(isb)=sum(Drs(1:isb-1)*mpiDls(1:isb-1))
-#endif
-       !
        LI(isb)%states = sb2block_states(qn,'left')
        RI(isb)%states = sb2block_states(qn,'right')
     enddo
     suffix=label_DMRG('u')
     !
-#ifdef _MPI
-    vecDim = sb_vecDim_Hv()
-    allocate(mpiEvec(vecDim,size(gs_vector,2)))
-    call scatter_basis_MPI(MpiComm,gs_vector,mpiEvec)
-#endif
     measure_status=.true.
   end subroutine Init_Measure_dmrg
 
-  subroutine End_measure_DMRG
+  subroutine End_measure_DMRG()
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: end measure"
 #endif
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
-    if(allocated(Offset))deallocate(Offset)
+    if(MpiMaster)call stop_timer("Done "//str(string))
+    if(allocated(string))deallocate(string)
     if(allocated(Olist))deallocate(Olist)
     if(allocated(Li))deallocate(Li)
     if(allocated(Ri))deallocate(Ri)
-#ifdef _MPI
-    if(allocated(mpiDls))deallocate(mpiDls)
-    if(allocated(mpiDrs))deallocate(mpiDrs)
-    if(allocated(mpiDl))deallocate(mpiDl)
-    if(allocated(mpiDr))deallocate(mpiDr)
-    if(allocated(mpiOffset))deallocate(mpiOffset)
-    if(allocated(mpiEvec))deallocate(mpiEvec)
-#endif
+    call sb_delete_dims()
     measure_status=.false.
   end subroutine End_measure_DMRG
 
@@ -163,6 +124,7 @@ contains
     real(8),dimension(:),allocatable,optional :: avOp
     real(8),dimension(:),allocatable          :: vals
     integer,dimension(:),allocatable          :: pos_
+    character(:),allocatable                  :: msg
     character(len=1)                          :: label
     character(len=128)                        :: file_
     integer                                   :: i,ipos,L,R,Np
@@ -173,6 +135,8 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: measure scalar"
 #endif
     !
+    msg="";if(present(file))msg=file
+    !
     L = left%length ; R = right%length
     Np = L+R;if(present(pos))Np= size(pos)
     !
@@ -180,18 +144,16 @@ contains
     allocate(pos_(Np))
     pos_=arange(1,Np);if(present(pos))pos_=pos
     !
-    if(MpiMaster)call start_timer()
-    call Init_measure_dmrg()
+    call Init_measure_dmrg(msg)
     do i=1,Np
        ipos    = pos_(i)
        vals(i) = Measure_Op_DMRG(Op,ipos)
 #ifdef _DEBUG
        if(MpiMaster)write(LOGfile,*)ipos,vals(i)
 #endif
+       if(MpiMaster)call eta(i,Np)
     enddo
     call End_measure_dmrg()
-    if(MpiMaster)call stop_timer("Done "//str(file))
-    !
     if(MpiMaster.AND.present(file))call Write_DMRG(trim(file),vals,pos_)
     !
     if(present(avOp))then
@@ -208,6 +170,7 @@ contains
     real(8),dimension(:,:),allocatable,optional :: avOp
     real(8),dimension(:,:),allocatable          :: vals
     integer,dimension(:),allocatable            :: pos_
+    character(:),allocatable                    :: msg
     character(len=1)                            :: label
     character(len=128)                          :: file_
     integer                                     :: i,ipos,L,R,Np,M
@@ -219,6 +182,8 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: measure vector"
 #endif
     !
+    msg="";if(present(file))msg=file
+    !
     M  = size(Op)
     L  = left%length
     R  = right%length
@@ -229,8 +194,7 @@ contains
     !
     allocate(vals(M,Np))
     !
-    if(MpiMaster)call start_timer()
-    call Init_measure_dmrg()
+    call Init_measure_dmrg(msg)
     do i=1,Np
        ipos = pos_(i)
        do j=1,M
@@ -239,10 +203,9 @@ contains
 #ifdef _DEBUG
        if(MpiMaster)write(LOGfile,*)ipos,(vals(j,i),j=1,M)
 #endif
+       if(MpiMaster)call eta(i,Np)
     enddo
     call End_measure_dmrg()
-    if(MpiMaster)call stop_timer("Done "//str(file))
-    !
     if(MpiMaster.AND.present(file))call Write_DMRG(trim(file),vals,pos_)
     !
     if(present(avOp))then
@@ -294,28 +257,33 @@ contains
     i=pos    ; if(pos>L)i=N+1-pos
     !
     !Build Operator on the chain at position pos:
-    if(i==1)then
-       Oi = Op
-    else
-       select case(label)
-       case('l')
-          dB = shape(left%omatrices%op(index=i-1));D=dB(2)
-          Oi = Id(d).x.Op
-          if(set_basis_)then
-             U  = left%omatrices%op(index=i)
-             Oi = matmul(U%dgr(),matmul(Oi,U))
-             call U%free()
-          endif
-       case('r')
-          dB = shape(right%omatrices%op(index=i-1));D=dB(2)
-          Oi = Op.x.Id(d)
-          if(set_basis_)then
-             U  = right%omatrices%op(index=i)
-             Oi = matmul(U%dgr(),matmul(Oi,U))
-             call U%free()
-          endif
-       end select
+    if(MpiMaster)then
+       if(i==1)then
+          Oi = Op
+       else
+          select case(label)
+          case('l')
+             dB = shape(left%omatrices%op(index=i-1));D=dB(2)
+             Oi = Id(d).x.Op
+             if(set_basis_)then
+                U  = left%omatrices%op(index=i)
+                Oi = matmul(U%dgr(),matmul(Oi,U))
+                call U%free()
+             endif
+          case('r')
+             dB = shape(right%omatrices%op(index=i-1));D=dB(2)
+             Oi = Op.x.Id(d)
+             if(set_basis_)then
+                U  = right%omatrices%op(index=i)
+                Oi = matmul(U%dgr(),matmul(Oi,U))
+                call U%free()
+             endif
+          end select
+       endif
     endif
+#ifdef _MPI
+    if(MpiStatus)call Oi%bcast(MpiComm)
+#endif
   end function Build_Op_dmrg
 
 
@@ -364,22 +332,27 @@ contains
     end select
     !
     !Evolve to SB basis
-    Oi = Op
-    select case(label)
-    case ("l") 
-       do it=istart,iend
-          U  = left%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot(it)%dim)
-       enddo
-    case ("r") 
-       do it=istart,iend
-          U  = right%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot(it)%dim).x.Oi
-       enddo
-    end select
-    call U%free()
+    if(MpiMaster)then
+       Oi = Op
+       select case(label)
+       case ("l") 
+          do it=istart,iend
+             U  = left%omatrices%op(index=it)
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Oi.x.Id(dot(it)%dim)
+          enddo
+       case ("r") 
+          do it=istart,iend
+             U  = right%omatrices%op(index=it)
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Id(dot(it)%dim).x.Oi
+          enddo
+       end select
+       call U%free()
+    endif
+#ifdef _MPI
+    if(MpiStatus)call Oi%bcast(MpiComm)
+#endif
   end function Advance_Op_dmrg
 
 
@@ -428,7 +401,7 @@ contains
     !
 #ifdef _MPI
     if(MpiStatus)then
-       Otmp = dot_product(mpiEvec(:,1), OdotV_MPI_direct(Olist,mpiEvec(:,1),label))
+       Otmp = dot_product(gs_vector(:,1), OdotV_MPI_direct(Olist,gs_vector(:,1),label))
        Oval = 0d0
        call AllReduce_MPI(MpiComm,Otmp,Oval)
     else
@@ -627,22 +600,27 @@ contains
     end select
     !
     !
-    Oi = Op
-    select case(label)
-    case ("l")
-       do it=istart+1,iend
-          U  = left%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot(it)%dim)
-       enddo
-    case ("r")
-       do it=istart+1,iend
-          U  = right%omatrices%op(index=it)
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot(it)%dim).x.Oi
-       enddo
-    end select
-    call U%free()
+    if(MpiMaster)then
+       Oi = Op
+       select case(label)
+       case ("l")
+          do it=istart+1,iend
+             U  = left%omatrices%op(index=it)
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Oi.x.Id(dot(it)%dim)
+          enddo
+       case ("r")
+          do it=istart+1,iend
+             U  = right%omatrices%op(index=it)
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Id(dot(it)%dim).x.Oi
+          enddo
+       end select
+       call U%free()
+    endif
+#ifdef _MPI
+    if(MpiStatus)call Oi%bcast(MpiComm)
+#endif
   end function Advance_Corr_dmrg
 
 
