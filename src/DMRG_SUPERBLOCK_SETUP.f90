@@ -890,7 +890,7 @@ contains
     real(8),dimension(:)             :: q
     character(len=*)                 :: label
     integer,dimension(:),allocatable :: tmp,states,sb_map
-    integer                          :: i,istate,l,r,isb
+    integer                          :: i,istate,l,r,isb,m
     !
     if(.not.associated(sb_sector%root))&
          stop "sb2block_states error: sb_sector is not allocated"
@@ -902,21 +902,31 @@ contains
     !
     !> left,right, sb_sector and sb_states have to be known at this time:
     ! add a check
-    select case(to_lower(str(label)))
-    case("left","l","sys","s")
-       do i=1,size(sb_map)
-          istate = sb_states(sb_map(i))
-          l = (istate-1)/right%Dim+1
-          call append(tmp,l)
-       enddo
-    case("right","r","env","e")
-       do i=1,size(sb_map)
-          istate = sb_states(sb_map(i))
-          r = mod(istate,right%Dim);if(r==0)r=right%Dim
-          call append(tmp,r)
-       enddo
-    end select
-    allocate(states, source=uniq(tmp))
+    if(MpiMaster)then
+       select case(to_lower(str(label)))
+       case("left","l","sys","s")
+          do i=1,size(sb_map)
+             istate = sb_states(sb_map(i))
+             l = (istate-1)/right%Dim+1
+             call append(tmp,l)
+          enddo
+       case("right","r","env","e")
+          do i=1,size(sb_map)
+             istate = sb_states(sb_map(i))
+             r = mod(istate,right%Dim);if(r==0)r=right%Dim
+             call append(tmp,r)
+          enddo
+       end select
+       allocate(states, source=uniq(tmp))
+    endif
+#ifdef _MPI
+    if(MpiStatus)then
+       if(MpiMaster)m = size(states)
+       call Bcast_MPI(MpiComm,m)
+       if(.not.MpiMaster)allocate(states(m))
+       call Bcast_MPI(MpiComm,states)
+    endif    
+#endif
   end function sb2block_states
 
 
