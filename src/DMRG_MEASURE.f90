@@ -80,7 +80,7 @@ contains
     allocate(LI(Nsb))
     allocate(RI(Nsb))
     do isb=1,Nsb
-       qn      = sb_sector%qn(index=isb)
+       qn  = sb_sector%qn(index=isb)
        LI(isb)%states = sb2block_states(qn,'left')
        RI(isb)%states = sb2block_states(qn,'right')
     enddo

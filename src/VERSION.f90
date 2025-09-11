@@ -67,6 +67,10 @@ MODULE VERSION
 >>>>>>> 4cd869c (Started reducing memory use.)
 =======
   !GIT VERSION
+<<<<<<< HEAD
   character(len=41),parameter :: git_code_version = "4cd869c32293dd118d9848d0136890f3d6726656"	
 >>>>>>> c8aed3d (Updated code.)
+=======
+  character(len=41),parameter :: git_code_version = "c8aed3d738a3abd10e08c8c3d54233083510562e"	
+>>>>>>> 994235f (Minor bug fix.)
 END MODULE VERSION
