@@ -54,35 +54,35 @@ MODULE DMRG_GLOBAL
 
 
 
-  type(sparse_matrix)                   :: spHsb
+  type(sparse_matrix)                            :: spHsb
   !
-  real(8)                               :: truncation_error_left,truncation_error_right
-  character(len=:),allocatable          :: suffix
-  real(8),dimension(:),allocatable      :: target_Qn,current_target_QN
-  type(block)                           :: init_left,init_right
-  logical                               :: init_called=.false.
+  real(8)                                        :: truncation_error_left,truncation_error_right
+  character(len=:),allocatable                   :: suffix
+  real(8),dimension(:),allocatable               :: target_Qn,current_target_QN
+  type(block)                                    :: init_left,init_right
+  logical                                        :: init_called=.false.
 #ifdef _CMPLX
-  complex(8),dimension(:,:),allocatable :: gs_vector
+  complex(8),dimension(:,:),allocatable          :: gs_vector
 #else
-  real(8),dimension(:,:),allocatable    :: gs_vector
+  real(8),dimension(:,:),allocatable             :: gs_vector
 #endif
-  real(8),dimension(:),allocatable      :: gs_energy
-  real(8),dimension(:),allocatable      :: rho_left_evals
-  real(8),dimension(:),allocatable      :: rho_right_evals
-  type(blocks_matrix)                   :: psi_left
-  type(blocks_matrix)                   :: psi_right
-  type(blocks_matrix)                   :: rho_left
-  type(blocks_matrix)                   :: rho_right
+  real(8),dimension(:),allocatable               :: gs_energy
+  real(8),dimension(:),allocatable               :: rho_left_evals
+  real(8),dimension(:),allocatable               :: rho_right_evals
+  type(blocks_matrix)                            :: psi_left
+  type(blocks_matrix)                            :: psi_right
+  type(blocks_matrix)                            :: rho_left
+  type(blocks_matrix)                            :: rho_right
   !GLOBAL LEFT & RIGHT & DOT 
-  type(block)                           :: left,right
-  type(site),dimension(:),allocatable   :: dot
+  type(block)                                    :: left,right
+  type(site),dimension(:),allocatable            :: dot
   !
   !SUPERBLOCK SHARED THINGS
-  integer,dimension(:),allocatable      :: sb_states
-  type(sectors_list)                    :: sb_sector
+  integer,dimension(:),allocatable               :: sb_states
+  type(sectors_list)                             :: sb_sector
   !
-  integer                               :: Mstates
-  real(8)                               :: Estates
+  integer                                        :: Mstates
+  real(8)                                        :: Estates
 
 
 
@@ -98,32 +98,41 @@ MODULE DMRG_GLOBAL
   !This is the internal Mpi Communicator and variables.
   !=========================================================
 #ifdef _MPI
-  integer                               :: MpiComm_Global=MPI_COMM_NULL
-  integer                               :: MpiComm=MPI_COMM_NULL
-  integer                               :: MpiGroup_Global=MPI_GROUP_NULL
-  integer                               :: MpiGroup=MPI_GROUP_NULL
+  integer                                        :: MpiComm_Global=MPI_COMM_NULL
+  integer                                        :: MpiComm=MPI_COMM_NULL
+  integer                                        :: MpiGroup_Global=MPI_GROUP_NULL
+  integer                                        :: MpiGroup=MPI_GROUP_NULL
 #else
-  integer                               :: MpiComm_Global=0
-  integer                               :: MpiComm=0
-  integer                               :: MpiGroup_Global=0
-  integer                               :: MpiGroup=0
+  integer                                        :: MpiComm_Global=0
+  integer                                        :: MpiComm=0
+  integer                                        :: MpiGroup_Global=0
+  integer                                        :: MpiGroup=0
 #endif
-  logical                               :: MpiStatus=.false.
-  logical                               :: MpiMaster=.true.
-  integer                               :: MpiRank=0
-  integer                               :: MpiSize=1
-  integer,allocatable,dimension(:)      :: mpiDls
-  integer,allocatable,dimension(:)      :: mpiDrs
-  integer,allocatable,dimension(:)      :: mpiDl,mpiDr
-  integer,allocatable,dimension(:)      :: mpiOffset
-  integer,allocatable,dimension(:,:)    :: mpiRowOffset,mpiColOffset
-  integer                               :: mpiL=0,mpiR=0
+  logical                                        :: MpiStatus=.false.
+  logical                                        :: MpiMaster=.true.
+  integer                                        :: MpiRank=0
+  integer                                        :: MpiSize=1
+  integer,allocatable,dimension(:)               :: mpiDls
+  integer,allocatable,dimension(:)               :: mpiDrs
+  integer,allocatable,dimension(:)               :: mpiDl,mpiDr
+  integer,allocatable,dimension(:)               :: mpiOffset
+  integer,allocatable,dimension(:,:)             :: mpiRowOffset,mpiColOffset
+  integer                                        :: mpiL=0,mpiR=0
   !
 
 
 #ifdef _MPI
-  ! public :: scatter_vector_MPI
-  ! public :: scatter_basis_MPI
+  interface scatter_vector_MPI
+     module procedure :: scatter_vector_MPI_v1
+     module procedure :: scatter_vector_MPI_v2
+  end interface scatter_vector_MPI
+
+  interface gather_vector_MPI
+     module procedure :: gather_vector_MPI_v1
+     module procedure :: gather_vector_MPI_v2
+  end interface gather_vector_MPI
+
+  public :: scatter_vector_MPI
   public :: gather_vector_MPI
   public :: allgather_vector_MPI
 #endif
@@ -133,6 +142,72 @@ MODULE DMRG_GLOBAL
 
 
 contains
+
+
+
+  subroutine sb_build_dims()
+    integer                          :: Nsb
+    integer                          :: isb
+    real(8),dimension(:),allocatable :: qn
+    !
+    Nsb  = size(sb_sector)
+    if(Nsb==0)stop "sb_build_dims error: size(sb_sector)==0"
+    !
+    call sb_delete_dims()
+    !
+    allocate(Dls(Nsb))
+    allocate(Drs(Nsb))
+    allocate(Offset(Nsb))
+#ifdef _MPI
+    allocate(mpiDls(Nsb))
+    allocate(mpiDrs(Nsb))
+    allocate(mpiDl(Nsb))
+    allocate(mpiDr(Nsb))
+    allocate(mpiOffset(Nsb))
+    mpiOffset=0
+#endif
+    !
+    Offset=0
+    do isb=1,Nsb
+       qn      = sb_sector%qn(index=isb)
+       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
+       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
+       Offset(isb)=sum(Dls(1:isb-1)*Drs(1:isb-1))
+       !
+#ifdef _MPI
+       ! MPI VARS SETUP 
+       mpiDls(isb) = Dls(isb)/MpiSize
+       mpiDrs(isb) = Drs(isb)/MpiSize
+       if(MpiRank < mod(Dls(isb),MpiSize))mpiDls(isb) = mpiDls(isb)+1
+       if(MpiRank < mod(Drs(isb),MpiSize))mpiDrs(isb) = mpiDrs(isb)+1
+       mpiDl(isb) = Drs(isb)*mpiDls(isb)
+       mpiDr(isb) = mpiDrs(isb)*Dls(isb)
+       !
+       mpiOffset(isb)=sum(Drs(1:isb-1)*mpiDls(1:isb-1))
+#endif
+    enddo
+    !
+  end subroutine sb_build_dims
+
+
+
+
+  subroutine sb_delete_dims
+    if(allocated(Dls))deallocate(Dls)
+    if(allocated(Drs))deallocate(Drs)
+    if(allocated(Offset))deallocate(Offset)   
+#ifdef _MPI
+    if(allocated(mpiDls))deallocate(mpiDls)
+    if(allocated(mpiDrs))deallocate(mpiDrs)
+    if(allocated(mpiDl))deallocate(mpiDl)
+    if(allocated(mpiDr))deallocate(mpiDr)
+    if(allocated(mpiOffset))deallocate(mpiOffset)
+    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
+    if(allocated(mpiColOffset))deallocate(mpiColOffset)
+#endif
+  end subroutine sb_delete_dims
+
+
 
 
 
@@ -472,7 +547,7 @@ contains
 
 
   !! Scatter V into the arrays Vloc on each thread: sum_threads(size(Vloc)) must be equal to size(v)
-  subroutine scatter_vector_MPI(MpiComm,v,vloc)
+  subroutine scatter_vector_MPI_v1(MpiComm,v,vloc)
     integer                          :: MpiComm
 #ifdef _CMPLX
     complex(8),dimension(:)          :: v    !size[N]
@@ -540,42 +615,38 @@ contains
     enddo
     !
     return
-  end subroutine scatter_vector_MPI
+  end subroutine scatter_vector_MPI_v1
 
-
-
-  subroutine scatter_basis_MPI(MpiComm,v,vloc)
+  subroutine scatter_vector_MPI_v2(MpiComm,v,vloc)
     integer                   :: MpiComm
 #ifdef _CMPLX
-    complex(8),dimension(:,:) :: v    !size[N,N]
+    complex(8),dimension(:,:) :: v    !size[N,Neigen]
     complex(8),dimension(:,:) :: vloc !size[Nloc,Neigen]
 #else
-    real(8),dimension(:,:)    :: v    !size[N,N]
+    real(8),dimension(:,:)    :: v    !size[N,Neigen]
     real(8),dimension(:,:)    :: vloc !size[Nloc,Neigen]
 #endif
     integer                   :: N,Nloc,Neigen,i
     !
 #ifdef _DEBUG
-    if(verbose>4)write(Logfile,"(A)")"DEBUG d_scatter_basis_MPI: scatter many v"
+    if(verbose>4)write(Logfile,"(A)")"DEBUG scatter_vector_MPI: scatter many v"
 #endif
     N      = size(v,1)
     Nloc   = size(vloc,1)
     Neigen = size(vloc,2)
-    if( size(v,2) < Neigen ) stop "error scatter_basis_MPI: size(v,2) < Neigen"
+    if( size(v,2) < Neigen ) stop "scatter_vector_MPI error: size(v,2) < Neigen"
     !
     do i=1,Neigen
-       call scatter_vector_MPI(MpiComm,v(:,i),vloc(:,i))
+       call scatter_vector_MPI_v1(MpiComm,v(:,i),vloc(:,i))
     end do
     !
     return
-  end subroutine scatter_basis_MPI
-
-
+  end subroutine scatter_vector_MPI_v2
 
 
 
   !! gather Vloc on each thread into the array V: sum_threads(size(Vloc)) must be equal to size(v)
-  subroutine gather_vector_MPI(MpiComm,vloc,v)
+  subroutine gather_vector_MPI_v1(MpiComm,vloc,v)
     integer                          :: MpiComm
 #ifdef _CMPLX
     complex(8),dimension(:)          :: vloc !size[Nloc]
@@ -643,7 +714,33 @@ contains
     enddo
     !
     return
-  end subroutine gather_vector_MPI
+  end subroutine gather_vector_MPI_v1
+
+  subroutine gather_vector_MPI_v2(MpiComm,vloc,v)
+    integer                   :: MpiComm
+#ifdef _CMPLX
+    complex(8),dimension(:,:) :: vloc !size[Nloc,Neigen]
+    complex(8),dimension(:,:) :: v    !size[N,Neigen]
+#else
+    real(8),dimension(:,:)    :: vloc !size[Nloc,Neigen]
+    real(8),dimension(:,:)    :: v    !size[N,Neigen]
+#endif
+    integer                   :: N,Nloc,Neigen,i
+    !
+#ifdef _DEBUG
+    if(verbose>4)write(Logfile,"(A)")"DEBUG gather_vector_MPI: gather many v"
+#endif
+    N      = size(v,1)
+    Nloc   = size(vloc,1)
+    Neigen = size(vloc,2)
+    if( size(v,2) < Neigen ) stop "gather_vector_MPI error: size(v,2) < Neigen"
+    !
+    do i=1,Neigen
+       call gather_vector_MPI_v1(MpiComm,vloc(:,i),v(:,i))
+    end do
+    !
+    return
+  end subroutine gather_vector_MPI_v2
 
 
 
@@ -713,6 +810,9 @@ contains
     !
     return
   end subroutine allgather_vector_MPI
+
+
+
 
 
 #endif

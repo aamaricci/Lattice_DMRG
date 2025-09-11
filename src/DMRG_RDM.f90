@@ -7,7 +7,7 @@ MODULE DMRG_RDM
   public :: sb_get_rdm
   public :: renormalize_block
 
-  
+
 contains
 
 
@@ -17,12 +17,14 @@ contains
   !##################################################################
   subroutine sb_get_rdm()
     integer                               :: isb
-    integer                               :: Nleft,Nright
+    integer                               :: Nleft,Nright,m_sb,Neig
     real(8),dimension(:),allocatable      :: sb_qn,qn
     integer,dimension(:),allocatable      :: sb_map
 #ifdef _CMPLX
+    complex(8),dimension(:,:),allocatable :: v_state
     complex(8),dimension(:,:),allocatable :: rho
 #else
+    real(8),dimension(:,:),allocatable    :: v_state
     real(8),dimension(:,:),allocatable    :: rho
 #endif
 <<<<<<< HEAD
@@ -35,10 +37,25 @@ contains
 #endif
     !
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 7e90d6a (Updating Cmake library construction)
 =======
 >>>>>>> d733a73 (Updated code.)
+=======
+    call sb_build_dims()
+    !
+#ifdef _MPI
+    if(MpiStatus)then
+       m_sb = size(sb_states)
+       Neig = size(gs_vector,2)
+       allocate(v_state(m_sb,Neig));v_state=zero
+       call gather_vector_MPI(MpiComm,gs_vector,v_state)
+    endif
+#endif
+    !
+    !
+>>>>>>> c8aed3d (Updated code.)
     call rho_left%free()
     call rho_right%free()
     !
@@ -51,16 +68,34 @@ contains
        if(Nleft*Nright==0)cycle
        !
        qn  = sb_qn
-       rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left') 
-       call rho_left%append(rho,qn=qn,map=left%sectors(1)%map(qn=qn))
+#ifdef _MPI
+       if(MpiStatus)then
+          rho = build_density_matrix(Nleft,Nright,v_state(:,1),sb_map,'left')
+       else
+          rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left')
+       endif
+#else
+       rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left')
+#endif
+       if(MpiMaster)call rho_left%append(rho,qn=qn,map=left%sectors(1)%map(qn=qn))
+       !
        !
        qn  = current_target_qn-sb_qn
+#ifdef _MPI
+       if(MpiStatus)then
+          rho = build_density_matrix(Nleft,Nright,v_state(:,1),sb_map,'right') 
+       else
+          rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
+       endif
+#else
        rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
-       call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
+#endif
+       if(MpiMaster)call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
        !
     enddo
     if(MpiMaster)call stop_timer()
     !
+    call sb_delete_dims()
     if(allocated(rho))deallocate(rho)
     if(allocated(sb_map))deallocate(sb_map)
     if(allocated(sb_qn))deallocate(sb_qn)
@@ -140,16 +175,17 @@ contains
   !   RENORMALIZE THE L/R BLOCKS USING RDM
   !##################################################################
   subroutine renormalize_block(label,mtr)
-    character(len=*),intent(in) :: label
-    integer                     :: mtr
-    integer                     :: m_left,m_right
-    integer                     :: m_s,m_e
-    integer                     :: j_
-    integer                     :: m_err(1)
-    real(8)                     :: e_,err
-    integer                     :: i,j,r,l,im,unit
-    type(tbasis)                :: left_basis,right_basis
-    type(sparse_matrix)         :: trRho_left,trRho_right
+    character(len=*),intent(in)      :: label
+    integer                          :: mtr
+    integer                          :: m_left,m_right
+    integer                          :: m_s,m_e
+    integer                          :: j_
+    integer                          :: m_err(1)
+    real(8)                          :: e_,err
+    real(8),dimension(:),allocatable :: qn
+    integer                          :: i,j,r,l,im,unit
+    type(tbasis)                     :: left_basis,right_basis
+    type(sparse_matrix)              :: trRho_left,trRho_right
     !
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -175,43 +211,61 @@ contains
        mtr = m_left
        if(left%length+right%length==2)return
        !
-       if(MpiMaster)call start_timer("Diag Rho "//to_lower(str(label)))
-       call rho_left%eigh(sort=.true.,reverse=.true.)
-       if(MpiMaster)call stop_timer()
-       !
-       if(allocated(rho_left_evals))deallocate(rho_left_evals)
-       allocate(rho_left_evals, source=rho_left%evals())
-       !
-       !Build Truncated Density Matrices:
-       if(MpiMaster)call start_timer("Renormalize "//to_lower(str(label)))
-       if(Mstates/=0)then
-          m_s   = min(Mstates,m_left,size(rho_left_evals))
-       elseif(Estates/=0d0)then
-          m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
-          m_s   = m_err(1)
-       else
-          stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
+       if(MpiMaster)then
+          call start_timer("Diag Rho "//to_lower(str(label)))
+          call rho_left%eigh(sort=.true.,reverse=.true.)
+          call stop_timer()
+          !
+          if(allocated(rho_left_evals))deallocate(rho_left_evals)
+          allocate(rho_left_evals, source=rho_left%evals())
+          !
+          !Build Truncated Density Matrices:
+          call start_timer("Renormalize "//to_lower(str(label)))
+          if(Mstates/=0)then
+             m_s   = min(Mstates,m_left,size(rho_left_evals))
+          elseif(Estates/=0d0)then
+             m_err = minloc(abs(1d0-cumulate(rho_left_evals)-Estates))
+             m_s   = m_err(1)
+          else
+             stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
+          endif
+          !
+          e_=rho_left_evals(m_s)
+          j_=m_s
+          do i=j_+1,size(rho_left_evals)
+             err = abs(e_-rho_left_evals(i))/e_
+             if(err<=deg_evals_threshold)m_s=m_s+1
+          enddo
+          !>truncation-rotation matrices:
+          truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
+          trRho_left             = rho_left%sparse(m_left,m_s)
+          !>Store all the rotation/truncation matrices:
+          call left%put_omat(str(left%length),trRho_left,'')
+          !>Renormalize Blocks:
+          call left%renormalize(as_matrix(trRho_left))
+          call stop_timer()
        endif
+#ifdef _MPI
+       if(MpiStatus)call Bcast_MPI(MpiComm,m_s)
+#endif
        !
-       e_=rho_left_evals(m_s)
-       j_=m_s
-       do i=j_+1,size(rho_left_evals)
-          err = abs(e_-rho_left_evals(i))/e_
-          if(err<=deg_evals_threshold)m_s=m_s+1
-       enddo
-       !>truncation-rotation matrices:
-       truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
-       trRho_left             = rho_left%sparse(m_left,m_s)
-       !>Store all the rotation/truncation matrices:
-       call left%put_omat(str(left%length),trRho_left,'')
-       !>Renormalize Blocks:
-       call left%renormalize(as_matrix(trRho_left))
        !>Prepare output and update basis state
        do im=1,m_s
+#ifdef _MPI
+          if(MpiStatus)then
+             if(allocated(qn))deallocate(qn)
+             allocate(qn, mold=current_target_qn)
+             if(MpiMaster)qn = rho_left%qn(m=im)
+             call Bcast_Mpi(MpiComm,qn)
+             call left_basis%append( qn=qn )
+          else
+             call left_basis%append( qn=rho_left%qn(m=im) )
+          endif
+#else
           call left_basis%append( qn=rho_left%qn(m=im) )
+#endif
        enddo
        call left%set_basis(basis=left_basis)
-       if(MpiMaster)call stop_timer()
        !
        Mtr = m_s
        !
@@ -260,24 +314,45 @@ contains
        mtr  = m_right
        if(left%length+right%length==2)return
        !
-       if(MpiMaster)call start_timer("Diag Rho "//to_lower(str(label)))
-       call rho_right%eigh(sort=.true.,reverse=.true.)
-       if(MpiMaster)call stop_timer()
-       !
-       if(allocated(rho_right_evals))deallocate(rho_right_evals)
-       allocate(rho_right_evals, source=rho_right%evals())
-       !
-       !Build Truncated Density Matrices:
-       if(MpiMaster)call start_timer("Renormalize "//to_lower(str(label)))
-       if(Mstates/=0)then
-          m_e   = min(Mstates,m_right,size(rho_right_evals))
-       elseif(Estates/=0d0)then
-          m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
-          m_e   = m_err(1)
-       else
-          stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
+       if(MpiMaster)then
+          call start_timer("Diag Rho "//to_lower(str(label)))
+          call rho_right%eigh(sort=.true.,reverse=.true.)
+          call stop_timer()
+          !
+          if(allocated(rho_right_evals))deallocate(rho_right_evals)
+          allocate(rho_right_evals, source=rho_right%evals())
+          !
+          !Build Truncated Density Matrices:
+          call start_timer("Renormalize "//to_lower(str(label)))
+          if(Mstates/=0)then
+             m_e   = min(Mstates,m_right,size(rho_right_evals))
+          elseif(Estates/=0d0)then
+             m_err = minloc(abs(1d0-cumulate(rho_right_evals)-Estates))
+             m_e   = m_err(1)
+          else
+             stop "Mdmrg=Edmrg=0 can not fix a threshold for the RDM"
+          endif
+          !
+          e_=rho_right_evals(m_e)
+          j_=m_e
+          do i=j_+1,size(rho_right_evals)
+             err = abs(e_-rho_right_evals(i))/e_
+             if(err<=deg_evals_threshold)m_e=m_e+1
+          enddo
+          !>truncation-rotation matrices:
+          truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
+          trRho_right            = rho_right%sparse(m_right,m_e)
+          !>Store all the rotation/truncation matrices:
+          call right%put_omat(str(right%length),trRho_right,'')
+          !>Renormalize Blocks:
+          call right%renormalize(as_matrix(trRho_right))
+          call stop_timer()
        endif
+#ifdef _MPI
+       if(MpiStatus)call Bcast_MPI(MpiComm,m_e)
+#endif
        !
+<<<<<<< HEAD
        e_=rho_right_evals(m_e)
        j_=m_e
        do i=j_+1,size(rho_right_evals)
@@ -309,12 +384,25 @@ contains
        call right%put_omat(str(right%length),trRho_right,'')
        !>Renormalize Blocks:
        call right%renormalize(as_matrix(trRho_right))
+=======
+>>>>>>> c8aed3d (Updated code.)
        !>Prepare output and update basis state
        do im=1,m_e
+#ifdef _MPI
+          if(MpiStatus)then
+             if(allocated(qn))deallocate(qn)
+             allocate(qn, mold=current_target_qn)
+             if(MpiMaster)qn = rho_right%qn(m=im)
+             call Bcast_Mpi(MpiComm,qn)
+             call right_basis%append( qn=qn )
+          else
+             call right_basis%append( qn=rho_right%qn(m=im) )
+          endif
+#else
           call right_basis%append( qn=rho_right%qn(m=im) )
+#endif
        enddo
        call right%set_basis(basis=right_basis)
-       if(MpiMaster)call stop_timer()
        !
        Mtr = m_e
        !

@@ -6,6 +6,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -64,4 +65,8 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "13aac1b1a1ee0eb8b38d9afa3db9c188325e5f51"	
 >>>>>>> 4cd869c (Started reducing memory use.)
+=======
+  !GIT VERSION
+  character(len=41),parameter :: git_code_version = "4cd869c32293dd118d9848d0136890f3d6726656"	
+>>>>>>> c8aed3d (Updated code.)
 END MODULE VERSION
