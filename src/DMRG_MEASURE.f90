@@ -60,6 +60,9 @@ contains
     string="";if(present(msg))string=msg
     !
     if(MpiMaster)call start_timer("Start measuring..."//str(string))
+#ifdef _MPI
+    if(check_MPI())call dmrg_set_MpiComm()
+#endif
     !
     call sb_build_dims()
     !
@@ -85,6 +88,9 @@ contains
     if(allocated(Li))deallocate(Li)
     if(allocated(Ri))deallocate(Ri)
     call sb_delete_dims()
+#ifdef _MPI
+    if(check_MPI())call dmrg_del_MpiComm()
+#endif
     measure_status=.false.
   end subroutine End_measure_DMRG
 
@@ -153,8 +159,8 @@ contains
 #endif
        if(MpiMaster)call eta(i,Np)
     enddo
-    call End_measure_dmrg()
     if(MpiMaster.AND.present(file))call Write_DMRG(trim(file),vals,pos_)
+    call End_measure_dmrg()
     !
     if(present(avOp))then
        if(allocated(avOp))deallocate(avOp)
@@ -205,8 +211,8 @@ contains
 #endif
        if(MpiMaster)call eta(i,Np)
     enddo
-    call End_measure_dmrg()
     if(MpiMaster.AND.present(file))call Write_DMRG(trim(file),vals,pos_)
+    call End_measure_dmrg()
     !
     if(present(avOp))then
        if(allocated(avOp))deallocate(avOp)
@@ -257,33 +263,58 @@ contains
     i=pos    ; if(pos>L)i=N+1-pos
     !
     !Build Operator on the chain at position pos:
-    if(MpiMaster)then
-       if(i==1)then
-          Oi = Op
-       else
-          select case(label)
-          case('l')
-             dB = shape(left%omatrices%op(index=i-1));D=dB(2)
-             Oi = Id(d).x.Op
-             if(set_basis_)then
-                U  = left%omatrices%op(index=i)
-                Oi = matmul(U%dgr(),matmul(Oi,U))
-                call U%free()
-             endif
-          case('r')
-             dB = shape(right%omatrices%op(index=i-1));D=dB(2)
-             Oi = Op.x.Id(d)
-             if(set_basis_)then
-                U  = right%omatrices%op(index=i)
-                Oi = matmul(U%dgr(),matmul(Oi,U))
-                call U%free()
-             endif
-          end select
-       endif
-    endif
+    ! if(MpiMaster)then
+    if(i==1)then
+       Oi = Op
+    else
+       select case(label)
+       case('l')
+          if(MpiMaster)dB = shape(left%omatrices%op(index=i-1));D=dB(2)
 #ifdef _MPI
-    if(MpiStatus)call Oi%bcast(MpiComm)
+          if(MpiStatus)call Bcast_MPI(MpiComm,D)
 #endif
+          Oi = Id(D).x.Op
+          if(set_basis_)then
+             if(MpiMaster)U  = left%omatrices%op(index=i)
+#ifdef _MPI
+             if(MpiStatus)then
+                call U%bcast(MpiComm)
+                Oi = U%dgr().pm.(Oi.pm.U)
+             else
+                Oi = matmul(U%dgr(),matmul(Oi,U))
+             endif
+#else
+             Oi = matmul(U%dgr(),matmul(Oi,U))
+#endif
+             call U%free()
+          endif
+       case('r')
+          if(MpiMaster)dB = shape(right%omatrices%op(index=i-1));D=dB(2)
+#ifdef _MPI
+          if(MpiStatus)call Bcast_MPI(MpiComm,D)
+#endif
+          Oi = Op.x.Id(d)
+          if(set_basis_)then
+             if(MpiMaster)U  = right%omatrices%op(index=i)
+#ifdef _MPI
+             if(MpiStatus)then
+                call U%bcast(MpiComm)
+                Oi = U%dgr().pm.(Oi.pm.U)
+             else
+                Oi = matmul(U%dgr(),matmul(Oi,U))
+             endif
+#else
+             Oi = matmul(U%dgr(),matmul(Oi,U))
+#endif
+             call U%free()
+          endif
+       end select
+    endif
+    ! endif
+! #ifdef _MPI
+!     if(MpiStatus)call Oi%bcast(MpiComm)
+    ! #endif
+    !
   end function Build_Op_dmrg
 
 
@@ -332,27 +363,50 @@ contains
     end select
     !
     !Evolve to SB basis
-    if(MpiMaster)then
-       Oi = Op
-       select case(label)
-       case ("l") 
-          do it=istart,iend
-             U  = left%omatrices%op(index=it)
+    Oi = Op
+    select case(label)
+    case ("l") 
+       do it=istart,iend
+          if(MpiMaster) U  = left%omatrices%op(index=it)
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+             Oi = Oi.x.Id(dot(it)%dim)
+          else
              Oi = matmul(matmul(U%dgr(),Oi),U)
              Oi = Oi.x.Id(dot(it)%dim)
-          enddo
-       case ("r") 
-          do it=istart,iend
-             U  = right%omatrices%op(index=it)
+          endif
+#else
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Oi.x.Id(dot(it)%dim)
+#endif
+       enddo
+    case ("r") 
+       do it=istart,iend
+          if(MpiMaster) U  = right%omatrices%op(index=it)
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+             Oi = Id(dot(it)%dim).x.Oi
+          else
              Oi = matmul(matmul(U%dgr(),Oi),U)
              Oi = Id(dot(it)%dim).x.Oi
-          enddo
-       end select
-       call U%free()
-    endif
-#ifdef _MPI
-    if(MpiStatus)call Oi%bcast(MpiComm)
+          endif
+#else
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+          Oi = Id(dot(it)%dim).x.Oi
 #endif
+       enddo
+    end select
+    call U%free()
+    ! endif
+    !
+! #ifdef _MPI
+!     if(MpiStatus)call Oi%bcast(MpiComm)
+! #endif
+    !
   end function Advance_Op_dmrg
 
 
