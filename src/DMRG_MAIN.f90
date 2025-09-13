@@ -593,7 +593,6 @@ contains
     current_target_QN = int(target_qn*current_L*Norb)
     !
     !In DMRG_SUPERBLOCK:
-    call sb_get_states_()
     call sb_get_states()
     m_sb = size(sb_states)
 <<<<<<< HEAD

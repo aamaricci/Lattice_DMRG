@@ -8,6 +8,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -77,4 +78,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "994235f8c56a66c5c75c439cb9cf4d69dc955cf6"	
 >>>>>>> d4c1240 (Porting sb_get_states to MPI.)
+=======
+  character(len=41),parameter :: git_code_version = "99e81b5490bf4911d8afca178803eafb22a8e4e9"	
+>>>>>>> 7ec24fe (Improved matmul for sparse matrix. Use O(size(A)+size(B)) merge-like algorithm)
 END MODULE VERSION
