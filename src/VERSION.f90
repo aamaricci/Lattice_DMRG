@@ -7,6 +7,7 @@ MODULE VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   !GIT VERSION
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -73,4 +74,7 @@ MODULE VERSION
 =======
   character(len=41),parameter :: git_code_version = "c8aed3d738a3abd10e08c8c3d54233083510562e"	
 >>>>>>> 994235f (Minor bug fix.)
+=======
+  character(len=41),parameter :: git_code_version = "994235f8c56a66c5c75c439cb9cf4d69dc955cf6"	
+>>>>>>> d4c1240 (Porting sb_get_states to MPI.)
 END MODULE VERSION

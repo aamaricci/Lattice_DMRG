@@ -1356,6 +1356,8 @@ contains
   end function sp_matmul_matrix
 
 
+
+  
   function sp_matmul_vector(H,v) result(Hv)
     class(sparse_matrix), intent(in)    :: H
 <<<<<<< HEAD
@@ -3549,7 +3551,7 @@ program testSPARSE_MATRICES
   if(master)print*,"Bcast a: 0 --> node"
   call sp_Bcast(comm,a)
   call Barrier_MPI(comm)
-  
+
   if(rank==1)then
      print*,"Node a"
      call a%show()
@@ -3579,7 +3581,7 @@ program testSPARSE_MATRICES
   if(master)print*,"Bcast a: 0 --> node"
   call a%bcast()
   call Barrier_MPI(comm)
-  
+
   if(rank==1)then
      print*,"Node a"
      call a%show()
@@ -3637,6 +3639,59 @@ contains
        call Bcast_MPI(comm,matrix%row(i)%vals)
     end do
   end subroutine sp_Bcast
+
+
+
+  function p_matmul_matrix(A,B,comm) result(AxB)
+    type(sparse_matrix), intent(in) :: A,B
+    integer,intent(in),optional     :: comm
+    integer                         :: comm_
+    type(sparse_matrix)             :: Bt,AxB
+    integer                         :: i,icol,j,jcol,k
+#ifdef _CMPLX
+    complex(8)                      :: value
+#else
+    real(8)                         :: value
+#endif
+    integer                         :: rank, ierr, i
+    integer                         :: Nrow, Ncol, Nsize
+    integer                         :: rank,ncpu
+    logical                         :: master
+    !
+    if(.not.check_MPI())stop "p_matmul error: check_MPI=F"
+    comm_ = MPI_COMM_WORLD;if(present(comm))comm_=comm
+    rank   = get_Rank_MPI(comm_)
+    ncpu   = get_Size_MPI(comm_)
+    master = get_Master_MPI(comm_)
+    !
+    if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
+    if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
+    !
+    !Assume A & B are known to all NODES
+    call AxB%free
+    call AxB%init(a%Nrow,b%Ncol)
+    Bt = B%t()
+    !
+    do i=1+rank,AxB%Nrow,ncpu    !==A.Nrow
+       !
+       do j=1,AxB%Ncol       !==B.Ncol=Bt.Nrow
+          value=zero
+          do icol=1,A%row(i)%size
+             k = A%row(i)%cols(icol) !we sum over k
+             do jcol=1,Bt%row(j)%size
+                if(k/=Bt%row(j)%cols(jcol))cycle !if there are no elements in B^T.row(j) at index k cycle
+                value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
+             enddo
+          enddo
+          if(value==zero)cycle
+          call append(AxB%row(i)%vals,value)
+          call append(AxB%row(i)%cols,j)
+          AxB%row(i)%Size = AxB%row(i)%Size + 1
+       enddo
+    enddo
+    call Bt%free
+  end function p_matmul_matrix
+
 #endif
 
 
