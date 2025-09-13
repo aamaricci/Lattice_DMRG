@@ -34,9 +34,12 @@ contains
   !-----------------------------------------------------------------!
   subroutine sb_get_states()
     integer                          :: ql,iright
-    integer                          :: ir,il,istate,unit,k,Nl,Nr
+    integer                          :: ir,il,istate,unit,k,Nsl
     real(8),dimension(:),allocatable :: left_qn,right_qn
     integer,dimension(:),allocatable :: left_map,right_map
+    integer,dimension(:),allocatable :: Astates
+    integer,dimension(:),allocatable :: Nl,Nr,Offset,Q,R,Qoffset
+    integer                          :: istart,iend,ierr
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
@@ -51,6 +54,10 @@ contains
 #ifdef _DEBUG
     if(MpiMaster.AND.verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
 #endif
+
+    Nsl = size(left%sectors(1))
+    allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl))!,Q(Nsl),R(Nsl),Qoffset(Nsl))
+    !
     do ql=1,size(left%sectors(1))
        left_qn   = left%sectors(1)%qn(index=ql)
        right_qn  = current_target_qn - left_qn
@@ -67,18 +74,25 @@ contains
 #endif
        ! do i=1,size(left_map)
        !    do j=1,size(right_map)
-       Nl = size(left_map)
-       Nr = size(right_map)
-       do k=1,Nl*Nr
-          ir = mod(k,Nr);if(ir==0)ir=Nr
-          il = (k-1)/Nr+1
+       Nl(ql) = size(left_map)
+       Nr(ql) = size(right_map)
+       Istart = 1
+       Iend   = Nr(ql)*Nl(ql)
+       Offset(ql)=sum(Nl(1:ql-1)*Nr(1:ql-1))
+       if(allocated(Astates))deallocate(Astates)
+       allocate(Astates(Nr(ql)*Nl(ql)));Astates=0
+       do k=Istart,Iend
+          ir = mod(k,Nr(ql));if(ir==0)ir=Nr(ql)
+          il = (k-1)/Nr(ql)+1
           istate=right_map(ir) + (left_map(il)-1)*right%Dim
           call append(sb_states, istate)
-          call sb_sector%append(qn=left_qn,istate=size(sb_states))
+          Astates(k) = k+Offset(ql) !==size(sb_states)
+          !call sb_sector%append(qn=left_qn,istate=size(sb_states))
 #ifdef _DEBUG
-          if(MpiMaster.AND.verbose>5)write(unit,*)left_map(il),right_map(ir),istate,size(sb_states)
+          if(MpiMaster.AND.verbose>5)write(unit,*)left_map(il),right_map(ir),istate,size(sb_states),k+Offset(ql)
 #endif
        enddo
+       call sb_sector%appends(qn=left_qn,istates=Astates)
     enddo
     ! enddo
 #ifdef _DEBUG
@@ -143,22 +157,24 @@ contains
 
        Nl(ql) = size(left_map)
        Nr(ql) = size(right_map)
+       if(allocated(Astates))deallocate(Astates)
+       allocate(Astates(Nr(ql)*Nl(ql)));Astates=0
+       !
        Offset(ql)=sum(Nl(1:ql-1)*Nr(1:ql-1))
        Istart = 1
        Iend   = Nr(ql)*Nl(ql)
+#ifdef _MPI
+       if(MpiStatus)then
+          Q(ql) = (Nr(ql)*Nl(ql))/MpiSize
+          R(ql) = 0
+          if(MpiRank == MpiSize-1)R(ql)=mod(Nr(ql)*Nl(ql),MpiSize)
+          Qoffset(ql) = sum(Q(1:ql-1)+R(1:ql-1))
+          Istart = 1+MpiRank*Q(ql)
+          Iend   = (MpiRank+1)*Q(ql) + R(ql)
+       endif
+#endif
        !
-       Q(ql) = (Nr(ql)*Nl(ql))/MpiSize
-       R(ql) = 0
-       if(MpiRank == MpiSize-1)R(ql)=mod(Nr(ql)*Nl(ql),MpiSize)
-       Qoffset(ql) = sum(Q(1:ql-1)+R(1:ql-1))
        !
-       Istart = 1+MpiRank*Q(ql)
-       Iend   = (MpiRank+1)*Q(ql) + R(ql)
-
-
-       if(allocated(Astates))deallocate(Astates)
-       allocate(Astates(Nr(ql)*Nl(ql)));Astates=0
-       
        do k=Istart,Iend
           ir = mod(k,Nr(ql));if(ir==0)ir=Nr(ql)
           il = (k-1)/Nr(ql)+1
@@ -170,13 +186,14 @@ contains
              ! call sb_sector_tmp%append(qn=left_qn,istate=k+Offset(ql))
           else
              call append(sb_states, istate)
-             call sb_sector%append(qn=left_qn,istate=size(sb_states))
+             Astates(k) = size(sb_states)
+             ! call sb_sector%append(qn=left_qn,istate=size(sb_states))
           endif
           ! write(100+MpiRank,*)k,ql,istart,iend,left_map(il),right_map(ir),istate,k+Offset(ql)
-          write(100+MpiRank,*)k,ql,Nl(ql)*Nr(ql),istate,k+Offset(ql)
+          ! write(100+MpiRank,*)k,ql,Nl(ql)*Nr(ql),istate,k+Offset(ql)
 #endif
        enddo
-       
+
 #ifdef _MPI
        if(MpiStatus)then
           call MPI_Allreduce(MPI_IN_PLACE, Astates, size(Astates), MPI_INTEGER, MPI_SUM, MpiComm, ierr)
