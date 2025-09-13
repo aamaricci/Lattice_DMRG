@@ -36,11 +36,20 @@ MODULE MATRIX_SPARSE
 
 
 #ifdef _CMPLX
-  complex(8) :: zero=cmplx(0d0,0d0)
+  complex(8)         :: zero=cmplx(0d0,0d0)
 #else
-  real(8)    :: zero=0d0
+  real(8)            :: zero=0d0
 #endif
-  integer    :: i,j
+
+#ifdef _MPI
+#ifdef _CMPLX  
+  integer, parameter :: MPI_VAL_TYPE = MPI_DOUBLE_COMPLEX
+#else
+  integer, parameter :: MPI_VAL_TYPE = MPI_DOUBLE_PRECISION
+#endif
+#endif
+
+  integer            :: i,j
 
 
 
@@ -108,6 +117,7 @@ MODULE MATRIX_SPARSE
      procedure,pass :: dot        => sp_matmul_vector
 #ifdef _MPI
      procedure,pass :: bcast      => sp_bcast_matrix
+     procedure,pass :: pdot       => sp_p_matmul_matrix
 #endif
   end type sparse_matrix
 
@@ -228,7 +238,13 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_matmul_matrix
   end interface operator(.m.)
 
-
+  !Parallel Matrix-Matric product
+#ifdef _MPI
+  interface operator(.pm.)
+     module procedure :: sp_p_matmul_matrix
+  end interface operator(.pm.)
+#endif
+  
   !KRONECKER PRODUCT
   interface operator(.x.)
      module procedure :: sp_kron_matrix
@@ -294,6 +310,7 @@ MODULE MATRIX_SPARSE
   public :: operator(*)
   public :: operator(/)
   public :: operator(.m.)
+  public :: operator(.pm.)
   public :: operator(.x.)
   public :: sp_kron
   public :: shape
@@ -310,10 +327,6 @@ MODULE MATRIX_SPARSE
 =======
 
 >>>>>>> 7e90d6a (Updating Cmake library construction)
-
-
-
-  public :: sp_p_matmul_matrix
 
 
 contains       
@@ -2637,9 +2650,8 @@ contains
 
 
 #ifdef _MPI
-  function sp_p_matmul_matrix(A,B,comm) result(AxB)
+  function sp_p_matmul_matrix(A,B) result(AxB)
     class(sparse_matrix), intent(in)   :: A,B
-    integer,intent(in),optional        :: comm
     type(sparse_matrix)                :: Bt,AxB,AxB_local
     integer                            :: i,icol,j,jcol,k, ierr
     integer                            :: comm_
@@ -2649,45 +2661,27 @@ contains
     integer                            :: p_rank, Nsize
 #ifdef _CMPLX
     complex(8)                         :: value
-    integer, parameter                 :: MPI_VAL_TYPE = MPI_DOUBLE_COMPLEX
 #else
     real(8)                            :: value
-    integer, parameter                 :: MPI_VAL_TYPE = MPI_DOUBLE_PRECISION
 #endif
     integer, dimension(:), allocatable :: indx_A, indx_B
     integer                            :: count
     !
-    ! 1. MPI Initialization
-    ! ---------------------
     if(.not.check_MPI())stop "sp_p_matmul_matrix error: check_MPI=F"
-    comm_ = MPI_COMM_WORLD;if(present(comm))comm_=comm
+    comm_ = MPI_COMM_WORLD!;if(present(comm))comm_=comm
     rank = get_Rank_MPI(comm_)
     ncpu = get_Size_MPI(comm_)
-
+    !
     if(.not.A%status)stop "sp_p_matmul_matrix: A.status=F"
     if(.not.B%status)stop "sp_p_matmul_matrix: B.status=F"
-
-    ! All nodes compute the transpose of B
+    !
     Bt = B%t()
-
-    ! 2. Work Distribution
-    ! --------------------
-    ! Each process calculates its range of rows to compute.
-    Nrows_per_cpu = A%Nrow/ncpu
-    remainder = mod(A%Nrow, ncpu)
-    if (rank < remainder) then
-       i_start = rank * (Nrows_per_cpu + 1) + 1
-       i_end = i_start + Nrows_per_cpu
-    else
-       i_start = rank * Nrows_per_cpu + remainder + 1
-       i_end = i_start + Nrows_per_cpu - 1
-    endif
-
-    ! 3. Local Computation
-    ! --------------------
+    !
+    ! Local Computation
     ! Each process computes its assigned rows and stores them in a local matrix.
     call AxB_local%init(A%Nrow, B%Ncol)
-    do i=i_start,i_end
+    do i=1+rank, A%Nrow, ncpu
+       !
        do j=1,Bt%Nrow
           if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
           call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
@@ -2702,63 +2696,49 @@ contains
           call append(AxB_local%row(i)%cols,j)
           AxB_local%row(i)%Size = AxB_local%row(i)%Size + 1
        enddo
+       !
     enddo
     call Bt%free
-
-    ! 4. All-Gather Results
-    ! ---------------------
-    ! The partial results from AxB_local are now gathered onto all processes.
+    !
+    ! All-Gather Results
+    ! The AxB_local are now gathered onto all processes.
     ! We do this by iterating through each process and having it broadcast its
     ! computed rows to everyone else.
     call AxB%init(A%Nrow, B%Ncol)
-
+    !
     do p_rank = 0, ncpu - 1
-       ! Determine the row range for the broadcasting process 'p_rank'
-
-       if (p_rank < remainder) then
-          p_i_start = p_rank * (Nrows_per_cpu + 1) + 1
-          p_i_end = p_i_start + Nrows_per_cpu
-       else
-          p_i_start = p_rank * Nrows_per_cpu + remainder + 1
-          p_i_end = p_i_start + Nrows_per_cpu - 1
-       endif
-
        ! Broadcast each computed row from process 'p_rank' to all others.
-       do i = p_i_start, p_i_end
+       do i = 1+p_rank,A%Nrow,ncpu
           if (rank == p_rank) then
              Nsize = AxB_local%row(i)%size
           endif
           call MPI_Bcast(Nsize, 1, MPI_INTEGER, p_rank, comm_, ierr)
-
+          !
           ! All processes now know the size of row 'i'.
           AxB%row(i)%size = Nsize
           if(allocated(AxB%row(i)%cols)) deallocate(AxB%row(i)%cols)
           if(allocated(AxB%row(i)%vals)) deallocate(AxB%row(i)%vals)
           if (Nsize > 0) then
-             ! Allocate memory on all processes for the incoming row data.
              if (rank /= p_rank) then
                 allocate(AxB%row(i)%cols(Nsize))
                 allocate(AxB%row(i)%vals(Nsize))
              else
-                ! On the source process, copy local data to the final matrix.
                 allocate(AxB%row(i)%cols(Nsize))
                 allocate(AxB%row(i)%vals(Nsize))
                 AxB%row(i)%cols = AxB_local%row(i)%cols
                 AxB%row(i)%vals = AxB_local%row(i)%vals
              endif
-             ! Broadcast the column indices and values for the current row.
              call MPI_Bcast(AxB%row(i)%cols, Nsize, MPI_INTEGER, p_rank, comm_, ierr)
              call MPI_Bcast(AxB%row(i)%vals, Nsize, MPI_VAL_TYPE, p_rank, comm_, ierr)
           else
-             ! If the row is empty, just allocate zero-sized arrays.
              allocate(AxB%row(i)%cols(0))
              allocate(AxB%row(i)%vals(0))
           endif
        enddo
     enddo
-
+    !
     call AxB_local%free()
-
+    !
   contains
     !
     logical function check_intersection(A, B)
@@ -3692,7 +3672,7 @@ program testSPARSE_MATRICES
 
      print*,""
      print*,"c=a.pm.p"
-     c = sp_p_matmul_matrix(a,b)
+     c = a.pm.b
      call c%show()
      print*,c%nnz()
      print*,""
