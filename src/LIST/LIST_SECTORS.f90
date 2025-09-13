@@ -37,6 +37,7 @@ MODULE LIST_SECTORS
      procedure,pass :: put    => put_sectors_list      !put sectors_list qn array
      procedure,pass :: load   => load_sectors_list     !load=sequential put=constructor
      procedure,pass :: append => append_sectors_list   !append map state given a QN
+     procedure,pass :: appends=> appends_sectors_list   !append map state given a QN
      procedure,pass :: get    => get_sectors_list      !get qn and map for a given index
      procedure,pass :: map    => get_map_sectors_list  !get map for a given qn/index
      procedure,pass :: qn     => get_qn_sectors_list   !return qn for a given index
@@ -321,6 +322,50 @@ contains
   end subroutine append_sectors_list
 
 
+  pure subroutine appends_sectors_list(self,qn,istates)
+    class(sectors_list),intent(inout) :: self
+    integer,dimension(:),intent(in)   :: istates
+    real(8),dimension(:),intent(in)   :: qn
+    type(qtype),pointer               :: p,c
+    logical                           :: iadd
+    integer :: i
+    iadd = .false.
+    if(.not.associated(self%root))allocate(self%root)
+    p => self%root
+    c => p%next
+    do                            !traverse the list until QN is found
+       if(.not.associated(c))exit
+       if (all(c%qn == qn)) then
+          iadd = .true.
+          exit
+       endif
+       p => c
+       c => c%next
+    end do
+    !
+    if(iadd)then                !QN exists: create a new map
+       do i=1,size(istates)
+          call append(c%map,istates(i))
+       enddo
+       ! call sort_quicksort(c%map)
+    else                        !QN does not exist: create a new element
+       allocate(p%next)
+       p%next%qn    = qn
+       p%next%index = p%index+1
+       do i=1,size(istates)
+          call append(p%next%map,istates(i))
+       enddo
+       ! call sort_quicksort(p%next%map)
+       if(.not.associated(c))then !end of the list special case (c=>c%next)
+          p%next%next  => null()
+       else
+          p%next%next  => c      !the %next of the new node come to current
+       end if
+       self%size = self%size+1
+    endif
+    p=>null()
+    c=>null()
+  end subroutine appends_sectors_list
 
 
 

@@ -260,17 +260,13 @@ contains
 #ifdef _MPI
        if(MpiStatus)then
           call MPI_Allreduce(MPI_IN_PLACE, Astates, size(Astates), MPI_INTEGER, MPI_SUM, MpiComm, ierr)
-          do k=1,size(Astates)
-             call sb_sector%append(qn=left_qn,istate=Astates(k))
-          enddo
+          call sb_sector%appends(qn=left_qn,istates=Astates)
        endif
 #endif
     enddo
     !
-
-
     call sb_sector%show(file="new_sb_sector_n"//str(MpiRank)// ".dat")
-    
+    !
     ! call sb_sector_tmp%show()
     if(MpiMaster)call stop_timer()
 
