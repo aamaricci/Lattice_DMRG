@@ -1,6 +1,10 @@
 MODULE MATRIX_SPARSE  
   USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
   USE AUX_FUNCS, only: show_fmt,append
+#ifdef _MPI
+  USE SF_MPI
+  USE MPI
+#endif
   implicit none
   private
 
@@ -173,6 +177,11 @@ MODULE MATRIX_SPARSE
   public :: matmul
   public :: sp_eye
   public :: sp_filter
+
+
+
+
+  public :: sp_p_matmul_matrix
 
 
 contains       
@@ -670,32 +679,34 @@ contains
 
 
   function sp_matmul_matrix(A,B) result(AxB)
-    type(sparse_matrix), intent(in) :: A,B
-    type(sparse_matrix)             :: Bt,AxB
-    integer                         :: i,icol,j,jcol,k
+    type(sparse_matrix), intent(in)    :: A,B
+    type(sparse_matrix)                :: Bt,AxB
+    integer                            :: i,icol,j,jcol,k
 #ifdef _CMPLX
-    complex(8)                      :: value
+    complex(8)                         :: value
 #else
-    real(8)                         :: value
+    real(8)                            :: value
 #endif
+    integer, dimension(:), allocatable :: indx_A, indx_B
+    integer                            :: count
     !
     if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
     if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
     !
+    !Assume A & B are known to all NODES
     call AxB%free
     call AxB%init(a%Nrow,b%Ncol)
     Bt = B%t()
     !
     do i=1,AxB%Nrow    !==A.Nrow
-       !
-       do j=1,AxB%Ncol       !==B.Ncol=Bt.Nrow
-          value=zero
-          do icol=1,A%row(i)%size
-             k = A%row(i)%cols(icol) !we sum over k
-             do jcol=1,Bt%row(j)%size
-                if(k/=Bt%row(j)%cols(jcol))cycle !if there are no elements in B^T.row(j) at index k cycle
-                value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
-             enddo
+       do j=1,AxB%Ncol !==Bt.Nrow=B.Ncol
+          if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
+          call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
+          value = zero
+          do k=1,count
+             icol = indx_A(k)
+             jcol = indx_B(k)
+             value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
           enddo
           if(value==zero)cycle
           call append(AxB%row(i)%vals,value)
@@ -704,11 +715,52 @@ contains
        enddo
     enddo
     call Bt%free
+    !
+  contains
+    !
+    logical function check_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: i !local copy, no interference
+      do i=1,size(A)
+         check_intersection=any(B==A(i))
+         if(check_intersection)exit
+      enddo
+    end function check_intersection
+    !
+    !Order O(size(A)+size(B)) << O(size(A)*size(B))
+    subroutine get_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: max_intersections
+      integer                           :: i, j !local copies no interference
+      !
+      max_intersections = min(size(A), size(B))
+      if (allocated(indx_A)) deallocate(indx_A)
+      if (allocated(indx_B)) deallocate(indx_B)
+      allocate(indx_A(max_intersections))
+      allocate(indx_B(max_intersections))
+      !
+      i = 1
+      j = 1
+      count = 0
+      do while (i <= size(A) .and. j <= size(B))
+         if (A(i) < B(j)) then
+            i = i + 1
+         else if (A(i) > B(j)) then
+            j = j + 1
+         else ! A(i) == B(j)
+            count = count + 1
+            indx_A(count) = i
+            indx_B(count) = j
+            i = i + 1
+            j = j + 1
+         end if
+      end do
+    end subroutine get_intersection
+    !
   end function sp_matmul_matrix
 
 
 
-  
   function sp_matmul_vector(H,v) result(Hv)
     class(sparse_matrix), intent(in)    :: H
     integer                             :: Nloc
@@ -1161,8 +1213,6 @@ contains
 
 #ifdef _MPI
   subroutine sp_bcast_matrix(self,comm)
-    USE SF_MPI
-    USE MPI
     class(sparse_matrix), intent(inout) :: self
     integer,intent(in),optional         :: comm
     integer                             :: comm_
@@ -1297,6 +1347,180 @@ contains
     end function compare
   end subroutine sort_array
 
+
+
+
+
+
+
+
+
+
+
+
+#ifdef _MPI
+  function sp_p_matmul_matrix(A,B,comm) result(AxB)
+    class(sparse_matrix), intent(in)   :: A,B
+    integer,intent(in),optional        :: comm
+    type(sparse_matrix)                :: Bt,AxB,AxB_local
+    integer                            :: i,icol,j,jcol,k, ierr
+    integer                            :: comm_
+    integer                            :: rank, ncpu
+    integer                            :: i_start, i_end, Nrows_per_cpu, remainder
+    integer                            :: p_i_start, p_i_end
+    integer                            :: p_rank, Nsize
+#ifdef _CMPLX
+    complex(8)                         :: value
+    integer, parameter                 :: MPI_VAL_TYPE = MPI_DOUBLE_COMPLEX
+#else
+    real(8)                            :: value
+    integer, parameter                 :: MPI_VAL_TYPE = MPI_DOUBLE_PRECISION
+#endif
+    integer, dimension(:), allocatable :: indx_A, indx_B
+    integer                            :: count
+    !
+    ! 1. MPI Initialization
+    ! ---------------------
+    if(.not.check_MPI())stop "sp_p_matmul_matrix error: check_MPI=F"
+    comm_ = MPI_COMM_WORLD;if(present(comm))comm_=comm
+    rank = get_Rank_MPI(comm_)
+    ncpu = get_Size_MPI(comm_)
+
+    if(.not.A%status)stop "sp_p_matmul_matrix: A.status=F"
+    if(.not.B%status)stop "sp_p_matmul_matrix: B.status=F"
+
+    ! All nodes compute the transpose of B
+    Bt = B%t()
+
+    ! 2. Work Distribution
+    ! --------------------
+    ! Each process calculates its range of rows to compute.
+    Nrows_per_cpu = A%Nrow/ncpu
+    remainder = mod(A%Nrow, ncpu)
+    if (rank < remainder) then
+       i_start = rank * (Nrows_per_cpu + 1) + 1
+       i_end = i_start + Nrows_per_cpu
+    else
+       i_start = rank * Nrows_per_cpu + remainder + 1
+       i_end = i_start + Nrows_per_cpu - 1
+    endif
+
+    ! 3. Local Computation
+    ! --------------------
+    ! Each process computes its assigned rows and stores them in a local matrix.
+    call AxB_local%init(A%Nrow, B%Ncol)
+    do i=i_start,i_end
+       do j=1,Bt%Nrow
+          if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
+          call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
+          value = zero
+          do k=1,count
+             icol = indx_A(k)
+             jcol = indx_B(k)
+             value = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
+          enddo
+          if(value==zero)cycle
+          call append(AxB_local%row(i)%vals,value)
+          call append(AxB_local%row(i)%cols,j)
+          AxB_local%row(i)%Size = AxB_local%row(i)%Size + 1
+       enddo
+    enddo
+    call Bt%free
+
+    ! 4. All-Gather Results
+    ! ---------------------
+    ! The partial results from AxB_local are now gathered onto all processes.
+    ! We do this by iterating through each process and having it broadcast its
+    ! computed rows to everyone else.
+    call AxB%init(A%Nrow, B%Ncol)
+
+    do p_rank = 0, ncpu - 1
+       ! Determine the row range for the broadcasting process 'p_rank'
+
+       if (p_rank < remainder) then
+          p_i_start = p_rank * (Nrows_per_cpu + 1) + 1
+          p_i_end = p_i_start + Nrows_per_cpu
+       else
+          p_i_start = p_rank * Nrows_per_cpu + remainder + 1
+          p_i_end = p_i_start + Nrows_per_cpu - 1
+       endif
+
+       ! Broadcast each computed row from process 'p_rank' to all others.
+       do i = p_i_start, p_i_end
+          if (rank == p_rank) then
+             Nsize = AxB_local%row(i)%size
+          endif
+          call MPI_Bcast(Nsize, 1, MPI_INTEGER, p_rank, comm_, ierr)
+
+          ! All processes now know the size of row 'i'.
+          AxB%row(i)%size = Nsize
+          if(allocated(AxB%row(i)%cols)) deallocate(AxB%row(i)%cols)
+          if(allocated(AxB%row(i)%vals)) deallocate(AxB%row(i)%vals)
+          if (Nsize > 0) then
+             ! Allocate memory on all processes for the incoming row data.
+             if (rank /= p_rank) then
+                allocate(AxB%row(i)%cols(Nsize))
+                allocate(AxB%row(i)%vals(Nsize))
+             else
+                ! On the source process, copy local data to the final matrix.
+                allocate(AxB%row(i)%cols(Nsize))
+                allocate(AxB%row(i)%vals(Nsize))
+                AxB%row(i)%cols = AxB_local%row(i)%cols
+                AxB%row(i)%vals = AxB_local%row(i)%vals
+             endif
+             ! Broadcast the column indices and values for the current row.
+             call MPI_Bcast(AxB%row(i)%cols, Nsize, MPI_INTEGER, p_rank, comm_, ierr)
+             call MPI_Bcast(AxB%row(i)%vals, Nsize, MPI_VAL_TYPE, p_rank, comm_, ierr)
+          else
+             ! If the row is empty, just allocate zero-sized arrays.
+             allocate(AxB%row(i)%cols(0))
+             allocate(AxB%row(i)%vals(0))
+          endif
+       enddo
+    enddo
+
+    call AxB_local%free()
+
+  contains
+    !
+    logical function check_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: i
+      do i=1,size(A)
+         check_intersection=any(B==A(i))
+         if(check_intersection)exit
+      enddo
+    end function check_intersection
+    !
+    subroutine get_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: max_intersections
+      integer                           :: i, j
+      max_intersections = min(size(A), size(B))
+      if (allocated(indx_A)) deallocate(indx_A)
+      if (allocated(indx_B)) deallocate(indx_B)
+      allocate(indx_A(max_intersections))
+      allocate(indx_B(max_intersections))
+      i = 1
+      j = 1
+      count = 0
+      do while (i <= size(A) .and. j <= size(B))
+         if (A(i) < B(j)) then
+            i = i + 1
+         else if (A(i) > B(j)) then
+            j = j + 1
+         else ! A(i) == B(j)
+            count = count + 1
+            indx_A(count) = i
+            indx_B(count) = j
+            i = i + 1
+            j = j + 1
+         end if
+      end do
+    end subroutine get_intersection
+    !
+  end function sp_p_matmul_matrix
+#endif
 
 
 
@@ -1733,12 +1957,21 @@ program testSPARSE_MATRICES
      enddo
 
      print*,""
+     print*,"c=a.m.b"
      c = a.m.b
+     call c%show()
+     print*,c%nnz()
+
+     print*,""
+     print*,"c=a.pm.p"
+     c = sp_p_matmul_matrix(a,b)
      call c%show()
      print*,c%nnz()
      print*,""
      print*,""
 
+
+     stop 
      print*,"TEST APPEND TO SPARSE VECTOR"
      a = sparse(Gamma03)
 
@@ -1761,6 +1994,10 @@ program testSPARSE_MATRICES
 
 
   call Barrier_MPI(Comm)
+
+
+
+
 
 
 
@@ -1923,60 +2160,20 @@ contains
        call Bcast_MPI(comm,matrix%row(i)%vals)
     end do
   end subroutine sp_Bcast
-
-
-
-  function p_matmul_matrix(A,B,comm) result(AxB)
-    type(sparse_matrix), intent(in) :: A,B
-    integer,intent(in),optional     :: comm
-    integer                         :: comm_
-    type(sparse_matrix)             :: Bt,AxB
-    integer                         :: i,icol,j,jcol,k
-#ifdef _CMPLX
-    complex(8)                      :: value
-#else
-    real(8)                         :: value
 #endif
-    integer                         :: rank, ierr, i
-    integer                         :: Nrow, Ncol, Nsize
-    integer                         :: rank,ncpu
-    logical                         :: master
-    !
-    if(.not.check_MPI())stop "p_matmul error: check_MPI=F"
-    comm_ = MPI_COMM_WORLD;if(present(comm))comm_=comm
-    rank   = get_Rank_MPI(comm_)
-    ncpu   = get_Size_MPI(comm_)
-    master = get_Master_MPI(comm_)
-    !
-    if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
-    if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
-    !
-    !Assume A & B are known to all NODES
-    call AxB%free
-    call AxB%init(a%Nrow,b%Ncol)
-    Bt = B%t()
-    !
-    do i=1+rank,AxB%Nrow,ncpu    !==A.Nrow
-       !
-       do j=1,AxB%Ncol       !==B.Ncol=Bt.Nrow
-          value=zero
-          do icol=1,A%row(i)%size
-             k = A%row(i)%cols(icol) !we sum over k
-             do jcol=1,Bt%row(j)%size
-                if(k/=Bt%row(j)%cols(jcol))cycle !if there are no elements in B^T.row(j) at index k cycle
-                value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
-             enddo
-          enddo
-          if(value==zero)cycle
-          call append(AxB%row(i)%vals,value)
-          call append(AxB%row(i)%cols,j)
-          AxB%row(i)%Size = AxB%row(i)%Size + 1
-       enddo
-    enddo
-    call Bt%free
-  end function p_matmul_matrix
 
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
