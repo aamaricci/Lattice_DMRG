@@ -2,6 +2,7 @@ MODULE DMRG_SUPERBLOCK
   USE DMRG_GLOBAL
   USE DMRG_CONNECT
   USE DMRG_SUPERBLOCK_SETUP
+  USE MPI
   implicit none
   private
 
@@ -18,7 +19,6 @@ MODULE DMRG_SUPERBLOCK
   integer                          :: iorb,jorb
   integer                          :: io,jo
   integer,dimension(:),allocatable :: sb_states_tmp
-  type(sectors_list)               :: sb_sector_tmp
 
 
 contains
@@ -172,6 +172,8 @@ contains
        enddo
     endif
     if(MpiMaster)call stop_timer()
+
+    if(MpiMaster)call sb_sector%show(file="std_sb_sector.dat")
     !
   end subroutine sb_get_states
 
@@ -188,8 +190,9 @@ contains
     integer                          :: ir,il,istate,unit,k,Nsl
     real(8),dimension(:),allocatable :: left_qn,right_qn
     integer,dimension(:),allocatable :: left_map,right_map
+    integer,dimension(:),allocatable :: Astates
     integer,dimension(:),allocatable :: Nl,Nr,Offset,Q,R,Qoffset
-    integer :: istart,iend
+    integer                          :: istart,iend,ierr
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states 2"
@@ -202,7 +205,6 @@ contains
     call sb_sector%free()
 #ifdef _MPI
     if(allocated(sb_states_tmp))deallocate(sb_states_tmp)
-    call sb_sector_tmp%free()
 #endif
     !
     Nsl = size(left%sectors(1))
@@ -232,6 +234,10 @@ contains
        !
        Istart = 1+MpiRank*Q(ql)
        Iend   = (MpiRank+1)*Q(ql) + R(ql)
+
+
+       if(allocated(Astates))deallocate(Astates)
+       allocate(Astates(Nr(ql)*Nl(ql)));Astates=0
        
        do k=Istart,Iend
           ir = mod(k,Nr(ql));if(ir==0)ir=Nr(ql)
@@ -240,16 +246,31 @@ contains
 #ifdef _MPI
           if(MpiStatus)then
              call append(sb_states_tmp, istate)
-             call sb_sector_tmp%append(qn=left_qn,istate=k+Offset(ql))
+             Astates(k) = k+Offset(ql)
+             ! call sb_sector_tmp%append(qn=left_qn,istate=k+Offset(ql))
           else
              call append(sb_states, istate)
              call sb_sector%append(qn=left_qn,istate=size(sb_states))
           endif
-          write(100+MpiRank,*)k,ql,istart,iend,left_map(il),right_map(ir),istate,k+Offset(ql)
+          ! write(100+MpiRank,*)k,ql,istart,iend,left_map(il),right_map(ir),istate,k+Offset(ql)
+          write(100+MpiRank,*)k,ql,Nl(ql)*Nr(ql),istate,k+Offset(ql)
 #endif
        enddo
+       
+#ifdef _MPI
+       if(MpiStatus)then
+          call MPI_Allreduce(MPI_IN_PLACE, Astates, size(Astates), MPI_INTEGER, MPI_SUM, MpiComm, ierr)
+          do k=1,size(Astates)
+             call sb_sector%append(qn=left_qn,istate=Astates(k))
+          enddo
+       endif
+#endif
     enddo
     !
+
+
+    call sb_sector%show(file="new_sb_sector_n"//str(MpiRank)// ".dat")
+    
     ! call sb_sector_tmp%show()
     if(MpiMaster)call stop_timer()
 
@@ -263,14 +284,11 @@ contains
              write(201,*)k,sb_states(k)
           enddo
        endif
-
     endif
 #endif
     !
-
   contains
-
-
+    !
     subroutine allgather_sb_states()
       integer                          :: i,Ntot,ql
       integer                          :: itmp_start,itmp_end,i_start,i_end
@@ -280,8 +298,8 @@ contains
       Ntot = sum(Nl*Nr)         !size of the sb_array
       allocate(sb_states(Ntot))
       !
-      allocate(pCounts(0:MpiSize-1)) ; pCounts=0
-      allocate(pOffset(0:MpiSize-1)) ; pOffset=0
+      allocate(pCounts(0:MpiSize-1))
+      allocate(pOffset(0:MpiSize-1))
       !
       do ql=1,Nsl
          pCounts=0 
@@ -300,17 +318,12 @@ contains
          i_start = 1 + Offset(ql)
          i_end   = Nl(ql)*Nr(ql) + OffSet(ql)
          !
-         write(300+MpiRank,*)itmp_start,itmp_end,i_start,i_end
-         !
          call MPI_AllGatherv(&
               sb_states_tmp(itmp_start:itmp_end),Q(ql)+R(ql),MPI_INTEGER,&
               sb_states(i_start:i_end),pCounts,pOffset,MPI_INTEGER,MpiComm,MpiIerr)
       enddo
-
-
     end subroutine allgather_sb_states
-
-
+    !
   end subroutine sb_get_states_
 
 
