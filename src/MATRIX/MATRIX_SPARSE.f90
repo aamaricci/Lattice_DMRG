@@ -1,21 +1,35 @@
 MODULE MATRIX_SPARSE  
   USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
   USE AUX_FUNCS, only: show_fmt,append
+#ifdef _MPI
+  USE SF_MPI
+  USE MPI
+#endif
   implicit none
   private
 
 
 #ifdef _CMPLX
-  complex(8) :: zero=cmplx(0d0,0d0)
+  complex(8)         :: zero=cmplx(0d0,0d0)
 #else
-  real(8)    :: zero=0d0
+  real(8)            :: zero=0d0
 #endif
-  integer    :: i,j
+
+#ifdef _MPI
+#ifdef _CMPLX  
+  integer, parameter :: MPI_VAL_TYPE = MPI_DOUBLE_COMPLEX
+#else
+  integer, parameter :: MPI_VAL_TYPE = MPI_DOUBLE_PRECISION
+#endif
+#endif
+
+  integer            :: i,j
 
 
 
   !SPARSE ROW OF THE SPARSE MATRIX: note this is dynamic array
   type sparse_row
+     sequence
      integer                             :: size
      integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
@@ -47,6 +61,10 @@ MODULE MATRIX_SPARSE
      procedure,pass :: t          => sp_transpose_matrix
      procedure,pass :: nnz        => sp_nnz_matrix
      procedure,pass :: dot        => sp_matmul_vector
+#ifdef _MPI
+     procedure,pass :: bcast      => sp_bcast_matrix
+     procedure,pass :: pdot       => sp_p_matmul_matrix
+#endif
   end type sparse_matrix
 
 
@@ -112,7 +130,13 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_matmul_matrix
   end interface operator(.m.)
 
-
+  !Parallel Matrix-Matric product
+#ifdef _MPI
+  interface operator(.pm.)
+     module procedure :: sp_p_matmul_matrix
+  end interface operator(.pm.)
+#endif
+  
   !KRONECKER PRODUCT
   interface operator(.x.)
      module procedure :: sp_kron_matrix
@@ -161,6 +185,9 @@ MODULE MATRIX_SPARSE
   public :: operator(*)
   public :: operator(/)
   public :: operator(.m.)
+#ifdef _MPI
+  public :: operator(.pm.)
+#endif
   public :: operator(.x.)
   public :: sp_kron
   public :: shape
@@ -485,7 +512,10 @@ contains
 #else
     format='(A1,'//str(fmt_)//',1x)'
 #endif
-    if(.not.sparse%status)return
+    if(.not.sparse%status)then
+       write(*,*)"sparse.status=F: nothing to show"
+       return
+    endif
     Ns=sparse%Nrow
     do i=1,sparse%Nrow
        do j=1,sparse%Ncol
@@ -663,32 +693,34 @@ contains
 
 
   function sp_matmul_matrix(A,B) result(AxB)
-    type(sparse_matrix), intent(in) :: A,B
-    type(sparse_matrix)             :: Bt,AxB
-    integer                         :: i,icol,j,jcol,k
+    type(sparse_matrix), intent(in)    :: A,B
+    type(sparse_matrix)                :: Bt,AxB
+    integer                            :: i,icol,j,jcol,k
 #ifdef _CMPLX
-    complex(8)                      :: value
+    complex(8)                         :: value
 #else
-    real(8)                         :: value
+    real(8)                            :: value
 #endif
+    integer, dimension(:), allocatable :: indx_A, indx_B
+    integer                            :: count
     !
     if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
     if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
     !
+    !Assume A & B are known to all NODES
     call AxB%free
     call AxB%init(a%Nrow,b%Ncol)
     Bt = B%t()
     !
     do i=1,AxB%Nrow    !==A.Nrow
-       !
-       do j=1,AxB%Ncol       !==B.Ncol=Bt.Nrow
-          value=zero
-          do icol=1,A%row(i)%size
-             k = A%row(i)%cols(icol) !we sum over k
-             do jcol=1,Bt%row(j)%size
-                if(k/=Bt%row(j)%cols(jcol))cycle !if there are no elements in B^T.row(j) at index k cycle
-                value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
-             enddo
+       do j=1,AxB%Ncol !==Bt.Nrow=B.Ncol
+          if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
+          call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
+          value = zero
+          do k=1,count
+             icol = indx_A(k)
+             jcol = indx_B(k)
+             value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
           enddo
           if(value==zero)cycle
           call append(AxB%row(i)%vals,value)
@@ -697,7 +729,50 @@ contains
        enddo
     enddo
     call Bt%free
+    !
+  contains
+    !
+    logical function check_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: i !local copy, no interference
+      do i=1,size(A)
+         check_intersection=any(B==A(i))
+         if(check_intersection)exit
+      enddo
+    end function check_intersection
+    !
+    !Order O(size(A)+size(B)) << O(size(A)*size(B))
+    subroutine get_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: max_intersections
+      integer                           :: i, j !local copies no interference
+      !
+      max_intersections = min(size(A), size(B))
+      if (allocated(indx_A)) deallocate(indx_A)
+      if (allocated(indx_B)) deallocate(indx_B)
+      allocate(indx_A(max_intersections))
+      allocate(indx_B(max_intersections))
+      !
+      i = 1
+      j = 1
+      count = 0
+      do while (i <= size(A) .and. j <= size(B))
+         if (A(i) < B(j)) then
+            i = i + 1
+         else if (A(i) > B(j)) then
+            j = j + 1
+         else ! A(i) == B(j)
+            count = count + 1
+            indx_A(count) = i
+            indx_B(count) = j
+            i = i + 1
+            j = j + 1
+         end if
+      end do
+    end subroutine get_intersection
+    !
   end function sp_matmul_matrix
+
 
 
   function sp_matmul_vector(H,v) result(Hv)
@@ -1147,6 +1222,48 @@ contains
 
 
 
+
+
+
+#ifdef _MPI
+  subroutine sp_bcast_matrix(self,comm)
+    class(sparse_matrix), intent(inout) :: self
+    integer,intent(in),optional         :: comm
+    integer                             :: comm_
+    integer                             :: rank, ierr, i
+    integer                             :: Nrow, Ncol, Nsize
+    logical                             :: master
+    !
+    if(.not.check_MPI())stop "sp_bcast error: check_MPI=F"
+    comm_ = MPI_COMM_WORLD;if(present(comm))comm_=comm
+    rank   = get_Rank_MPI(comm_)
+    master = get_Master_MPI(comm_)
+    !
+    if(master)Nrow = self%Nrow ; call Bcast_MPI(comm_,Nrow)
+    if(master)Ncol = self%Ncol ; call Bcast_MPI(comm_,Ncol)
+    !
+    if(.not.master)call self%init(Nrow, Ncol)
+    !
+    do i=1,Nrow
+       if(master)Nsize = self%row(i)%size
+       call Bcast_MPI(comm_,Nsize)
+       !
+       self%row(i)%size = Nsize !tautology for master
+       if(Nsize==0)cycle
+       if (.not.master) then
+          if(allocated(self%row(i)%cols)) deallocate(self%row(i)%cols)
+          if(allocated(self%row(i)%vals)) deallocate(self%row(i)%vals)
+          allocate(self%row(i)%cols(Nsize))
+          allocate(self%row(i)%vals(Nsize))
+       endif
+       !
+       call Bcast_MPI(comm_,self%row(i)%cols)
+       call Bcast_MPI(comm_,self%row(i)%vals)
+    end do
+  end subroutine sp_bcast_matrix
+#endif
+
+
   !+------------------------------------------------------------------+
   !PURPOSE  : Sort an array, gives the new ordering of the label.
   !+------------------------------------------------------------------+
@@ -1250,6 +1367,147 @@ contains
 
 
 
+
+
+
+
+
+#ifdef _MPI
+  function sp_p_matmul_matrix(A,B) result(AxB)
+    class(sparse_matrix), intent(in)   :: A,B
+    type(sparse_matrix)                :: Bt,AxB,AxB_local
+    integer                            :: i,icol,j,jcol,k, ierr
+    integer                            :: comm_
+    integer                            :: rank, ncpu
+    integer                            :: i_start, i_end, Nrows_per_cpu, remainder
+    integer                            :: p_i_start, p_i_end
+    integer                            :: p_rank, Nsize
+#ifdef _CMPLX
+    complex(8)                         :: value
+#else
+    real(8)                            :: value
+#endif
+    integer, dimension(:), allocatable :: indx_A, indx_B
+    integer                            :: count
+    !
+    if(.not.check_MPI())stop "sp_p_matmul_matrix error: check_MPI=F"
+    comm_ = MPI_COMM_WORLD!;if(present(comm))comm_=comm
+    rank = get_Rank_MPI(comm_)
+    ncpu = get_Size_MPI(comm_)
+    !
+    if(.not.A%status)stop "sp_p_matmul_matrix: A.status=F"
+    if(.not.B%status)stop "sp_p_matmul_matrix: B.status=F"
+    !
+    Bt = B%t()
+    !
+    ! Local Computation
+    ! Each process computes its assigned rows and stores them in a local matrix.
+    call AxB_local%init(A%Nrow, B%Ncol)
+    do i=1+rank, A%Nrow, ncpu
+       !
+       do j=1,Bt%Nrow
+          if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
+          call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
+          value = zero
+          do k=1,count
+             icol = indx_A(k)
+             jcol = indx_B(k)
+             value = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
+          enddo
+          if(value==zero)cycle
+          call append(AxB_local%row(i)%vals,value)
+          call append(AxB_local%row(i)%cols,j)
+          AxB_local%row(i)%Size = AxB_local%row(i)%Size + 1
+       enddo
+       !
+    enddo
+    call Bt%free
+    !
+    ! All-Gather Results
+    ! The AxB_local are now gathered onto all processes.
+    ! We do this by iterating through each process and having it broadcast its
+    ! computed rows to everyone else.
+    call AxB%init(A%Nrow, B%Ncol)
+    !
+    do p_rank = 0, ncpu - 1
+       ! Broadcast each computed row from process 'p_rank' to all others.
+       do i = 1+p_rank,A%Nrow,ncpu
+          if (rank == p_rank) then
+             Nsize = AxB_local%row(i)%size
+          endif
+          call MPI_Bcast(Nsize, 1, MPI_INTEGER, p_rank, comm_, ierr)
+          !
+          ! All processes now know the size of row 'i'.
+          AxB%row(i)%size = Nsize
+          if(allocated(AxB%row(i)%cols)) deallocate(AxB%row(i)%cols)
+          if(allocated(AxB%row(i)%vals)) deallocate(AxB%row(i)%vals)
+          if (Nsize > 0) then
+             if (rank /= p_rank) then
+                allocate(AxB%row(i)%cols(Nsize))
+                allocate(AxB%row(i)%vals(Nsize))
+             else
+                allocate(AxB%row(i)%cols(Nsize))
+                allocate(AxB%row(i)%vals(Nsize))
+                AxB%row(i)%cols = AxB_local%row(i)%cols
+                AxB%row(i)%vals = AxB_local%row(i)%vals
+             endif
+             call MPI_Bcast(AxB%row(i)%cols, Nsize, MPI_INTEGER, p_rank, comm_, ierr)
+             call MPI_Bcast(AxB%row(i)%vals, Nsize, MPI_VAL_TYPE, p_rank, comm_, ierr)
+          else
+             allocate(AxB%row(i)%cols(0))
+             allocate(AxB%row(i)%vals(0))
+          endif
+       enddo
+    enddo
+    !
+    call AxB_local%free()
+    !
+  contains
+    !
+    logical function check_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: i
+      do i=1,size(A)
+         check_intersection=any(B==A(i))
+         if(check_intersection)exit
+      enddo
+    end function check_intersection
+    !
+    subroutine get_intersection(A, B)
+      integer, dimension(:), intent(in) :: A, B
+      integer                           :: max_intersections
+      integer                           :: i, j
+      max_intersections = min(size(A), size(B))
+      if (allocated(indx_A)) deallocate(indx_A)
+      if (allocated(indx_B)) deallocate(indx_B)
+      allocate(indx_A(max_intersections))
+      allocate(indx_B(max_intersections))
+      i = 1
+      j = 1
+      count = 0
+      do while (i <= size(A) .and. j <= size(B))
+         if (A(i) < B(j)) then
+            i = i + 1
+         else if (A(i) > B(j)) then
+            j = j + 1
+         else ! A(i) == B(j)
+            count = count + 1
+            indx_A(count) = i
+            indx_B(count) = j
+            i = i + 1
+            j = j + 1
+         end if
+      end do
+    end subroutine get_intersection
+    !
+  end function sp_p_matmul_matrix
+#endif
+
+
+
+
+
+
 end module MATRIX_SPARSE
 
 
@@ -1275,6 +1533,9 @@ end module MATRIX_SPARSE
 program testSPARSE_MATRICES
   USE MATRIX_SPARSE
   USE SCIFOR
+#ifdef _MPI
+  USE MPI
+#endif
   implicit none
 
 
@@ -1302,383 +1563,598 @@ program testSPARSE_MATRICES
   real(8)                                      :: myone=1d0,myzero=0d0
 #endif
   type(sparse_matrix),dimension(:),allocatable :: Olist
+  integer                                      :: irank,comm,rank,ierr
+  logical                                      :: master=.false.
 
+
+  integer :: Nvals,Ncols
+  !Variables used in MPI_derived_type:
+  integer,parameter                                :: mpiBlockNum=3         !# of derived type components
+  integer,dimension(mpiBlockNum)                   :: mpiBlockLen !Size of the components  for a single derived_type_array
+  integer,dimension(mpiBlockNum)                   :: mpiBlockType     !Type of the components (e,M) of a single
+  !element of the derived_type_array
+  integer(MPI_ADDRESS_KIND),dimension(mpiBlockNum) :: mpiBlockDisp
+  integer(MPI_ADDRESS_KIND)                        :: base
+  !from the MAN page for MPI_TYPE_CREATE_STRUCT
+  integer                                          :: mpiSparse_Row
+
+
+
+
+  call init_MPI()
+  comm = MPI_COMM_WORLD
+  call StartMsg_MPI(comm)
+  rank = get_Rank_MPI(comm)
+  master = get_Master_MPI(comm)
   !
+
 
   Gamma13=kron(Sx,Sz)
   Gamma03=kron(S0,Sz)
 
-  print*,"test INIT"
-  call spH%init(2,2)
-  print*,shape(spH)
-  print*,all(shape(spH) == [2,2])
-  print*,all(shape(spH) == [3,3])
-  print*,""
 
+  if(master)then
+     print*,"test INIT"
+     call spH%init(2,2)
+     print*,shape(spH)
+     print*,all(shape(spH) == [2,2])
+     print*,all(shape(spH) == [3,3])
+     print*,""
 
-  print*,"test CONSTRUCTOR 1: sparse_matrix(matrix)"
-  a = sparse_matrix(Sz)
-  call a%show()
-  print*,shape(a)
-  print*,all(shape(a) == [2,2])
-  print*,all(shape(a) == [3,3])
-  print*,"a.NNZ=",a%nnz()
-  call a%free()
-  print*,""
-
-
-  print*,"test CONSTRUCTOR 2: as_sparse(pauli_x*pauli_z)"
-  a = as_sparse(Gamma13)
-  call a%show()
-  print*,shape(a)
-  print*,all(shape(a) == [2,2])
-  print*,all(shape(a) == [4,4])
-  print*,"a.NNZ=",a%nnz()
-  print*,""
-  call a%free()
 
+     print*,"test CONSTRUCTOR 1: sparse_matrix(matrix)"
+     a = sparse_matrix(Sz)
+     call a%show()
+     print*,shape(a)
+     print*,all(shape(a) == [2,2])
+     print*,all(shape(a) == [3,3])
+     print*,"a.NNZ=",a%nnz()
+     call a%free()
+     print*,""
 
 
-  print*,"test CONSTRUCTOR 3: avec(1:2)= [as_sparse(pauli_x),as_sparse(pauli_z)]"  
-  avec = [sparse(Sx),as_sparse(Sz)]
-  call avec(1)%show()
-  call avec(2)%show()
-  print*,shape(avec(1))
-  call avec%free()
-  print*,""
+     print*,"test CONSTRUCTOR 2: as_sparse(pauli_x*pauli_z)"
+     a = as_sparse(Gamma13)
+     call a%show()
+     print*,shape(a)
+     print*,all(shape(a) == [2,2])
+     print*,all(shape(a) == [4,4])
+     print*,"a.NNZ=",a%nnz()
+     print*,""
+     call a%free()
 
 
-  print*,"test FREE"
-  call spH%free()
-  print*,""
 
+     print*,"test CONSTRUCTOR 3: avec(1:2)= [as_sparse(pauli_x),as_sparse(pauli_z)]"  
+     avec = [sparse(Sx),as_sparse(Sz)]
+     call avec(1)%show()
+     call avec(2)%show()
+     print*,shape(avec(1))
+     call avec%free()
+     print*,""
 
 
-  print*,"test LOAD and PRINT"
-  call spH%load(kron(S0,Sz))
-  call spH%show()
-  print*,"spH.NNZ=",spH%nnz()
-  print*,""
+     print*,"test FREE"
+     call spH%free()
+     print*,""
 
-  print*,"test GET ELEMENT"
-  write(*,*)"spH(2,2)=",spH%get(2,2)
-  write(*,*)"spH(3,4)=",spH%get(3,4)
-  print*,""
 
 
-  print*,"test INSERT ELEMENT"
-  call spH%insert(myone,1,4)
-  call spH%insert(-myone,4,4)
-  call spH%show()  
-  print*,""
+     print*,"test LOAD and PRINT"
+     call spH%load(kron(S0,Sz))
+     call spH%show()
+     print*,"spH.NNZ=",spH%nnz()
+     print*,""
 
+     print*,"test GET ELEMENT"
+     write(*,*)"spH(2,2)=",spH%get(2,2)
+     write(*,*)"spH(3,4)=",spH%get(3,4)
+     print*,""
 
-  print*,"test SPY"
-  call spH%spy("spH")
-  print*,""
 
+     print*,"test INSERT ELEMENT"
+     call spH%insert(myone,1,4)
+     call spH%insert(-myone,4,4)
+     call spH%show()  
+     print*,""
 
-  print*,"test DUMP"
-  gammaX=myzero
-  do i=1,4
-     write(*,*)(gammaX(i,j),j=1,4)
-  enddo
-  print*,""
-  call spH%dump(gammaX)
-  do i=1,4
-     write(*,*)(gammaX(i,j),j=1,4)
-  enddo
 
-  gammaX=myzero
-  do i=1,4
-     write(*,*)(gammaX(i,j),j=1,4)
-  enddo
-  print*,""
-  gammaX = spH%as_matrix()
-  call spH%show()
-  do i=1,4
-     write(*,*)(gammaX(i,j),j=1,4)
-  enddo
-  print*,""
+     print*,"test SPY"
+     call spH%spy("spH")
+     print*,""
 
 
-  print*,"test spK=spH"  
-  spK=spH
-  call spK%show()
+     print*,"test DUMP"
+     gammaX=myzero
+     do i=1,4
+        write(*,*)(gammaX(i,j),j=1,4)
+     enddo
+     print*,""
+     call spH%dump(gammaX)
+     do i=1,4
+        write(*,*)(gammaX(i,j),j=1,4)
+     enddo
 
+     gammaX=myzero
+     do i=1,4
+        write(*,*)(gammaX(i,j),j=1,4)
+     enddo
+     print*,""
+     gammaX = spH%as_matrix()
+     call spH%show()
+     do i=1,4
+        write(*,*)(gammaX(i,j),j=1,4)
+     enddo
+     print*,""
 
-  print*,"test spH=zero"  
-  spH=myzero
-  call spH%show()
-  spH=spK
 
+     print*,"test spK=spH"  
+     spK=spH
+     call spK%show()
 
 
-  print*,"test ADDITION a+b=c"
-  print*,"a=sigma_0"
-  call a%init(2,2)
-  call a%load(S0)
-  call a%show()
+     print*,"test spH=zero"  
+     spH=myzero
+     call spH%show()
+     spH=spK
 
-  print*,"b=sigma_X"  
-  call b%init(2,2)
-  call b%load(Sx)
-  call b%show()
 
-  print*,"c=sigma_0 + sigma_X"
-  c = a+b
-  call c%show()
 
-  call a%free()
-  call b%free()
-  call c%free()
+     print*,"test ADDITION a+b=c"
+     print*,"a=sigma_0"
+     call a%init(2,2)
+     call a%load(S0)
+     call a%show()
 
+     print*,"b=sigma_X"  
+     call b%init(2,2)
+     call b%load(Sx)
+     call b%show()
 
+     print*,"c=sigma_0 + sigma_X"
+     c = a+b
+     call c%show()
 
-  print*,"test SUBTRACTION a-b=c"
-  print*,"a=sigma_0"
-  call a%init(2,2)
-  call a%load(S0)
-  call a%show()
+     call a%free()
+     call b%free()
+     call c%free()
 
-  print*,"b=sigma_Z"  
-  call b%init(2,2)
-  call b%load(Sz)
-  call b%show()
-
 
-  print*,"c=sigma_0 - sigma_Z"  
-  c = a-b
-  call c%show()
 
+     print*,"test SUBTRACTION a-b=c"
+     print*,"a=sigma_0"
+     call a%init(2,2)
+     call a%load(S0)
+     call a%show()
 
-  call a%free()
-  call b%free()
-  call c%free()
+     print*,"b=sigma_Z"  
+     call b%init(2,2)
+     call b%load(Sz)
+     call b%show()
 
 
-
-  print*,"test LEFT SCALAR PRODUCT b=a*const"
-  print*,"a=sigma_0"
-  call a%init(2,2)
-  call a%load(S0)
-  call a%show()
-
-  print*,"b=2*a"  
-  b = 2*a
-  call b%show()
-
-  print*,"b=2d0*a"  
-  b = 2d0*a
-  call b%show()
-
-  print*,"test RIGHT SCALAR PRODUCT b=const*a"
-  print*,"b=a*2"  
-  b = a*2
-  call b%show()
-
-  print*,"b=a*2d0"  
-  b = a*2d0
-  call b%show()
-
-
-  print*,"test RIGHT SCALAR DIVISDION b=a/const"
-  print*,"b=a/2"  
-  b = a/2
-  call b%show()
-
-  print*,"b=a/2d0"  
-  b = a/2d0
-  call b%show()
-
-
-
-
-  print*,"test KRON PRODUCT 1"
-  call a%free()
-  call b%free()
-  call c%free()
-  call spH%free()
-  !
-  call spH%load(gamma13)
-  call a%load(Sz)
-  call b%load(Sx)
-
-  print*,"a=sigma_0"  
-  call a%show()  
-  print*,"b=sigma_Z"  
-  call b%show()  
-  print*,"c=a.x.b"  
-  c = a.x.b
-  call c%show()
-  print*,"spH=sigma_0xsigma_Z"  
-  call spH%show()
-  print*,""
-
-
-  print*,""
-  print*,"test KRON PRODUCT 2"
-  allocate(Amat(2,2),Bmat(2,2))
-  allocate(Cmat(4,4))
-  Amat = dble(transpose(reshape([1,2,3,4],[2,2])))
-  Bmat = dble(transpose(reshape([0,5,6,7],[2,2])))
-  Cmat = dble(transpose(reshape([0,5,0,10,5,7,12,14,0,15,0,20,18,21,24,28],[4,4])))
-  call a%load(Amat)
-  call b%load(Bmat)
-  print*,"A = 1 2    B = 0 5"
-  print*,"    3 4        6 7"
-  call a%show()  
-  call b%show()  
-
-  print*,"c=a.x.b"  
-  c = a.x.b
-  call c%show()
-  print*,"C = 0  5  0  10"
-  print*,"    6  7  12 14"
-  print*,"    0  15 0  20"
-  print*,"    18 21 24 28"
-
-  call a%free()
-  call b%free()
-  call c%free()
-  call spH%free()
-  deallocate(Amat,Bmat,Cmat)
-  print*,""
-
-
-
-
-  print*,""
-  print*,"test KRON PRODUCT 3"
-  allocate(Amat(3,2),Bmat(2,3))
-  Amat = dble(transpose(reshape([1,2,3,4,1,0],[2,3])))
-  Bmat = dble(transpose(reshape([0,5,2,6,7,3],[3,2])))
-  call a%load(Amat)
-  call b%load(Bmat)
-  !
-  print*," A = 1 2    B = 0 5 2"
-  print*,"     3 4        6 7 3"
-  print*,"     1 0             "
-  call a%show()  
-  call b%show()
-  !
-
-  allocate(Cmat(6,6))
-  Cmat = dble(transpose(reshape([&
-       0,5,2,0,10,4, &
-       6,7,3,12,14,6,&
-       0,15,6,0,20,8,&
-       18,21,9,24,28,12,&
-       0,5,2,0,0,0,&
-       6,7,3,0,0,0],&
-       [4,4])))
-
-  print*,"c=a.x.b"  
-  c = a.x.b
-  call c%show()
-  print*,"C = 0      5    2    0     10    4"
-  print*,"    6      7    3   12     14    6"
-  print*,"    0     15    6    0     20    8"    
-  print*,"    18     21    9   24     28   12"    
-  print*,"    0      5    2    0      0    0"    
-  print*,"    6      7    3    0      0    0"
-
-
-
-
-  call a%free()
-  call b%free()
-  call c%free()
-  call spH%free()
-
-  print*, "TEST TRANSPOSE CONJUGATE"
-  call a%load(Sx+Sz)
-  call a%show()
-  b = hconjg(a)
-  call b%show()
-
-  if(any( a%as_matrix()-b%as_matrix() /= zero) )then
-     write(*,*)"Wrong TRANSPOSE"
-  else
-     write(*,*)"Good TRANSPOSE"
-  endif
-
-
-
-
-
-  print*, "TEST TRANSPOSE CONJUGATE"
-  call a%load(Splus)
-  call a%show()
-  b = a%t()
-  call b%show()
-
-  if(any( a%as_matrix()-b%as_matrix() /= zero) )then
-     write(*,*)"Wrong TRANSPOSE"
-  else
-     write(*,*)"Good TRANSPOSE"
-  endif
-
-
-  deallocate(Amat,Bmat,Cmat)
-
-  print*,""
-  print*,"test KRON PRODUCT 3"
-
-  allocate(Amat(5,5));Amat=zero
-  Amat(1,2) = 1d0
-  do i=2,5-1
-     Amat(i,i-1) = 1d0
-     Amat(i,i+1) = 1d0    
-  enddo
-  Amat(5,5-1) = 1d0
-
-  allocate(Bmat(5,5))
-  Bmat = dble((reshape([1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1],[5,5])))
-
-  call a%load(Amat)
-  call b%load(Bmat)
-  !
-  print*,"A"
-  call a%show()
-  print*,"B"
-  call b%show()
-  print*,""
-
-
-  allocate(Cmat(5,5))
-  Cmat = matmul(Amat,Bmat)
-  do i=1,5
-     write(*,"(5F9.3,1x)")(Cmat(i,j),j=1,5)
-  enddo
-
-  print*,""
-  c = a.m.b
-  call c%show()
-  print*,c%nnz()
-  print*,""
-  print*,""
-
-  print*,"TEST APPEND TO SPARSE VECTOR"
-  a = sparse(Gamma03)
-
-  do i=1,12
-     if(mod(i,2)==0)then        
-        call append_sparse(Olist,a)
+     print*,"c=sigma_0 - sigma_Z"  
+     c = a-b
+     call c%show()
+
+
+     call a%free()
+     call b%free()
+     call c%free()
+
+
+
+     print*,"test LEFT SCALAR PRODUCT b=a*const"
+     print*,"a=sigma_0"
+     call a%init(2,2)
+     call a%load(S0)
+     call a%show()
+
+     print*,"b=2*a"  
+     b = 2*a
+     call b%show()
+
+     print*,"b=2d0*a"  
+     b = 2d0*a
+     call b%show()
+
+     print*,"test RIGHT SCALAR PRODUCT b=const*a"
+     print*,"b=a*2"  
+     b = a*2
+     call b%show()
+
+     print*,"b=a*2d0"  
+     b = a*2d0
+     call b%show()
+
+
+     print*,"test RIGHT SCALAR DIVISDION b=a/const"
+     print*,"b=a/2"  
+     b = a/2
+     call b%show()
+
+     print*,"b=a/2d0"  
+     b = a/2d0
+     call b%show()
+
+
+
+
+     print*,"test KRON PRODUCT 1"
+     call a%free()
+     call b%free()
+     call c%free()
+     call spH%free()
+     !
+     call spH%load(gamma13)
+     call a%load(Sz)
+     call b%load(Sx)
+
+     print*,"a=sigma_0"  
+     call a%show()  
+     print*,"b=sigma_Z"  
+     call b%show()  
+     print*,"c=a.x.b"  
+     c = a.x.b
+     call c%show()
+     print*,"spH=sigma_0xsigma_Z"  
+     call spH%show()
+     print*,""
+
+
+     print*,""
+     print*,"test KRON PRODUCT 2"
+     allocate(Amat(2,2),Bmat(2,2))
+     allocate(Cmat(4,4))
+     Amat = dble(transpose(reshape([1,2,3,4],[2,2])))
+     Bmat = dble(transpose(reshape([0,5,6,7],[2,2])))
+     Cmat = dble(transpose(reshape([0,5,0,10,5,7,12,14,0,15,0,20,18,21,24,28],[4,4])))
+     call a%load(Amat)
+     call b%load(Bmat)
+     print*,"A = 1 2    B = 0 5"
+     print*,"    3 4        6 7"
+     call a%show()  
+     call b%show()  
+
+     print*,"c=a.x.b"  
+     c = a.x.b
+     call c%show()
+     print*,"C = 0  5  0  10"
+     print*,"    6  7  12 14"
+     print*,"    0  15 0  20"
+     print*,"    18 21 24 28"
+
+     call a%free()
+     call b%free()
+     call c%free()
+     call spH%free()
+     deallocate(Amat,Bmat,Cmat)
+     print*,""
+
+
+
+
+     print*,""
+     print*,"test KRON PRODUCT 3"
+     allocate(Amat(3,2),Bmat(2,3))
+     Amat = dble(transpose(reshape([1,2,3,4,1,0],[2,3])))
+     Bmat = dble(transpose(reshape([0,5,2,6,7,3],[3,2])))
+     call a%load(Amat)
+     call b%load(Bmat)
+     !
+     print*," A = 1 2    B = 0 5 2"
+     print*,"     3 4        6 7 3"
+     print*,"     1 0             "
+     call a%show()  
+     call b%show()
+     !
+
+     allocate(Cmat(6,6))
+     Cmat = dble(transpose(reshape([&
+          0,5,2,0,10,4, &
+          6,7,3,12,14,6,&
+          0,15,6,0,20,8,&
+          18,21,9,24,28,12,&
+          0,5,2,0,0,0,&
+          6,7,3,0,0,0],&
+          [4,4])))
+
+     print*,"c=a.x.b"  
+     c = a.x.b
+     call c%show()
+     print*,"C = 0      5    2    0     10    4"
+     print*,"    6      7    3   12     14    6"
+     print*,"    0     15    6    0     20    8"    
+     print*,"    18     21    9   24     28   12"    
+     print*,"    0      5    2    0      0    0"    
+     print*,"    6      7    3    0      0    0"
+
+
+
+
+     call a%free()
+     call b%free()
+     call c%free()
+     call spH%free()
+
+     print*, "TEST TRANSPOSE CONJUGATE"
+     call a%load(Sx+Sz)
+     call a%show()
+     b = hconjg(a)
+     call b%show()
+
+     if(any( a%as_matrix()-b%as_matrix() /= zero) )then
+        write(*,*)"Wrong TRANSPOSE"
      else
-        call append_matrix(Olist,Gamma13)
+        write(*,*)"Good TRANSPOSE"
      endif
-  enddo
 
-  do i=1,size(Olist)
-     print*,i,mod(i,2)==0
-     call Olist(i)%show()
-  enddo
 
-  call Olist%free()
+
+
+
+     print*, "TEST TRANSPOSE CONJUGATE"
+     call a%load(Splus)
+     call a%show()
+     b = a%t()
+     call b%show()
+
+     if(any( a%as_matrix()-b%as_matrix() /= zero) )then
+        write(*,*)"Wrong TRANSPOSE"
+     else
+        write(*,*)"Good TRANSPOSE"
+     endif
+
+
+     deallocate(Amat,Bmat,Cmat)
+
+     print*,""
+     print*,"test KRON PRODUCT 3"
+
+     allocate(Amat(5,5));Amat=zero
+     Amat(1,2) = 1d0
+     do i=2,5-1
+        Amat(i,i-1) = 1d0
+        Amat(i,i+1) = 1d0    
+     enddo
+     Amat(5,5-1) = 1d0
+
+     allocate(Bmat(5,5))
+     Bmat = dble((reshape([1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1,1,0,1,0,1],[5,5])))
+
+     call a%load(Amat)
+     call b%load(Bmat)
+     !
+     print*,"A"
+     call a%show()
+     print*,"B"
+     call b%show()
+     print*,""
+
+
+     allocate(Cmat(5,5))
+     Cmat = matmul(Amat,Bmat)
+     do i=1,5
+        write(*,"(5F9.3,1x)")(Cmat(i,j),j=1,5)
+     enddo
+
+     print*,""
+     print*,"c=a.m.b"
+     c = a.m.b
+     call c%show()
+     print*,c%nnz()
+
+     print*,""
+     print*,"c=a.pm.p"
+     c = a.pm.b
+     call c%show()
+     print*,c%nnz()
+     print*,""
+     print*,""
+
+
+     stop 
+     print*,"TEST APPEND TO SPARSE VECTOR"
+     a = sparse(Gamma03)
+
+     do i=1,12
+        if(mod(i,2)==0)then        
+           call append_sparse(Olist,a)
+        else
+           call append_matrix(Olist,Gamma13)
+        endif
+     enddo
+
+     do i=1,size(Olist)
+        print*,i,mod(i,2)==0
+        call Olist(i)%show()
+     enddo
+
+     call Olist%free()
+
+  endif
+
+
+  call Barrier_MPI(Comm)
+
+
+
+
+
+
+
+
+  call a%free()
+  call a%init(4,4)
+
+  if(allocated(a%row(1)%vals))deallocate(a%row(1)%vals)
+  if(allocated(a%row(1)%cols))deallocate(a%row(1)%cols)
+  allocate(a%row(1)%vals(1))
+  allocate(a%row(1)%cols(1))
+
+  if(master)then
+     a = as_sparse(Gamma13)
+     call a%show()
+     print*,""
+  endif
+
+  call MPI_GET_ADDRESS(a%row(1)%size, MpiBlockDisp(1), ierr)
+  call MPI_GET_ADDRESS(a%row(1)%cols, MpiBlockDisp(2), ierr)
+  call MPI_GET_ADDRESS(a%row(1)%vals, MpiBlockDisp(3), ierr)
+
+
+  base=MpiBlockDisp(1)
+  MpiBlockDisp=MpiBlockDisp-base
+
+
+  mpiBlockLen(1)=1
+  mpiBlockLen(2)=1
+  mpiBlockLen(3)=1
+
+  mpiBlockType(1)=MPI_INTEGER
+  mpiBlockType(2)=MPI_INTEGER
+#ifdef _CMPLX
+  mpiBlockType(3)=MPI_DOUBLE_COMPLEX
+#else
+  mpiBlockType(3)=MPI_DOUBLE_PRECISION
+#endif
+
+  call MPI_TYPE_CREATE_STRUCT(mpiBlockNum,mpiBlockLen,MpiBlockDisp,MpiBlockType,MpiSparse_Row,ierr)
+  call MPI_TYPE_COMMIT(mpiSparse_Row,ierr)
+
+
+  call MPI_BCAST(a%row(1),1,mpiSparse_Row,0,MPI_COMM_WORLD,ierr)
+
+  ! a%row(1)%size=1
+  ! a%row(1)%vals(1)=1d0
+  ! a%row(1)%cols(1)=3
+  print*,""
+  call a%show()
+  call a%free()
+  print*,""
+  print*,""
+  call Barrier_MPI(comm)
+
+  call a%free()
+  call Barrier_MPI(comm)
+  if(master)then
+     a = as_sparse(kron(Gamma13,Sz))
+     print*,"Master a=\G_13.x.S_z:"
+     call a%show()
+     print*,""
+  endif
+  call Barrier_MPI(comm)
+
+  if(rank==1)then
+     print*,"Node a"
+     call a%show()
+  endif
+  call Barrier_MPI(comm)
+  if(master)print*,""
+  if(master)print*,"Bcast a: 0 --> node"
+  call sp_Bcast(comm,a)
+  call Barrier_MPI(comm)
+
+  if(rank==1)then
+     print*,"Node a"
+     call a%show()
+  endif
+  call Barrier_MPI(comm)
+  if(master)print*,""
+
+
+
+
+  call a%free()
+  call Barrier_MPI(comm)
+  if(master)then
+     a = as_sparse(kron(Sz,Gamma13))
+     print*,"Master a=Sz.x.G_13"
+     call a%show()
+     print*,""
+  endif
+  call Barrier_MPI(comm)
+
+  if(rank==1)then
+     print*,"Node a"
+     call a%show()
+  endif
+  call Barrier_MPI(comm)
+  if(master)print*,""
+  if(master)print*,"Bcast a: 0 --> node"
+  call a%bcast()
+  call Barrier_MPI(comm)
+
+  if(rank==1)then
+     print*,"Node a"
+     call a%show()
+  endif
+  call Barrier_MPI(comm)
+  if(master)print*,""
+
+
+
+  call finalize_MPI()
+
+
+
+
+
+
+
+
 
 
 contains
+
+
+#ifdef _MPI
+  subroutine sp_Bcast(comm,matrix)
+    integer, intent(in)                 :: comm
+    class(sparse_matrix), intent(inout) :: matrix
+    integer                             :: rank, ierr, i
+    integer                             :: Nrow, Ncol, Nsize
+    logical                             :: master
+    !
+    if(.not.check_MPI())stop "sp_bcast error: check_MPI=F"
+    rank   = get_Rank_MPI(comm)
+    master = get_Master_MPI(comm)
+    !
+    if(master)Nrow = matrix%Nrow ; call Bcast_MPI(comm,Nrow)
+    if(master)Ncol = matrix%Ncol ; call Bcast_MPI(comm,Ncol)
+    !
+    if(.not.master)call matrix%init(Nrow, Ncol)
+    !
+    do i=1,Nrow
+       if(master)Nsize = matrix%row(i)%size
+       call Bcast_MPI(comm,Nsize)
+       !
+       matrix%row(i)%size = Nsize !tautology for master
+       if(Nsize==0)cycle
+       if (.not.master) then
+          if(allocated(matrix%row(i)%cols)) deallocate(matrix%row(i)%cols)
+          if(allocated(matrix%row(i)%vals)) deallocate(matrix%row(i)%vals)
+          allocate(matrix%row(i)%cols(Nsize))
+          allocate(matrix%row(i)%vals(Nsize))
+       endif
+       !
+       call Bcast_MPI(comm,matrix%row(i)%cols)
+       call Bcast_MPI(comm,matrix%row(i)%vals)
+    end do
+  end subroutine sp_Bcast
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   subroutine append_sparse(self,sparse)
@@ -1757,3 +2233,42 @@ end program testSPARSE_MATRICES
 !      enddo
 !   enddo
 ! end function sp_kron_matrix
+
+
+
+
+
+
+
+
+
+
+
+! ! Sul master
+! position = 0
+! call MPI_Pack(matrix%Nrow, 1, MPI_INTEGER, buffer, buf_size, position, comm, ierr)
+! call MPI_Pack(matrix%Ncol, 1, MPI_INTEGER, buffer, buf_size, position, comm, ierr)
+! do i = 1, matrix%Nrow
+!     call MPI_Pack(matrix%row(i)%size, 1, MPI_INTEGER, buffer, buf_size, position, comm, ierr)
+!     if (matrix%row(i)%size > 0) then
+!         call MPI_Pack(matrix%row(i)%cols, matrix%row(i)%size, MPI_INTEGER, ...)
+!         call MPI_Pack(matrix%row(i)%vals, matrix%row(i)%size, MPI_DOUBLE_COMPLEX, ...)
+!     endif
+! end do
+! call MPI_Bcast(buffer, position, MPI_PACKED, ...)
+
+! ! Sui worker
+! call MPI_Bcast(buffer, ..., comm, ...)
+! position = 0
+! call MPI_Unpack(buffer, buf_size, position, Nrow_b, 1, MPI_INTEGER, comm, ierr)
+! call MPI_Unpack(buffer, buf_size, position, Ncol_b, 1, MPI_INTEGER, comm, ierr)
+! call matrix%init(Nrow_b, Ncol_b)
+! do i = 1, Nrow_b
+!     call MPI_Unpack(buffer, buf_size, position, row_size, 1, MPI_INTEGER, ...)
+!     matrix%row(i)%size = row_size
+!     if (row_size > 0) then
+!         allocate(...)
+!         call MPI_Unpack(buffer, buf_size, position, matrix%row(i)%cols, row_size, ...)
+!         call MPI_Unpack(buffer, buf_size, position, matrix%row(i)%vals, row_size, ...)
+!     endif
+! end do

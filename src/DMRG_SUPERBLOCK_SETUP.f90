@@ -1,15 +1,9 @@
 MODULE DMRG_SUPERBLOCK_SETUP
-  USE VARS_GLOBAL
+  USE DMRG_GLOBAL
   USE DMRG_CONNECT
   implicit none
   private
 
-  !Memory pool:
-  type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
-  type(sparse_matrix),allocatable,dimension(:,:) :: A,B
-  integer,dimension(:),allocatable               :: Dls,Drs,Offset
-  integer,dimension(:,:),allocatable             :: RowOffset,ColOffset
-  !
   !Local variables
   integer                                        :: tNso
   integer                                        :: isb,jsb
@@ -23,18 +17,11 @@ MODULE DMRG_SUPERBLOCK_SETUP
   public :: Setup_SuperBlock_Direct
   public :: spMatVec_sparse_main
   public :: spMatVec_direct_main
+  public :: spMatVec_MPI_direct_main
   !
   !-> used in DMRG_MEASURE to perform H|gs>
   public :: sb2block_states
   !
-  !-> used in DMRG_SUPERBLOCK to deallocate
-  public :: Hleft
-  public :: Hright
-  public :: A,B
-  public :: Dls,Drs,Offset
-  public :: RowOffset,ColOffset
-
-  
 contains
 
 
@@ -47,6 +34,10 @@ contains
   ! 
   ! * sparse: get the sparse global SB Hamiltonian spHsb
   !##################################################################
+  !POSSIBLY INCLUDE MPI HERE... this is probably a less efficient version
+  !note that only the SB Hamiltonian needs to be constructed in parallel form
+  !the other operators (small) are stored by each cpu.
+  !In principle one could store any sparse matrix in parallel and build H^SB as MPI too.
   subroutine Setup_SuperBlock_Sparse()
     integer                         :: m_left,m_right
     character(len=:),allocatable    :: type
@@ -88,7 +79,7 @@ contains
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                       DIRECT MODE
   !    H^SB = H^L x 1^R  + 1^L x H^R + H^LR
-  !    H^LR = sum_p A_p x B_p
+  !    H^LR = sum_k A_k x B_k; k={q,p}, Q.N. + elements in H^LR
   ! 
   ! * direct: get vec{A},vec{B},vec{Hleft},vec{Hright}
   !   the sparse matrices which reconstruct H^SB above in terms of
@@ -162,15 +153,8 @@ contains
     Nsb  = size(sb_sector)
     !
     !Massive allocation
+    if(allocated(tMap))deallocate(tMap)
     allocate(tMap(tNso,1,1))
-    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
-    allocate(AI(Nsb),BI(Nsb))
-    allocate(AJ(Nsb),BJ(Nsb))
-    allocate(A(tNso,Nsb),B(tNso,Nsb))
-    allocate(Hleft(Nsb),Hright(Nsb))
-    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
-    allocate(Sleft(Nspin),Sright(Nspin))
-    !
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
     ! super-block Hamiltonian.
@@ -180,16 +164,40 @@ contains
        tMap(i,1,1)=it
     enddo
     !
-    Offset=0
-    do isb=1,Nsb
-       qn      = sb_sector%qn(index=isb)
-       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
-       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-    enddo
+    !
+    call sb_build_dims()
+    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
+#ifdef _MPI
+    allocate(mpiRowOffset(tNso,Nsb))
+    allocate(mpiColOffset(tNso,Nsb))
+    mpiRowOffset=0
+    mpiColOffset=0
+#endif
+    !
+    !
+    if(allocated(AI))deallocate(AI)
+    if(allocated(BI))deallocate(BI)
+    if(allocated(AJ))deallocate(AJ)
+    if(allocated(BJ))deallocate(BJ)
+    if(allocated(A))deallocate(A)
+    if(allocated(B))deallocate(B)
+    if(allocated(Hleft))deallocate(Hleft)
+    if(allocated(Hright))deallocate(Hright)
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
+    if(allocated(Sleft))deallocate(Sleft)
+    if(allocated(Sright))deallocate(Sright)
+    !    
+    allocate(AI(Nsb),BI(Nsb))
+    allocate(AJ(Nsb),BJ(Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(Hleft(Nsb),Hright(Nsb))
+    allocate(isb2jsb(tNso,Nsb))
+    allocate(IsHconjg(tNso,Nsb))
+    allocate(Sleft(Nspin),Sright(Nspin))
     !
     dq=[1d0]
-    do isb=1,size(sb_sector)
+    do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
        BI(isb)%states = sb2block_states(qn,'right')
@@ -200,41 +208,108 @@ contains
        BJ(jsb)%states = sb2block_states(qm,'right')
     enddo
     !
-    do ispin=1,Nspin
-       Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
-       Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
-    enddo
+    !>ROOT get basic operators. Nodes can not.
+    if(MpiMaster)then
+       do ispin=1,Nspin
+          Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
+          Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
+       enddo
+    endif
     !
-    do isb=1,size(sb_sector)
+    !A(it,k).Nrow = DLk ;if(Hconjg) DLq
+    !A(it,k).Ncol = DLq ;if(Hconjg) DLk
+    !B(it,k).Nrow = DRk ;if(Hconjg) DRq
+    !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+    isb2jsb=0
+    do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
-       !> get: H*^L  and H*^R
-       Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-       Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
-       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets       
+       !> get: H*^L  and H*^R (ROOT exclusive)
+       if(MpiMaster)then
+          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
+          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       endif
+#ifdef _MPI
+       if(MpiStatus)then
+          call Hleft(isb)%bcast()
+          call Hright(isb)%bcast()
+       endif
+#endif
+       !
+       !DIAGONAL:
+       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (ROOT exclusive)      
        it=tMap(1,1,1)
-       A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
-       B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
+       if(MpiMaster)then
+          A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
+          B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
+       endif
+       qm  = qn
+       jsb = isb
+       Isb2Jsb(it,isb) =jsb
+       IsHconjg(it,isb)=.false.
        RowOffset(it,isb)=Offset(isb)           
        ColOffset(it,isb)=Offset(isb)
+#ifdef _MPI
+       if(MpiStatus)then
+          call A(it,isb)%bcast()
+          call B(it,isb)%bcast()
+          mpiRowOffset(it,isb)=mpiOffset(isb)           
+          mpiColOffset(it,isb)=mpiOffset(isb)
+       endif
+#endif
+       !
+       !
        !
        dq = [1d0]
        qm = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
        jsb = sb_sector%index(qn=qm)
+       !
        !> get: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
        it=tMap(2,1,1)
-       A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
-       B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
+       if(MpiMaster)then
+          A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
+          B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BJ(jsb)%states)
+       endif
+       Isb2Jsb(it,isb)  =jsb
+       IsHconjg(it,isb) =.false.
        RowOffset(it,isb)=Offset(isb)
        ColOffset(it,isb)=Offset(jsb)
+#ifdef _MPI
+       if(MpiStatus)then
+          call A(it,isb)%bcast()
+          call B(it,isb)%bcast()
+          mpiRowOffset(it,isb)=mpiOffset(isb)           
+          mpiColOffset(it,isb)=mpiOffset(jsb)
+       endif
+#endif
+       !
        !> get H.c. + Row/Col Offsets
        it=tMap(3,1,1)
-       A(it,isb) = hconjg(A(tMap(2,1,1),isb))
-       B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+       if(MpiMaster)then
+          A(it,isb) = hconjg(A(tMap(2,1,1),isb))
+          B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+       endif
+       Isb2Jsb(it,isb)  =jsb
+       IsHconjg(it,isb) =.true.  !exchange jsb and isb
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
+#ifdef _MPI
+       if(MpiStatus)then
+          call A(it,isb)%bcast()
+          call B(it,isb)%bcast()
+          mpiRowOffset(it,isb)=mpiOffset(jsb)           
+          mpiColOffset(it,isb)=mpiOffset(isb)
+       endif
+#endif
     enddo
+    !
+    do ispin=1,Nspin
+       call Sleft(ispin)%free()
+       call Sright(ispin)%free()
+    enddo
+    deallocate(Sleft,Sright)
+    !
   end subroutine Setup_SuperBlock_Spin_Direct
 
 
@@ -283,15 +358,9 @@ contains
     Nsb  = size(sb_sector)
     !
     !Massive allocation
+    !Massive allocation
+    if(allocated(tMap))deallocate(tMap)
     allocate(tMap(2,Nso,Nso))
-    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
-    allocate(AI(Nsb),BI(Nsb))
-    allocate(AJ(Nsb),BJ(Nsb))
-    allocate(A(tNso,Nsb),B(tNso,Nsb))
-    allocate(Hleft(Nsb),Hright(Nsb))
-    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
-    allocate(Cleft(Nso),Cright(Nso))
-    !
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
     ! super-block Hamiltonian.
@@ -307,13 +376,36 @@ contains
     enddo
     !
     !
-    Offset=0
-    do isb=1,Nsb
-       qn      = sb_sector%qn(index=isb)
-       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
-       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
-    enddo
+    call sb_build_dims()
+    allocate(RowOffset(tNso,Nsb),ColOffset(tNso,Nsb))
+#ifdef _MPI
+    allocate(mpiRowOffset(tNso,Nsb))
+    allocate(mpiColOffset(tNso,Nsb))
+    mpiRowOffset=0
+    mpiColOffset=0
+#endif
+    !
+    !
+    if(allocated(AI))deallocate(AI)
+    if(allocated(BI))deallocate(BI)
+    if(allocated(AJ))deallocate(AJ)
+    if(allocated(BJ))deallocate(BJ)
+    if(allocated(A))deallocate(A)
+    if(allocated(B))deallocate(B)
+    if(allocated(Hleft))deallocate(Hleft)
+    if(allocated(Hright))deallocate(Hright)
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
+    if(allocated(Cleft))deallocate(Cleft)
+    if(allocated(Cright))deallocate(Cright)
+    !
+    allocate(AI(Nsb),BI(Nsb))
+    allocate(AJ(Nsb),BJ(Nsb))
+    allocate(A(tNso,Nsb),B(tNso,Nsb))
+    allocate(Hleft(Nsb),Hright(Nsb))
+    allocate(isb2jsb(tNso,Nsb))
+    allocate(IsHconjg(tNso,Nsb))
+    allocate(Cleft(Nso),Cright(Nso))
     !
     do isb=1,size(sb_sector)
        qn             = sb_sector%qn(index=isb)
@@ -330,21 +422,36 @@ contains
     enddo
     !
     !
-    P = left%operators%op("P")
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          io = iorb+(ispin-1)*Norb
-          Cleft(io)  = left%operators%op("C"//left%okey(iorb,ispin))
-          Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
+    if(MpiMaster)then
+       P = left%operators%op("P")
+       do ispin=1,Nspin
+          do iorb=1,Norb
+             io = iorb+(ispin-1)*Norb
+             Cleft(io)  = left%operators%op("C"//left%okey(iorb,ispin))
+             Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
+          enddo
        enddo
-    enddo
+    endif
     !
+    !A(it,k).Nrow = DLk ;if(Hconjg) DLq
+    !A(it,k).Ncol = DLq ;if(Hconjg) DLk
+    !B(it,k).Nrow = DRk ;if(Hconjg) DRq
+    !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+    isb2jsb=0
     do isb=1,size(sb_sector)
        qn   = sb_sector%qn(index=isb)
        !
        !> get: H*^L  and H*^R
-       Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-       Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       if(MpiMaster)then
+          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
+          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+       endif
+#ifdef _MPI
+       if(MpiStatus)then
+          call Hleft(isb)%bcast()
+          call Hright(isb)%bcast()
+       endif
+#endif
        !
        !> get A.x.B terms:
        do ispin=1,Nspin
@@ -361,22 +468,59 @@ contains
                 !
                 !> get: A = H(a,b)*[Cl(a,s)^+@P] .x. B = Cr(b,s)  + Row/Col Offsets
                 it=tMap(1,io,jo)
-                A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
-                B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
+                if(MpiMaster)then
+                   A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
+                   B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
+                endif
+
+                Isb2Jsb(it,isb)  =jsb
+                IsHconjg(it,isb) =.false.
                 RowOffset(it,isb)=Offset(isb)           
                 ColOffset(it,isb)=Offset(jsb)
+#ifdef _MPI
+                if(MpiStatus)then
+                   call A(it,isb)%bcast()
+                   call B(it,isb)%bcast()
+                   mpiRowOffset(it,isb)=mpiOffset(isb)           
+                   mpiColOffset(it,isb)=mpiOffset(jsb)
+                endif
+#endif
+                !
                 !
                 !> get H.c. + Row/Col Offsets
                 it=tMap(2,io,jo)
-                A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
-                B(it,isb) = hconjg(B(tMap(1,io,jo),isb))
+                if(MpiMaster)then
+                   A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
+                   B(it,isb) = hconjg(B(tMap(1,io,jo),isb))
+                endif
+                Isb2Jsb(it,isb)  =jsb
+                IsHconjg(it,isb) =.true.
                 RowOffset(it,isb)=Offset(jsb)
                 ColOffset(it,isb)=Offset(isb)
+#ifdef _MPI
+                if(MpiStatus)then
+                   call A(it,isb)%bcast()
+                   call B(it,isb)%bcast()
+                   mpiRowOffset(it,isb)=mpiOffset(jsb)           
+                   mpiColOffset(it,isb)=mpiOffset(isb)
+                endif
+#endif
              enddo
           enddo
           !
        enddo
     enddo
+    !
+    call P%free()
+    do ispin=1,Nspin
+       do iorb=1,Norb
+          io = iorb+(ispin-1)*Norb
+          call Cleft(io)%free()
+          call Cright(io)%free()
+       enddo
+    enddo
+    deallocate(Cleft,Cright)
+    !
   end subroutine Setup_SuperBlock_Fermion_Direct
 
 
@@ -418,45 +562,49 @@ contains
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
   !##################################################################
-
   subroutine spMatVec_direct_main(Nloc,v,Hv)
-    integer                    :: Nloc
+    integer                               :: Nloc
 #ifdef _CMPLX
-    complex(8),dimension(Nloc) :: v
-    complex(8),dimension(Nloc) :: Hv
-    complex(8)                 :: val
-    complex(8)                 :: aval,bval
+    complex(8),dimension(Nloc)            :: v
+    complex(8),dimension(Nloc)            :: Hv
+    complex(8)                            :: val
+    complex(8)                            :: aval,bval
+    complex(8),dimension(:,:),allocatable :: C,Ct
 #else
-    real(8),dimension(Nloc)    :: v
-    real(8),dimension(Nloc)    :: Hv
-    real(8)                    :: val
-    real(8)                    :: aval,bval
+    real(8),dimension(Nloc)               :: v
+    real(8),dimension(Nloc)               :: Hv
+    real(8)                               :: val
+    real(8)                               :: aval,bval
+    real(8),dimension(:,:),allocatable    :: C,Ct
 #endif
-    integer                    :: i,j,k,n
-    integer                    :: ir,il,jr,jl,it
-    integer                    :: arow,brow,acol,bcol,jcol
-    integer                    :: ia,ib,ic,ja,jb,jc
+    integer                               :: i,j,k,q,n
+    integer                               :: ir,il,jr,jl,it
+    integer                               :: ai,aj,bi,bj,jcol
+    integer                               :: ia,ib,ic,ja,jb,jc
     !
     Hv=zero
     !> loop over all the SB sectors:
     sector: do k=1,size(sb_sector)
        !
        !> apply the 1^L x H^r
-       do il=1,Drs(k)
-          do ir=1,Dls(k)
-             i = il + (ir-1)*Drs(k) + offset(k)           
-             do jcol=1,Hright(k)%row(il)%Size
-                val = Hright(k)%row(il)%vals(jcol)
-                jl  = Hright(k)%row(il)%cols(jcol)
-                j   = jl + (ir-1)*Drs(k) + offset(k)
+       do il=1,Dls(k)           !Fix the column il: v_il 
+          !
+          do ir=1,Drs(k)        !H^r.v_il
+             i = ir + (il-1)*Drs(k) + offset(k)
+             do jcol=1,Hright(k)%row(ir)%Size
+                val = Hright(k)%row(ir)%vals(jcol)
+                jr  = Hright(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Drs(k) + offset(k)
                 Hv(i) = Hv(i) + val*v(j)
              end do
           enddo
+          !
        enddo
        !
-       !> apply the H^L x 1^r: need to T v and Hv
-       do ir=1,Drs(k)
-          do il=1,Dls(k)
+       !> apply the H^L x 1^r
+       do ir=1,Drs(k)           !Fix the row ir: v_ir
+          !
+          do il=1,Dls(k)        !H^l.v_ir
              i = ir + (il-1)*Drs(k) + offset(k)
              do jcol=1,Hleft(k)%row(il)%Size
                 val = Hleft(k)%row(il)%vals(jcol)
@@ -465,28 +613,62 @@ contains
                 Hv(i) = Hv(i) + val*v(j)
              end do
           enddo
+          !
        enddo
-       !
+       ! !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
-       do it=1,tNso          
+       !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
+       !
+       !  B.V.A^T : [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
+       !            [Dr(k),Dr(k')].[Dr(k'),Dl(k')].[Dl(k'),Dl(k)]
+       !   C.A^T  : [B.Nrow,A.Ncol].[A.Ncol,A.Nrow]
+       !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
+       !              [B.Nrow,A.Nrow] = vec(Hv)
+       do it=1,tNso
+          q = isb2jsb(it,k)
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
-          do ic=1,A(it,k)%Nrow*B(it,k)%Nrow
-             arow = (ic-1)/B(it,k)%Nrow+1
-             brow = mod(ic,B(it,k)%Nrow);if(brow==0)brow=B(it,k)%Nrow
-             if(A(it,k)%row(arow)%Size==0.OR.B(it,k)%row(brow)%Size==0)cycle
-             i = ic + RowOffset(it,k)
-             do ja=1,A(it,k)%row(arow)%Size
-                acol = A(it,k)%row(arow)%cols(ja)
-                aval = A(it,k)%row(arow)%vals(ja)
-                do jb=1,B(it,k)%row(brow)%Size
-                   bcol = B(it,k)%row(brow)%cols(jb)
-                   bval = B(it,k)%row(brow)%vals(jb)
-                   j = bcol+(acol-1)*B(it,k)%Ncol + ColOffset(it,k)
-                   Hv(i) = Hv(i) + aval*bval*v(j)
+          !
+          allocate(C(B(it,k)%Nrow,A(it,k)%Ncol));C=zero
+          !
+          !1. evaluate MMP: C = B.vec(V)
+          !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
+          !   j = bj+(aj-1)B.Ncol + ColOffset_q
+          !   \sum_bcol B(bi,bj)v_q(j)=C(bi,aj)
+          do aj=1,A(it,k)%Ncol             !
+             do bi=1,B(it,k)%Nrow
+                if(B(it,k)%row(bi)%Size==0)cycle
+                !
+                do jb=1,B(it,k)%row(bi)%Size
+                   bj   = B(it,k)%row(bi)%cols(jb)
+                   val  = B(it,k)%row(bi)%vals(jb)
+                   jc   = bj + (aj-1)*B(it,k)%Ncol
+                   j    = jc + ColOffset(it,k)
+                   C(bi,aj) = C(bi,aj) + val*v(j)
                 enddo
+                !
              enddo
           enddo
+          !2. evaluate MMP: C.A^t
+          !   \sum_aj C(bi,aj)A^t(aj,ai)
+          !  =\sum_aj [A(ai,aj)C^t(aj,bi)]^T
+          do bi=1,B(it,k)%Nrow
+             !
+             do ai=1,A(it,k)%Nrow
+                if(A(it,k)%row(ai)%Size==0)cycle
+                ic =  bi + (ai-1)*B(it,k)%Nrow
+                i  =  ic + RowOffset(it,k)
+                !
+                do ja=1,A(it,k)%row(ai)%Size
+                   aj  = A(it,k)%row(ai)%cols(ja)
+                   val = A(it,k)%row(ai)%vals(ja)
+                   Hv(i) = Hv(i) + val*C(bi,aj)
+                enddo
+                !
+             enddo
+          enddo
+          deallocate(C)
        enddo
+
     enddo sector
   end subroutine spMatVec_direct_main
 
@@ -496,6 +678,177 @@ contains
 
 
 
+
+
+
+  !##################################################################
+  !              SuperBlock MATRIX-VECTOR PRODUCTS
+  !              using shared quantities in GLOBAL
+  !##################################################################
+  subroutine spMatVec_MPI_direct_main(Nloc,v,Hv)
+    integer                               :: Nloc
+#ifdef _CMPLX
+    complex(8),dimension(Nloc)            :: v
+    complex(8),dimension(Nloc)            :: Hv
+    complex(8),dimension(:),allocatable   :: vt,Hvt
+    complex(8),dimension(:),allocatable   :: vin
+    complex(8)                            :: val
+    complex(8)                            :: aval,bval
+    complex(8),dimension(:,:),allocatable :: C,Ct
+#else
+    real(8),dimension(Nloc)               :: v
+    real(8),dimension(Nloc)               :: Hv
+    real(8),dimension(:),allocatable      :: vt,Hvt
+    real(8),dimension(:),allocatable      :: vin
+    real(8)                               :: val
+    real(8)                               :: aval,bval
+    real(8),dimension(:,:),allocatable    :: C,Ct
+#endif
+    integer                               :: i,j,k,q,n
+    integer                               :: ir,il,jr,jl,it
+    integer                               :: ai,aj,bi,bj,jcol
+    integer                               :: ia,ib,ic,ja,jb,jc
+    integer                               :: mpiArow,mpiAcol,mpiBrow,mpiBcol
+    integer                               :: i_start,i_end
+    !
+    if(.not.MpiStatus)stop "spMatVec_mpi_normal_main ERROR: MpiStatus = F"
+    !
+    !
+    Hv=zero
+    !> loop over all the SB sectors: k
+    sector: do k=1,size(sb_sector)
+       !       
+       !> apply the 1^L x H^r: share L columns
+       do il=1,mpiDls(k)   !Fix the column il(q): v_il(q) for each thread
+          !
+          do ir=1,Drs(k)   !H^r.v_il
+             i = ir + (il-1)*Drs(k) + mpiOffset(k)
+             do jcol=1,Hright(k)%row(ir)%Size
+                val = Hright(k)%row(ir)%vals(jcol)
+                jr  = Hright(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Drs(k) + mpiOffset(k)
+                Hv(i) = Hv(i) + val*v(j)
+             end do
+          enddo
+          !
+       enddo
+       !
+       !> apply the H^L x 1^r
+       !L part: non-contiguous in memory -> MPI transposition
+       allocate(vt(mpiDrs(k)*Dls(k))) ;vt=zero
+       allocate(Hvt(mpiDrs(k)*Dls(k)));Hvt=zero
+       i_start = 1 + mpiOffset(k)
+       i_end   = Drs(k)*mpiDls(k)+mpiOffSet(k)
+       call vector_transpose_MPI(Drs(k),mpiDls(k),v(i_start:i_end),Dls(k),mpiDrs(k),vt)
+       do il=1,mpiDrs(k)  !Fix the *column* ir: v_ir(q). Transposed order
+          !
+          do ir=1,Dls(k)  !go row-by-row H^l.v_ir: Transposed order
+             i = ir + (il-1)*Dls(k)
+             do jcol=1,Hleft(k)%row(ir)%Size
+                val = Hleft(k)%row(ir)%vals(jcol)
+                jr  = Hleft(k)%row(ir)%cols(jcol)
+                j   = jr + (il-1)*Dls(k)
+                Hvt(i) = Hvt(i) + val*vt(j)
+             end do
+          enddo
+          !
+       enddo
+       deallocate(vt) ; allocate(vt(Drs(k)*mpiDls(k))) ; vt=zero
+       call vector_transpose_MPI(Dls(k),mpiDrs(k),Hvt,Drs(k),mpiDls(k),vt)
+       Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
+       deallocate(vt,Hvt)
+       !
+       !> apply the term sum_k sum_it A_it(k).x.B_it(k)
+       !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
+       !
+       !  B.V.A^T : [B.Nrow,B.Ncol].[B.Ncol,A.Ncol].[A.Ncol,A.Nrow]
+       !            [Dr(k),Dr(k')].[Dr(k'),Dl(k')].[Dl(k'),Dl(k)]
+       !   C.A^T  : [B.Nrow,A.Ncol].[A.Ncol,A.Nrow]
+       !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
+       !              [B.Nrow,A.Nrow] = vec(Hv)
+       !
+
+       do it=1,tNso
+          if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+          !
+          q = isb2jsb(it,k)
+          !
+          !1. evaluate MMP: C = B.vec(V)
+          !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
+          !   j = bj+(aj-1)B.Ncol + ColOffset_q
+          !   \sum_bcol B(bi,bj)v_q(j)=C(bi,aj)
+          !
+          mpiAcol = mpiDls(q)
+          if(isHconjg(it,k))mpiAcol=mpiDls(k)
+          !
+          mpiArow = mpiDls(k)
+          if(isHconjg(it,k))mpiArow=mpiDls(q)
+          !
+          mpiBrow = mpiDrs(k)
+          if(isHconjg(it,k))mpiBrow=mpiDrs(q)
+          !
+          allocate(C(B(it,k)%Nrow,mpiAcol));C=zero
+          !
+          do aj=1,mpiAcol
+             !
+             do bi=1,B(it,k)%Nrow
+                if(B(it,k)%row(bi)%Size==0)cycle
+                !
+                do jb=1,B(it,k)%row(bi)%Size
+                   bj   = B(it,k)%row(bi)%cols(jb)
+                   val  = B(it,k)%row(bi)%vals(jb)
+                   jc   = bj + (aj-1)*B(it,k)%Ncol
+                   j    = jc + mpiOffset(q)
+                   if(isHconjg(it,k))j = jc + mpiOffset(k)
+                   C(bi,aj) = C(bi,aj) + val*v(j)
+                enddo
+                !
+             enddo
+          enddo
+          !
+          !Up to here we built "few", thread-related, columns of C(b,j*)
+          !In the next step we will need to get [A.C^T]^T
+          ! [C(b,j*)]^T = C(j*,b)
+          ! [sum_j A_ij.[C^t]_jb]^T
+          !
+          !2. evaluate MMP: C.A^t
+          !   \sum_aj C(bi,aj)A^t(aj,ai)
+          !  =\sum_aj [A(ai,aj)C^t(aj,bi)]^T
+          ! = [Hvt[A.Nrow,mpiBrow]]^T
+          ! => Hv[B.Nrow,mpiArow]
+          !
+          allocate(Ct(A(it,k)%Ncol,mpiBrow));Ct=zero
+          call vector_transpose_MPI(B(it,k)%Nrow,mpiAcol,C,A(it,k)%Ncol,mpiBrow,Ct)
+          !
+          allocate(vt(mpiArow*B(it,k)%Nrow)) ; vt=zero
+          allocate(Hvt(A(it,k)%Nrow*mpiBrow));Hvt=zero
+          !
+          do bi=1,mpiBrow
+             !
+             do ai=1,A(it,k)%Nrow
+                if(A(it,k)%row(ai)%Size==0)cycle
+                i  =  ai + (bi-1)*A(it,k)%Nrow
+                !
+                do ja=1,A(it,k)%row(ai)%Size
+                   aj  = A(it,k)%row(ai)%cols(ja)
+                   val = A(it,k)%row(ai)%vals(ja)
+                   Hvt(i) = Hvt(i) + val*Ct(aj,bi)
+                enddo
+                !
+             enddo
+          enddo
+          !
+          call vector_transpose_MPI(A(it,k)%Nrow,mpiBrow,Hvt,B(it,k)%Nrow,mpiArow,vt)
+          i_start = 1 + mpiRowOffset(it,k)
+          i_end   = B(it,k)%Nrow*mpiArow+mpiRowOffSet(it,k)
+          !
+          Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
+          !
+          deallocate(C,Ct,Hvt,Vt)
+       enddo
+       !
+    enddo sector
+  end subroutine spMatVec_MPI_direct_main
 
 
 
@@ -510,7 +863,7 @@ contains
     real(8),dimension(:)             :: q
     character(len=*)                 :: label
     integer,dimension(:),allocatable :: tmp,states,sb_map
-    integer                          :: i,istate,l,r,isb
+    integer                          :: i,istate,l,r,isb,m
     !
     if(.not.associated(sb_sector%root))&
          stop "sb2block_states error: sb_sector is not allocated"
@@ -522,21 +875,31 @@ contains
     !
     !> left,right, sb_sector and sb_states have to be known at this time:
     ! add a check
-    select case(to_lower(str(label)))
-    case("left","l","sys","s")
-       do i=1,size(sb_map)
-          istate = sb_states(sb_map(i))
-          l = (istate-1)/right%Dim+1
-          call append(tmp,l)
-       enddo
-    case("right","r","env","e")
-       do i=1,size(sb_map)
-          istate = sb_states(sb_map(i))
-          r = mod(istate,right%Dim);if(r==0)r=right%Dim
-          call append(tmp,r)
-       enddo
-    end select
-    allocate(states, source=uniq(tmp))
+    if(MpiMaster)then
+       select case(to_lower(str(label)))
+       case("left","l","sys","s")
+          do i=1,size(sb_map)
+             istate = sb_states(sb_map(i))
+             l = (istate-1)/right%Dim+1
+             call append(tmp,l)
+          enddo
+       case("right","r","env","e")
+          do i=1,size(sb_map)
+             istate = sb_states(sb_map(i))
+             r = mod(istate,right%Dim);if(r==0)r=right%Dim
+             call append(tmp,r)
+          enddo
+       end select
+       allocate(states, source=uniq(tmp))
+    endif
+#ifdef _MPI
+    if(MpiStatus)then
+       if(MpiMaster)m = size(states)
+       call Bcast_MPI(MpiComm,m)
+       if(.not.MpiMaster)allocate(states(m))
+       call Bcast_MPI(MpiComm,states)
+    endif    
+#endif
   end function sb2block_states
 
 
@@ -545,6 +908,91 @@ contains
 END MODULE DMRG_SUPERBLOCK_SETUP
 
 
+
+
+
+
+
+
+
+
+
+
+
+!   subroutine spMatVec_direct_main_(Nloc,v,Hv)
+!     integer                    :: Nloc
+! #ifdef _CMPLX
+!     complex(8),dimension(Nloc) :: v
+!     complex(8),dimension(Nloc) :: Hv
+!     complex(8)                 :: val
+!     complex(8)                 :: aval,bval
+! #else
+!     real(8),dimension(Nloc)    :: v
+!     real(8),dimension(Nloc)    :: Hv
+!     real(8)                    :: val
+!     real(8)                    :: aval,bval
+! #endif
+!     integer                    :: i,j,k,n
+!     integer                    :: ir,il,jr,jl,it
+!     integer                    :: arow,brow,acol,bcol,jcol
+!     integer                    :: ia,ib,ic,ja,jb,jc,sum
+!     !
+!     Hv=zero
+!     !> loop over all the SB sectors:
+!     sector: do k=1,size(sb_sector)
+!        !
+!        !> apply the 1^L x H^r
+!        do il=1,Dls(k)           !Fix the column il: v_il 
+!           !
+!           do ir=1,Drs(k)        !H^r.v_il
+!              i = ir + (il-1)*Drs(k) + offset(k)
+!              do jcol=1,Hright(k)%row(ir)%Size
+!                 val = Hright(k)%row(ir)%vals(jcol)
+!                 jr  = Hright(k)%row(ir)%cols(jcol)
+!                 j   = jr + (il-1)*Drs(k) + offset(k)
+!                 Hv(i) = Hv(i) + val*v(j)
+!              end do
+!           enddo
+!           !
+!        enddo
+!        !
+!        !> apply the H^L x 1^r
+!        do ir=1,Drs(k)           !Fix the row ir: v_ir
+!           !
+!           do il=1,Dls(k)        !H^l.v_ir
+!              i = ir + (il-1)*Drs(k) + offset(k)
+!              do jcol=1,Hleft(k)%row(il)%Size
+!                 val = Hleft(k)%row(il)%vals(jcol)
+!                 jl  = Hleft(k)%row(il)%cols(jcol)
+!                 j   = ir + (jl-1)*Drs(k) + offset(k)
+!                 Hv(i) = Hv(i) + val*v(j)
+!              end do
+!           enddo
+!           !
+!        enddo
+!        !
+!        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
+!        do it=1,tNso          
+!           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
+!           do ic=1,A(it,k)%Nrow*B(it,k)%Nrow
+!              arow = (ic-1)/B(it,k)%Nrow+1
+!              brow = mod(ic,B(it,k)%Nrow);if(brow==0)brow=B(it,k)%Nrow
+!              if(A(it,k)%row(arow)%Size==0.OR.B(it,k)%row(brow)%Size==0)cycle
+!              i = ic + RowOffset(it,k)
+!              do ja=1,A(it,k)%row(arow)%Size
+!                 acol = A(it,k)%row(arow)%cols(ja)
+!                 aval = A(it,k)%row(arow)%vals(ja)
+!                 do jb=1,B(it,k)%row(brow)%Size
+!                    bcol = B(it,k)%row(brow)%cols(jb)
+!                    bval = B(it,k)%row(brow)%vals(jb)
+!                    j = bcol+(acol-1)*B(it,k)%Ncol + ColOffset(it,k)
+!                    Hv(i) = Hv(i) + aval*bval*v(j)
+!                 enddo
+!              enddo
+!           enddo
+!        enddo
+!     enddo sector
+!   end subroutine spMatVec_direct_main_
 
 
 

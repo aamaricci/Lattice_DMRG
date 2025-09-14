@@ -7,6 +7,8 @@ MODULE INPUT_VARS
 
   !input variables
   !=========================================================
+  character(len=1)     :: DMRGtype
+  !Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i
   integer              :: Ldmrg
   !# of iDMRG steps to take, Ldmrg=max length of the SB.
   integer              :: Mdmrg
@@ -27,7 +29,9 @@ MODULE INPUT_VARS
   integer              :: Norb
   !# of orbitals
   integer              :: Nspin=2
-  !Nspin=# spins 
+  !Nspin=# spins
+  ! integer              :: SUn
+  ! !Spin representation 
   real(8),allocatable  :: Uloc(:)
   !local interactions
   real(8)              :: Ust
@@ -127,6 +131,10 @@ contains
     input_file=str(INPUTunit)
     !
     !DEFAULT VALUES OF THE PARAMETERS:
+    call parse_input_variable(DMRGtype,"DMRGtype",INPUTunit,&
+         default='i',&
+         comment="Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i")
+
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&
          comment="iDMRG steps to take=max length of the SB.")
@@ -227,7 +235,7 @@ contains
     if(check_MPI())then
        if(.not.master)then
           LOGfile=1000-rank
-          open(LOGfile,file="stdOUT.rank"//str(rank)//".ed")
+          open(LOGfile,file="stdOUT.rank"//str(rank)//".dmrg")
           do i=1,get_Size_MPI(MPI_COMM_WORLD)
              if(i==rank)write(*,"(A,I0,A,I0)")"Rank ",rank," writing to unit: ",LOGfile
           enddo

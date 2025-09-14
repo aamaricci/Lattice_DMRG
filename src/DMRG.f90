@@ -5,6 +5,7 @@ MODULE DMRG
   !AUX MODULES
   USE MATRIX_SPARSE
   USE MATRIX_BLOCKS
+  ! USE MATRIX_GRAPH
   USE TUPLE_BASIS
   USE LIST_OPERATORS
   USE LIST_SECTORS
@@ -15,6 +16,9 @@ MODULE DMRG
   USE DMRG_MAIN
   USE DMRG_MEASURE
   !
-  !USE VARS_GLOBAL!< uncomment this to compile kron_ tests
+  !< uncomment this to compile kron_ tests
+  ! USE DMRG_GLOBAL
+  ! USE DMRG_SUPERBLOCK_SETUP
+  ! USE DMRG_CONNECT
   implicit none  
 END MODULE DMRG

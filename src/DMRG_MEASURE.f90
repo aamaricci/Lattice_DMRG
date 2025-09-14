@@ -1,7 +1,8 @@
 MODULE DMRG_MEASURE
   USE SCIFOR, only: to_lower
-  USE VARS_GLOBAL
+  USE DMRG_GLOBAL
   USE DMRG_CONNECT
+  USE DMRG_SUPERBLOCK
   USE DMRG_SUPERBLOCK_SETUP
   implicit none
   private
@@ -30,12 +31,15 @@ MODULE DMRG_MEASURE
      module procedure :: Measure_DMRG_vector
   end interface Measure_DMRG
 
-  integer                                      :: Nsb,isb
+
+  integer                                      :: Nsb,isb,vecDim
   real(8),dimension(:),allocatable             :: qn,qm
   real(8),dimension(:),allocatable             :: dq
   type(sparse_matrix),allocatable,dimension(:) :: Olist
   type(tstates),dimension(:),allocatable       :: Li,Ri
   logical                                      :: measure_status=.false.
+
+  character(:),allocatable                     :: string
 
 contains
 
@@ -43,39 +47,45 @@ contains
   !##################################################################
   !          INIT / END MEASUREMENT: allocate/deallocate
   !##################################################################
-  subroutine Init_Measure_dmrg
-    !
+  subroutine Init_Measure_dmrg(msg)
+    real(8),dimension(:),allocatable :: qn
+    character(len=*),optional        :: msg
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: init measure"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: init measure"
+    if(MpiStatus.AND.MpiMaster)write(LOGfile,*)"DEBUG: using MPI"
 #endif
     !
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
-    allocate(Dls(Nsb),Drs(Nsb),Offset(Nsb))
-    allocate(LI(Nsb),RI(Nsb))
-    Offset=0
+    !
+    string="";if(present(msg))string=msg
+    !
+    if(MpiMaster)call start_timer("Start measuring..."//str(string))
+    !
+    call sb_build_dims()
+    !
+    allocate(LI(Nsb))
+    allocate(RI(Nsb))
     do isb=1,Nsb
-       qn      = sb_sector%qn(index=isb)
-       Dls(isb)= sector_qn_dim(left%sectors(1),qn)
-       Drs(isb)= sector_qn_dim(right%sectors(1),current_target_qn - qn)
-       if(isb>1)Offset(isb)=Offset(isb-1)+Dls(isb-1)*Drs(isb-1)
+       qn  = sb_sector%qn(index=isb)
        LI(isb)%states = sb2block_states(qn,'left')
        RI(isb)%states = sb2block_states(qn,'right')
     enddo
     suffix=label_DMRG('u')
+    !
     measure_status=.true.
   end subroutine Init_Measure_dmrg
 
-  subroutine End_measure_DMRG
+  subroutine End_measure_DMRG()
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: end measure"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: end measure"
 #endif
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
-    if(allocated(Offset))deallocate(Offset)
+    if(MpiMaster)call stop_timer("Done "//str(string))
+    if(allocated(string))deallocate(string)
     if(allocated(Olist))deallocate(Olist)
     if(allocated(Li))deallocate(Li)
     if(allocated(Ri))deallocate(Ri)
+    call sb_delete_dims()
     measure_status=.false.
   end subroutine End_measure_DMRG
 
@@ -92,7 +102,7 @@ contains
     type(sparse_matrix)            :: Oi
     real(8)                        :: avOp
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: measure Op"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: measure Op",pos
 #endif
     if(.not.measure_status)call Init_Measure_DMRG()
     Oi   = Build_Op_dmrg(Op,pos)
@@ -115,6 +125,7 @@ contains
     real(8),dimension(:),allocatable,optional :: avOp
     real(8),dimension(:),allocatable          :: vals
     integer,dimension(:),allocatable          :: pos_
+    character(:),allocatable                  :: msg
     character(len=1)                          :: label
     character(len=128)                        :: file_
     integer                                   :: i,ipos,L,R,Np
@@ -122,8 +133,10 @@ contains
     integer                                   :: it,j,dims(2)
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: measure scalar"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: measure scalar"
 #endif
+    !
+    msg="";if(present(file))msg=file
     !
     L = left%length ; R = right%length
     Np = L+R;if(present(pos))Np= size(pos)
@@ -132,17 +145,17 @@ contains
     allocate(pos_(Np))
     pos_=arange(1,Np);if(present(pos))pos_=pos
     !
-    call start_timer()
-    call Init_measure_dmrg()
+    call Init_measure_dmrg(msg)
     do i=1,Np
        ipos    = pos_(i)
        vals(i) = Measure_Op_DMRG(Op,ipos)
-       write(LOGfile,*)ipos,vals(i)
+#ifdef _DEBUG
+       if(MpiMaster)write(LOGfile,*)ipos,vals(i)
+#endif
+       if(MpiMaster)call eta(i,Np)
     enddo
+    if(MpiMaster.AND.present(file))call Write_DMRG(trim(file),vals,pos_)
     call End_measure_dmrg()
-    call stop_timer("Done "//str(file))
-    !
-    if(present(file))call Write_DMRG(trim(file),vals,pos_)
     !
     if(present(avOp))then
        if(allocated(avOp))deallocate(avOp)
@@ -158,6 +171,7 @@ contains
     real(8),dimension(:,:),allocatable,optional :: avOp
     real(8),dimension(:,:),allocatable          :: vals
     integer,dimension(:),allocatable            :: pos_
+    character(:),allocatable                    :: msg
     character(len=1)                            :: label
     character(len=128)                          :: file_
     integer                                     :: i,ipos,L,R,Np,M
@@ -166,8 +180,10 @@ contains
     !
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: measure vector"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: measure vector"
 #endif
+    !
+    msg="";if(present(file))msg=file
     !
     M  = size(Op)
     L  = left%length
@@ -179,19 +195,19 @@ contains
     !
     allocate(vals(M,Np))
     !
-    call start_timer()
-    call Init_measure_dmrg()
+    call Init_measure_dmrg(msg)
     do i=1,Np
        ipos = pos_(i)
        do j=1,M
           vals(j,i) = Measure_Op_DMRG(Op(j),ipos)
        enddo
-       write(LOGfile,*)ipos,(vals(j,i),j=1,M)
+#ifdef _DEBUG
+       if(MpiMaster)write(LOGfile,*)ipos,(vals(j,i),j=1,M)
+#endif
+       if(MpiMaster)call eta(i,Np)
     enddo
+    if(MpiMaster.AND.present(file))call Write_DMRG(trim(file),vals,pos_)
     call End_measure_dmrg()
-    call stop_timer("Done "//str(file))
-    !
-    if(present(file))call Write_DMRG(trim(file),vals,pos_)
     !
     if(present(avOp))then
        if(allocated(avOp))deallocate(avOp)
@@ -222,7 +238,7 @@ contains
     logical                        :: set_basis_
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Build Op"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Build Op"
 #endif
     !
     set_basis_ = .false. ;if(present(set_basis))set_basis_=set_basis
@@ -247,23 +263,52 @@ contains
     else
        select case(label)
        case('l')
-          dB = shape(left%omatrices%op(index=i-1));D=dB(2)
-          Oi = Id(d).x.Op
+          if(MpiMaster)dB = shape(left%omatrices%op(index=i-1));D=dB(2)
+#ifdef _MPI
+          if(MpiStatus)call Bcast_MPI(MpiComm,D)
+#endif
+          Oi = Id(D).x.Op
           if(set_basis_)then
+#ifdef _MPI
+             if(MpiStatus)then
+                if(MpiMaster)U  = left%omatrices%op(index=i)
+                call U%bcast(MpiComm)
+                Oi = U%dgr().pm.(Oi.pm.U)
+             else
+                U  = left%omatrices%op(index=i)
+                Oi = matmul(U%dgr(),matmul(Oi,U))
+             endif
+#else
              U  = left%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
-             call U%free()
+#endif
           endif
        case('r')
-          dB = shape(right%omatrices%op(index=i-1));D=dB(2)
+          if(MpiMaster)dB = shape(right%omatrices%op(index=i-1));D=dB(2)
+#ifdef _MPI
+          if(MpiStatus)call Bcast_MPI(MpiComm,D)
+#endif
           Oi = Op.x.Id(d)
           if(set_basis_)then
+#ifdef _MPI
+             if(MpiStatus)then
+                if(MpiMaster)U  = right%omatrices%op(index=i)
+                call U%bcast(MpiComm)
+                Oi = U%dgr().pm.(Oi.pm.U)
+             else
+                U  = right%omatrices%op(index=i)
+                Oi = matmul(U%dgr(),matmul(Oi,U))
+             endif
+#else
              U  = right%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
-             call U%free()
+#endif
           endif
        end select
     endif
+    !
+    call U%free()
+    !
   end function Build_Op_dmrg
 
 
@@ -284,7 +329,7 @@ contains
     integer                          :: i,istart,iend,it
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Advance Op"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Advance Op"
 #endif
     !
     !The lenght of the last block contributing to the SB construction-> \psi
@@ -316,135 +361,42 @@ contains
     select case(label)
     case ("l") 
        do it=istart,iend
-          U  = left%omatrices%op(index=it)
+          if(MpiMaster) U  = left%omatrices%op(index=it)
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+          else
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+          endif
+#else
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot%dim)
+#endif
+          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r") 
        do it=istart,iend
-          U  = right%omatrices%op(index=it)
+          if(MpiMaster) U  = right%omatrices%op(index=it)
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+          else
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+          endif
+#else
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot%dim).x.Oi
+#endif
+          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
+    !
     call U%free()
+    !
   end function Advance_Op_dmrg
 
 
 
-
-
-
-
-  !##################################################################
-  !                   AVERAGE OPERATOR 
-  !Purpose: take the average of an operator O on the last step basis 
-  !##################################################################
-  function Average_Op_dmrg(Oi,pos) result(Oval)
-    type(sparse_matrix),intent(in)   :: Oi
-    integer                          :: pos
-    character(len=1)                 :: label
-    real(8)                          :: Oval
-    type(sparse_matrix)              :: Psi
-    integer                          :: L,R,N
-    !
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Average Op"
-#endif
-    !
-    !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length
-    R = right%length
-    N = L+R
-    !
-    !Check:
-    if(pos<1.OR.pos>N)stop "Average_op_dmrg error: Pos not in [1,Ldmrg]"
-    !
-    !Get label of the block holding the site at position pos:
-    label='l'; if(pos>L)label='r'
-    !
-    allocate(Olist(Nsb))
-    !
-    !Measure using PSI matrix:
-    do isb=1,Nsb
-       select case(label)
-       case default;stop "Average_op_dmrg error: label not [l,r]"
-       case ("l");Olist(isb) = sp_filter(Oi,LI(isb)%states)
-       case ("r");Olist(isb) = sp_filter(Oi,RI(isb)%states)
-       end select
-    enddo
-    !
-    Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
-    !
-    do isb=1,Nsb
-       call Olist(isb)%free()
-    enddo
-    deallocate(Olist)
-    !
-  end function Average_Op_dmrg
-
-
-
-
-  !#################################
-  !#################################
-
-
-
-
-  function OdotV_direct(Op,v,direction) result(Ov)
-    integer                          :: Nsb,Nloc
-    type(sparse_matrix),dimension(:) :: Op
-    character(len=*)                 :: direction
-#ifdef _CMPLX
-    complex(8),dimension(:)             :: v
-    complex(8),dimension(size(v))       :: Ov
-    complex(8)                          :: val
-#else
-    real(8),dimension(:)             :: v
-    real(8),dimension(size(v))       :: Ov
-    real(8)                          :: val
-#endif
-    integer                          :: i,j,k,n
-    integer                          :: ir,il,jr,jl,it
-    integer                          :: ia,ib,ic,ja,jb,jc,jcol
-    !
-    Ov=zero
-    !> loop over all the SB sectors:
-    select case(to_lower(direction))
-    case("l","left","sys","s")
-       do k=1,size(sb_sector)
-          !> apply the H^L x 1^r: need to T v and Ov
-          do ir=1,Drs(k)
-             do il=1,Dls(k)
-                i = ir + (il-1)*Drs(k) + offset(k)
-                do jcol=1,Op(k)%row(il)%Size
-                   val = Op(k)%row(il)%vals(jcol)
-                   jl  = Op(k)%row(il)%cols(jcol)
-                   j   = ir + (jl-1)*Drs(k) + offset(k)
-                   Ov(i) = Ov(i) + val*v(j)
-                end do
-             enddo
-          enddo
-       enddo
-    case("r","right","env","e")
-       do k=1,size(sb_sector)
-          !> apply the 1^L x H^r
-          do il=1,Drs(k)
-             do ir=1,Dls(k)
-                i = il + (ir-1)*Drs(k) + offset(k)           
-                do jcol=1,Op(k)%row(il)%Size
-                   val = Op(k)%row(il)%vals(jcol)
-                   jl  = Op(k)%row(il)%cols(jcol)
-                   j   = jl + (ir-1)*Drs(k) + offset(k)
-                   Ov(i) = Ov(i) + val*v(j)
-                end do
-             enddo
-          enddo
-       enddo
-    end select
-    !
-  end function OdotV_direct
 
 
 
@@ -495,19 +447,231 @@ contains
     select case(label)
     case ("l")
        do it=istart+1,iend
-          U  = left%omatrices%op(index=it)
+          if(MpiMaster)U  = left%omatrices%op(index=it)
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+          else
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+          endif
+#else
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot%dim)
+#endif
+          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r")
        do it=istart+1,iend
-          U  = right%omatrices%op(index=it)
+          if(MpiMaster)U  = right%omatrices%op(index=it)          
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+          else
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+          endif
+#else
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot%dim).x.Oi
+#endif
+          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
+    !
     call U%free()
+    !
   end function Advance_Corr_dmrg
+
+
+
+
+
+  !##################################################################
+  !                   AVERAGE OPERATOR 
+  !Purpose: take the average of an operator O on the last step basis 
+  !##################################################################
+  function Average_Op_dmrg(Oi,pos) result(Oval)
+    type(sparse_matrix),intent(in)   :: Oi
+    integer                          :: pos
+    character(len=1)                 :: label
+    real(8)                          :: Oval,Otmp
+    type(sparse_matrix)              :: Psi
+    integer                          :: L,R,N
+    !
+#ifdef _DEBUG
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Average Op"
+#endif
+    !
+    !The lenght of the last block contributing to the SB construction-> \psi
+    L = left%length
+    R = right%length
+    N = L+R
+    !
+    !Check:
+    if(pos<1.OR.pos>N)stop "Average_op_dmrg error: Pos not in [1,Ldmrg]"
+    !
+    !Get label of the block holding the site at position pos:
+    label='l'; if(pos>L)label='r'
+    !
+    allocate(Olist(Nsb))
+    !
+    !Measure using PSI matrix:
+    do isb=1,Nsb
+       select case(label)
+       case default;stop "Average_op_dmrg error: label not [l,r]"
+       case ("l");Olist(isb) = sp_filter(Oi,LI(isb)%states)
+       case ("r");Olist(isb) = sp_filter(Oi,RI(isb)%states)
+       end select
+    enddo
+    !
+#ifdef _MPI
+    if(MpiStatus)then
+       Otmp = dot_product(gs_vector(:,1), OdotV_MPI_direct(Olist,gs_vector(:,1),label))
+       Oval = zero
+       call AllReduce_MPI(MpiComm,Otmp,Oval)
+    else
+       Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
+    endif
+#else
+    Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
+#endif
+    !
+    do isb=1,Nsb
+       call Olist(isb)%free()
+    enddo
+    deallocate(Olist)
+    !
+  end function Average_Op_dmrg
+
+
+  !#################################
+  !#################################
+
+
+  function OdotV_direct(Op,v,direction) result(Ov)
+    integer                          :: Nsb,Nloc
+    type(sparse_matrix),dimension(:) :: Op
+    character(len=*)                 :: direction
+#ifdef _CMPLX
+    complex(8),dimension(:)             :: v
+    complex(8),dimension(size(v))       :: Ov
+    complex(8)                          :: val
+#else
+    real(8),dimension(:)             :: v
+    real(8),dimension(size(v))       :: Ov
+    real(8)                          :: val
+#endif
+    integer                          :: i,j,k,n
+    integer                          :: ir,il,jr,jl,it
+    integer                          :: ia,ib,ic,ja,jb,jc,jcol
+    !
+    Ov=zero
+    !> loop over all the SB sectors:
+    sector: do  k=1,size(sb_sector)
+       select case(to_lower(direction))
+       case("l","left","sys","s")
+          !> apply the H^L x 1^r: need to T v and Ov
+          do ir=1,Drs(k)
+             do il=1,Dls(k)
+                i = ir + (il-1)*Drs(k) + offset(k)
+                do jcol=1,Op(k)%row(il)%Size
+                   val = Op(k)%row(il)%vals(jcol)
+                   jl  = Op(k)%row(il)%cols(jcol)
+                   j   = ir + (jl-1)*Drs(k) + offset(k)
+                   Ov(i) = Ov(i) + val*v(j)
+                end do
+             enddo
+          enddo
+          !
+       case("r","right","env","e")
+          !> apply the 1^L x H^r
+          do il=1,Dls(k)
+             do ir=1,Drs(k)
+                i = ir + (il-1)*Drs(k) + offset(k)           
+                do jcol=1,Op(k)%row(ir)%Size
+                   val = Op(k)%row(ir)%vals(jcol)
+                   jr  = Op(k)%row(ir)%cols(jcol)
+                   j   = jr + (il-1)*Drs(k) + offset(k)
+                   Ov(i) = Ov(i) + val*v(j)
+                end do
+             enddo
+          enddo
+          !
+       end select
+       !
+    enddo sector
+  end function OdotV_direct
+
+
+#ifdef _MPI
+  function OdotV_MPI_direct(Op,v,direction) result(Ov)
+    integer                             :: Nsb,Nloc
+    type(sparse_matrix),dimension(:)    :: Op
+    character(len=*)                    :: direction
+#ifdef _CMPLX
+    complex(8),dimension(:)             :: v
+    complex(8),dimension(size(v))       :: Ov
+    complex(8)                          :: val
+    complex(8),dimension(:),allocatable :: vt,Hvt
+#else
+    real(8),dimension(:)                :: v
+    real(8),dimension(size(v))          :: Ov
+    real(8)                             :: val
+    real(8),dimension(:),allocatable    :: vt,Hvt
+#endif
+    integer                             :: i,j,k,n
+    integer                             :: ir,il,jr,jl,it
+    integer                             :: ia,ib,ic,ja,jb,jc,jcol
+    integer                             :: i_start,i_end
+    !
+    Ov=zero
+    !> loop over all the SB sectors:
+    sector: do  k=1,size(sb_sector)
+       select case(to_lower(direction))
+       case("l","left","sys","s")
+          !> apply the H^L x 1^r: need to T v and Ov
+          allocate(vt(mpiDrs(k)*Dls(k))) ;vt=zero
+          allocate(Hvt(mpiDrs(k)*Dls(k)));Hvt=zero
+          i_start = 1 + mpiOffset(k)
+          i_end   = mpiDl(k)+mpiOffSet(k)
+          call vector_transpose_MPI(Drs(k),mpiDls(k),v(i_start:i_end),Dls(k),mpiDrs(k),vt)
+          do il=1,mpiDrs(k)
+             do ir=1,Dls(k)
+                i = ir + (il-1)*Dls(k)
+                do jcol=1,Op(k)%row(ir)%Size
+                   val = Op(k)%row(ir)%vals(jcol)
+                   jr  = Op(k)%row(ir)%cols(jcol)
+                   j   = jr + (il-1)*Dls(k)
+                   Hvt(i) = Hvt(i) + val*vt(j)
+                end do
+             enddo
+          enddo
+          deallocate(vt) ; allocate(vt(Drs(k)*mpiDls(k))) ; vt=zero
+          call vector_transpose_MPI(Dls(k),mpiDrs(k),Hvt,Drs(k),mpiDls(k),vt)
+          Ov(i_start:i_end) = Ov(i_start:i_end) + Vt
+          deallocate(vt,Hvt)
+          !
+       case("r","right","env","e")
+          !> apply the 1^L x H^r
+          do il=1,mpiDls(k)
+             do ir=1,Drs(k)
+                i = ir + (il-1)*Drs(k) + mpiOffset(k)
+                do jcol=1,Op(k)%row(ir)%Size
+                   val = Op(k)%row(ir)%vals(jcol)
+                   jr  = Op(k)%row(ir)%cols(jcol)
+                   j   = jr + (il-1)*Drs(k) + mpiOffset(k)
+                   Ov(i) = Ov(i) + val*v(j)
+                end do
+             enddo
+          enddo
+          !
+       end select
+       !
+    enddo sector
+  end function OdotV_MPI_direct
+#endif
+
+
+
 
 
 

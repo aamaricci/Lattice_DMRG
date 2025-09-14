@@ -3,30 +3,28 @@ program dmrg_spin_1d
   USE DMRG
   USE ASSERTING
   implicit none
-  character(len=64)                  :: finput
-  character(len=1)                   :: DMRGtype
-  integer                            :: i,Unit,L
-  type(site)                         :: Dot
-  type(sparse_matrix)                :: bSz,bSp,SiSj
-  real(8),dimension(:,:),allocatable :: Hlr
-  real(8),dimension(:),allocatable   :: avSz,x,data,data_
-  real(8),dimension(:),allocatable   :: e,s
+  character(len=64)                   :: finput
+  character(len=1)                    :: DMRGtype
+  integer                             :: i,Unit,L
+  type(site),dimension(:),allocatable :: Dot
+  type(sparse_matrix)                 :: bSz,bSp,SiSj
+  real(8),dimension(:,:),allocatable  :: Hlr
+  real(8),dimension(:),allocatable    :: avSz,x,data,data_
+  real(8),dimension(:),allocatable    :: e,s
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call read_input(finput)
 
 
   !Init DMRG
-  Dot = spin_site(sun=2)
-  allocate(Hlr(Nspin*Norb,Nspin*Norb))
-  Hlr(1,1) = Jp
-  Hlr(2,2) = Jx/2d0
+  allocate(Dot(1))              !Homogeneous system
+  Dot = spin_site(sun=2)        !spin_site handles array!
+  Hlr = diag([Jp,Jx/2d0])       !implicit fortran allocation
   call init_dmrg(Hlr,ModelDot=Dot)
   call infinite_DMRG()
 
   !Post-processing and measure quantities:
-  call Measure_DMRG(dot%operators%op(key="S_z"),pos=arange(1,Ldmrg),avOp=avSz)
-
+  call Measure_DMRG(dot(1)%operators%op(key="S_z"),pos=arange(1,Ldmrg),avOp=avSz)
 
   !Check energy:
   L = file_length("energyVSleft.length_L40_M20_iDMRG.dmrg")

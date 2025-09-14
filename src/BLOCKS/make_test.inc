@@ -5,7 +5,7 @@ SF_LIB:=$(shell pkg-config --libs scifor)
 
 TYPE=DBLE
 
-FLAG= -cpp -D_DEBUG -D_$(TYPE) -D_MPI -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
+FLAG= -cpp -D_DEBUG -D_$(TYPE) -O0 -p -g -Wsurprising -Waliasing -fwhole-file -fcheck=all -fbacktrace -fbounds-check  -ffree-line-length-none -fPIC -w -fallow-argument-mismatch -fopenmp
 
 
 define VER
@@ -23,20 +23,17 @@ FOCK=../FOCK
 LIST=../LIST
 MATRIX=../MATRIX
 
-test: matrix_graph matrix_sparse matrix_blocks
+
+test: sites blocks
 
 
-matrix_graph: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
-matrix_graph: VERSION.o INPUT_VARS.o AUX_FUNCS.o
-	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_GRAPH.f90 -o $(HOME)/.bin/testMATRIX_GRAPH ${SF_INC} ${SF_LIB}
+sites: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o QN_TUPLE_BASIS.o LIST_OPERATORS.o LIST_SECTORS.o HLOCAL.o 
+sites: VERSION.o INPUT_VARS.o AUX_FUNCS.o MATRIX_SPARSE.o QN_TUPLE_BASIS.o LIST_OPERATORS.o LIST_SECTORS.o HLOCAL.o 
+	${FC} $(FLAG) -D_TEST ${MYOBJ} SITES.f90 -o $(HOME)/.bin/testSITES ${SF_INC} ${SF_LIB}
 
-matrix_sparse: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o 
-matrix_sparse: VERSION.o INPUT_VARS.o AUX_FUNCS.o
-	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_SPARSE.f90 -o $(HOME)/.bin/testMATRIX_SPARSE ${SF_INC} ${SF_LIB}
-
-matrix_blocks: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o QN_TUPLE_BASIS.o LIST_SECTORS.o MATRIX_SPARSE.o
-matrix_blocks: VERSION.o INPUT_VARS.o AUX_FUNCS.o QN_TUPLE_BASIS.o LIST_SECTORS.o MATRIX_SPARSE.o 
-	${FC} $(FLAG) -D_TEST $(MYOBJ) MATRIX_BLOCKS.f90 -o $(HOME)/.bin/testMATRIX_BLOCKS ${SF_INC} ${SF_LIB}
+blocks: MYOBJ=VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o QN_TUPLE_BASIS.o LIST_SECTORS.o LIST_OPERATORS.o  SITES.o
+blocks: VERSION.o INPUT_VARS.o AUX_FUNCS.o HLOCAL.o MATRIX_SPARSE.o MATRIX_BLOCKS.o QN_TUPLE_BASIS.o LIST_SECTORS.o LIST_OPERATORS.o  SITES.o
+	${FC} $(FLAG) -D_TEST ${MYOBJ} BLOCKS.f90 -o $(HOME)/.bin/testBLOCKS ${SF_INC} ${SF_LIB}
 
 
 
