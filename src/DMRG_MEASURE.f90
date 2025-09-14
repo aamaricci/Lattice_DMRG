@@ -52,6 +52,7 @@ contains
     character(len=*),optional        :: msg
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init measure"
+    if(MpiStatus.AND.MpiMaster)write(LOGfile,*)"DEBUG: using MPI"
 #endif
     !
     if(measure_status)call End_Measure_DMRG()
@@ -60,9 +61,6 @@ contains
     string="";if(present(msg))string=msg
     !
     if(MpiMaster)call start_timer("Start measuring..."//str(string))
-#ifdef _MPI
-    if(check_MPI())call dmrg_set_MpiComm()
-#endif
     !
     call sb_build_dims()
     !
@@ -88,9 +86,6 @@ contains
     if(allocated(Li))deallocate(Li)
     if(allocated(Ri))deallocate(Ri)
     call sb_delete_dims()
-#ifdef _MPI
-    if(check_MPI())call dmrg_del_MpiComm()
-#endif
     measure_status=.false.
   end subroutine End_measure_DMRG
 
@@ -264,6 +259,7 @@ contains
     !
     !Build Operator on the chain at position pos:
     ! if(MpiMaster)then
+    !
     if(i==1)then
        Oi = Op
     else
@@ -275,18 +271,19 @@ contains
 #endif
           Oi = Id(D).x.Op
           if(set_basis_)then
-             if(MpiMaster)U  = left%omatrices%op(index=i)
 #ifdef _MPI
              if(MpiStatus)then
+                if(MpiMaster)U  = left%omatrices%op(index=i)
                 call U%bcast(MpiComm)
                 Oi = U%dgr().pm.(Oi.pm.U)
              else
+                U  = left%omatrices%op(index=i)
                 Oi = matmul(U%dgr(),matmul(Oi,U))
              endif
 #else
+             U  = left%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
 #endif
-             call U%free()
           endif
        case('r')
           if(MpiMaster)dB = shape(right%omatrices%op(index=i-1));D=dB(2)
@@ -295,27 +292,27 @@ contains
 #endif
           Oi = Op.x.Id(d)
           if(set_basis_)then
-             if(MpiMaster)U  = right%omatrices%op(index=i)
 #ifdef _MPI
              if(MpiStatus)then
+                if(MpiMaster)U  = right%omatrices%op(index=i)
                 call U%bcast(MpiComm)
                 Oi = U%dgr().pm.(Oi.pm.U)
              else
+                U  = right%omatrices%op(index=i)
                 Oi = matmul(U%dgr(),matmul(Oi,U))
              endif
 #else
+             U  = right%omatrices%op(index=i)
              Oi = matmul(U%dgr(),matmul(Oi,U))
 #endif
-             call U%free()
           endif
        end select
     endif
-    ! endif
-! #ifdef _MPI
-!     if(MpiStatus)call Oi%bcast(MpiComm)
-    ! #endif
+    !
+    call U%free()
     !
   end function Build_Op_dmrg
+
 
 
 
@@ -362,6 +359,7 @@ contains
        if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R"
     end select
     !
+    !
     !Evolve to SB basis
     Oi = Op
     select case(label)
@@ -372,15 +370,13 @@ contains
           if(MpiStatus)then
              call U%bcast()
              Oi = (U%dgr().pm.Oi).pm.U
-             Oi = Oi.x.Id(dot(it)%dim)
           else
              Oi = matmul(matmul(U%dgr(),Oi),U)
-             Oi = Oi.x.Id(dot(it)%dim)
           endif
 #else
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Oi.x.Id(dot(it)%dim)
 #endif
+          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r") 
        do it=istart,iend
@@ -389,27 +385,105 @@ contains
           if(MpiStatus)then
              call U%bcast()
              Oi = (U%dgr().pm.Oi).pm.U
-             Oi = Id(dot(it)%dim).x.Oi
           else
              Oi = matmul(matmul(U%dgr(),Oi),U)
-             Oi = Id(dot(it)%dim).x.Oi
           endif
 #else
           Oi = matmul(matmul(U%dgr(),Oi),U)
-          Oi = Id(dot(it)%dim).x.Oi
 #endif
+          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
-    call U%free()
-    ! endif
     !
-! #ifdef _MPI
-!     if(MpiStatus)call Oi%bcast(MpiComm)
-! #endif
+    call U%free()
     !
   end function Advance_Op_dmrg
 
 
+
+
+
+
+
+  !##################################################################
+  !                   ADVANCE CORRELATION FUNCTION 
+  !Purpose: advance the correlation O(i) Nstep from site I 
+  !##################################################################
+  function Advance_Corr_dmrg(Op,pos,nstep) result(Oi)
+    type(sparse_matrix),intent(in)   :: Op
+    integer                          :: pos
+    integer,optional                 :: nstep
+    type(sparse_matrix)              :: Oi,U
+    character(len=1)                 :: label
+    integer                          :: L,R,N
+    integer                          :: i,istart,iend,it
+    !
+#ifdef _DEBUG
+    write(LOGfile,*)"DEBUG: Advance Correlator"
+#endif
+    !
+    !The lenght of the last block contributing to the SB construction-> \psi
+    L = left%length             !
+    R = right%length            !
+    N = L+R                       !== Ldmrg
+    !
+    !Check:
+    if(pos<1.OR.pos>N)stop "Advance_op_dmrg error: Pos not in [1,Ldmrg]"
+    !
+    !Get label of the block holding the site at position pos:
+    label='l'; if(pos>L)label='r'
+    !
+    !Get index in the block from the position pos in the chain:
+    i=pos    ; if(pos>L)i=N+1-pos
+    !
+    istart  = i
+    select case(label)
+    case ("l")
+       istart = i ; iend   = L-1 ; if(present(nstep))iend=istart+nstep
+       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L-1"
+    case ("r") 
+       istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
+       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R-1"
+    end select
+    !
+    !
+    Oi = Op
+    select case(label)
+    case ("l")
+       do it=istart+1,iend
+          if(MpiMaster)U  = left%omatrices%op(index=it)
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+          else
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+          endif
+#else
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+#endif
+          Oi = Oi.x.Id(dot(it)%dim)
+       enddo
+    case ("r")
+       do it=istart+1,iend
+          if(MpiMaster)U  = right%omatrices%op(index=it)          
+#ifdef _MPI
+          if(MpiStatus)then
+             call U%bcast()
+             Oi = (U%dgr().pm.Oi).pm.U
+          else
+             Oi = matmul(matmul(U%dgr(),Oi),U)
+          endif
+#else
+          Oi = matmul(matmul(U%dgr(),Oi),U)
+#endif
+          Oi = Id(dot(it)%dim).x.Oi
+       enddo
+    end select
+    !
+    call U%free()
+    !
+  end function Advance_Corr_dmrg
 
 
 
@@ -456,7 +530,7 @@ contains
 #ifdef _MPI
     if(MpiStatus)then
        Otmp = dot_product(gs_vector(:,1), OdotV_MPI_direct(Olist,gs_vector(:,1),label))
-       Oval = 0d0
+       Oval = zero
        call AllReduce_MPI(MpiComm,Otmp,Oval)
     else
        Oval = dot_product(gs_vector(:,1), OdotV_direct(Olist,gs_vector(:,1),label))
@@ -473,12 +547,8 @@ contains
   end function Average_Op_dmrg
 
 
-
-
   !#################################
   !#################################
-
-
 
 
   function OdotV_direct(Op,v,direction) result(Ov)
@@ -536,8 +606,6 @@ contains
   end function OdotV_direct
 
 
-
-
 #ifdef _MPI
   function OdotV_MPI_direct(Op,v,direction) result(Ov)
     integer                             :: Nsb,Nloc
@@ -557,7 +625,7 @@ contains
     integer                             :: i,j,k,n
     integer                             :: ir,il,jr,jl,it
     integer                             :: ia,ib,ic,ja,jb,jc,jcol
-    integer                               :: i_start,i_end
+    integer                             :: i_start,i_end
     !
     Ov=zero
     !> loop over all the SB sectors:
@@ -611,71 +679,6 @@ contains
 
 
 
-
-  !##################################################################
-  !                   ADVANCE CORRELATION FUNCTION 
-  !Purpose: advance the correlation O(i) Nstep from site I 
-  !##################################################################
-  function Advance_Corr_dmrg(Op,pos,nstep) result(Oi)
-    type(sparse_matrix),intent(in)   :: Op
-    integer                          :: pos
-    integer,optional                 :: nstep
-    type(sparse_matrix)              :: Oi,U
-    character(len=1)                 :: label
-    integer                          :: L,R,N
-    integer                          :: i,istart,iend,it
-    !
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Advance Correlator"
-#endif
-    !
-    !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length             !
-    R = right%length            !
-    N = L+R                       !== Ldmrg
-    !
-    !Check:
-    if(pos<1.OR.pos>N)stop "Advance_op_dmrg error: Pos not in [1,Ldmrg]"
-    !
-    !Get label of the block holding the site at position pos:
-    label='l'; if(pos>L)label='r'
-    !
-    !Get index in the block from the position pos in the chain:
-    i=pos    ; if(pos>L)i=N+1-pos
-    !
-    istart  = i
-    select case(label)
-    case ("l")
-       istart = i ; iend   = L-1 ; if(present(nstep))iend=istart+nstep
-       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L-1"
-    case ("r") 
-       istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
-       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R-1"
-    end select
-    !
-    !
-    if(MpiMaster)then
-       Oi = Op
-       select case(label)
-       case ("l")
-          do it=istart+1,iend
-             U  = left%omatrices%op(index=it)
-             Oi = matmul(matmul(U%dgr(),Oi),U)
-             Oi = Oi.x.Id(dot(it)%dim)
-          enddo
-       case ("r")
-          do it=istart+1,iend
-             U  = right%omatrices%op(index=it)
-             Oi = matmul(matmul(U%dgr(),Oi),U)
-             Oi = Id(dot(it)%dim).x.Oi
-          enddo
-       end select
-       call U%free()
-    endif
-#ifdef _MPI
-    if(MpiStatus)call Oi%bcast(MpiComm)
-#endif
-  end function Advance_Corr_dmrg
 
 
 
