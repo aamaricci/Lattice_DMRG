@@ -1,5 +1,5 @@
 MODULE DMRG_CONNECT
-  USE VARS_GLOBAL
+  USE DMRG_GLOBAL
   implicit none
   private
 
@@ -29,10 +29,10 @@ contains
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
 #endif
     !
-    call start_timer("Enlarge blocks "//str(grow_))
+    if(MpiMaster)call start_timer("Enlarge blocks "//str(grow_))
     !
     if(.not.self%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing self.H operator in the list"
@@ -44,73 +44,76 @@ contains
          stop "Enlarge_Block ERROR: Dot.Type != Self.Type"
     !    
     !> Update Hamiltonian:
+    if(MpiMaster)then
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update H"
+       write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
-    select case(str(grow_))
-    case ("left","l")
-       Hb = self%operators%op("H").x.id(dot%dim)
-       Hd = id(self%dim).x.dot%operators%op("H")
-       select case(dtype)
-       case default;stop "Enlarge_Block ERROR: wrong dot.Type"
-       case ("spin","s")
-          H2 = connect_spin_blocks(self,as_block(dot))
-       case ("fermion","f,","electron","e")
-          H2 = connect_fermion_blocks(self,as_block(dot))
-       end select
-    case ("right","r")
-       Hb = id(dot%dim).x.self%operators%op("H")
-       Hd = dot%operators%op("H").x.id(self%dim)
-       select case(dtype)
-       case default;stop "Enlarge_Block ERROR: wrong dot.Type"
-       case ("spin","s")
-          H2 = connect_spin_blocks(as_block(dot),self)
-       case ("fermion","f,","electron","e")
-          H2 = connect_fermion_blocks(as_block(dot),self)
-       end select
-    end select
-    call self%put_op("H", Hb +  Hd + H2, type="bosonic")
-    !
-    !> Update all the other operators in the list:
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
-#endif
-    do i=1,size(self%operators)
-       key   = str(self%operators%key(index=i))
-       otype = str(self%operators%type(index=i))
-       if(key=="H")cycle
-       !
-       !Bosonic operators:
-       !O_L -> I_L.x.O_d  | O_R -> O_d.x.I_R
-       !Fermionic operators:
-       !O_L -> P_L.x.O_d  | O_R -> O_d.x.I_R
-       !Sign operator:
-       !P_L -> P_L.x.P_d  | P_R -> P_d.x.P_R
        select case(str(grow_))
        case ("left","l")
-          select case(to_lower(str(otype)))
-          case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
-          case('b','bose','bosonic')
-             eO = Id(self%dim)
-          case('f','fermi','fermionic')
-             eO = self%operators%op(key="P")
-          case('s','sign')
-             eO = self%operators%op(key="P")
+          Hb = self%operators%op("H").x.id(dot%dim)
+          Hd = id(self%dim).x.dot%operators%op("H")
+          select case(dtype)
+          case default;stop "Enlarge_Block ERROR: wrong dot.Type"
+          case ("spin","s")
+             H2 = connect_spin_blocks(self,as_block(dot))
+          case ("fermion","f,","electron","e")
+             H2 = connect_fermion_blocks(self,as_block(dot))
           end select
-          call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
        case ("right","r")
-          select case(to_lower(str(otype)))
-          case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
-          case('b','bose','bosonic')
-             eO = Id(self%dim)
-          case('f','fermi','fermionic')
-             eO = Id(self%dim)
-          case('s','sign')
-             eO = self%operators%op(key="P")
+          Hb = id(dot%dim).x.self%operators%op("H")
+          Hd = dot%operators%op("H").x.id(self%dim)
+          select case(dtype)
+          case default;stop "Enlarge_Block ERROR: wrong dot.Type"
+          case ("spin","s")
+             H2 = connect_spin_blocks(as_block(dot),self)
+          case ("fermion","f,","electron","e")
+             H2 = connect_fermion_blocks(as_block(dot),self)
           end select
-          call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
        end select
-    enddo
+       call self%put_op("H", Hb +  Hd + H2, type="bosonic")
+       !
+       !
+       !> Update all the other operators in the list:
+#ifdef _DEBUG
+       write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
+#endif
+       do i=1,size(self%operators)
+          key   = str(self%operators%key(index=i))
+          otype = str(self%operators%type(index=i))
+          if(key=="H")cycle
+          !
+          !Bosonic operators:
+          !O_L -> I_L.x.O_d  | O_R -> O_d.x.I_R
+          !Fermionic operators:
+          !O_L -> P_L.x.O_d  | O_R -> O_d.x.I_R
+          !Sign operator:
+          !P_L -> P_L.x.P_d  | P_R -> P_d.x.P_R
+          select case(str(grow_))
+          case ("left","l")
+             select case(to_lower(str(otype))) 
+             case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
+             case('b','bose','bosonic')
+                eO = Id(self%dim)
+             case('f','fermi','fermionic')
+                eO = self%operators%op(key="P")
+             case('s','sign')
+                eO = self%operators%op(key="P")
+             end select
+             call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
+          case ("right","r")
+             select case(to_lower(str(otype)))
+             case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
+             case('b','bose','bosonic')
+                eO = Id(self%dim)
+             case('f','fermi','fermionic')
+                eO = Id(self%dim)
+             case('s','sign')
+                eO = self%operators%op(key="P")
+             end select
+             call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
+          end select
+       enddo
+    endif
     !
     !> Enlarge dimensions
     self%length = self%length + 1
@@ -129,12 +132,15 @@ contains
     end select
     !
 #ifdef _DEBUG
-    if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
+    if(MpiMaster.AND.verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
 #endif
     !
-    if(.not.self%is_valid())then
-       write(LOGfile,*)"dmrg_step error: enlarged_block "//str(grow_)// "is not a valid block"
-       stop
+    if(MpiMaster)then
+       if(.not.self%is_valid())then
+          write(LOGfile,*)"ENLARGE_BLOCK error: not valid enlarged_block "//str(grow_)
+          call self%show(file="corrupted_enl_block_"//str(grow_)//".dat")
+          stop
+       endif
     endif
     !
     !Free the memory:
@@ -145,7 +151,10 @@ contains
     call dot_basis%free()
     call enl_basis%free()
     !
-    call stop_timer()
+#ifdef _MPI
+    call Barrier_MPI(MpiComm)
+#endif
+    if(MpiMaster)call stop_timer()
     !
   end subroutine enlarge_block
 
@@ -170,7 +179,7 @@ contains
 #endif
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: connect Fermion blocks"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
     !Hij is shared:
@@ -246,7 +255,7 @@ contains
 #endif
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: connect Spin blocks"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
     !Hij is shared:
