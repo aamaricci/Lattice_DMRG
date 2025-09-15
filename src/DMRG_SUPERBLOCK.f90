@@ -39,43 +39,18 @@ contains
     integer,dimension(:),allocatable :: Astates
     integer,dimension(:),allocatable :: Nl,Nr,Offset
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-    call start_timer("Get SB states")
-=======
     if(MpiMaster)call start_timer("Get SB states")
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
     !
     !INIT SB STATES OBJECTS:
     if(allocated(sb_states))deallocate(sb_states)
     call sb_sector%free()
     !
 #ifdef _DEBUG
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    if(verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
-=======
-    unit = fopen('SB_list_'//str(left%length)//'.dat')
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    if(verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
->>>>>>> d733a73 (Updated code.)
-=======
     if(MpiMaster.AND.verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
 #endif
     !
     Nsl = size(left%sectors(1))
@@ -90,35 +65,10 @@ contains
        right_map = right%sectors(1)%map(qn=right_qn)
        !
 #ifdef _DEBUG
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-       if(verbose>5)then
-=======
        if(MpiMaster.AND.verbose>5)then
-<<<<<<< HEAD
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
-          write(unit,*)""
-=======
           write(unit,*)" "
-<<<<<<< HEAD
->>>>>>> c8aed3d (Updated code.)
-          write(unit,*)left_qn,right_qn
-          write(unit,*)size(left_map),size(right_map)
-=======
           write(unit,*)left_qn,right_qn,size(left_map),size(right_map)
->>>>>>> d4c1240 (Porting sb_get_states to MPI.)
        endif
-<<<<<<< HEAD
-=======
-       write(unit,*)""
-       write(unit,*)left_qn,right_qn
-       write(unit,*)size(left_map),size(right_map)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
 #endif
        !
        Nl(ql) = size(left_map)
@@ -134,48 +84,14 @@ contains
           call append(sb_states, istate)
           Astates(k) = k+Offset(ql) !==size(sb_states)
 #ifdef _DEBUG
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-             if(verbose>5)write(unit,*)left_map(i),right_map(j),istate
-=======
-             if(MpiMaster.AND.verbose>5)write(unit,*)left_map(i),right_map(j),istate
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
-=======
-          if(MpiMaster.AND.verbose>5)write(unit,*)left_map(il),right_map(ir),istate,size(sb_states)
->>>>>>> d4c1240 (Porting sb_get_states to MPI.)
-=======
           if(MpiMaster.AND.verbose>5)write(unit,*)left_map(il),right_map(ir),istate,size(sb_states),k+Offset(ql)
->>>>>>> 99e81b5 (Extending sb_get_states)
 #endif
        enddo
        call sb_sector%appends(qn=left_qn,istates=Astates)
     enddo
     ! enddo
 #ifdef _DEBUG
-<<<<<<< HEAD
-    if(verbose>5)close(unit)
-=======
-             write(unit,*)left_map(i),right_map(j),istate
-=======
-             if(verbose>5)write(unit,*)left_map(i),right_map(j),istate
->>>>>>> d733a73 (Updated code.)
-#endif
-          enddo
-       enddo
-    enddo
-#ifdef _DEBUG
-<<<<<<< HEAD
-    close(unit)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    if(verbose>5)close(unit)
->>>>>>> d733a73 (Updated code.)
-=======
     if(MpiMaster.AND.verbose>5)close(unit)
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
 #endif
     !
     if(MpiMaster)call stop_timer()
@@ -220,21 +136,11 @@ contains
 #endif
     integer                               :: vecDim,Nloc,m_tmp
     logical                               :: exist,lanc_solve
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
 #endif
     !
-<<<<<<< HEAD
-=======
-    !    
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     m_sb = size(sb_states)
     if(m_sb==0)stop "sb_diag ERROR: size(sb_states)==0"
     !
@@ -291,26 +197,7 @@ contains
        vecDim = sb_vecDim_Hv()
        allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        allocate(evals(m_sb))
-<<<<<<< HEAD
-<<<<<<< HEAD
-       call eigh(Hsb,evals)
-<<<<<<< HEAD
-<<<<<<< HEAD
-       gs_vector(:,1:Neigen) = Hsb(:,1:Neigen)
-       gs_energy(1:Neigen)   = evals(1:Neigen)
-=======
-       gs_vector(:,1:Lanc_Neigen) = Hsb(:,1:Lanc_Neigen)
-       gs_energy(1:Lanc_Neigen)   = evals(1:Lanc_Neigen)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-       gs_vector(:,1:Neigen) = Hsb(:,1:Neigen)
-       gs_energy(1:Neigen)   = evals(1:Neigen)
->>>>>>> d733a73 (Updated code.)
-=======
-       !
-=======
 
->>>>>>> c8aed3d (Updated code.)
        if(MpiMaster)call eigh(Hsb,evals)
 #ifdef _MPI
        if(MpiStatus)then
@@ -328,7 +215,6 @@ contains
        gs_energy(1:Neigen)   = evals(1:Neigen)          
 #endif
        !
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
        deallocate(Hsb,evals)
        !
     endif
@@ -476,112 +362,13 @@ contains
     !
     call sb_delete_dims()
     if(allocated(RowOffset))deallocate(RowOffset)
-<<<<<<< HEAD
-    if(allocated(ColOffset))deallocate(ColOffset)    
-<<<<<<< HEAD
-  end subroutine sb_diag
-
-
-
-  !##################################################################
-  !         SETUP THE SUPERBLOCK HAMILTONIAN PROBLEM
-  ! . if Hmat: returb H^SB as dense matrix there for Lapack use
-  ! . if sparse_H = T: build H^SB as sparse matrix
-  ! . if sparse_H = F: setup H^SB terms and blocks for H*v procedure
-  !##################################################################
-  subroutine sb_build_Hv(Hmat)
-#ifdef _CMPLX
-    complex(8),dimension(:,:),allocatable,optional :: Hmat
-#else
-    real(8),dimension(:,:),allocatable,optional :: Hmat
-#endif
-    integer                                        :: m_sb
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-    !
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: SuperBlock build H*v"
-#endif
-    !
-<<<<<<< HEAD
-=======
-
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-    if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
-    m_sb = size(sb_states)
-
-    !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
-    if(present(Hmat))then
-       if(allocated(Hmat))deallocate(Hmat)
-       allocate(Hmat(m_sb,m_sb));Hmat=zero
-       !Nullify HxV function pointer:
-       spHtimesV_p => null()
-       !
-       !>Build Sparse Hsb:
-       call start_timer("get H_sb Dense: LAPACK")
-       call Setup_SuperBlock_Sparse()
-       call stop_timer()
-       !
-       !Dump Hsb to dense matrix as required:
-       call spHsb%dump(Hmat)
-       return
-    endif
-    !
-    !Build SuperBLock HxV operation: stored or direct
-    select case(sparse_H)
-    case(.true.)
-       call start_timer("get H_sb Sparse: ARPACK")
-       call Setup_SuperBlock_Sparse()
-       call stop_timer()
-       !
-       !Set HxV function pointer:
-       spHtimesV_p => spMatVec_sparse_main
-       !
-    case(.false.)
-       call start_timer("get H_sb Direct: ARPACK")
-       call Setup_SuperBlock_Direct()
-       call stop_timer()
-       !
-       !Set HxV function pointer:
-       spHtimesV_p => spMatVec_direct_main
-       !
-    end select
-  end subroutine sb_build_Hv
-
-
-
-=======
-=======
     if(allocated(ColOffset))deallocate(ColOffset)
-<<<<<<< HEAD
-    if(allocated(mpiDls))deallocate(mpiDls)
-    if(allocated(mpiDrs))deallocate(mpiDrs)
-<<<<<<< HEAD
-    if(allocated(mpiQs))deallocate(mpiQs)
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
-=======
-    if(allocated(mpiDl))deallocate(mpiDl)
-    if(allocated(mpiDr))deallocate(mpiDr)
-    if(allocated(mpiOffset))deallocate(mpiOffset)
-<<<<<<< HEAD
->>>>>>> e9d8bd1 (Updated code.)
-=======
-    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
-    if(allocated(mpiColOffset))deallocate(mpiColOffset)
->>>>>>> 4eb4ad9 (IT IS FUCKING WORKING!!!)
-=======
 #ifdef _MPI
     if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
     if(allocated(mpiColOffset))deallocate(mpiColOffset)
 #endif
     !
->>>>>>> c8aed3d (Updated code.)
   end subroutine sb_delete_Hv
->>>>>>> 6adc5a4 (Updated code, importing MPI)
 
 
 

@@ -53,19 +53,7 @@ MODULE HLOCAL
   public :: Build_Dens_Operator
 
   public :: Build_BasisStates
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   public :: Build_FermionicSign
-=======
-
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  public :: Build_FermionicSign
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
-  public :: Build_FermionicSign
->>>>>>> 7e90d6a (Updating Cmake library construction)
 contains
 
 
@@ -76,20 +64,7 @@ contains
   !               CREATE THE LOCAL FOCK SPACE
   !##################################################################
   !##################################################################
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   subroutine Init_LocalFock_Space()
-=======
-  subroutine Init_LocalFock_Space(Norb)
-    integer :: Norb
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  subroutine Init_LocalFock_Space()
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
-  subroutine Init_LocalFock_Space()
->>>>>>> 7e90d6a (Updating Cmake library construction)
     integer :: DimUp,DimDw
     integer :: DimUps(1),DimDws(1)
     integer :: Nups(1),Ndws(1)
@@ -234,14 +209,6 @@ contains
   !PURPOSE: 
   !+-------------------------------------------------------------------+
   function build_Hlocal_operator(H) result(Hmat)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
     complex(8),dimension(:,:),allocatable :: Hmat
@@ -259,37 +226,6 @@ contains
     real(8)                               :: sg1,sg2
     integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
     logical                               :: Jcondition
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-    complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
-    complex(8),dimension(:,:),allocatable :: Hmat
-    complex(8),dimension(Nspin,Ns,Ns)     :: Hloc
-=======
-    real(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
-    real(8),dimension(:,:),allocatable :: Hmat
-    real(8),dimension(Nspin,Ns,Ns)     :: Hloc
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-    type(local_fock_sector)               :: sectorI
-    real(8)                               :: htmp
-    integer                               :: isector,i,m,io,jo,iorb,ispin,jorb
-    integer                               :: iup,idw,mup,mdw
-    integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-    type(local_fock_sector)            :: sectorI
-    real(8)                            :: htmp
-    integer                            :: isector,i,m,io,jo,iorb,ispin,jorb,ii,jj
-    integer                            :: iup,idw,mup,mdw,k1,k2
-    real(8)                            :: sg1,sg2
-    integer                            :: nup(Ns),ndw(Ns),nvec(2*Ns)
-    logical                            :: Jcondition
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     !
 
 #ifdef _CMPLX
@@ -305,38 +241,13 @@ contains
     !
     do ispin=1,Nspin
        do iorb=1,Norb
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           io = iorb+(ispin-1)*Norb      
           do jorb=1,Norb
              jo = jorb + (ispin-1)*Norb
-=======
-          io = iorb+(ispin-1)*Nspin          
-          do jorb=1,Norb
-             jo = jorb + (ispin-1)*Nspin
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-          io = iorb+(ispin-1)*Norb      
-          do jorb=1,Norb
-             jo = jorb + (ispin-1)*Norb
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-=======
-          io = iorb+(ispin-1)*Norb      
-          do jorb=1,Norb
-             jo = jorb + (ispin-1)*Norb
->>>>>>> 7e90d6a (Updating Cmake library construction)
              Hloc(ispin,iorb,jorb) = H(io,jo)
           enddo
        enddo
     enddo
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-    !
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     !
     !
     !
@@ -348,19 +259,7 @@ contains
           nvec = bdecomp(m,2*Ns)
           nup  = nvec(1:Ns)
           ndw  = nvec(Ns+1:2*Ns)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           ii   = m+1
-=======
-          m    = m+1
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-          ii   = m+1
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
-          ii   = m+1
->>>>>>> 7e90d6a (Updating Cmake library construction)
           !
           htmp = zero
           !LOCAL HAMILTONIAN PART:
@@ -416,19 +315,7 @@ contains
           !UP electrons
           do io=1,Ns
              do jo=1,Ns
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
                 Jcondition = (Hloc(1,io,jo)/=zero) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
-=======
-                Jcondition = (Hloc(1,io,jo)/=0d0) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
-                Jcondition = (Hloc(1,io,jo)/=zero) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-                Jcondition = (Hloc(1,io,jo)/=zero) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
->>>>>>> 7e90d6a (Updating Cmake library construction)
                 if (Jcondition) then
                    call c(jo,m,k1,sg1)
                    call cdg(io,k1,k2,sg2)
@@ -466,31 +353,11 @@ contains
   function build_C_operator(iorb,ispin) result(Cmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Cmat
 #else
     real(8),dimension(:,:),allocatable    :: Cmat
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-    complex(8),dimension(:,:),allocatable :: Cmat
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-    real(8),dimension(:,:),allocatable :: Cmat
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8)                               :: c_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -510,19 +377,7 @@ contains
           m   = sectorI%H(1)%map(i)
           nvec= bdecomp(m,2*Ns)
           if(nvec(alfa) == 0) cycle
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
           call c(alfa,m,l,c_)
-=======
-          call c(alfa,m,l,c_)          
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-          call c(alfa,m,l,c_)
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-          call c(alfa,m,l,c_)
->>>>>>> 7e90d6a (Updating Cmake library construction)
           Cmat(l+1,m+1) = one*c_
        enddo
        call Delete_LocalFock_Sector(sectorI)
@@ -532,31 +387,11 @@ contains
   function build_Cdg_operator(iorb,ispin) result(CDGmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: CDGmat
 #else
     real(8),dimension(:,:),allocatable    :: CDGmat
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-    complex(8),dimension(:,:),allocatable :: CDGmat
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-    real(8),dimension(:,:),allocatable :: CDGmat
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8)                               :: cdg_
     integer                               :: isector,i,m,l,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -588,31 +423,11 @@ contains
   function build_Dens_operator(iorb,ispin) result(Dmat)
     integer                               :: ispin,iorb
     type(local_fock_sector)               :: sectorI
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: Dmat
 #else
     real(8),dimension(:,:),allocatable :: Dmat
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-    complex(8),dimension(:,:),allocatable :: Dmat
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-    real(8),dimension(:,:),allocatable :: Dmat
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     real(8)                               :: dens
     integer                               :: imp,isector,i,m,Dim
     integer                               :: nvec(2*Ns),alfa
@@ -696,66 +511,17 @@ contains
 
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-  !##################################################################
-  !##################################################################
-  !         BUILD and RETURN THE LOCAL FOCK BASIS QN
-  !##################################################################
-  !##################################################################
-  function Build_BasisStates() result(Hvec)
-    integer,dimension(:),allocatable :: Hvec
-    integer                          :: i,iup,idw,Nup,Ndw,NN
-    !
-    if(allocated(Hvec))deallocate(Hvec)
-    !
-    NN = 2**Ns
-    do idw = 0,NN-1
-       Ndw = popcnt(idw)
-       do iup = 0,NN-1
-          Nup = popcnt(iup)
-          i   = iup + idw*NN
-          call append(Hvec,nup)
-          call append(Hvec,ndw)
-       enddo
-    enddo
-  end function Build_BasisStates
-
-
-
-
-=======
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
   !##################################################################
   !##################################################################
   !         BUILD and RETURN FERMIONIC SIGN MATRIX
   !##################################################################
   !##################################################################
   function Build_FermionicSign() result(P)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable :: P
 #else
     real(8),dimension(:,:),allocatable :: P
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-    real(8),dimension(:,:),allocatable :: P
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,dimension(:),allocatable   :: Hvec
     integer                            :: i,iup,idw,Nup,Ndw,NN
     !
@@ -770,32 +536,11 @@ contains
           call append(Hvec,i)
        enddo
     enddo
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
     P = diag(one*Hvec)
-=======
-    P = diag(1d0*Hvec)
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
-    P = diag(one*Hvec)
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-    P = diag(one*Hvec)
->>>>>>> 7e90d6a (Updating Cmake library construction)
   end function Build_FermionicSign
 
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-  
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-=======
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   !##################################################################
   !##################################################################
@@ -995,13 +740,6 @@ contains
   end subroutine map_deallocate_vector
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -1025,14 +763,6 @@ contains
   end subroutine print_conf
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 END MODULE HLOCAL
 
 
@@ -1057,15 +787,6 @@ program testHLOCAL
   USE HLOCAL
   implicit none
   character(len=64)                     :: finput
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 #ifdef _CMPLX
   complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   complex(8),dimension(:,:),allocatable :: hloc
@@ -1073,34 +794,12 @@ program testHLOCAL
   real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
   real(8),dimension(:,:),allocatable :: hloc
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
-  complex(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
-  complex(8),dimension(:,:),allocatable :: hloc
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal
-=======
-  real(8),dimension(:,:),allocatable :: Docc,Cup,Cdw,CDGup,CDGdw,Dens,Hlocal,P
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-  real(8),dimension(:,:),allocatable :: hloc
->>>>>>> f63915b (Testing the code.):HLOCAL.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
   integer,dimension(:),allocatable      :: Hvec
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')  
   call read_input(finput)
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -1110,199 +809,61 @@ program testHLOCAL
   allocate(hloc(Nspin*Norb,Nspin*Norb))
   hloc=0d0;if(Norb==2)hloc=0.5d0*kron(pauli_0,pauli_z)
   call print_matrix(Hloc)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,""
   print*,"H:"
   Hlocal = build_Hlocal_operator(hloc)
   call print_matrix(Hlocal)
-<<<<<<< HEAD
-=======
-=======
-
-
-
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-  print*,"Imp Fock space"  
-  call Init_LocalFock_Space()
-
-  allocate(hloc(Nspin*Norb,Nspin*Norb))
-  hloc=0d0;if(Norb==2)hloc=0.5d0*kron(pauli_0,pauli_z)
-  call print_mat(Hloc)
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-
-  print*,""
-  print*,"H:"
-  Hlocal = build_Hlocal_operator(hloc)
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-  call print_mat(Hlocal)
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(Hlocal)
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,""
   print*,"C_up:"
   Cup = build_C_operator(iorb=1,ispin=1)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(Cup)
   ! call print_matrix(kron(eye(2),Cop))
-=======
-  call print_mat(Cup)
-  ! call print_mat(kron(eye(2),Cop))
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(Cup)
-  ! call print_matrix(kron(eye(2),Cop))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(Cup)
-  ! call print_matrix(kron(eye(2),Cop))
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,""
   print*,"C_dw:"
   Cdw = build_C_operator(iorb=1,ispin=2)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(Cdw)
   ! call print_matrix(kron(Cop,dble(pauli_z)))
-=======
-  call print_mat(Cdw)
-  ! call print_mat(kron(Cop,dble(pauli_z)))
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(Cdw)
-  ! call print_matrix(kron(Cop,dble(pauli_z)))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(Cdw)
-  ! call print_matrix(kron(Cop,dble(pauli_z)))
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,""
   print*,"CDG_up:"
   CDGup = build_CDG_operator(iorb=1,ispin=1)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(CDGup)
   ! call print_matrix(transpose(kron(eye(2),Cop)))
-=======
-  call print_mat(CDGup)
-  ! call print_mat(transpose(kron(eye(2),Cop)))
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(CDGup)
-  ! call print_matrix(transpose(kron(eye(2),Cop)))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(CDGup)
-  ! call print_matrix(transpose(kron(eye(2),Cop)))
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,""
   print*,"CDG_dw:"
   CDGdw = build_CDG_operator(iorb=1,ispin=2)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(CDGdw)
   ! call print_matrix(transpose(kron(Cop,dble(pauli_z))))
-=======
-  call print_mat(CDGdw)
-  ! call print_mat(transpose(kron(Cop,dble(pauli_z))))
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(CDGdw)
-  ! call print_matrix(transpose(kron(Cop,dble(pauli_z))))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(CDGdw)
-  ! call print_matrix(transpose(kron(Cop,dble(pauli_z))))
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   print*,""
   print*,"Dens_up:"
   Dens = build_Dens_operator(iorb=1,ispin=1)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(dens)
   ! call print_matrix(kron(eye(2),Dens))
-=======
-  call print_mat(dens)
-  ! call print_mat(kron(eye(2),Dens))
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(dens)
-  ! call print_matrix(kron(eye(2),Dens))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(dens)
-  ! call print_matrix(kron(eye(2),Dens))
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   print*,""
   print*,"Dens_dw:"  
   Dens = build_Dens_operator(iorb=1,ispin=2)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(dens)
   ! call print_matrix(kron(Dens,eye(2)))
-=======
-  call print_mat(dens)
-  ! call print_mat(kron(Dens,eye(2)))
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(dens)
-  ! call print_matrix(kron(Dens,eye(2)))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(dens)
-  ! call print_matrix(kron(Dens,eye(2)))
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   print*,""
   print*,"Docc = CDG_up.C_up.CDG_dw.C_dw"  
   allocate(Docc, mold=Dens)
   Docc = CDGup.x.Cup.x.CDGdw.x.Cdw
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
   call print_matrix(Docc)
-=======
-  call print_mat(Docc)
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-  call print_matrix(Docc)
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
-  call print_matrix(Docc)
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
   Hvec = Build_BasisStates()
   print*,size(Hvec)
   print*,Hvec
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
 
 
@@ -1312,26 +873,6 @@ program testHLOCAL
   call print_matrix(kSz(2*Norb))
 
   print*,diagonal(P)-diagonal(kSz(2*Norb))
-<<<<<<< HEAD
-=======
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-=======
-
-
-
-  P = Build_FermionicSign()
-  call print_matrix(P)
-  print*,""
-  call print_matrix(kSz(2*Norb))
-
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-  print*,1d0*Hvec-diagonal(kSz(2*Norb))
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):HLOCAL.f90
-=======
-  print*,diagonal(P)-diagonal(kSz(2*Norb))
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
   call Delete_LocalFock_space()
 
 
@@ -1340,44 +881,6 @@ program testHLOCAL
 contains
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-<<<<<<< HEAD:src/FOCK/HLOCAL.f90
-
-  recursive function KSz(n) result(A)
-    integer, intent(in) :: n
-    real(8)          :: A(2**n, 2**n)
-    integer             :: d(2**n)
-    integer             :: i
-    d = szvec(n)
-    A = zero
-    forall(i=1:2**n)A(i,i) = one*d(i)
-  end function KSz
-
-  recursive function szvec(n) result(vec)
-    integer,intent(in)      :: n
-    integer,dimension(2**n) :: vec
-    if(n==1)then
-       vec = [1,-1]
-    else
-       vec = [szvec(n-1),-szvec(n-1)]
-    endif
-  end function szvec
-
-=======
-  subroutine print_mat(M)
-    real(8),dimension(:,:) :: M
-    integer                   :: i,j
-    do i=1,size(M,1)
-       write(*,"("//str(size(M,2))//"(F4.1,1x))")((M(i,j)),j=1,size(M,2))
-    enddo
-  end subroutine print_mat
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):HLOCAL.f90
-
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):HLOCAL.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
 
   recursive function KSz(n) result(A)
     integer, intent(in) :: n

@@ -4,7 +4,6 @@ MODULE DMRG_SUPERBLOCK_SETUP
   implicit none
   private
 
-
   !Local variables
   integer                                        :: tNso
   integer                                        :: isb,jsb
@@ -23,8 +22,6 @@ MODULE DMRG_SUPERBLOCK_SETUP
   !-> used in DMRG_MEASURE to perform H|gs>
   public :: sb2block_states
   !
-
-
 contains
 
 
@@ -45,20 +42,11 @@ contains
     integer                         :: m_left,m_right
     character(len=:),allocatable    :: type
     type(sparse_matrix)             :: H2
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Sparse"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -87,10 +75,6 @@ contains
 
 
 
-
-
-
-
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                       DIRECT MODE
@@ -108,19 +92,10 @@ contains
   subroutine Setup_SuperBlock_Direct()
     character(len=:),allocatable                 :: type
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -140,10 +115,6 @@ contains
     end select
   end subroutine Setup_SuperBlock_Direct
 
-
-
-
-
   !##################################################################
   !                          SPIN CASE
   !##################################################################
@@ -161,19 +132,10 @@ contains
     real(8),dimension(:,:),allocatable           :: Hij
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - spin"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -355,11 +317,6 @@ contains
 
 
 
-
-
-
-
-
   !##################################################################
   !                        FERMION CASE
   !##################################################################
@@ -380,19 +337,10 @@ contains
     real(8),dimension(:,:),allocatable           :: Hij
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -582,11 +530,6 @@ contains
 
 
 
-
-
-
-
-
   !##################################################################
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
@@ -612,12 +555,6 @@ contains
        end do matmul
     end do
   end subroutine spMatVec_sparse_main
-
-
-
-
-
-
 
 
 

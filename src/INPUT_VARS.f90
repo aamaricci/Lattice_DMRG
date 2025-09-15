@@ -171,10 +171,6 @@ contains
          default=1,&
          comment="Number of impurity orbitals.")
 
-    ! call parse_input_variable(SUn,"SUN",INPUTunit,&
-    !      default=2,&
-    !      comment="Dimension of the spin representation.")
-
     !>Interaction parameters:
     allocate(Uloc(Norb))
     call parse_input_variable(uloc,"ULOC",INPUTunit,&

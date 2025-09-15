@@ -47,28 +47,14 @@ contains
   !##################################################################
   !          INIT / END MEASUREMENT: allocate/deallocate
   !##################################################################
-<<<<<<< HEAD
-  subroutine Init_Measure_dmrg
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-    !
-=======
   subroutine Init_Measure_dmrg(msg)
     real(8),dimension(:),allocatable :: qn
     character(len=*),optional        :: msg
->>>>>>> c8aed3d (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init measure"
     if(MpiStatus.AND.MpiMaster)write(LOGfile,*)"DEBUG: using MPI"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
     !
@@ -90,31 +76,12 @@ contains
     measure_status=.true.
   end subroutine Init_Measure_dmrg
 
-<<<<<<< HEAD
-  subroutine End_measure_DMRG
-<<<<<<< HEAD
-<<<<<<< HEAD
-#ifdef _DEBUG
-    if(MpiMaster)write(LOGfile,*)"DEBUG: end measure"
-#endif
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: end measure"
-#endif
->>>>>>> d733a73 (Updated code.)
-    if(allocated(Dls))deallocate(Dls)
-    if(allocated(Drs))deallocate(Drs)
-    if(allocated(Offset))deallocate(Offset)
-=======
   subroutine End_measure_DMRG()
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: end measure"
 #endif
     if(MpiMaster)call stop_timer("Done "//str(string))
     if(allocated(string))deallocate(string)
->>>>>>> c8aed3d (Updated code.)
     if(allocated(Olist))deallocate(Olist)
     if(allocated(Li))deallocate(Li)
     if(allocated(Ri))deallocate(Ri)
@@ -134,18 +101,9 @@ contains
     integer                        :: pos
     type(sparse_matrix)            :: Oi
     real(8)                        :: avOp
-<<<<<<< HEAD
-<<<<<<< HEAD
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: measure Op",pos
 #endif
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: measure Op"
-#endif
->>>>>>> d733a73 (Updated code.)
     if(.not.measure_status)call Init_Measure_DMRG()
     Oi   = Build_Op_dmrg(Op,pos)
     Oi   = Advance_Op_dmrg(Oi,pos)
@@ -174,18 +132,9 @@ contains
     type(sparse_matrix)                       :: Oi
     integer                                   :: it,j,dims(2)
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: measure scalar"
 #endif
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: measure scalar"
-#endif
->>>>>>> d733a73 (Updated code.)
     !
     msg="";if(present(file))msg=file
     !
@@ -230,24 +179,12 @@ contains
     integer                                     :: it,j,dims(2)
     !
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: measure vector"
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-=======
     msg="";if(present(file))msg=file
     !
->>>>>>> c8aed3d (Updated code.)
     M  = size(Op)
     L  = left%length
     R  = right%length
@@ -300,19 +237,10 @@ contains
     integer                        :: i,dB(2),d
     logical                        :: set_basis_
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Build Op"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     set_basis_ = .false. ;if(present(set_basis))set_basis_=set_basis
     !
     !The lenght of the last block contributing to the SB construction-> \psi
@@ -330,8 +258,6 @@ contains
     i=pos    ; if(pos>L)i=N+1-pos
     !
     !Build Operator on the chain at position pos:
-    ! if(MpiMaster)then
-    !
     if(i==1)then
        Oi = Op
     else
@@ -389,7 +315,6 @@ contains
 
 
 
-
   !##################################################################
   !                   ADVANCE OPERATOR 
   !Purpose: advance the operator O(i) Nstep from site I 
@@ -403,19 +328,10 @@ contains
     integer                          :: L,R,N
     integer                          :: i,istart,iend,it
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Advance Op"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
     R = right%length
@@ -439,7 +355,6 @@ contains
        istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
        if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R"
     end select
-    !
     !
     !Evolve to SB basis
     Oi = Op
@@ -582,19 +497,10 @@ contains
     type(sparse_matrix)              :: Psi
     integer                          :: L,R,N
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Average Op"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     !The lenght of the last block contributing to the SB construction-> \psi
     L = left%length
     R = right%length
@@ -767,86 +673,6 @@ contains
 
 
 
-
-
-
-<<<<<<< HEAD
-  !##################################################################
-  !                   ADVANCE CORRELATION FUNCTION 
-  !Purpose: advance the correlation O(i) Nstep from site I 
-  !##################################################################
-  function Advance_Corr_dmrg(Op,pos,nstep) result(Oi)
-    type(sparse_matrix),intent(in)   :: Op
-    integer                          :: pos
-    integer,optional                 :: nstep
-    type(sparse_matrix)              :: Oi,U
-    character(len=1)                 :: label
-    integer                          :: L,R,N
-    integer                          :: i,istart,iend,it
-    !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Advance Correlator"
-#endif
-    !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-    !The lenght of the last block contributing to the SB construction-> \psi
-    L = left%length             !
-    R = right%length            !
-    N = L+R                       !== Ldmrg
-    !
-    !Check:
-    if(pos<1.OR.pos>N)stop "Advance_op_dmrg error: Pos not in [1,Ldmrg]"
-    !
-    !Get label of the block holding the site at position pos:
-    label='l'; if(pos>L)label='r'
-    !
-    !Get index in the block from the position pos in the chain:
-    i=pos    ; if(pos>L)i=N+1-pos
-    !
-    istart  = i
-    select case(label)
-    case ("l")
-       istart = i ; iend   = L-1 ; if(present(nstep))iend=istart+nstep
-       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L-1"
-    case ("r") 
-       istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
-       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R-1"
-    end select
-    !
-    !
-    if(MpiMaster)then
-       Oi = Op
-       select case(label)
-       case ("l")
-          do it=istart+1,iend
-             U  = left%omatrices%op(index=it)
-             Oi = matmul(matmul(U%dgr(),Oi),U)
-             Oi = Oi.x.Id(dot(it)%dim)
-          enddo
-       case ("r")
-          do it=istart+1,iend
-             U  = right%omatrices%op(index=it)
-             Oi = matmul(matmul(U%dgr(),Oi),U)
-             Oi = Id(dot(it)%dim).x.Oi
-          enddo
-       end select
-       call U%free()
-    endif
-#ifdef _MPI
-    if(MpiStatus)call Oi%bcast(MpiComm)
-#endif
-  end function Advance_Corr_dmrg
-
-=======
->>>>>>> 5abe969 (Code tested. Fully working.)
 
 
   !#################################

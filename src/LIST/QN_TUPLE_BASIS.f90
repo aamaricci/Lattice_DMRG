@@ -10,19 +10,7 @@ MODULE TUPLE_BASIS
   private
 
   type tstates
-<<<<<<< HEAD
-<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
-<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
      integer,dimension(:),allocatable     :: states
-=======
-     integer,dimension(:),allocatable :: states
->>>>>>> e213c0c (Intermediate commit.):TUPLE_BASIS.f90
-=======
-     integer,dimension(:),allocatable     :: states
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):TUPLE_BASIS.f90
-=======
-     integer,dimension(:),allocatable     :: states
->>>>>>> 7e90d6a (Updating Cmake library construction)
   end type tstates
 
   type tuple
@@ -78,18 +66,7 @@ MODULE TUPLE_BASIS
   end interface tsum
 
   public :: tuple
-<<<<<<< HEAD
-<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
-<<<<<<< HEAD:src/LIST/QN_TUPLE_BASIS.f90
   public :: tstates
-=======
->>>>>>> 7f27ed5 (Intermediate commit.):TUPLE_BASIS.f90
-=======
-  public :: tstates
->>>>>>> e213c0c (Intermediate commit.):TUPLE_BASIS.f90
-=======
-  public :: tstates
->>>>>>> 7e90d6a (Updating Cmake library construction)
   public :: tbasis
   public :: shape
   public :: tsum

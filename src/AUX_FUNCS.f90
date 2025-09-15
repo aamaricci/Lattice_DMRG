@@ -1,13 +1,6 @@
 MODULE AUX_FUNCS
   USE SCIFOR, only: free_unit,str,to_lower,one,zero
   USE INPUT_VARS
-<<<<<<< HEAD
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-=======
-  USE SCIFOR, only: free_unit,str,to_lower,one,zero
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
   implicit none
   private
 
@@ -35,16 +28,6 @@ MODULE AUX_FUNCS
   public :: append
   public :: add_to
   public :: binary_search
-<<<<<<< HEAD
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-=======
-  public :: KSz
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
-=======
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
   public :: fopen
   public :: cumulate
   public :: label_dmrg
@@ -59,11 +42,6 @@ contains
 
 
   function okey(iorb,ispin,isite) result(string)
-<<<<<<< HEAD
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     integer,optional             :: iorb,isite,ispin
     integer                      :: iorb_,isite_,ispin_
     character(len=:),allocatable :: string,str_orb,str_spin,str_site
@@ -100,55 +78,6 @@ contains
        end select
     endif
 
-<<<<<<< HEAD
-=======
-    integer                      :: iorb
-    integer,optional             :: isite,ispin
-    integer                      :: isite_,ispin_
-=======
-    integer,optional             :: iorb,isite,ispin
-    integer                      :: iorb_,isite_,ispin_
->>>>>>> 7f27ed5 (Intermediate commit.):AUX_FUNCS.f90
-    character(len=:),allocatable :: string,str_orb,str_spin,str_site
-    !
-    iorb_ =0;if(present(iorb))iorb_=iorb
-    ispin_=0;if(present(ispin))ispin_=ispin
-    isite_=0;if(present(isite))isite_=isite
-    !
-<<<<<<< HEAD:src/AUX_FUNCS.f90
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
-=======
-    if(iorb_==0.AND.ispin_==0)stop "Okey ERROR: iorb = ispin = 0"
-    if(iorb_==0)then
-       str_orb =""
-       !
-       select case(ispin_)
-       case (1)    ;str_spin="_z"
-       case (2)    ;str_spin="_p"
-       case default;str_spin=""
-       end select
-       !
-       select case(isite_)
-       case default;str_site = "_i"//str(isite_,npad=4)
-       case (0)    ;str_site=""
-       end select
-    else
-       str_orb ="_l"//str(iorb)
-       !
-       select case(ispin_)
-       case default;str_spin = "_s"//str(ispin_)
-       case (0)    ;str_spin=""
-       end select
-       !
-       select case(isite_)
-       case default;str_site = "_i"//str(isite_,npad=4)
-       case (0)    ;str_site=""
-       end select
-    endif
-
->>>>>>> 7f27ed5 (Intermediate commit.):AUX_FUNCS.f90
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
     string = trim(str_orb)//trim(str_spin)//trim(str_site)
   end function okey
 
@@ -176,54 +105,6 @@ contains
     do i=1,size(A)
        B(i) = sum(A(1:i))
     enddo
-<<<<<<< HEAD
-  end function cumulate
-
-<<<<<<< HEAD
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-=======
-  ! function KId(n) result(A)
-  !   integer, intent(in) :: n
-  !   real(8)             :: A(2**n, 2**n)
-  !   integer             :: i
-  !   A = 0d0
-  !   forall(i=1:2**n)A(i,i) = 1d0
-  ! end function KId
-
-<<<<<<< HEAD:src/AUX_FUNCS.f90
-=======
->>>>>>> f63915b (Testing the code.):AUX_FUNCS.f90
-  recursive function KSz(n) result(A)
-    integer, intent(in) :: n
-    real(8)          :: A(2**n, 2**n)
-    integer             :: d(2**n)
-    integer             :: i
-    d = szvec(n)
-    A = zero
-    forall(i=1:2**n)A(i,i) = one*d(i)
-  end function KSz
-
-  recursive function szvec(n) result(vec)
-    integer,intent(in)      :: n
-    integer,dimension(2**n) :: vec
-    if(n==1)then
-       vec = [1,-1]
-    else
-       vec = [szvec(n-1),-szvec(n-1)]
-    endif
-  end function szvec
->>>>>>> cc4f705 (Major Update: code entirely moved from DBLE to CMPLX.):AUX_FUNCS.f90
-
-=======
->>>>>>> 4174253 (Intermediate commit, working on Kron_hm_1d_2bands):AUX_FUNCS.f90
-=======
->>>>>>> d3539b5 (2.1.0 UPDATED STABLE VERSION):AUX_FUNCS.f90
-=======
-
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
   end function cumulate_D
 
   function cumulate_C(A) result(B)
@@ -237,7 +118,7 @@ contains
        B(i) = sum(A(1:i))
     enddo
   end function cumulate_C
->>>>>>> e9d8bd1 (Updated code.)
+
 
 
   function label_dmrg(type,im) result(label)
@@ -256,18 +137,8 @@ contains
        label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG")
        if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
     case('f')
-<<<<<<< HEAD
-<<<<<<< HEAD
        label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
        if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
-=======
-       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im)
-       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im))//"_sweep"//str(im)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
-       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
->>>>>>> d733a73 (Updated code.)
     end select
     label=str(label)//".dmrg"
   end function label_dmrg
