@@ -1,5 +1,0 @@
-# The fortran modules provided by this target.
-provides
- list_operators.mod
- list_sectors.mod
- tuple_basis.mod

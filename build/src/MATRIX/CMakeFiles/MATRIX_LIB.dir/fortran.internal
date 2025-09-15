@@ -1,5 +1,0 @@
-# The fortran modules provided by this target.
-provides
- matrix_blocks.mod
- matrix_graph.mod
- matrix_sparse.mod
