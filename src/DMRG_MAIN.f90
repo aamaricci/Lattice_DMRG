@@ -18,15 +18,7 @@ contains
 
 
   !##################################################################
-<<<<<<< HEAD
-<<<<<<< HEAD
   !              INIT DMRG ALGORITHM
-=======
-  !              INIT/FINALIZE DMRG ALGORITHM
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-  !              INIT DMRG ALGORITHM
->>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
   !##################################################################
   subroutine init_dmrg(Hij,ModelDot)
 #ifdef _CMPLX
@@ -34,14 +26,6 @@ contains
 #else
     real(8),dimension(:,:)      :: Hij
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD
-    type(site)                :: ModelDot
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-=======
     type(site),dimension(:)     :: ModelDot
     integer                     :: ilat
     !
@@ -51,40 +35,13 @@ contains
     if(check_MPI().AND.sparse_H)stop "INIT_DMRG ERROR: use of MPI is incompatible with sparse_H=T"
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-    call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
-    if(allocated(HopH))deallocate(HopH)
     !
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-=======
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
-=======
-    !
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init DMRG"
 #endif
-<<<<<<< HEAD
-    !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-    call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"init_dmrg","Hij")
-    if(allocated(HopH))deallocate(HopH)
-=======
-    type(site),dimension(:)     :: ModelDot
-    integer                     :: ilat
-    !
-    !SETUP the Hopping Hamiltonian term:
-=======
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
     !
     !SETUP the Hopping Hamiltonian term:
     call assert_shape(Hij,[Nspin*Norb,Nspin*Norb],"Init_DMRG","Hij")
->>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
     allocate(HopH, source=Hij)
     !
     !SETUP the Dots: this is unsatisfactory
@@ -109,38 +66,15 @@ contains
     init_called =.true.
   end subroutine init_dmrg
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
-  
-=======
 
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
   !##################################################################
   subroutine finalize_dmrg()
+    integer :: ilat
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Finalize DMRG"
 #endif
-    !
-=======
-
-  subroutine finalize_dmrg()
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Finalize DMRG"
-#endif
-    !
->>>>>>> d733a73 (Updated code.)
-=======
-    integer :: ilat
->>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
     if(allocated(HopH))deallocate(HopH)    
     do ilat=1,2*Ldmrg
        call dot(ilat)%free()
@@ -191,15 +125,10 @@ contains
   !##################################################################
   subroutine infinite_DMRG()
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Infinite Algorithm"
 #endif
     !
-<<<<<<< HEAD
     if(.not.init_called)&
          stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     left =init_left
@@ -207,30 +136,6 @@ contains
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
-<<<<<<< HEAD
-=======
-=======
->>>>>>> d733a73 (Updated code.)
-    if(.not.init_called)&
-         stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
-    left =init_left
-    right=init_right
-    !
-    do while (left%length < Ldmrg)
-<<<<<<< HEAD
-       call step_dmrg()
-       call write_energy()
-       call write_truncation()
-       call write_entanglement()
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-       call step_dmrg('i')
-       ! call write_energy()
-       ! call write_truncation()
-       ! call write_entanglement()
->>>>>>> d733a73 (Updated code.)
-=======
->>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
     enddo
   end subroutine infinite_DMRG
 
@@ -241,21 +146,12 @@ contains
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
     integer                                :: j
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
     logical                                :: ExitSweep
     integer :: m_rleft,m_rright
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     !
     ! if(mod(Ldmrg,2)/=0)&
     !      stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
@@ -263,8 +159,6 @@ contains
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
     left =init_left
     right=init_right
     !
@@ -278,36 +172,7 @@ contains
     blocks_list(right_label,1)=right
     do while (left%length < Ldmrg)
        call step_dmrg('i')
-<<<<<<< HEAD
-=======
-    left=init_left
-=======
-    left =init_left
->>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
-    right=init_right
-    !
-    left_label =1 
-    right_label=2
-    !
-    !
-    !Infinite DMRG
-    allocate(blocks_list(2,2*Ldmrg))
-    blocks_list(left_label,1)=left
-    blocks_list(right_label,1)=right
-<<<<<<< HEAD
-    do while (left%length <= Ldmrg)
-       call step_dmrg()
-       call write_energy()
-       call write_entanglement()
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    do while (left%length < Ldmrg)
-       call step_dmrg('i')
->>>>>>> d733a73 (Updated code.)
-       blocks_list(left_label,left%length)=left
-=======
        blocks_list(left_label , left%length)=left
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
        blocks_list(right_label,right%length)=right
     enddo
     if(MpiMaster)print*,""
@@ -321,68 +186,9 @@ contains
        else
           if(MpiMaster)write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
-<<<<<<< HEAD
-<<<<<<< HEAD
        !
        do while(left%length < 2*Ldmrg)
           right = blocks_list(right_label,2*Ldmrg - left%length)
-<<<<<<< HEAD
-=======
-       suffix = label_DMRG('f',im)
-       sweep: do while(.true.)
-          right = blocks_list(right_label,Ldmrg - left%length)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-       !
-       ExitSweep=.false.
-       sweep: do while(.true.)
-          right = blocks_list(right_label,2*Ldmrg - left%length)
->>>>>>> d733a73 (Updated code.)
-          if(right%length==1)then
-             right_label= 3-right_label
-             left_label = 3-left_label
-             tmp        = left
-             left       = right
-             right      = tmp
-             call tmp%free()
-<<<<<<< HEAD
-<<<<<<< HEAD
-             ExitSweep  = .true.
-          endif
-          !
-          call step_dmrg('f',left_label,im)
-=======
-          endif
-          !
-          call step_dmrg(left_label,im)
-          call write_energy()
-          call write_entanglement()
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-             ExitSweep  = .true.
-          endif
-          !
-          call step_dmrg('f',left_label,im)
->>>>>>> d733a73 (Updated code.)
-          !
-          blocks_list(left_label,left%length) = left
-          print*,""
-          print*,""
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
-=======
-          if(left_label==1.AND.left%length==Ldmrg/2)exit sweep
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg)exit sweep
->>>>>>> d733a73 (Updated code.)
-=======
-          if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
->>>>>>> 561da83 (Fixing FINITE DMRG algorithm)
-       enddo sweep
-=======
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
@@ -396,30 +202,6 @@ contains
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
-<<<<<<< HEAD
-       ! ExitSweep=.false.
-       ! sweep: do while(.true.)
-       !    right = blocks_list(right_label,2*Ldmrg - left%length)
-       !    if(right%length==1)then
-       !       right_label= 3-right_label
-       !       left_label = 3-left_label
-       !       tmp        = left
-       !       left       = right
-       !       right      = tmp
-       !       call tmp%free()
-       !       ExitSweep  = .true.
-       !    endif
-       !    !
-       !    call step_dmrg('f',left_label,im)
-       !    !
-       !    blocks_list(left_label,left%length) = left
-       !    print*,""
-       !    print*,""
-       !    if(ExitSweep.AND.left_label==1.AND.left%length==Ldmrg+1)exit sweep
-       ! enddo sweep
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-=======
->>>>>>> 77e1b95 (Cleaning code.)
     enddo
     !
   end subroutine finite_DMRG
@@ -438,10 +220,6 @@ contains
   !##################################################################
   !              WORKHORSE: STEP DMRG 
   !##################################################################
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
   subroutine step_dmrg(type,label,sweep)
     character(len=1) :: type
     integer,optional :: label,sweep
@@ -453,12 +231,7 @@ contains
     integer          :: m_eleft,m_eright
     integer          :: current_L
     integer          :: Lleft,Lright
-<<<<<<< HEAD
-    logical          :: renormalize
-<<<<<<< HEAD
-=======
     logical          :: bool1,bool2,renormalize
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
     !
     !just 4 DMRG_graphic
     iLabel=0;if(present(label))iLabel=label
@@ -478,49 +251,6 @@ contains
        stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
     end select
     !
-=======
-  subroutine step_dmrg(label,isweep)
-    integer,optional                   :: label,isweep
-    integer                            :: iLabel
-    integer                            :: m_sb
-    integer                            :: m_rleft,m_rright
-    integer                            :: m_es,m_ee
-    integer                            :: m_left,m_right
-    integer                            :: m_eleft,m_eright
-    integer                            :: current_L
-=======
->>>>>>> d733a73 (Updated code.)
-    !
-    !just 4 DMRG_graphic
-    iLabel=0;if(present(label))iLabel=label
-    !
-<<<<<<< HEAD
-    Mstates=Mdmrg
-    Estates=Edmrg
-    if(present(isweep))then
-       if(isweep>Nsweep)stop "step_dmrg ERROR: isweep > Nsweep"
-       if(isweep<1)stop "step_dmrg ERROR: isweep < 1"
-       Mstates = Msweep(isweep)
-       Estates = Esweep(isweep)
-    endif
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    select case(to_lower(type))
-    case('f')
-       if(.not.present(sweep))stop "step_dmrg ERROR: type=F but no sweep-index provided"
-       if(sweep>Nsweep.OR.sweep<1)stop "step_dmrg ERROR: isweep < 1 OR isweep > Nsweep"
-       Mstates = Msweep(sweep)
-       Estates = Esweep(sweep)
-       suffix  = label_DMRG(type,sweep)
-    case('i')
-       Mstates=Mdmrg
-       Estates=Edmrg
-       suffix = label_DMRG(type)
-    case default
-       stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
-    end select
-    !
->>>>>>> d733a73 (Updated code.)
     !
     if(MpiMaster.AND.(.not.left%is_valid(.true.)))stop "single_dmrg_step error: left is not a valid block"
     if(MpiMaster.AND.(.not.right%is_valid(.true.)))stop "single_dmrg_step error: right is not a valid block"
@@ -533,55 +263,14 @@ contains
     if(MpiMaster)call dmrg_graphic(iLabel)    
     if(MpiMaster)call start_timer()
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-    ! !#################################
-    ! !    Renormalize BLOCKS
-    ! !#################################
-    ! call renormalize_block('left',m_rleft)
-    ! call renormalize_block('right',m_rright)
-<<<<<<< HEAD
-=======
-    !#################################
-    !    Renormalize BLOCKS
-    !#################################
-    call renormalize_block('left',m_rleft)
-    call renormalize_block('right',m_rright)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-    !
-=======
->>>>>>> 77e1b95 (Cleaning code.)
     !
     !#################################
     !    Enlarge L/R BLOCKS: +1 DOT
     !#################################
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
     Lleft =left%length
     Lright=right%length
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    Lleft =left%length
-    Lright=right%length
->>>>>>> d733a73 (Updated code.)
-    call enlarge_block(left,dot,grow='left')
-    call enlarge_block(right,dot,grow='right')
-=======
-=======
-    Lleft =left%length
-    Lright=right%length
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
     call enlarge_block(left,dot(left%length+1),grow='left')
     call enlarge_block(right,dot(left%length+2),grow='right')
->>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
     !
     !
     !#################################
@@ -595,38 +284,9 @@ contains
     !In DMRG_SUPERBLOCK:
     call sb_get_states()
     m_sb = size(sb_states)
-<<<<<<< HEAD
-    !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-=======
     !#################################
     !      WRITE AND EXIT
     !#################################
-<<<<<<< HEAD
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "         Blocks Length               :",Lleft,Lright
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Enlarged Blocks Length               :",left%length,right%length
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Enlarged Blocks Dim                  :",m_eleft,m_eright
-    write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
-         "Target_QN                            :",current_target_QN
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Total                                :",sum(current_target_QN)
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Filling                              :",sum(current_target_QN)/current_L
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-    write(LOGfile,"(A,I12)")&
-         "SuperBlock Length                    :",current_L
-    write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
-         "SuperBlock Dimension  (tot)          :", &
-         m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-=======
     if(MpiMaster)then
        write(LOGfile,"(A,I12,12X,I12)")&
             "         Blocks Length               :",Lleft,Lright
@@ -648,7 +308,6 @@ contains
             "SuperBlock Dimension  (tot)          :", &
             m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
     endif
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
     !
     !#################################
     !       DIAG SUPER-BLOCK
@@ -683,183 +342,29 @@ contains
        renormalize=.not.((left%length==Ldmrg+1).AND.(iLabel==1))
     endif
     !
-<<<<<<< HEAD
-    !> STOP DMRG STEP:
-    call stop_timer("dmrg_step")
-    !
-    !#################################
-    !      WRITE AND EXIT
-    !#################################
-<<<<<<< HEAD
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "         Blocks Length               :",Lleft,Lright
-=======
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Blocks Length                        :",left%length-1,right%length-1
-    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
-         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
-    write(LOGfile,"(A,L12,12X,L12)")&
-         "Truncating                           :",Mstates<=m_left,Mstates<=m_right
-    write(LOGfile,"(A,2ES24.15)")&
-         "Truncation Errors                    :",truncation_error_left,truncation_error_right
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "         Blocks Length               :",Lleft,Lright
->>>>>>> d733a73 (Updated code.)
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Enlarged Blocks Length               :",left%length,right%length
-    write(LOGfile,"(A,I12,12X,I12)")&
-         "Enlarged Blocks Dim                  :",m_eleft,m_eright  
-    write(LOGfile,"(A,I12)")&
-         "SuperBlock Length                    :",current_L
-    write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
-         "SuperBlock Dimension  (tot)          :", &
-         m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
-    write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
-         "Target_QN                            :",current_target_QN
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Total                                :",sum(current_target_QN)
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Filling                              :",sum(current_target_QN)/current_L
-    write(LOGfile,"(A,3x,G24.15)")&
-         "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-    if(renormalize)then
-=======
     if(renormalize )then
        call renormalize_block('left',m_rleft)
        call renormalize_block('right',m_rright)
-<<<<<<< HEAD
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-       write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
-=======
        if(MpiMaster)write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
             "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
        if(MpiMaster)write(LOGfile,"(A,L12,12X,L12)")&
             "Truncating                           :",Mstates<=m_left,Mstates<=m_right
        if(MpiMaster)write(LOGfile,"(A,2ES24.15)")&
             "Truncation Errors                    :",truncation_error_left,truncation_error_right
     endif
-<<<<<<< HEAD
     !
-<<<<<<< HEAD
-=======
-    !
-    !
-    !#################################
-    !       DIAG SUPER-BLOCK
-    !#################################
-    call sb_diag()
-    !
-    !#################################
-    !      BUILD RDM
-    !#################################
-    call sb_get_rdm()
-    !
-    !
-    !#################################
-    !      WRITE AND EXIT
-    !#################################
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    !
->>>>>>> d733a73 (Updated code.)
-    select case(left%type())
-    case ("fermion","f")
-       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-            "Energies/N                           :",gs_energy/sum(current_target_QN)
-    case ("spin","s")
-       write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-            "Energies/L                           :",gs_energy/current_L
-    end select
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-=======
     !> STOP DMRG STEP:
     if(MpiMaster)call stop_timer("dmrg_step")
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-    ! !#################################
-    ! !      WRITE AND EXIT
-    ! !#################################
-    ! write(LOGfile,"(A,I12,12X,I12)")&
-    !      "         Blocks Length               :",Lleft,Lright
-    ! write(LOGfile,"(A,I12,12X,I12)")&
-    !      "Enlarged Blocks Length               :",left%length,right%length
-    ! write(LOGfile,"(A,I12,12X,I12)")&
-    !      "Enlarged Blocks Dim                  :",m_eleft,m_eright  
-    ! write(LOGfile,"(A,I12)")&
-    !      "SuperBlock Length                    :",current_L
-    ! write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
-    !      "SuperBlock Dimension  (tot)          :", &
-    !      m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
-    ! write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
-    !      "Target_QN                            :",current_target_QN
-    ! write(LOGfile,"(A,3x,G24.15)")&
-    !      "Total                                :",sum(current_target_QN)
-    ! write(LOGfile,"(A,3x,G24.15)")&
-    !      "Filling                              :",sum(current_target_QN)/current_L
-    ! write(LOGfile,"(A,3x,G24.15)")&
-    !      "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-    ! if(renormalize)then
-    !    write(LOGfile,"(A,I12,12X,I12,3X,A3,I6,4X,I6,A1)")&
-    !         "Renormalized Blocks Dim              :",m_rleft,m_rright,"< (",m_left,m_right,")"
-    !    write(LOGfile,"(A,L12,12X,L12)")&
-    !         "Truncating                           :",Mstates<=m_left,Mstates<=m_right
-    !    write(LOGfile,"(A,2ES24.15)")&
-    !         "Truncation Errors                    :",truncation_error_left,truncation_error_right
-    ! endif
-    ! select case(left%type())
-    ! case ("fermion","f")
-    !    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-    !         "Energies/N                           :",gs_energy/sum(current_target_QN)
-    ! case ("spin","s")
-    !    write(LOGfile,"(A,"//str(Lanc_Neigen)//"F24.15)")&
-    !         "Energies/L                           :",gs_energy/current_L
-    ! end select
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-    !
-=======
->>>>>>> 77e1b95 (Cleaning code.)
-    call write_energy()
-    call write_truncation()
-    call write_entanglement()
-=======
     if(MpiMaster)then
        call write_energy()
        call write_truncation()
        call write_entanglement()
     endif
->>>>>>> 6deacad (Updating code, implementing MPI for direct Hv)
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    call stop_timer("dmrg_step")
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-=======
-    call wait(100)
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-    !
-=======
->>>>>>> 77e1b95 (Cleaning code.)
     !Clean memory:
     call spHsb%free()
     !
-! #ifdef _MPI
-!     call Barrier_MPI(MpiComm)
-! #endif
     return
   end subroutine step_dmrg
 

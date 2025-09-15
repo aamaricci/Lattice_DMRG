@@ -1,21 +1,9 @@
 ##################################################
 # LATTICE DMRG PROJECT
 ##################################################
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
-=======
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5.0)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
->>>>>>> d733a73 (Updated code.)
-=======
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
->>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
 PROJECT(dmrg Fortran)
-SET(VERSION 3.x.x)
+SET(VERSION 4.0.0)
 
 
 MESSAGE(STATUS "OS: ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_VERSION}")
@@ -23,21 +11,12 @@ SET(BUILD_TYPE "RELEASE" CACHE STRING "Build type")
 STRING(TOUPPER "${BUILD_TYPE}" BUILD_TYPE)
 MESSAGE(STATUS "BUILD_TYPE=${BUILD_TYPE}")
 SET(CMAKE_BUILD_TYPE ${BUILD_TYPE} CACHE INTERNAL "Build type" FORCE)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 #
 SET(PRECISION "DBLE" CACHE STRING "Variable Precision type")
 STRING(TOUPPER "${PRECISION}" PRECISION)
 MESSAGE(STATUS "PRECISION=${PRECISION}")
 SET(CMAKE_PRECISION ${PRECISION} CACHE INTERNAL "Variable Precision type" FORCE)
 
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 
 # Add our local CMAKE modules to the module path
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -136,25 +115,10 @@ ADD_SUBDIRECTORY(${LIB_SRC}/BLOCKS)
 ADD_SUBDIRECTORY(${LIB_SRC})
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(MATRIX_LIB
   AUX_LIB
 )
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(FOCK_LIB
   AUX_LIB
 )
@@ -165,18 +129,7 @@ ADD_DEPENDENCIES(LIST_LIB
   MATRIX_LIB
 )
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
-ADD_DEPENDENCIES(DOTS_LIB
-=======
 ADD_DEPENDENCIES(BLOCKS_LIB
->>>>>>> c8aed3d (Updated code.)
   AUX_LIB
   MATRIX_LIB
   FOCK_LIB
@@ -184,13 +137,6 @@ ADD_DEPENDENCIES(BLOCKS_LIB
 )
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
 ADD_DEPENDENCIES(DMRG_LIB
   AUX_LIB
   FOCK_LIB

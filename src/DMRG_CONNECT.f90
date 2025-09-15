@@ -28,24 +28,11 @@ contains
     !
     grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-    call start_timer("Enlarge blocks "//str(grow_))
-=======
     if(MpiMaster)call start_timer("Enlarge blocks "//str(grow_))
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
     !
     if(.not.self%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing self.H operator in the list"
@@ -57,73 +44,10 @@ contains
          stop "Enlarge_Block ERROR: Dot.Type != Self.Type"
     !    
     !> Update Hamiltonian:
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
     if(MpiMaster)then
->>>>>>> c8aed3d (Updated code.)
 #ifdef _DEBUG
        write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update H"
-#endif
->>>>>>> d733a73 (Updated code.)
-    select case(str(grow_))
-    case ("left","l")
-       Hb = self%operators%op("H").x.id(dot%dim)
-       Hd = id(self%dim).x.dot%operators%op("H")
-       select case(dtype)
-       case default;stop "Enlarge_Block ERROR: wrong dot.Type"
-       case ("spin","s")
-          H2 = connect_spin_blocks(self,as_block(dot))
-       case ("fermion","f,","electron","e")
-          H2 = connect_fermion_blocks(self,as_block(dot))
-       end select
-    case ("right","r")
-       Hb = id(dot%dim).x.self%operators%op("H")
-       Hd = dot%operators%op("H").x.id(self%dim)
-       select case(dtype)
-       case default;stop "Enlarge_Block ERROR: wrong dot.Type"
-       case ("spin","s")
-          H2 = connect_spin_blocks(as_block(dot),self)
-       case ("fermion","f,","electron","e")
-          H2 = connect_fermion_blocks(as_block(dot),self)
-       end select
-    end select
-    call self%put_op("H", Hb +  Hd + H2, type="bosonic")
-    !
-    !> Update all the other operators in the list:
-<<<<<<< HEAD
-<<<<<<< HEAD
-#ifdef _DEBUG
-    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
-#endif
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-#ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
-#endif
->>>>>>> d733a73 (Updated code.)
-    do i=1,size(self%operators)
-       key   = str(self%operators%key(index=i))
-       otype = str(self%operators%type(index=i))
-       if(key=="H")cycle
-       !
-       !Bosonic operators:
-       !O_L -> I_L.x.O_d  | O_R -> O_d.x.I_R
-       !Fermionic operators:
-       !O_L -> P_L.x.O_d  | O_R -> O_d.x.I_R
-       !Sign operator:
-       !P_L -> P_L.x.P_d  | P_R -> P_d.x.P_R
-=======
->>>>>>> c8aed3d (Updated code.)
        select case(str(grow_))
        case ("left","l")
           Hb = self%operators%op("H").x.id(dot%dim)
@@ -208,19 +132,7 @@ contains
     end select
     !
 #ifdef _DEBUG
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
-=======
-    call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    if(verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
->>>>>>> d733a73 (Updated code.)
-=======
     if(MpiMaster.AND.verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
 #endif
     !
     if(MpiMaster)then
@@ -247,9 +159,6 @@ contains
   end subroutine enlarge_block
 
 
-
-
-  
   !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
   function connect_fermion_blocks(left,right,states) result(H2)
     type(block)                               :: left
@@ -269,19 +178,10 @@ contains
     real(8)                                   :: Tr,Tl
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)
@@ -354,19 +254,10 @@ contains
     real(8),dimension(:,:),allocatable    :: Hij
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     !Hij is shared:
     !Hij = Hmodel(left,right)
     if(allocated(Hij))deallocate(Hij)

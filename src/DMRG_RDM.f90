@@ -7,7 +7,6 @@ MODULE DMRG_RDM
   public :: sb_get_rdm
   public :: renormalize_block
 
-
 contains
 
 
@@ -27,22 +26,11 @@ contains
     real(8),dimension(:,:),allocatable    :: v_state
     real(8),dimension(:,:),allocatable    :: rho
 #endif
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: get RDM"
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-=======
     call sb_build_dims()
     !
 #ifdef _MPI
@@ -55,7 +43,6 @@ contains
 #endif
     !
     !
->>>>>>> c8aed3d (Updated code.)
     call rho_left%free()
     call rho_right%free()
     !
@@ -124,14 +111,7 @@ contains
     real(8),dimension(nleft,nright)       :: psi_tmp
 #endif
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
     !
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
-    !
->>>>>>> d733a73 (Updated code.)
     if(allocated(rho))deallocate(rho)
     !
     !These two give the same results
@@ -187,19 +167,10 @@ contains
     type(tbasis)                     :: left_basis,right_basis
     type(sparse_matrix)              :: trRho_left,trRho_right
     !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: renormalize block "//str(label)
 #endif
     !
-<<<<<<< HEAD
-=======
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
     m_left  = left%dim
     m_right = right%dim
     !
@@ -271,15 +242,7 @@ contains
        !
        !
 #ifdef _DEBUG
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-       if(verbose>5)then
-=======
        if(MpiMaster.AND.verbose>5)then
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
           unit=fopen("lambdas_L_"//str(left%length)//".dat")       
           do i=1,size(rho_left_evals)
              err = abs(e_-rho_left_evals(i))/e_
@@ -288,18 +251,6 @@ contains
           enddo
           close(unit)
        endif
-<<<<<<< HEAD
-=======
-       unit=fopen("lambdas_L_"//str(left%length)//".dat")       
-       do i=1,size(rho_left_evals)
-          err = abs(e_-rho_left_evals(i))/e_
-          write(unit,*)i,rho_left_evals(i),err,1d0-sum(rho_left_evals(1:i))
-          if(i==m_s)write(unit,*)" "
-       enddo
-       close(unit)       
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
 #endif
        !Free Rho_Left
        call left_basis%free()
@@ -352,40 +303,6 @@ contains
        if(MpiStatus)call Bcast_MPI(MpiComm,m_e)
 #endif
        !
-<<<<<<< HEAD
-       e_=rho_right_evals(m_e)
-       j_=m_e
-       do i=j_+1,size(rho_right_evals)
-          err = abs(e_-rho_right_evals(i))/e_
-          if(err<=deg_evals_threshold)m_e=m_e+1
-       enddo
-       !>truncation-rotation matrices:
-       truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-       print*,truncation_error_right
-       print*,m_right,m_e
-       print*,shape(rho_right)
-       trRho_right            = rho_right%sparse(m_right,m_e)
-       print*,shape(trRho_right)
-<<<<<<< HEAD
-=======
-       trRho_right            = rho_right%sparse(m_right,m_e)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
-=======
-       trRho_right            = rho_right%sparse(m_right,m_e)
->>>>>>> 57eae96 (Fixed Finite DMRG algorithm.)
-       !>Store all the rotation/truncation matrices:
-       call right%put_omat(str(right%length),trRho_right,'')
-       !>Renormalize Blocks:
-       call right%renormalize(as_matrix(trRho_right))
-=======
->>>>>>> c8aed3d (Updated code.)
        !>Prepare output and update basis state
        do im=1,m_e
 #ifdef _MPI
@@ -407,15 +324,7 @@ contains
        Mtr = m_e
        !
 #ifdef _DEBUG
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d733a73 (Updated code.)
-       if(verbose>5)then
-=======
        if(MpiMaster.AND.verbose>5)then
->>>>>>> 4f09a08 (Extended the MPI algorithm to measure operators.)
           unit = fopen("lambdas_R_"//str(left%length)//".dat")       
           do i=1,size(rho_right_evals)
              err = abs(e_-rho_right_evals(i))/e_
@@ -424,18 +333,6 @@ contains
           enddo
           close(unit)
        endif
-<<<<<<< HEAD
-=======
-       unit = fopen("lambdas_R_"//str(left%length)//".dat")       
-       do i=1,size(rho_right_evals)
-          err = abs(e_-rho_right_evals(i))/e_
-          write(unit,*)i,rho_right_evals(i),err,1d0-sum(rho_right_evals(1:i))
-          if(i==m_e)write(unit,*)" "
-       enddo
-       close(unit)
->>>>>>> 7e90d6a (Updating Cmake library construction)
-=======
->>>>>>> d733a73 (Updated code.)
 #endif
        !Free Rho Right:
        call right_basis%free()

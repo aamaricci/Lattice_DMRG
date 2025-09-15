@@ -24,20 +24,8 @@ program dmrg_spin_1d
   call infinite_DMRG()
 
   !Post-processing and measure quantities:
-<<<<<<< HEAD
-  call Measure_DMRG(dot%operators%op(key="S_z"),pos=arange(1,Ldmrg),avOp=avSz)
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
   call Measure_DMRG(dot(1)%operators%op(key="S_z"),pos=arange(1,Ldmrg),avOp=avSz)
->>>>>>> 8cabf7d (Although we have included MATRIX_GRAPH the code now)
 
-=======
->>>>>>> 7fd23fe (Test testing update)
-=======
-
->>>>>>> 56ab977 (test testing 2)
   !Check energy:
   L = file_length("energyVSleft.length_L40_M20_iDMRG.dmrg")
   allocate(x(L),data(L))
@@ -63,27 +51,12 @@ program dmrg_spin_1d
   deallocate(x,data,data_)
   !
   !
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 56ab977 (test testing 2)
   L = file_length("sz.check")
   allocate(data_(L))
   call read_array("sz.check",data_)
   if(size(avSz)/=size(data_))stop "Sz files have different sizes"
   call assert(avSz,data_,"Sz",tol=1d-8)
   deallocate(avSz,data_)
-<<<<<<< HEAD
-=======
-  L = file_length("SzVSj.check")
-  allocate(x(L),data_(L))
-  call sread("SzVSj.check",x,data_)
-  if(size(avSz)/=size(data_))stop "SzVSj files have different sizes"
-  call assert(avSz,data_,"Sz")
-  deallocate(x,avSz,data_)
->>>>>>> 7fd23fe (Test testing update)
-=======
->>>>>>> 56ab977 (test testing 2)
 
 
 
