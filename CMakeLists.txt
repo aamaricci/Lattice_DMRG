@@ -3,7 +3,7 @@
 ##################################################
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
 PROJECT(dmrg Fortran)
-SET(VERSION 4.0.0)
+SET(VERSION 4.1.0)
 
 
 MESSAGE(STATUS "OS: ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_VERSION}")

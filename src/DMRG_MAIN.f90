@@ -124,6 +124,7 @@ contains
   !              FINITE/INFINITE DMRG ALGORITHM
   !##################################################################
   subroutine infinite_DMRG()
+    logical :: bool_left,bool_right
     !
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Infinite Algorithm"
@@ -133,6 +134,14 @@ contains
          stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     left =init_left
     right=init_right
+    !
+    inquire(file=str(block_file//suffix_dmrg('left')//".restart"), exist=bool_left)
+    inquire(file=str(block_file//suffix_dmrg('right')//".restart"), exist=bool_right)
+    if(bool_left.AND.bool_right)then
+       call left%load(str(block_file//suffix_dmrg('left')//".restart"))
+       call right%load(str(block_file//suffix_dmrg('right')//".restart"))
+       if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length after reading"
+    end if
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
@@ -147,7 +156,7 @@ contains
     type(block)                            :: tmp
     integer                                :: j
     logical                                :: ExitSweep
-    integer :: m_rleft,m_rright
+    integer                                :: m_rleft,m_rright
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Finite Algorithm"
@@ -251,6 +260,15 @@ contains
        stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
     end select
     !
+    if(MpiMaster)then
+       if(save_all_blocks)then
+          call left%save(block_file//suffix_dmrg('left',left%length)//".dmrg")
+          call right%save(block_file//suffix_dmrg('right',right%length)//".dmrg")
+       else
+          call left%save(block_file//suffix_dmrg('left')//".dmrg")
+          call right%save(block_file//suffix_dmrg('right')//".dmrg")
+       endif
+    endif
     !
     if(MpiMaster.AND.(.not.left%is_valid(.true.)))stop "single_dmrg_step error: left is not a valid block"
     if(MpiMaster.AND.(.not.right%is_valid(.true.)))stop "single_dmrg_step error: right is not a valid block"

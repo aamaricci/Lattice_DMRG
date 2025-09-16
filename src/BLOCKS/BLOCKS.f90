@@ -1,5 +1,5 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,set_store_size
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -30,7 +30,12 @@ MODULE BLOCKS
      procedure,pass :: okey        => okey_block
      procedure,pass :: name        => Opname_block
      procedure,pass :: type        => SiteType_block
+     procedure,pass :: write       => write_block
+     procedure,pass :: save        => save_block
+     procedure,pass :: read        => read_block
+     procedure,pass :: load        => load_block
   end type block
+
 
 
   !GENERIC CONSTRUCTOR
@@ -350,22 +355,23 @@ contains
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
     unit_=6;if(present(file))open(free_unit(unit_),file=str(file))
     !
-    write(unit_,"(A15,I6)")"Block Length  =",self%length
-    write(unit_,"(A15,I6)")"Block Dim     =",self%Dim
-    write(unit_,"(A16,A)") "Block Type    = ",self%SiteType
-    write(unit_,"(A15,I6)")"Block Sectors =",size(self%sectors)
+    write(unit_,"(A,I6)")"Block Length  =",self%length
+    write(unit_,"(A,I6)")"Block Dim     =",self%Dim
+    write(unit_,"(A,A)") "Block Type    = ",self%SiteType
+    write(unit_,"(A,I6)")"Block Sectors =",size(self%sectors)
+    write(unit_,*)""
     do i=1,size(self%sectors)
-       write(unit_,"(A14,I6)")"Block Sector  =",i
+       write(unit_,"(A15,I6)")"Block Sector  =",i
        call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
-       write(unit_,"(A15,A)")"Op Name    = ",self%OpName
-       write(unit_,"(A14)")"Block Operators:"
+       write(unit_,"(A)")"Block Operators:"
+       write(unit_,"(A,A)")"Op Name: ",self%OpName
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
     if(wOMAT_)then
-       write(unit_,"(A14)")"Block Omats   :"
+       write(unit_,"(A)")"Block Omats:"
        call self%omatrices%show(fmt=fmt_,unit=unit_)
     endif
     if(present(file))close(unit_)
@@ -375,6 +381,111 @@ contains
 
 
 
+  subroutine write_block(self,file,unit)
+    class(block)              :: self
+    character(len=*),optional :: file
+    integer,optional          :: unit
+    integer                   :: unit_
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "write_block error: no input +file or +unit given"
+    !
+    !General info:
+    write(unit_,*)self%length
+    write(unit_,*)self%Dim
+    write(unit_,*)self%SiteType
+    write(unit_,*)self%OpName
+    !
+    !Sectors:
+    write(unit_,*)size(self%sectors)
+    !
+    do i=1,size(self%sectors)
+       call self%sectors(i)%write(unit=unit_)
+    enddo
+    !
+    !Operators:
+    call self%operators%write(unit=unit_)
+    !
+    !Omatrices
+    call self%omatrices%write(unit=unit_)
+    !
+    if(present(file))close(unit_)
+  end subroutine write_block
+
+
+
+
+  subroutine save_block(self,file)
+    class(block)     :: self
+    character(len=*) :: file
+    integer          :: unit_
+    !
+    open(free_unit(unit_),file=str(file))
+    call self%write(unit=unit_)
+    close(unit_)
+    call file_gzip(str(file))
+  end subroutine save_block
+
+
+
+  subroutine read_block(self,file,unit)
+    class(block)                   :: self
+    character(len=*),optional      :: file
+    integer,optional               :: unit
+    integer                        :: unit_
+    integer                        :: SectorSize
+    integer                        :: length
+    integer                        :: Dim
+    type(sectors_list),allocatable :: sectors(:)
+    type(operators_list)           :: operators
+    type(operators_list)           :: omatrices
+    character(len=32)             :: OpName
+    character(len=32)             :: SiteType
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "read_formatted_block error: no input +file or +unit given"
+    !
+    !General info:
+    read(unit_,*)length
+    read(unit_,*)Dim
+    read(unit_,*)SiteType
+    read(unit_,*)OpName
+    !
+    !Sectors:
+    read(unit_,*)SectorSize
+    allocate(sectors(SectorSize))
+    do i=1,SectorSize
+       call sectors(i)%read(unit=unit_)
+    enddo
+    !
+    !Operators:
+    call operators%read(unit=unit_)
+    !
+    !Omatrices
+    call omatrices%read(unit=unit_)
+    !
+    self = block(length,Dim,sectors,operators,omatrices,str(opname),str(SiteType))
+    !
+    if(present(file))close(unit_)
+    do i=1,SectorSize
+       call sectors(i)%free()
+    enddo
+    call operators%free()
+    call omatrices%free()
+  end subroutine read_block
+
+
+  subroutine load_block(self,file)
+    class(block)     :: self
+    character(len=*) :: file
+    call file_gunzip(str(file))
+    call self%read(file=str(file))
+    call file_gzip(str(file))    
+  end subroutine load_block
 
 
 END MODULE BLOCKS
@@ -523,6 +634,41 @@ program testBLOCKS
   a = my_blocks(2);print*,a%is_valid()
   a = my_blocks(1);print*,a%is_valid()
 
+
+
+
+  print*,"Check Write/Read blocks:"
+  call a%free()
+  a = block(spin_site(3))
+
+  call a%write(file="block_a.dat")
+  call a%show()
+
+  print*,"Free memory..."
+  call a%free()
+
+
+  print*,"Read"
+  call a%read(file="block_a.dat")
+  print*,"Show"
+  call a%show(wOP=.true.,wOMAT=.true.)
+
+
+
+  print*,"Save"
+  call set_store_size(0)
+  call a%save(file="a_block.dat")
+
+
+
+  print*,"Free memory..."
+  call a%free()
+
+
+  print*,"Load from file"
+  call a%load('a_block.dat')
+  print*,"show:"
+  call a%show()
 
 contains
 

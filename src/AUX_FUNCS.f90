@@ -31,6 +31,7 @@ MODULE AUX_FUNCS
   public :: fopen
   public :: cumulate
   public :: label_dmrg
+  public :: suffix_dmrg
   public :: okey
 
 
@@ -148,7 +149,29 @@ contains
 
 
 
+  function suffix_dmrg(self,len) result(label)
+    character(len=*)             :: self
+    integer,optional             :: len
+    character(len=4)             :: len_
+    character(len=:),allocatable :: label
+    !
+    !
+    select case(to_lower(str(self(1:1))))
+    case default
+       label=""
+       if(present(len))label="_L"//str(len)//""
+    case('l','s')
+       label="_left"
+       if(present(len))label="_L"//str(len)//"_left"
+    case('r','e')
+       label="_right"
+       if(present(len))label="_L"//str(len)//"_right"
+    end select
+    !
+  end function suffix_dmrg
 
+
+  
   !##################################################################
   !##################################################################
   !              AUXILIARY COMPUTATIONAL ROUTINES

@@ -18,7 +18,7 @@ export VER
 
 
 SRC=..
-DOTS=../DOTS
+BLOCKS=../BLOCKS
 FOCK=../FOCK
 LIST=../LIST
 MATRIX=../MATRIX
@@ -71,7 +71,7 @@ LIST_OPERATORS.o:
 	$(FC) $(FLAG) $(SF_INC) -c $(LIST)/LIST_OPERATORS.f90
 
 SITES.o:
-	$(FC) $(FLAG) $(SF_INC) -c $(DOTS)/SITES.f90
+	$(FC) $(FLAG) $(SF_INC) -c $(BLOCKS)/SITES.f90
 
 clean: 
 	@echo "Cleaning:"

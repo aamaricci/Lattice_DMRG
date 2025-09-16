@@ -1,7 +1,7 @@
 MODULE INPUT_VARS
   USE SF_VERSION
   USE SF_PARSE_INPUT
-  USE SF_IOTOOLS, only:str
+  USE SF_IOTOOLS, only:str,set_store_size
   USE VERSION
   implicit none
 
@@ -89,8 +89,9 @@ MODULE INPUT_VARS
   integer              :: lanc_dim_threshold
   !Min dimension threshold to use Lanczos determination of the
   !spectrum rather than Lapack based exact diagonalization.
-
-
+  character(len=:),allocatable    :: block_file
+  !Name prefix of the stored block file at each iteration, used to restart DMRG.
+  logical              :: save_all_blocks
   !Some parameters for function dimension:
   !=========================================================
   integer              :: Lmats
@@ -118,6 +119,7 @@ contains
     USE SF_MPI
 #endif
     character(len=*) :: INPUTunit
+    character(len=256) :: block_file_
     logical          :: master=.true.
     integer          :: i,rank=0,add,dim
 #ifdef _MPI
@@ -200,16 +202,15 @@ contains
     call parse_input_variable(deg_evals_threshold,"DEG_EVALS_THRESHOLD",INPUTunit,&
          default=1.d-1,&
          comment="threshold for degenerate eigenvalues of rho")
-
-
+    !
     call parse_input_variable(verbose,"VERBOSE",INPUTunit,&
          default=3,&
          comment="Verbosity level: 0=almost nothing --> 5:all. Really: all")
-
+    !
     call parse_input_variable(sparse_H,"SPARSE_H",INPUTunit,&
          default=.true.,&
          comment="Sparse H*v: True = allocate sparse; False=direct product using QN decomposition")
-
+    !
     !> Lanczos parameters:
     call parse_input_variable(lanc_method,"LANC_METHOD",INPUTunit,default="arpack",&
          comment="select the lanczos method: ARPACK (default), LANCZOS (T=0 only)")
@@ -228,9 +229,16 @@ contains
     call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,&
          default=1024,comment="Dimension threshold for Lapack use.")
     !
+    !File Names:
+    call parse_input_variable(block_file_,"BLOCK_FILE",INPUTunit,default='block',&
+         comment="Name prefix of the stored block file at each iteration, used to restart DMRG.")
+    block_file=str(block_file_)
+    call parse_input_variable(save_all_blocks,"SAVE_ALL_BLOCKS",INPUTunit,default=.false.,&
+         comment="Logical flag to save all blocks (T) or just the last (F, default). DEBUG enforce T ")
+    !    
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")
-
-
+    !
+    !
 #ifdef _MPI
     if(check_MPI())then
        if(.not.master)then
@@ -242,7 +250,11 @@ contains
        endif
     endif
 #endif
+#ifdef _DEBUG
+    save_all_blocks=.true.
+#endif
     !
+    call set_store_size(1000)
     !
     if(master)then
        call print_input()
