@@ -18,7 +18,7 @@ export VER
 
 
 SRC=..
-DOTS=../DOTS
+DOTS=../BLOCKS
 FOCK=../FOCK
 LIST=../LIST
 MATRIX=../MATRIX

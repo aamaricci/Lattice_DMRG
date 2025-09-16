@@ -22,8 +22,8 @@ MODULE LIST_SECTORS
 
 
   type sectors_list
-     integer             :: qdim=0
-     integer             :: size=0
+     integer             :: qdim=0 !dimension of the quantum number tuples
+     integer             :: size=0 !size of the list
      type(qtype),pointer :: root=>null()
    contains
      procedure,pass :: free   => free_sectors_list     !destructor
@@ -38,6 +38,8 @@ MODULE LIST_SECTORS
      procedure,pass :: basis  => basis_sectors_list    !return the basis of the sector list
      procedure,pass :: has_qn => has_qn_sectors_list   !True if qn exists
      procedure,pass :: show   => show_sectors_list     !show sectors_list to screen
+     procedure,pass :: write  => write_sectors_list    !write sectors_list to file
+     procedure,pass :: read   => read_sectors_list     !read sectors_list to file
   end type sectors_list
 
 
@@ -598,6 +600,7 @@ contains
     type(qtype),pointer               :: c
     character(len=*),optional       :: file
     integer                         :: unit_
+    !
     unit_=6
     if(present(unit))unit_=unit
     if(present(file))open(free_unit(unit_),file=str(file))
@@ -637,9 +640,70 @@ contains
 
 
 
+  subroutine write_sectors_list(self,file,unit)
+    class(sectors_list),intent(inout) :: self
+    character(len=*),optional         :: file
+    integer,optional                  :: unit
+    integer                           :: i
+    type(qtype),pointer               :: c
+    integer                           :: unit_
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "write_sectors_list error: no input +file or +unit given"
+    !
+    write(unit_,*)self%size
+    c => self%root%next
+    do
+       if(.not.associated(c))exit
+       write(unit_,*)size(c%qn)
+       write(unit_,*)c%qn
+       write(unit_,*)size(c%map)
+       write(unit_,*)c%map
+       c => c%next
+    end do
+    !
+    c=>null()
+    if(present(file))close(unit_)
+  end subroutine write_sectors_list
 
 
 
+
+  subroutine read_sectors_list(self,file,unit)
+    class(sectors_list),intent(inout) :: self
+    character(len=*),optional         :: file
+    integer,optional                  :: unit
+    integer                           :: i
+    type(qtype),pointer               :: c
+    integer                           :: unit_
+    integer                           :: DimSelf,DimQn,DimMap
+    real(8),dimension(:),allocatable  :: Cqn
+    integer,dimension(:),allocatable  :: Cmap
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "read_sectors_list error: no input +file or +unit given"
+    !
+    !
+    call self%free()
+    !
+    read(unit_,*)DimSelf
+    do i=1,DimSelf       
+       read(unit_,*)DimQn
+       allocate(Cqn(DimQn))
+       read(unit_,*)Cqn
+       read(unit_,*)DimMap
+       allocate(Cmap(DimMap))
+       read(unit_,*)Cmap
+       call self%appends(Cqn,Cmap)
+       deallocate(Cqn,Cmap)
+    end do
+    !
+    if(present(file))close(unit_)
+  end subroutine read_sectors_list
 
 
 
@@ -783,5 +847,30 @@ program testLIST_SECTORS
   call b(1)%show()
   call b(2)%show()
 
+
+  
+  call dot%free()
+  call a%free()
+
+  a   = sectors_list( tbasis([0,0, 1,0, 0,1, 0,0, 1,1, 1,0],Qdim=2) )
+  
+  print*,"Check WRITE/READ"
+  call a%show()
+  call a%write(file="block_a.dat")
+
+
+  call dot%read(file="block_a.dat")
+
+  call dot%show()
+  call dot%write(file="block_dot.dat")
+
+
+
+  open(unit=100,file="block_100.dat")
+  write(100,*)"ciao"
+  call dot%write(unit=100)
+  
+  
+  
 end program testLIST_SECTORS
 #endif

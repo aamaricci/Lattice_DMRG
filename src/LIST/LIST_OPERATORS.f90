@@ -33,7 +33,9 @@ MODULE LIST_OPERATORS
      procedure,pass :: types    => types_operators_list     !return all the types
      procedure,pass :: has_key  => has_key_operators_list  !True if key exists
      procedure,pass :: is_valid => is_valid_operators_list !True if operators_list is valid
-     procedure,pass :: shape    => shape_operators_list 
+     procedure,pass :: shape    => shape_operators_list
+     procedure,pass :: write    => write_operators_list  !write operators list
+     procedure,pass :: read     => read_operators_list  !read operators list
   end type operators_list
 
 
@@ -185,13 +187,15 @@ contains
     if(iadd)then                !KEY exists: update operator
        c%ckey         = str(key)
        c%ctype        = str(type)
+       ! call c%ope%copy(op)
        c%ope          = op
     else                        !QN does not exist: create a new element
        allocate(p%next)
        p%next%ckey    = str(key)
        p%next%ctype   = str(type)
-       p%next%ope     = op
        p%next%index   = p%index+1
+       p%next%ope     = op
+       ! call p%next%ope%copy(op)
        if(.not.associated(c))then
           p%next%next => null()
        else
@@ -215,7 +219,7 @@ contains
     type(sparse_matrix),intent(in)       :: op
     character(len=16)                    :: type_
     type_='';if(present(type))type_=str(type)
-    call self%put(key,op,type_)
+    call self%put(str(key),op,str(type_))
   end subroutine append_operators_list
 
 
@@ -588,6 +592,63 @@ contains
 
 
 
+  subroutine write_operators_list(self,file,unit)
+    class(operators_list),intent(inout) :: self
+    character(len=*),optional           :: file
+    integer,optional                    :: unit
+    integer                             :: i
+    type(optype),pointer                :: c
+    integer                             :: unit_
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "write_operators_list error: no input +file or +unit given"
+    !
+    write(unit_,*)self%size
+    c => self%root%next
+    do
+       if(.not.associated(c))exit
+       write(unit_,*)str(c%ckey)
+       write(unit_,*)str(c%ctype)
+       call c%ope%write(unit=unit_)
+       c => c%next
+    end do
+    c=>null()
+    if(present(file))close(unit_)
+  end subroutine write_operators_list
+
+
+
+
+
+  subroutine read_operators_list(self,file,unit)
+    class(operators_list),intent(inout) :: self
+    character(len=*),optional           :: file
+    integer,optional                    :: unit
+    integer                             :: i,ListSize
+    integer                             :: unit_
+    character(len=512)                  :: key
+    character(len=512)                  :: type
+    type(sparse_matrix)                 :: ope
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "read_operators_list error: no input +file or +unit given"
+    !
+    read(unit_,*)ListSize
+    do i=1,ListSize
+       read(unit_,*)key
+       read(unit_,*)type
+       call ope%read(unit=unit_)
+       call self%append(key=str(key),op=ope,type=str(type))
+    end do
+    if(present(file))close(unit_)
+  end subroutine read_operators_list
+
+
+
 
 
   !##################################################################
@@ -660,7 +721,7 @@ program testOPERATORS_TUPLE
 #endif
   character(len=10)                     :: key,type
   character(len=10),allocatable         :: keys(:)
-  integer,parameter                     :: sec=500
+  integer,parameter                     :: sec=1
 
 
   Gamma13=kron(Sx,Sz)
@@ -829,6 +890,27 @@ program testOPERATORS_TUPLE
   print*,""
   call wait(sec)
 
+
+  print*,"TEST WRITE/READ"
+  call a_list%free()
+  call a_list%append("gamma13",as_sparse(Gamma13),'b')
+  call a_list%append("gamma03",as_sparse(Gamma03),'b')
+  call a_list%append("Gamma33",as_sparse(kron(Sz,Sz)),'b')
+
+  print*,"write:"
+  call a_list%write(file="a_list_write.dat")
+
+  print*,"show:"
+  call a_list%show()
+
+  print*,"free:"
+  call a_list%free()
+
+  print*,"read:"
+  call a_list%read(file="a_list_write.dat")
+
+  print*,"show again:"
+  call a_list%show()
 
 end program testOPERATORS_TUPLE
 #endif

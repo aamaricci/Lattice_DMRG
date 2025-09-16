@@ -33,6 +33,7 @@ MODULE BLOCKS
   end type block
 
 
+  
   !GENERIC CONSTRUCTOR
   interface block
      module procedure :: constructor_from_scrath
@@ -352,7 +353,7 @@ contains
     !
     write(unit_,"(A15,I6)")"Block Length  =",self%length
     write(unit_,"(A15,I6)")"Block Dim     =",self%Dim
-    write(unit_,"(A16,A)") "Block Type    = ",self%SiteType
+    write(unit_,"(A16,A)") "Block Type    =",self%SiteType
     write(unit_,"(A15,I6)")"Block Sectors =",size(self%sectors)
     do i=1,size(self%sectors)
        write(unit_,"(A14,I6)")"Block Sector  =",i

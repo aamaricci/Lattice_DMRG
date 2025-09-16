@@ -49,6 +49,7 @@ MODULE MATRIX_SPARSE
      procedure,pass :: init       => sp_init_matrix
      procedure,pass :: free       => sp_free_matrix
      procedure,pass :: load       => sp_load_matrix
+     procedure,pass :: copy       => sp_copy_matrix
      procedure,pass :: dump       => sp_dump_matrix
      procedure,pass :: fast_insert=> sp_fast_insert_element
      procedure,pass :: insert     => sp_insert_element
@@ -61,6 +62,8 @@ MODULE MATRIX_SPARSE
      procedure,pass :: t          => sp_transpose_matrix
      procedure,pass :: nnz        => sp_nnz_matrix
      procedure,pass :: dot        => sp_matmul_vector
+     procedure,pass :: write      => sp_write_matrix
+     procedure,pass :: read       => sp_read_matrix
 #ifdef _MPI
      procedure,pass :: bcast      => sp_bcast_matrix
      procedure,pass :: pdot       => sp_p_matmul_matrix
@@ -136,7 +139,7 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_p_matmul_matrix
   end interface operator(.pm.)
 #endif
-  
+
   !KRONECKER PRODUCT
   interface operator(.x.)
      module procedure :: sp_kron_matrix
@@ -239,6 +242,33 @@ contains
     type(sparse_matrix)                  :: self
     call self%load(matrix)
   end function sp_construct_matrix
+
+
+
+
+  subroutine sp_copy_matrix(sparse,b)
+    class(sparse_matrix),intent(inout) :: sparse
+    type(sparse_matrix),intent(in)     :: b
+    integer                            :: col
+#ifdef _CMPLX
+    complex(8)                         :: val
+#else
+    real(8)                            :: val
+#endif
+    if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
+    call sparse%free()
+    call sparse%init(b%Nrow,b%Ncol)
+    print*,b%Nrow,b%Ncol
+    do i=1,b%Nrow
+       print*,i,b%row(i)%size
+       do j=1,b%row(i)%size
+          col = b%row(i)%cols(j)
+          val = b%row(i)%vals(j)
+          print*,i,col,val
+          call sparse%insert(val,i,col)          
+       enddo
+    enddo
+  end subroutine sp_copy_matrix
 
 
 
@@ -555,6 +585,64 @@ contains
        write(unit_,*)
     enddo
   end subroutine sp_display_matrix
+
+
+
+  subroutine sp_write_matrix(sparse,file,unit)
+    class(sparse_matrix)      :: sparse
+    character(len=*),optional :: file
+    integer,optional          :: unit
+    integer                   :: unit_
+    integer                   :: Ns
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "sp_write_matrix error: no input +file or +unit given"
+    !
+    if(.not.sparse%status)return
+    write(unit_,*)sparse%Nrow,sparse%Ncol
+    do i=1,sparse%Nrow
+       write(unit_,*)sparse%row(i)%size
+       do j=1,sparse%row(i)%size
+          write(unit_,*)sparse%row(i)%cols(j),sparse%row(i)%vals(j)
+       enddo
+    enddo
+    if(present(file))close(unit_)
+  end subroutine sp_write_matrix
+
+
+
+
+  subroutine sp_read_matrix(sparse,file,unit)
+    class(sparse_matrix),intent(inout) :: sparse
+    character(len=*),optional          :: file
+    integer,optional                   :: unit
+    integer                            :: unit_
+    integer                            :: Ns,Nrow,Ncol,col
+#ifdef _CMPLX
+    complex(8)                         :: val
+#else
+    real(8)                            :: val
+#endif
+    !
+    unit_=-1
+    if(present(file))open(free_unit(unit_),file=str(file))
+    if(present(unit))unit_=unit
+    if(unit_==-1)stop "sp_read_matrix error: no input +file or +unit given"
+    !
+    if(sparse%status)call sparse%free()
+    read(unit_,*)Nrow,Ncol
+    call sparse%init(Nrow,Ncol)
+    do i=1,sparse%Nrow
+       read(unit_,*)Ns
+       do j=1,Ns
+          read(unit_,*)col,val
+          call sparse%fast_insert(val,i,col)
+       enddo
+    enddo
+    if(present(file))close(unit_)
+  end subroutine sp_read_matrix
 
 
 
@@ -902,10 +990,11 @@ contains
        do j=1,b%row(i)%size
           col = b%row(i)%cols(j)
           val = b%row(i)%vals(j)
-          call a%insert(val,i,col)
+          call a%insert(val,i,col)          
        enddo
     enddo
   end subroutine sp_matrix_equal_matrix
+
 
 
   !+------------------------------------------------------------------+
@@ -922,7 +1011,7 @@ contains
 #endif
     if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
+       do j=1,a%row(i)%size          
           a%row(i)%vals(j) = c
        enddo
     enddo
@@ -1953,7 +2042,6 @@ program testSPARSE_MATRICES
      print*,""
 
 
-     stop 
      print*,"TEST APPEND TO SPARSE VECTOR"
      a = sparse(Gamma03)
 
@@ -1972,95 +2060,147 @@ program testSPARSE_MATRICES
 
      call Olist%free()
 
+
+
+
+
   endif
-
-
-  call Barrier_MPI(Comm)
-
-
-
-
-
-
 
 
   call a%free()
-  call a%init(4,4)
-
-  if(allocated(a%row(1)%vals))deallocate(a%row(1)%vals)
-  if(allocated(a%row(1)%cols))deallocate(a%row(1)%cols)
-  allocate(a%row(1)%vals(1))
-  allocate(a%row(1)%cols(1))
-
-  if(master)then
-     a = as_sparse(Gamma13)
-     call a%show()
-     print*,""
-  endif
-
-  call MPI_GET_ADDRESS(a%row(1)%size, MpiBlockDisp(1), ierr)
-  call MPI_GET_ADDRESS(a%row(1)%cols, MpiBlockDisp(2), ierr)
-  call MPI_GET_ADDRESS(a%row(1)%vals, MpiBlockDisp(3), ierr)
 
 
-  base=MpiBlockDisp(1)
-  MpiBlockDisp=MpiBlockDisp-base
-
-
-  mpiBlockLen(1)=1
-  mpiBlockLen(2)=1
-  mpiBlockLen(3)=1
-
-  mpiBlockType(1)=MPI_INTEGER
-  mpiBlockType(2)=MPI_INTEGER
-#ifdef _CMPLX
-  mpiBlockType(3)=MPI_DOUBLE_COMPLEX
-#else
-  mpiBlockType(3)=MPI_DOUBLE_PRECISION
-#endif
-
-  call MPI_TYPE_CREATE_STRUCT(mpiBlockNum,mpiBlockLen,MpiBlockDisp,MpiBlockType,MpiSparse_Row,ierr)
-  call MPI_TYPE_COMMIT(mpiSparse_Row,ierr)
-
-
-  call MPI_BCAST(a%row(1),1,mpiSparse_Row,0,MPI_COMM_WORLD,ierr)
-
-  ! a%row(1)%size=1
-  ! a%row(1)%vals(1)=1d0
-  ! a%row(1)%cols(1)=3
-  print*,""
+  print*,"CHECK WRITE/READ A"
+  a = as_sparse(kron(Splus,Gamma13))
   call a%show()
+
+  print*,"write:"
+  call a%write(file="sp_a.dat")
+
+  print*,"free:"
   call a%free()
-  print*,""
-  print*,""
-  call Barrier_MPI(comm)
 
+  print*,"read:"
+  call a%read(file="sp_a.dat")
+
+  print*,"show:"
+  call a%show()
+
+
+  open(unit=100,file="sp_100.dat")
+  call a%write(unit=100)
+  write(100,*)"ciao"
+
+
+
+  stop
+
+  
+
+  print*,"CHECK COPY B <= A"  
   call a%free()
-  call Barrier_MPI(comm)
-  if(master)then
-     a = as_sparse(kron(Gamma13,Sz))
-     print*,"Master a=\G_13.x.S_z:"
-     call a%show()
-     print*,""
-  endif
-  call Barrier_MPI(comm)
+  call b%free()
+  
+  print*,"A:"
+  a = as_sparse(kron(Gamma13,Sz))
+  call a%show()
 
-  if(rank==1)then
-     print*,"Node a"
-     call a%show()
-  endif
-  call Barrier_MPI(comm)
-  if(master)print*,""
-  if(master)print*,"Bcast a: 0 --> node"
-  call sp_Bcast(comm,a)
-  call Barrier_MPI(comm)
+  print*,"B.copy(A)"
+  call b%copy(a)
+  call b%show()
+  call b%free()
 
-  if(rank==1)then
-     print*,"Node a"
-     call a%show()
-  endif
-  call Barrier_MPI(comm)
-  if(master)print*,""
+  print*,"B=A"
+  b = a
+  call b%show()
+  
+
+  !   call Barrier_MPI(Comm)
+
+
+
+
+
+
+
+
+  !   call a%free()
+  !   call a%init(4,4)
+
+  !   if(allocated(a%row(1)%vals))deallocate(a%row(1)%vals)
+  !   if(allocated(a%row(1)%cols))deallocate(a%row(1)%cols)
+  !   allocate(a%row(1)%vals(1))
+  !   allocate(a%row(1)%cols(1))
+
+  !   if(master)then
+  !      a = as_sparse(Gamma13)
+  !      call a%show()
+  !      print*,""
+  !   endif
+
+  !   call MPI_GET_ADDRESS(a%row(1)%size, MpiBlockDisp(1), ierr)
+  !   call MPI_GET_ADDRESS(a%row(1)%cols, MpiBlockDisp(2), ierr)
+  !   call MPI_GET_ADDRESS(a%row(1)%vals, MpiBlockDisp(3), ierr)
+
+
+  !   base=MpiBlockDisp(1)
+  !   MpiBlockDisp=MpiBlockDisp-base
+
+
+  !   mpiBlockLen(1)=1
+  !   mpiBlockLen(2)=1
+  !   mpiBlockLen(3)=1
+
+  !   mpiBlockType(1)=MPI_INTEGER
+  !   mpiBlockType(2)=MPI_INTEGER
+  ! #ifdef _CMPLX
+  !   mpiBlockType(3)=MPI_DOUBLE_COMPLEX
+  ! #else
+  !   mpiBlockType(3)=MPI_DOUBLE_PRECISION
+  ! #endif
+
+  !   call MPI_TYPE_CREATE_STRUCT(mpiBlockNum,mpiBlockLen,MpiBlockDisp,MpiBlockType,MpiSparse_Row,ierr)
+  !   call MPI_TYPE_COMMIT(mpiSparse_Row,ierr)
+
+
+  !   call MPI_BCAST(a%row(1),1,mpiSparse_Row,0,MPI_COMM_WORLD,ierr)
+
+  !   ! a%row(1)%size=1
+  !   ! a%row(1)%vals(1)=1d0
+  !   ! a%row(1)%cols(1)=3
+  !   print*,""
+  !   call a%show()
+  !   call a%free()
+  !   print*,""
+  !   print*,""
+  !   call Barrier_MPI(comm)
+
+  !   call a%free()
+  !   call Barrier_MPI(comm)
+  !   if(master)then
+  !      a = as_sparse(kron(Gamma13,Sz))
+  !      print*,"Master a=\G_13.x.S_z:"
+  !      call a%show()
+  !      print*,""
+  !   endif
+  !   call Barrier_MPI(comm)
+
+  !   if(rank==1)then
+  !      print*,"Node a"
+  !      call a%show()
+  !   endif
+  !   call Barrier_MPI(comm)
+  !   if(master)print*,""
+  !   if(master)print*,"Bcast a: 0 --> node"
+  !   call sp_Bcast(comm,a)
+  !   call Barrier_MPI(comm)
+
+  !   if(rank==1)then
+  !      print*,"Node a"
+  !      call a%show()
+  !   endif
+  !   call Barrier_MPI(comm)
+  !   if(master)print*,""
 
 
 
