@@ -289,7 +289,7 @@ contains
     real(8),dimension(:),intent(in)   :: qn
     type(qtype),pointer               :: p,c
     logical                           :: iadd
-    integer :: i
+    integer                           :: i
     iadd = .false.
     if(.not.associated(self%root))allocate(self%root)
     p => self%root
@@ -654,6 +654,7 @@ contains
     if(unit_==-1)stop "write_sectors_list error: no input +file or +unit given"
     !
     write(unit_,*)self%size
+    write(unit_,*)self%qdim
     c => self%root%next
     do
        if(.not.associated(c))exit
@@ -678,7 +679,7 @@ contains
     integer                           :: i
     type(qtype),pointer               :: c
     integer                           :: unit_
-    integer                           :: DimSelf,DimQn,DimMap
+    integer                           :: SelfSize,SelfQdim,DimQn,DimMap
     real(8),dimension(:),allocatable  :: Cqn
     integer,dimension(:),allocatable  :: Cmap
     !
@@ -690,8 +691,10 @@ contains
     !
     call self%free()
     !
-    read(unit_,*)DimSelf
-    do i=1,DimSelf       
+    read(unit_,*)SelfSize
+    read(unit_,*)SelfQdim
+    self%qdim=SelfQdim
+    do i=1,SelfSize       
        read(unit_,*)DimQn
        allocate(Cqn(DimQn))
        read(unit_,*)Cqn

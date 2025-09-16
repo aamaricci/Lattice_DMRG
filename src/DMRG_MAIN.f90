@@ -360,6 +360,15 @@ contains
        call write_energy()
        call write_truncation()
        call write_entanglement()
+       !
+       if(save_all_blocks)then
+          call left%save(block_file//suffix_dmrg('left',left%length))
+          call right%save(block_file//suffix_dmrg('right',right%length))
+       else
+          call left%save(block_file//suffix_dmrg('left'))
+          call right%save(block_file//suffix_dmrg('right'))
+       endif
+       !
     endif
     !
     !Clean memory:

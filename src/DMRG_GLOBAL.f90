@@ -86,7 +86,6 @@ MODULE DMRG_GLOBAL
 
 
 
-
   !Memory pool for HxV direct product 
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
   type(sparse_matrix),allocatable,dimension(:,:) :: A,B
@@ -120,6 +119,10 @@ MODULE DMRG_GLOBAL
   integer                                        :: mpiL=0,mpiR=0
   !
 
+
+
+
+  
 
 #ifdef _MPI
   interface scatter_vector_MPI

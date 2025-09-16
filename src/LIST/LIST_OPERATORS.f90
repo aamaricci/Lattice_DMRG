@@ -610,7 +610,11 @@ contains
     do
        if(.not.associated(c))exit
        write(unit_,*)str(c%ckey)
-       write(unit_,*)str(c%ctype)
+       if(str(c%ctype)=="")then
+          write(unit_,*)"none"
+       else
+          write(unit_,*)str(c%ctype)
+       endif
        call c%ope%write(unit=unit_)
        c => c%next
     end do
@@ -641,6 +645,7 @@ contains
     do i=1,ListSize
        read(unit_,*)key
        read(unit_,*)type
+       if(str(type)=="none")type=""
        call ope%read(unit=unit_)
        call self%append(key=str(key),op=ope,type=str(type))
     end do

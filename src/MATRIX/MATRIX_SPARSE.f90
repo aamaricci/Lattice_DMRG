@@ -602,10 +602,10 @@ contains
     !
     if(.not.sparse%status)return
     write(unit_,*)sparse%Nrow,sparse%Ncol
+    write(unit_,*)sparse%nnz()
     do i=1,sparse%Nrow
-       write(unit_,*)sparse%row(i)%size
        do j=1,sparse%row(i)%size
-          write(unit_,*)sparse%row(i)%cols(j),sparse%row(i)%vals(j)
+          write(unit_,*)i,sparse%row(i)%cols(j),sparse%row(i)%vals(j)
        enddo
     enddo
     if(present(file))close(unit_)
@@ -619,7 +619,9 @@ contains
     character(len=*),optional          :: file
     integer,optional                   :: unit
     integer                            :: unit_
-    integer                            :: Ns,Nrow,Ncol,col
+    integer                            :: Ns,Nrow,Ncol
+    integer                            :: nnz,inz
+    integer                            :: row,col
 #ifdef _CMPLX
     complex(8)                         :: val
 #else
@@ -634,12 +636,10 @@ contains
     if(sparse%status)call sparse%free()
     read(unit_,*)Nrow,Ncol
     call sparse%init(Nrow,Ncol)
-    do i=1,sparse%Nrow
-       read(unit_,*)Ns
-       do j=1,Ns
-          read(unit_,*)col,val
-          call sparse%fast_insert(val,i,col)
-       enddo
+    read(unit_,*)nnz
+    do inz=1,nnz
+       read(unit_,*)row,col,val
+       call sparse%fast_insert(val,row,col)
     enddo
     if(present(file))close(unit_)
   end subroutine sp_read_matrix
@@ -2067,40 +2067,12 @@ program testSPARSE_MATRICES
   endif
 
 
-  call a%free()
 
-
-  print*,"CHECK WRITE/READ A"
-  a = as_sparse(kron(Splus,Gamma13))
-  call a%show()
-
-  print*,"write:"
-  call a%write(file="sp_a.dat")
-
-  print*,"free:"
-  call a%free()
-
-  print*,"read:"
-  call a%read(file="sp_a.dat")
-
-  print*,"show:"
-  call a%show()
-
-
-  open(unit=100,file="sp_100.dat")
-  call a%write(unit=100)
-  write(100,*)"ciao"
-
-
-
-  stop
-
-  
 
   print*,"CHECK COPY B <= A"  
   call a%free()
   call b%free()
-  
+
   print*,"A:"
   a = as_sparse(kron(Gamma13,Sz))
   call a%show()
@@ -2113,8 +2085,61 @@ program testSPARSE_MATRICES
   print*,"B=A"
   b = a
   call b%show()
+
+
+
   
 
+  call a%free()
+  call b%free()
+
+
+
+  
+
+  print*,"CHECK WRITE/READ A"
+  a = as_sparse(kron(Splus,Gamma13))
+  b = as_sparse(0d0*Sz)
+  print*,"A:"
+  call a%show()
+  print*,"B:"
+  call b%show()
+
+  print*,"write A&B:"
+  call a%write(file="sp_a.dat")
+  call b%write(file="sp_b.dat")
+
+  print*,"free:"
+  call a%free()
+  call b%free()
+
+
+  print*,"read A&B:"
+  call a%read(file="sp_a.dat")
+  call b%read(file="sp_b.dat")
+
+  print*,"show A:"
+  call a%show()
+  print*,"show B:"
+  call b%show()
+
+
+  ! open(unit=100,file="sp_100.dat")
+  ! call a%write(unit=100)
+  ! write(100,*)"ciao"
+
+
+
+  stop
+
+
+
+
+
+
+
+
+  
   !   call Barrier_MPI(Comm)
 
 
