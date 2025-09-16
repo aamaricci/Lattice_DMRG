@@ -89,7 +89,7 @@ MODULE INPUT_VARS
   integer              :: lanc_dim_threshold
   !Min dimension threshold to use Lanczos determination of the
   !spectrum rather than Lapack based exact diagonalization.
-  character(len=20)    :: block_file
+  character(len=:),allocatable    :: block_file
   !Name prefix of the stored block file at each iteration, used to restart DMRG.
   logical              :: save_all_blocks
   !Some parameters for function dimension:
@@ -119,6 +119,7 @@ contains
     USE SF_MPI
 #endif
     character(len=*) :: INPUTunit
+    character(len=256) :: block_file_
     logical          :: master=.true.
     integer          :: i,rank=0,add,dim
 #ifdef _MPI
@@ -229,8 +230,9 @@ contains
          default=1024,comment="Dimension threshold for Lapack use.")
     !
     !File Names:
-    call parse_input_variable(block_file,"BLOCK_FILE",INPUTunit,default='block',&
+    call parse_input_variable(block_file_,"BLOCK_FILE",INPUTunit,default='block',&
          comment="Name prefix of the stored block file at each iteration, used to restart DMRG.")
+    block_file=str(block_file_)
     call parse_input_variable(save_all_blocks,"SAVE_ALL_BLOCKS",INPUTunit,default=.false.,&
          comment="Logical flag to save all blocks (T) or just the last (F, default). DEBUG enforce T ")
     !    

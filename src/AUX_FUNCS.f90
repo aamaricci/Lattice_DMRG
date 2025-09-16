@@ -158,14 +158,14 @@ contains
     !
     select case(to_lower(str(self(1:1))))
     case default
-       label=".dmrg"
-       if(present(len))label="L"//str(len)//".dmrg"
+       label=""
+       if(present(len))label="_L"//str(len)//""
     case('l','s')
-       label="_left.dmrg"
-       if(present(len))label="L"//str(len)//"_left.dmrg"
+       label="_left"
+       if(present(len))label="_L"//str(len)//"_left"
     case('r','e')
-       label="_right.dmrg"
-       if(present(len))label="L"//str(len)//"_right.dmrg"
+       label="_right"
+       if(present(len))label="_L"//str(len)//"_right"
     end select
     !
   end function suffix_dmrg
