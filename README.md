@@ -1,6 +1,6 @@
 # Lattice DMRG 
 
-[![DMRG workflow](https://github.com/aamaricci/Lattice_DMRG/actions/workflows/PushWorkflow.yml/badge.svg)](https://github.com/aamaricci/Lattice_DMRG/actions/workflows/PushWorkflow.yml)
+[![CI DMRG workflow](https://github.com/aamaricci/Lattice_DMRG/actions/workflows/PushWorkflow.yml/badge.svg?branch=main)](https://github.com/aamaricci/Lattice_DMRG/actions/workflows/PushWorkflow.yml)
 
 This is a simple, yet complete, **parallel DMRG library** to solve interacting spin-S (Heisenberg) and fermions (Hubbard) models in 1D. The software exploits consevation of the Quantum Numbers (e.g. $S_z$ or $[N_\uparrow,N_\downarrow]$), high-performance objects/algorithms and distributed MPI framework to perform *infinite* and *finite* DMRG algorithms.  
  
