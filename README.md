@@ -1,5 +1,7 @@
 # Lattice DMRG 
 
+[![DMRG workflow](https://github.com/aamaricci/Lattice_DMRG/actions/workflows/PushWorkflow.yml/badge.svg)](https://github.com/aamaricci/Lattice_DMRG/actions/workflows/PushWorkflow.yml)
+
 This is a simple, yet complete, **parallel DMRG library** to solve interacting spin-S (Heisenberg) and fermions (Hubbard) models in 1D. The software exploits consevation of the Quantum Numbers (e.g. $S_z$ or $[N_\uparrow,N_\downarrow]$), high-performance objects/algorithms and distributed MPI framework to perform *infinite* and *finite* DMRG algorithms.  
  
 The structure of this code is largely inspired by the simple-DMRG project: [GitHub](https://github.com/simple-dmrg/simple-dmrg) and [Zenodo](https://zenodo.org/record/1068359).
@@ -13,21 +15,52 @@ The code is based on:
 
   
 ### Installation
-Clone the repo  
-Open and setup the Makefile with your favorite editor (hint: `emacs`)  
-Compile  
+This DMRG library is available in the form of a static Fortran library (`libdmrg.a`) and the related Fortran module `DMRG`.
 
+A standard installation from source is available through `CMake`, via the conventional out-of-source method. 
+
+
+#### Building
+Clone the repo  
 ```
 git clone https://github.com/aamaricci/Lattice_DMRG 
 ```
+
+Optionally export the correct Fortran compiler:  
+```export FC=mpif90/gfortran/ifort``` 
+
+From the repository directory (`cd Lattice_DMRG`) configure and compile the library:
+
 ```
-cd Lattice_DMRG
-emacs Makefile
-```
-```
-make
+mkdir build
+cd build
+cmake ..
+make -j
 ```
 
+The building step can be further configured passing suitable variables to CMake:
+ 
+* `-DBUILD_TYPE=RELEASE [/DEBUG/TESTING/AGGRESSIVE]`.  Set build mode flags.
+* `-DUSE_MPI= yes(True)/no(False)`. Enable MPI support at compile time.
+* `-DVERBOSE=yes(True)/no(False)`. Verbose CMake output. Superseded by `make VERBOSE=yes/no`. 
+
+   
+**WARNING** `BUILD_TYPE=AGGRESSIVE` includes many deep level debug options which might not compile on some systems or breakdown compilation at linking step.  
+
+#### Install
+
+System-wide installation is completed after the build step using
+
+```make install```
+
+Please follow the instructions on the screen to complete installation on your environment. The library can be loaded using one of the following, automatically generated, files :
+
+* A generated environment module , installed to `$HOME/.modules.d/dmrg/${PREFIX}` and available after module environment setup (instruction on the screen)
+* A generated bash script installed to `${PREFIX}/bin/dmrg_config_user.sh`, to be sourced for static loading.
+* A generated pkg-config fileinstalled to `~/.pkg-config.d/dmrg.pc`
+
+
+For ease of use a specific and automatically generated recap message is printed after installation.
 
 
 
