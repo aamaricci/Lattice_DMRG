@@ -138,11 +138,6 @@ $H = J_z \sum_{i} S_z(i)S_z(i+1) + J_{xy} \sum_{i,a=x,y} S_a(i)S_a(i+1)$
 In the top panels we show the groundstate energy $E(j)$ and the entanglement entropy of the left block sites $S_L(j) = -{\mathrm Tr}[{\rho_L}\ln{\rho_L}]$ as a function the chain sites in a Spin 1/2 chain of 300 sites. The nearest-neighbor spin-spin correlation $\langle \vec{S}(j)\cdot \vec{S}(j+1)\rangle$ for the same system is reported in the bottom-left panel. Compare this result to the fig.6 of [[4]](#4).  
 Finally, in the bottom-right panel we report the spatial distribution of the local magnetization for a Spin 1 chain with open boundary conditions, showing Spin 1/2 edge modes.
 
-<<<<<<< HEAD
-![gif](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/DMRG_record.gif)
-<<<<<<< HEAD
-
-
 
 Results for the Hubbard model $H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{i+1\sigma} + 
 U \sum_{i} n_{i\uparrow} n_{i\downarrow}$
@@ -156,14 +151,6 @@ In the top-left panel we compare the energy per site $E(j)$ with respect to the 
 ![gif](https://github.com/aamaricci/Lattice_DMRG/blob/main/.plot/DMRG_record.gif)
 
 
-
-Results for the Hubbard model $H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{i+1\sigma} + 
-U \sum_{i} n_{i\uparrow} n_{i\downarrow}$
-are available here: 
-
-![plot](https://github.com/aamaricci/Lattice_DMRG/blob/main/.plot/figH.png)
-
-In the top-left panel we compare the energy per site $E(j)$ with respect to the exact solution $E_0=-4t/\pi$ and the exact numberical solution for the non-interacting case at one electron per site $\langle N\rangle=1$. We used $M=40$ states to reach a satisfactory convergence of the ground state energy. In the top-right panel we report the occupation profile per spin. In the bottom-left panel we show the evolution of the entanglement entropy per site $S(j)$, while the last panel bottom-right displayes the profile of the double occupation.  
 
 
 ### Known issues
