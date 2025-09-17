@@ -94,77 +94,110 @@ For ease of use a specific and automatically generated recap message is printed 
 #### <a name="milestone5"></a> Milestone 5 
 - [x] Implement a better strategy for the SuperBlock matrix-vector product $H_{sb}|\psi\rangle$, exploiting the tensor product structure of $H_{sb}= H_L\otimes 1_R + 1_L\otimes H_R + H_{LR}$. 
 
-With this update we introduce two distinct method to evaluate and diagonalize the SuperBlock (SB) Hamiltonian $H_{sb}$, according to 
-the value of the parameter `sparse_H=T,F`.  
+<sup> With this update we introduce two distinct method to evaluate and diagonalize the SuperBlock (SB) Hamiltonian $H_{sb}$, according to 
+the value of the parameter `sparse_H=T,F`.
 If `T` the matrix $H_{sb}$ is evaluated as a sparse matrix performing the kroenecker products above.  
-If `F` each non-trivial part of the the matrix $H_{sb}$, i.e. $H_L$, $H_R$ and $H_{LR}$ are directly applied to the SB vector $|\psi\rangle$.To improve execution each term is decomposed into its  blocks structure corresponding to conserved quantum numbers $\vec{Q}=[Q_1,\dots,Q_N]$. In addition, exploiting the fact that each SB vector can be decomposed into a matrix form of Left and Right states, $|\psi\rangle = \sum_{lr} c_{lr} |l\rangle|r\rangle$, we can operate directly as follows:  
+If `F` each non-trivial part of the the matrix $H_{sb}$, i.e. $H_L$, $H_R$ and $H_{LR}$ are directly applied to the SB vector $|\psi\rangle$.To improve execution each term is decomposed into its  blocks structure corresponding to conserved quantum numbers $\vec{Q}=[Q_1,\dots,Q_N]$. In addition, exploiting the fact that each SB vector can be decomposed into a matrix form of Left and Right states, $|\psi\rangle = \sum_{lr} c_{lr} |l\rangle|r\rangle$, we can operate directly as follows:
+
+<sup>
 $[H_L\otimes 1_R] \circ |\psi\rangle \rightarrow H_L \circ \sum_l c_{lr}|l\rangle$  
 $[1_L\otimes H_R] \circ |\psi\rangle \rightarrow H_R \circ \sum_r c_{lr}|r\rangle$   
+
+<sup>
 and  
+
+<sup>
 $H_{LR} \circ |\psi\rangle \rightarrow  \sum_p \sum_{Q_i} A_p(Q_i)\otimes B_p(Q_i) |\psi\rangle$  
-where the matrices $A_p$, $B_p$ are the connecting operators (i.e. $c_{i\sigma}$ or $S_a(i)$) restricted between two blocks with quantum numbers $Q_i$ and $Q_j=Q_i-1_{\sigma/a}$.   
+
+<sup>
+where the matrices $A_p$, $B_p$ are the connecting operators (i.e. $c_{i\sigma}$ or $S_a(i)$) restricted between two blocks with quantum numbers $Q_i$ and $Q_j=Q_i-1_{\sigma/a}$. <\sup>
 
 
 #### Milestone 6
 - [X] Further development of *finite* DMRG algorithm.
 
 
-#### Milestone 7 (final?)
+#### Milestone 7
 - [X] Massive distributed MPI parallelization of the DMRG algorithm.   
 
+<sup>
 So far different ideas have been be explored in the literature. Some focused on the parallelization of the DMRG algorithm itself, by distributing workload from different sites/MPS across nodes. Other have focused on accelarating the parallel execution of the tensor product for $H_{sb}$ for `sparse_H=T`, see for instance Ref.[[1]](#1). 
 
+<sup>
 Here we take a slightly different approach. A simple profiling shows that more than 80% of the code executin time is spent in the solution of the eigenvalue problem for the superblock $H_{sb}|v\rangle = E|v\rangle$. 
 
+<sup>
 As we have shown in [milestone 5](#milestone5), the super-block Hamiltonian $H_{sb}$ can be decomposed into different parts, each having the form of a suitable tensor product. This form is analog to the one assumed by Hubbard-like models with spin-conservation for which a massively parallel Exact Diagonalization algorithm is available, see Ref.[[2]](#2)-[[3]](#3).
 
+<sup>
 Using this approach we constructed a simple yet efficient distributed MPI DMRG scheme as follows. We represent the generic superblock vector $|v\rangle \in {\cal H}_{sb}$ as a block matrix $V=diag\{V_q\}_{q=1,\dots,N_q}$ with $q$ the quantum number index and $N_q$ the total number of quantum number sectors contributing to the current superblock. Each block $V_q$ corresponds to a sub-matrix with $D_R(q)$ rows and $D_L(q)$ columns. 
 
+<sup>
 In the current MPI impementation of the DMRG we distribute across the $M$ nodes a share of $Q=D_L(q)/M$ columns. As we will explain in the following, this enables to perform application of each term in $H_{sb}$ locally in the nodes $p$ memory with only minimal MPI communication overhead.  
 
+<sup>
 For, we consider the function `vector_transpose_MPI` in `DMRG_GLOBAL`. This function exploits the MPI function `MPI_All2AllV` to perform the parallel transposition of a given matrix $A$ which is distributed column-wise. 
 
+<sup>
 In addition we note that each term appearing in the expression for $H_{sb}$ corresponds to a given block with quantum number $q$, as by dictated by the symmetries of the problem: $H_{sb}=diag\{H_{sb}(q)\}$. Thus we can analyze the matrix-vector product (MVP) of each term with a given quantum number one-by-one:
 
-
+<sup>
 * $1_L\otimes H_R$: when applied to the block $V_q$ this term involves multiplication of the (small) matrix $H_R$ rows with columns of $V_q$ with indices $j_q(p)$, with $p$ the node index. This multiplication is local in the memory of the node and does not required communication. 
 
+<sup>
 * $H_L\otimes 1_R$: when applied to the block $V_q$ this term involves multiplication of the (small) matrix $H_L$ rows with the *rows* of $V_q$ with indices $i_q(p)$. As the rows are distributed among the nodes a global communication is required. To optimize this step we operate as follows: 
     * MPI-transpose the block $V_q\rightarrow V^T_q$, 
     * apply the matrix $H_L$ which now operates locally in the nodes memory
     * MPI-transpose back the result $(H_LV^T_q)^T\rightarrow H_LV$.
 
+<sup>
 * $H_{LR} =  \sum_a \sum_{k} A_a(k)\otimes B_a(k)$: This term requires a more involved treatment. First we observe that each term in the double sum applies as:  
 
+<sup>
 $$
 [A_a(k)\otimes B_a(k)]|v_q\rangle = [A_a(k)\otimes B_a(k)]\cdot vec(V_q)
 $$
 
+<sup>
 where the operator $vec({\cdot})$ takes the vector on input and transforms it into a matrix columns-wise. By a well-known properties of the tensor products the last term is equal to:
 
+<sup>
 $$
 vec{(B_a(q,k)\cdot V_k \cdot A_a(k,q)^T)}
 $$
 
+<sup>
 which is an apparently involved double matrix-matrix product (MMP). However, as indicated in the last expression, because of the block structure of the operators $A_a$ and $B_a$ (indicated by the index $k$) some restrictions applies to this product: only the *off-diagonal* block components of $A_a$ and $B_a$ which ensures the final result of the MMP contributes to the specific $q$ quantum number are possible. 
 
+<sup>
 Recalling that each $V_k$ is distributed column-wise we perform the first product in parallel as for $1_L\otimes H_R$: $C_a(q,k)= B_a(q,k)\cdot V_k$. The resulting dense  matrix $C_a(q,k)$ is  distributed column-wise by construction. 
 We are then left with a final MMP:  
 
+<sup>
 $$
 vec{(C_a(q,k)\cdot A_a(k,q)^T )} = 
 vec{( [A_a(q,k)\cdot C^T_a(k,q)]^T )}
 $$
 
+<sup>
 which, as for the term $H_L\otimes 1_R$ requires using MPI-transpose two times: i) to get $C^T_a(k,q)$ and ii) to transpose the final result to be accumulated in the outgoing vector. 
 
+<sup>
 The overall cost of communication is minimized relying exclusively on the `MPI_All2All`-type of communication, thus unlocking massively parallel scaling of the MVP at the heart of the super-block diagonalization. 
 
-  
+
+#### Milestone 8
+- [X] Write/Read `Block` objects for restart DMRG .
+- [ ] Implement accurate timing of the different DMRG steps beyond the actual form
+
+   
 
 ### Results
 Here are some results for the Heisenberg model:  
-$H = J_z \sum_{i} S_z(i)S_z(i+1) + J_{xy} \sum_{i,a=x,y} S_a(i)S_a(i+1)$
+
+$$
+H = J_z \sum_{i} S_z(i)S_z(i+1) + J_{xy} \sum_{i,a=x,y} S_a(i)S_a(i+1)
+$$
 
 ![plot](https://github.com/aamaricci/Lattice_DMRG/blob/main/.plot/figs.png)
 
@@ -172,9 +205,12 @@ In the top panels we show the groundstate energy $E(j)$ and the entanglement ent
 Finally, in the bottom-right panel we report the spatial distribution of the local magnetization for a Spin 1 chain with open boundary conditions, showing Spin 1/2 edge modes.
 
 
-Results for the Hubbard model $H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{i+1\sigma} + 
-U \sum_{i} n_{i\uparrow} n_{i\downarrow}$
-are available here: 
+Results for the Hubbard model are available here:     
+$$
+H = -t\sum \sum_{i\sigma} c^\dagger_{i\sigma} c_{i+1\sigma} + 
+U \sum_{i} n_{i\uparrow} n_{i\downarrow}
+$$
+
 
 ![plot](https://github.com/QcmPlab/Lattice_DMRG/blob/main/.plot/figH.png)
 
@@ -187,7 +223,7 @@ In the top-left panel we compare the energy per site $E(j)$ with respect to the 
 
 
 ### Known issues
-There are a number of known issues with this code which, mostly for time reasons, we did not solve completely. Please report to any of the authors.
+There are a number of known issues with this code which, mostly for time reasons, we did not solve completely. Please report to the author or open an issue in GitHub.
     
     
     
@@ -206,20 +242,23 @@ exact diagonalization of strongly correlated systems](https://juser.fz-juelich.d
 [Density-matrix algorithms for quantum renormalization groups](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.48.10345), S.White, Phys. Rev. B **48**, 10345 (1993).
 
 
-### Info
-For any information or suggestion contact the author OR create an issue in this repo.
-
 
 --
 
-
-The software is provided with no license, as such it is protected by copyright.
-The software is provided as it is and can be read and copied, in agreement with 
-the Terms of Service of GITHUB. Use of the code is constrained to author agreement.   
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License (LGPL) as published by
+the Free Software Foundation, either version 3 of the License, or any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU LGPL for more details.
+
+The software is provided as it is and can be read and copied, in agreement with 
+the Terms of Service of GITHUB. 
+
+You should have received a copy of the GNU LGPL along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 
 
