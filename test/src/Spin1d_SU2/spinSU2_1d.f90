@@ -2,47 +2,28 @@ program dmrg_spin_1d
   USE SCIFOR
   USE DMRG
   USE ASSERTING
-#ifdef _MPI
-  USE MPI
-#endif
   implicit none
   character(len=64)                   :: finput
   integer                             :: i,Unit,L
-  type(site),dimension(:),allocatable :: Mydot
+  type(site),dimension(:),allocatable :: Dot
   type(sparse_matrix)                 :: bSz,bSp,SiSj
   real(8),dimension(:,:),allocatable  :: Hlr
   real(8),dimension(:),allocatable    :: avSz,x,data,data_
   real(8),dimension(:),allocatable    :: e,s
-  integer                             :: irank,comm,rank,ierr
-  logical                             :: master
-
-#ifdef _MPI  
-  call init_MPI()
-  comm = MPI_COMM_WORLD
-  call StartMsg_MPI(comm)
-  rank = get_Rank_MPI(comm)
-  master = get_Master_MPI(comm)
-#endif
-
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call read_input(finput)
 
 
   !Init DMRG
-  allocate(Mydot(1))              !Homogeneous system
-  Mydot = spin_site(sun=2)        !spin_site handles array!
-  
+  allocate(Dot(1))              !Homogeneous system
+  Dot = spin_site(sun=2)        !spin_site handles array!
   Hlr = diag([Jp,Jx/2d0])       !implicit fortran allocation
-  call init_dmrg(Hlr,ModelDot=Mydot)
-
-  
-  !Run DMRG algorithm
+  call init_dmrg(Hlr,ModelDot=Dot)
   call run_DMRG()
 
-  
   !Post-processing and measure quantities:
-  call Measure_DMRG(mydot(1)%operators%op(key="S_z"),pos=arange(1,Ldmrg),avOp=avSz)
+  call Measure_DMRG(dot(1)%operators%op(key="S_z"),pos=arange(1,Ldmrg),avOp=avSz)
 
   !Check energy:
   L = file_length("energyVSleft.length_L40_M20_iDMRG.dmrg")
@@ -80,9 +61,6 @@ program dmrg_spin_1d
 
   !Finalize DMRG
   call finalize_dmrg()
-#ifdef _MPI
-  call finalize_MPI()
-#endif
 
 
 

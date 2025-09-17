@@ -2,10 +2,10 @@
 FILE(REMOVE_RECURSE ${LIB_TMP_ETC}/modules)
 
 #Create default .version file if following conditions are verified:
-#1. master branch
+#1. main branch
 #2. no debug
 #3. default prefix
-IF( USE_DEFAULT_MODULE_NAME AND (NOT "${BUILD_TYPE}" MATCHES "debug") AND (GIT_BRANCH MATCHES "master"))
+IF( USE_DEFAULT_MODULE_NAME AND (NOT "${BUILD_TYPE}" MATCHES "debug") AND (GIT_BRANCH MATCHES "main"))
   SET(TMP_VER_MODULE_FILE ${LIB_TMP_ETC}/modules/${VERSION_PATH}/.version)
   CONFIGURE_FILE(${LIB_ENV}/version.in ${TMP_VER_MODULE_FILE}  @ONLY)
   MESSAGE(STATUS "${Red}Version file${ColourReset}: ${TMP_VER_MODULE_FILE}")

@@ -2,9 +2,6 @@ program hubbard_1d
   USE SCIFOR
   USE DMRG
   USE ASSERTING
-#ifdef _MPI
-  USE MPI
-#endif
   implicit none
 
   integer                                        :: Nso
@@ -18,25 +15,13 @@ program hubbard_1d
   real(8),dimension(:,:),allocatable             :: avO
   real(8),dimension(:),allocatable               :: x,data,data_
   real(8),dimension(:),allocatable               :: n,d,m,e,s
-  integer                             :: irank,comm,rank,ierr
-  logical                             :: master
-
-#ifdef _MPI  
-  call init_MPI()
-  comm = MPI_COMM_WORLD
-  call StartMsg_MPI(comm)
-  rank = get_Rank_MPI(comm)
-  master = get_Master_MPI(comm)
-#endif
 
 
   call parse_cmd_variable(finput,"FINPUT",default='DMRG.conf')
   call parse_input_variable(ts,"TS",finput,default=(/( -1d0,i=1,2 )/),&
        comment="Hopping amplitudes")
-  
   call parse_input_variable(Mh,"MH",finput,default=(/(0d0,i=1,2 )/),&
        comment="Crystal field splittings")
-
   call read_input(finput)
 
 
@@ -54,7 +39,6 @@ program hubbard_1d
   Hlr = diag([ts(1:Norb),ts(1:Norb)])
 
   call init_dmrg(Hlr,ModelDot=Dot)
-
 
   !Run DMRG algorithm
   call run_DMRG()
@@ -84,7 +68,7 @@ program hubbard_1d
   call save_array("d.out",avO(2,:))
   call save_array("s2z.out",avO(3,:))
 
-
+  
   !Check energy:
   L = file_length("energyVSleft.length_L40_M40_iDMRG.dmrg")
   allocate(x(L),data(L))
@@ -136,9 +120,6 @@ program hubbard_1d
 
   !Finalize DMRG
   call finalize_dmrg()
-#ifdef _MPI
-  call finalize_MPI()
-#endif
 
 
 end program hubbard_1d
