@@ -43,7 +43,7 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
 #endif
     !
-    if(MpiMaster)call start_timer("Get SB states")
+    if(MpiMaster)call start_timer("Build SB states")
     !
     !INIT SB STATES OBJECTS:
     if(allocated(sb_states))deallocate(sb_states)
@@ -89,19 +89,14 @@ contains
        enddo
        call sb_sector%appends(qn=left_qn,istates=Astates)
     enddo
-    ! enddo
+    !
 #ifdef _DEBUG
     if(MpiMaster.AND.verbose>5)close(unit)
 #endif
     !
-    if(MpiMaster)call stop_timer()
+    if(MpiMaster)call stop_timer("Build SB states")
     !
   end subroutine sb_get_states
-
-
-
-
-
 
 
 
@@ -159,6 +154,7 @@ contains
     allocate(gs_energy(Neigen));gs_energy=zero
     !
     if(MpiMaster)call start_timer("Diag H_sb")
+    !
     if(lanc_solve)then          !Use (P)-Arpack
        !
        call sb_build_Hv()
@@ -218,7 +214,7 @@ contains
        deallocate(Hsb,evals)
        !
     endif
-    if(MpiMaster)call stop_timer()
+    if(MpiMaster)call stop_timer("Diag H_sb")
     !    
     !Free Memory
     call sb_delete_Hv()
@@ -251,6 +247,8 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock build H*v"
 #endif
     !
+    if(MpiMaster)call start_timer("Build Hv SB")
+
     if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
     m_sb = size(sb_states)
     Nsb  = size(sb_sector)
@@ -291,38 +289,32 @@ contains
        !
        !>Build Sparse Hsb: (Root only)
        if(MpiMaster)then
-          call start_timer("get H_sb Dense: LAPACK")
           call Setup_SuperBlock_Sparse() !<- no MPI here
-          call stop_timer()
           !
           !Dump Hsb to dense matrix as required:
+          write(LogFile,"(A)")"LAPACK: spHsb.dump(Hmat)"
           call spHsb%dump(Hmat)
        endif
-       return
+    else
+       !
+       !Build SuperBLock HxV operation: stored or direct
+       select case(sparse_H)
+       case(.true.)
+          call Setup_SuperBlock_Sparse() !<- no MPI here yet
+          spHtimesV_p => spMatVec_sparse_main
+          !
+       case(.false.)
+          call Setup_SuperBlock_Direct() !<- SETUP MPI here
+          spHtimesV_p => spMatVec_direct_main
+#ifdef _MPI
+          if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
+#endif
+          !
+       end select
     endif
     !
-    !Build SuperBLock HxV operation: stored or direct
-    select case(sparse_H)
-    case(.true.)
-       if(MpiMaster)call start_timer("get H_sb Sparse: ARPACK")
-       call Setup_SuperBlock_Sparse() !<- no MPI here yet
-       if(MpiMaster)call stop_timer()
-       !
-       !Set HxV function pointer:
-       spHtimesV_p => spMatVec_sparse_main
-       !
-    case(.false.)
-       if(MpiMaster)call start_timer("get H_sb Direct: ARPACK")
-       call Setup_SuperBlock_Direct() !<- SETUP MPI here
-       if(MpiMaster)call stop_timer()
-       !
-       !Set HxV function pointer:
-       spHtimesV_p => spMatVec_direct_main
-#ifdef _MPI
-       if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
-#endif
-       !
-    end select
+    if(MpiMaster)call stop_timer("Build Hv SB")
+    !
   end subroutine sb_build_Hv
 
 

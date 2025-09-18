@@ -40,7 +40,6 @@ ENDIF(VERBOSE)
 INCLUDE(${CMAKE_MODULE_PATH}/MpiConfig.cmake)
 
 
-
 ############################################################
 # Look for required libraries: scifor
 # (includes Blas/Lapack/Scalapack/Quadpack/Minpack/FFTpack/Arpack/...) 
@@ -49,13 +48,20 @@ INCLUDE(${CMAKE_MODULE_PATH}/MpiConfig.cmake)
 FIND_PACKAGE(PkgConfig)
 PKG_SEARCH_MODULE(SCIFOR REQUIRED scifor)
 IF(${SCIFOR_FOUND})
-  MESSAGE(STATUS "SCIFOR found at: ${SCIFOR_PREFIX}")
+  MESSAGE(STATUS "SciFortran found ${SCIFOR_INCLUDE_DIRS}")
 ELSE()
   MESSAGE(FATAL_ERROR "
-Can not find SciFortran in this system. Check SciFor installation. Try adding the provided PKG-CONFIG file to the environment:
+Can not find SciFortran in this system. Check SciFor installation. 
+Try adding the provided PKG-CONFIG file to the environment:
 $ export PKG_CONFIG_PATH=<path_to_scifor_dir>/etc:$PKG_CONFIG_PATH")
 ENDIF()
 INCLUDE_DIRECTORIES(BEFORE ${SCIFOR_INCLUDE_DIRS})
+
+FIND_PACKAGE(Gperftools OPTIONAL)
+if(${Gperftools_FOUND})
+  MESSAGE(STATUS "GperfTools found ${Gperftools_INCLUDE_DIRS}")
+  INCLUDE_DIRECTORIES(BEFORE ${Gperftools_INCLUDE_DIRS})
+endif()
 
 
 ############################################################

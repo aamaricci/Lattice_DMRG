@@ -154,7 +154,7 @@ contains
 #ifdef _MPI
     call Barrier_MPI(MpiComm)
 #endif
-    if(MpiMaster)call stop_timer()
+    if(MpiMaster)call stop_timer("Enlarge blocks")
     !
   end subroutine enlarge_block
 

@@ -46,7 +46,7 @@ contains
     call rho_left%free()
     call rho_right%free()
     !
-    if(MpiMaster)call start_timer("Get Rho")
+    if(MpiMaster)call start_timer("Get \rho")
     do isb=1,size(sb_sector)
        sb_qn   = sb_sector%qn(index=isb)
        sb_map  = sb_sector%map(index=isb)
@@ -80,7 +80,7 @@ contains
        if(MpiMaster)call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
        !
     enddo
-    if(MpiMaster)call stop_timer()
+    if(MpiMaster)call stop_timer("Get \rho")
     !
     call sb_delete_dims()
     if(allocated(rho))deallocate(rho)
@@ -183,9 +183,9 @@ contains
        if(left%length+right%length==2)return
        !
        if(MpiMaster)then
-          call start_timer("Diag Rho "//to_lower(str(label)))
+          call start_timer("Diag rho "//to_lower(str(label)))
           call rho_left%eigh(sort=.true.,reverse=.true.)
-          call stop_timer()
+          call stop_timer("Diag rho "//to_lower(str(label)))
           !
           if(allocated(rho_left_evals))deallocate(rho_left_evals)
           allocate(rho_left_evals, source=rho_left%evals())
@@ -214,7 +214,7 @@ contains
           call left%put_omat(str(left%length),trRho_left,'')
           !>Renormalize Blocks:
           call left%renormalize(as_matrix(trRho_left))
-          call stop_timer()
+          call stop_timer("Renormalize "//to_lower(str(label)))
        endif
 #ifdef _MPI
        if(MpiStatus)call Bcast_MPI(MpiComm,m_s)
@@ -266,9 +266,9 @@ contains
        if(left%length+right%length==2)return
        !
        if(MpiMaster)then
-          call start_timer("Diag Rho "//to_lower(str(label)))
+          call start_timer("Diag rho "//to_lower(str(label)))
           call rho_right%eigh(sort=.true.,reverse=.true.)
-          call stop_timer()
+          call stop_timer("Diag rho "//to_lower(str(label)))
           !
           if(allocated(rho_right_evals))deallocate(rho_right_evals)
           allocate(rho_right_evals, source=rho_right%evals())
@@ -297,7 +297,7 @@ contains
           call right%put_omat(str(right%length),trRho_right,'')
           !>Renormalize Blocks:
           call right%renormalize(as_matrix(trRho_right))
-          call stop_timer()
+          call stop_timer("Renormalize "//to_lower(str(label)))
        endif
 #ifdef _MPI
        if(MpiStatus)call Bcast_MPI(MpiComm,m_e)

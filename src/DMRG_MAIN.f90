@@ -259,16 +259,7 @@ contains
     case default
        stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
     end select
-    !
-    if(MpiMaster)then
-       if(save_all_blocks)then
-          call left%save(block_file//suffix_dmrg('left',left%length)//".dmrg")
-          call right%save(block_file//suffix_dmrg('right',right%length)//".dmrg")
-       else
-          call left%save(block_file//suffix_dmrg('left')//".dmrg")
-          call right%save(block_file//suffix_dmrg('right')//".dmrg")
-       endif
-    endif
+    !    
     !
     if(MpiMaster.AND.(.not.left%is_valid(.true.)))stop "single_dmrg_step error: left is not a valid block"
     if(MpiMaster.AND.(.not.right%is_valid(.true.)))stop "single_dmrg_step error: right is not a valid block"
@@ -278,7 +269,16 @@ contains
     m_right = right%dim
     !
     !> START DMRG STEP:
-    if(MpiMaster)call dmrg_graphic(iLabel)    
+    if(MpiMaster)call dmrg_graphic(iLabel)
+    if(MpiMaster)then
+       if(save_all_blocks)then
+          call left%save(block_file//suffix_dmrg('left',left%length)//".dmrg")
+          call right%save(block_file//suffix_dmrg('right',right%length)//".dmrg")
+       else
+          call left%save(block_file//suffix_dmrg('left')//".dmrg")
+          call right%save(block_file//suffix_dmrg('right')//".dmrg")
+       endif
+    endif
     if(MpiMaster)call start_timer()
     !
     !

@@ -47,6 +47,8 @@ contains
     write(LOGfile,*)"DEBUG: Setup SB Sparse"
 #endif
     !
+    if(MpiMaster)call start_timer("Setup SB Sparse")
+    !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing left.H operator in the list"
     if(.not.right%operators%has_key("H"))&
@@ -70,6 +72,8 @@ contains
     spHsb = H2 & 
          + sp_kron(left%operators%op("H"),id(m_right),sb_states) &
          + sp_kron(id(m_left),right%operators%op("H"),sb_states)
+    !
+    if(MpiMaster)call stop_timer("Setup SB Sparse")
     !
   end subroutine Setup_SuperBlock_Sparse
 
@@ -135,6 +139,8 @@ contains
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - spin"
 #endif
+    !
+    if(MpiMaster)call start_timer("Setup SB Spin Direct")
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
@@ -310,6 +316,8 @@ contains
     enddo
     deallocate(Sleft,Sright)
     !
+    if(MpiMaster)call stop_timer("Setup SB Spin Direct")
+    !
   end subroutine Setup_SuperBlock_Spin_Direct
 
 
@@ -340,6 +348,8 @@ contains
 #ifdef _DEBUG
     write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
+    !
+    if(MpiMaster)call start_timer("Setup SB Fermion Direct")
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
@@ -472,7 +482,6 @@ contains
                    A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
                    B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BJ(jsb)%states)
                 endif
-
                 Isb2Jsb(it,isb)  =jsb
                 IsHconjg(it,isb) =.false.
                 RowOffset(it,isb)=Offset(isb)           
@@ -520,6 +529,8 @@ contains
        enddo
     enddo
     deallocate(Cleft,Cright)
+    !
+    if(MpiMaster)call stop_timer("Setup SB Fermion Direct")
     !
   end subroutine Setup_SuperBlock_Fermion_Direct
 
