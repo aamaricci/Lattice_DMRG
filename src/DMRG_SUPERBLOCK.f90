@@ -19,6 +19,7 @@ MODULE DMRG_SUPERBLOCK
   integer                          :: io,jo
   integer,dimension(:),allocatable :: sb_states_tmp
 
+  
 
 contains
 
@@ -44,6 +45,7 @@ contains
 #endif
     !
     if(MpiMaster)call start_timer("Build SB states")
+    t0=t_start()
     !
     !INIT SB STATES OBJECTS:
     if(allocated(sb_states))deallocate(sb_states)
@@ -84,7 +86,8 @@ contains
           call append(sb_states, istate)
           Astates(k) = k+Offset(ql) !==size(sb_states)
 #ifdef _DEBUG
-          if(MpiMaster.AND.verbose>5)write(unit,*)left_map(il),right_map(ir),istate,size(sb_states),k+Offset(ql)
+          if(MpiMaster.AND.verbose>5)&
+               write(unit,*)left_map(il),right_map(ir),istate,size(sb_states),k+Offset(ql)
 #endif
        enddo
        call sb_sector%appends(qn=left_qn,istates=Astates)
@@ -95,7 +98,7 @@ contains
 #endif
     !
     if(MpiMaster)call stop_timer("Build SB states")
-    !
+    t_sb_get_states=t_stop()
   end subroutine sb_get_states
 
 
@@ -154,6 +157,7 @@ contains
     allocate(gs_energy(Neigen));gs_energy=zero
     !
     if(MpiMaster)call start_timer("Diag H_sb")
+    t0=t_start()
     !
     if(lanc_solve)then          !Use (P)-Arpack
        !
@@ -169,20 +173,20 @@ contains
                Nblock,&
                Nitermax,&
                tol=lanc_tolerance,&
-               iverbose=(verbose>4))
+               iverbose=(verbose>4),NumOp=NumOp)
        else
           call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
                Nblock,&
                Nitermax,&
                tol=lanc_tolerance,&
-               iverbose=(verbose>4))
+               iverbose=(verbose>4),NumOp=NumOp)
        endif
 #else
        call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
             Nblock,&
             Nitermax,&
             tol=lanc_tolerance,&
-            iverbose=(verbose>4))
+            iverbose=(verbose>4),NumOp=NumOp)
 #endif
        !
     else !use LAPACK
@@ -215,9 +219,10 @@ contains
        !
     endif
     if(MpiMaster)call stop_timer("Diag H_sb")
-    !    
+    t_sb_diag=t_stop()
     !Free Memory
     call sb_delete_Hv()
+    !
   end subroutine sb_diag
 
 
@@ -247,8 +252,6 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock build H*v"
 #endif
     !
-    if(MpiMaster)call start_timer("Build Hv SB")
-
     if(.not.allocated(sb_states))stop "build_Hv_superblock ERROR: sb_states not allocated"
     m_sb = size(sb_states)
     Nsb  = size(sb_sector)
@@ -312,8 +315,6 @@ contains
           !
        end select
     endif
-    !
-    if(MpiMaster)call stop_timer("Build Hv SB")
     !
   end subroutine sb_build_Hv
 
@@ -406,7 +407,6 @@ contains
     vecDim = sum(mpiDl)
     !
   end function sb_vecDim_Hv
-
 
 
 

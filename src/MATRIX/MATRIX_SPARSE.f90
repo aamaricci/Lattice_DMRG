@@ -67,6 +67,7 @@ MODULE MATRIX_SPARSE
 #ifdef _MPI
      procedure,pass :: bcast      => sp_bcast_matrix
      procedure,pass :: pdot       => sp_p_matmul_matrix
+     procedure,pass :: bytes      => sp_get_bytes_matrix
 #endif
   end type sparse_matrix
 
@@ -199,6 +200,8 @@ MODULE MATRIX_SPARSE
   public :: matmul
   public :: sp_eye
   public :: sp_filter
+
+
 
 
 contains       
@@ -1335,7 +1338,7 @@ contains
     !
     do i=1,Nrow
        if(master)Nsize = self%row(i)%size
-       call Bcast_MPI(comm_,Nsize)
+       call Bcast_MPI(comm_,Nsize)       
        !
        self%row(i)%size = Nsize !tautology for master
        if(Nsize==0)cycle
@@ -1346,10 +1349,40 @@ contains
           allocate(self%row(i)%vals(Nsize))
        endif
        !
-       call Bcast_MPI(comm_,self%row(i)%cols)
-       call Bcast_MPI(comm_,self%row(i)%vals)
+       call Bcast_MPI(comm_,self%row(i)%cols)       
+       call Bcast_MPI(comm_,self%row(i)%vals)       
     end do
   end subroutine sp_bcast_matrix
+
+
+  function sp_get_bytes_matrix(self) result(kbytes)
+    class(sparse_matrix), intent(inout) :: self
+    real(8)                             :: kbytes
+    integer                             :: i,ierr
+    real(8)                             :: I_kb_size  
+    real(8)                             :: DATA_kb_size
+    integer                             :: typesize
+    logical                             :: master
+    if(.not.check_MPI())stop "sp_get_kbytes error: check_MPI=F"
+    call MPI_Type_size(MPI_INTEGER, typesize, ierr)
+#ifdef _CMPLX
+    call MPI_Type_size(MPI_DOUBLE_COMPLEX, typsize, ierr)
+#else
+    call MPI_Type_size(MPI_DOUBLE_PRECISION, typesize, ierr)
+#endif
+    I_kb_size    = dble(typesize)/1000d0
+    DATA_kb_size = dble(typesize)/1000d0
+    master = get_Master_MPI(MPI_COMM_WORLD)
+    kbytes=0d0
+    if(master)then
+       kbytes = 2*I_kb_size                            !Nrow + Ncol
+       do i=1,self%Nrow
+          kbytes=kbytes+I_kb_size                      !row(i).Nsize
+          kbytes=kbytes+2*(self%row(i)%size)*I_kb_size !row(i).cols + row(i).vals
+       enddo
+    endif
+  end function sp_get_bytes_matrix
+
 #endif
 
 

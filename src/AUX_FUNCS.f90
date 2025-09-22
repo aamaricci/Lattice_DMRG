@@ -10,6 +10,7 @@ MODULE AUX_FUNCS
      module procedure :: append_I
      module procedure :: append_D
      module procedure :: append_C
+     module procedure :: append_Ch
   end interface append
 
   interface add_to
@@ -171,7 +172,7 @@ contains
   end function suffix_dmrg
 
 
-  
+
   !##################################################################
   !##################################################################
   !              AUXILIARY COMPUTATIONAL ROUTINES
@@ -261,6 +262,28 @@ contains
     if(allocated(tmp))deallocate(tmp)
   end subroutine append_C
 
+  pure subroutine append_Ch(vec,val)
+    character(len=*),dimension(:),allocatable,intent(inout) :: vec
+    character(len=*),intent(in)                             :: val  
+    character(len=len(vec)),dimension(:),allocatable        :: tmp
+    integer                                                 :: n
+    !
+    if (allocated(vec)) then
+       n = size(vec)
+       allocate(tmp(n+1))
+       tmp(:n) = vec
+       call move_alloc(tmp,vec)
+       n = n + 1
+    else
+       n = 1
+       allocate(vec(n))
+    end if
+    !
+    !Put val as last entry:
+    vec(n) = val
+    !
+    if(allocated(tmp))deallocate(tmp)
+  end subroutine append_Ch
 
 
 

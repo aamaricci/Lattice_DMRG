@@ -24,6 +24,7 @@ INCLUDE(${CMAKE_MODULE_PATH}/ColorsMsg.cmake)
 
 # Set some options the user may choose
 OPTION(USE_MPI "Set MPI pre-compilation flag" ON)
+OPTION(PROFILE "Set Code Profiling" ON)
 OPTION(VERBOSE "Build a verbose Makefile" OFF)
 OPTION(WITH_BLAS_LAPACK "Use internal Blas/Lapack" OFF)
 IF(VERBOSE)
@@ -57,11 +58,11 @@ $ export PKG_CONFIG_PATH=<path_to_scifor_dir>/etc:$PKG_CONFIG_PATH")
 ENDIF()
 INCLUDE_DIRECTORIES(BEFORE ${SCIFOR_INCLUDE_DIRS})
 
-FIND_PACKAGE(Gperftools OPTIONAL)
-if(${Gperftools_FOUND})
-  MESSAGE(STATUS "GperfTools found ${Gperftools_INCLUDE_DIRS}")
-  INCLUDE_DIRECTORIES(BEFORE ${Gperftools_INCLUDE_DIRS})
-endif()
+# FIND_PACKAGE(Gperftools OPTIONAL)
+# if(${Gperftools_FOUND})
+#   MESSAGE(STATUS "GperfTools found ${Gperftools_INCLUDE_DIRS}")
+#   INCLUDE_DIRECTORIES(BEFORE ${Gperftools_INCLUDE_DIRS})
+# endif()
 
 
 ############################################################

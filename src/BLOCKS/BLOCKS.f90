@@ -417,15 +417,16 @@ contains
 
 
 
-  subroutine save_block(self,file)
+  subroutine save_block(self,file,gzip)
     class(block)     :: self
     character(len=*) :: file
     integer          :: unit_
+    logical          :: gzip
     !
     open(free_unit(unit_),file=str(file))
     call self%write(unit=unit_)
     close(unit_)
-    call file_gzip(str(file))
+    if(gzip)call file_gzip(str(file))
   end subroutine save_block
 
 
@@ -482,7 +483,7 @@ contains
   subroutine load_block(self,file)
     class(block)     :: self
     character(len=*) :: file
-    call file_gunzip(str(file))
+    call file_gunzip(str(file)) !if not zipped: returns
     call self%read(file=str(file))
     call file_gzip(str(file))    
   end subroutine load_block
