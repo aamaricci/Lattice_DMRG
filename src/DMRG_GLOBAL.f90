@@ -85,13 +85,64 @@ MODULE DMRG_GLOBAL
   real(8)                                        :: Estates
 
 
-
   !Memory pool for HxV direct product 
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
   type(sparse_matrix),allocatable,dimension(:,:) :: A,B
   integer,dimension(:),allocatable               :: Dls,Drs,Offset
   integer,dimension(:,:),allocatable             :: RowOffset,ColOffset,isb2jsb
   logical,dimension(:,:),allocatable             :: IsHconjg
+
+
+  !Profiling stuff
+  character(len=100)                             :: prof_file="dmrg_profile.out"
+  real(8),allocatable,dimension(:)               :: prof_times
+  character(len=32),allocatable,dimension(:)     :: prof_names
+  !
+  real(8)                                        :: t0,t1
+
+  real(8)                                        :: t_dmrg_step      !_MAIN
+  real(8)                                        :: t_enlarge_blocks !_CONNECT
+  real(8)                                        :: t_connect_blocks !_CONNECT
+  real(8)                                        :: t_sb_get_states  !_SUPERBLOCK
+  real(8)                                        :: t_sb_diag        !_SUPERBLOCK
+  real(8)                                        :: t_setup_sb_sparse!_SUPERBLOC_SETUP
+  real(8)                                        :: t_setup_sb_direct!_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_sparse     !_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_direct     !_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_1LxHR      !_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_HLx1R      !_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_AxB        !_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_B          !_SUPERBLOC_SETUP
+  real(8)                                        :: t_hxv_A          !_SUPERBLOC_SETUP  
+  real(8)                                        :: t_rdm_get        !_RDM
+  real(8)                                        :: t_rdm_diag       !_RDM
+  real(8)                                        :: t_rdm_renorm     !_RDM
+  !
+  real(8)                                        :: rdcd_sb_dim
+  real(8)                                        :: full_sb_dim
+  real(8)                                        :: t_a2av           !_GLOBAL
+  real(8)                                        :: t_sctr           !_GLOBAL
+  real(8)                                        :: t_gthr           !_GLOBAL
+  real(8)                                        :: t_agthr          !_GLOBAL
+  real(8)                                        :: kb_sent_a2av
+  real(8)                                        :: kb_recv_a2av
+  real(8)                                        :: kb_sent_sctr
+  real(8)                                        :: kb_recv_sctr
+  real(8)                                        :: kb_sent_gthr
+  real(8)                                        :: kb_recv_gthr
+  real(8)                                        :: kb_sent_agthr
+  real(8)                                        :: kb_recv_agthr
+  real(8)                                        :: kb_sb_setup_bcast
+  !
+  real(8)                                        :: D_kb_size
+  real(8)                                        :: C_kb_size
+  real(8)                                        :: I_kb_size  
+  real(8)                                        :: DATA_kb_size
+  !
+  integer                                        :: NumOp
+
+
+
 
 
   !This is the internal Mpi Communicator and variables.
@@ -106,6 +157,7 @@ MODULE DMRG_GLOBAL
   integer                                        :: MpiComm=0
   integer                                        :: MpiGroup_Global=0
   integer                                        :: MpiGroup=0
+
 #endif
   logical                                        :: MpiStatus=.false.
   logical                                        :: MpiMaster=.true.
@@ -117,17 +169,20 @@ MODULE DMRG_GLOBAL
   integer,allocatable,dimension(:)               :: mpiOffset
   integer,allocatable,dimension(:,:)             :: mpiRowOffset,mpiColOffset
   integer                                        :: mpiL=0,mpiR=0
-  !
 
 
 
 
-  
+
+
+
+
+
 
 #ifdef _MPI
   interface scatter_vector_MPI
-     module procedure :: scatter_vector_MPI_v1
-     module procedure :: scatter_vector_MPI_v2
+     module procedure                        :: scatter_vector_MPI_v1
+     module procedure                        :: scatter_vector_MPI_v2
   end interface scatter_vector_MPI
 
   interface gather_vector_MPI
@@ -141,10 +196,158 @@ MODULE DMRG_GLOBAL
 #endif
 
 
-
-
-
 contains
+
+
+
+  subroutine reset_profile()
+    !
+    t0                = 0d0
+    t1                = 0d0
+    t_a2av            = 0d0 !_GLOBAL
+    t_sctr            = 0d0 !_GLOBAL
+    t_gthr            = 0d0 !_GLOBAL
+    t_agthr           = 0d0 !_GLOBAL
+    t_dmrg_step       = 0d0 !_MAIN
+    t_enlarge_blocks  = 0d0 !_CONNECT
+    t_connect_blocks  = 0d0 !_CONNECT
+    t_sb_get_states   = 0d0 !_SUPERBLOCK
+    t_sb_diag         = 0d0 !_SUPERBLOCK
+    t_setup_sb_sparse = 0d0 !_SUPERBLOC_SETUP
+    t_setup_sb_direct = 0d0 !_SUPERBLOC_SETUP
+    t_hxv_direct      = 0d0 !_SUPERBLOC_SETUP
+    t_hxv_1LxHR       = 0d0 !_SUPERBLOC_SETUP
+    t_hxv_HLx1R       = 0d0 !_SUPERBLOC_SETUP
+    t_hxv_AxB         = 0d0 !_SUPERBLOC_SETUP
+    t_hxv_B           = 0d0 !_SUPERBLOC_SETUP
+    t_hxv_A           = 0d0 !_SUPERBLOC_SETUP
+    t_rdm_get         = 0d0 !_RDM
+    t_rdm_diag        = 0d0 !_RDM
+    t_rdm_renorm      = 0d0 !_RDM
+    kb_sent_a2av      = 0d0
+    kb_recv_a2av      = 0d0
+    kb_sent_sctr      = 0d0
+    kb_recv_sctr      = 0d0
+    kb_sent_gthr      = 0d0
+    kb_recv_gthr      = 0d0
+    kb_sent_agthr     = 0d0
+    kb_recv_agthr     = 0d0
+    kb_sb_setup_bcast = 0d0
+    !
+    if(allocated(prof_times))deallocate(prof_times)
+    if(allocated(prof_names))deallocate(prof_names)
+  end subroutine reset_profile
+
+
+
+
+
+  subroutine set_profile
+    integer :: unit,i,Ierr
+#ifdef _PROFILE
+#ifdef _MPI
+    if(MpiStatus)then
+       call Max_MPI(MpiComm,t_enlarge_blocks)
+       !
+       call Max_MPI(MpiComm,t_sb_get_states)
+       !
+       call Max_MPI(MpiComm,t_sb_diag)
+       call Max_MPI(MpiComm,t_sctr)
+       call Sum_MPI(MpiComm,kb_sent_sctr)
+       call Sum_MPI(MpiComm,kb_recv_sctr)
+       !
+       call Max_MPI(MpiComm,t_setup_sb_sparse)
+       call Max_MPI(MpiComm,t_hxv_sparse)
+       !
+       call Max_MPI(MpiComm,t_setup_sb_direct)
+       call Sum_MPI(MpiComm,kb_sb_setup_bcast)
+       !
+       call Max_MPI(MpiComm,t_hxv_direct)
+       call Max_MPI(MpiComm,t_hxv_1LxHR)
+       call Max_MPI(MpiComm,t_hxv_HLx1R)
+       call Max_MPI(MpiComm,t_hxv_AxB)
+       call Max_MPI(MpiComm,t_hxv_B)
+       call Max_MPI(MpiComm,t_hxv_A)
+       !
+       call Max_MPI(MpiComm,t_a2av)
+       call Sum_MPI(MpiComm,kb_sent_a2av)
+       call Sum_MPI(MpiComm,kb_recv_a2av)
+       !
+       call Max_MPI(MpiComm,t_rdm_get)
+       call Max_MPI(MpiComm,t_gthr)
+       call Sum_MPI(MpiComm,kb_sent_gthr)
+       call Sum_MPI(MpiComm,kb_recv_gthr)
+       !
+       call Max_MPI(MpiComm,t_rdm_diag)
+       call Max_MPI(MpiComm,t_rdm_renorm)
+       !
+       call Max_MPI(MpiComm,t_dmrg_step)
+    endif
+#endif
+    !
+    call append_profile("total_length_sb",dble(left%length + right%length))
+    call append_profile("reduced_sb_dim",rdcd_sb_dim)
+    call append_profile("full_sb_dim",full_sb_dim)
+    call append_profile("time_enlarge_blocks",t_enlarge_blocks) !>= t_connect_blocks
+    !
+    call append_profile("time_sb_get_states",t_sb_get_states)
+    !
+    call append_profile("time_sb_diag",t_sb_diag)
+    call append_profile("kb_sent_sctr",kb_sent_sctr)
+    call append_profile("kb_recv_sctr",kb_recv_sctr)
+    !
+    call append_profile("time_setup_sb_sparse",t_setup_sb_sparse) !>= t_connect_blocks
+    call append_profile("time_hxv_sparse",t_hxv_sparse)
+    !
+    call append_profile("time_setup_sb_direct",t_setup_sb_direct)
+    call append_profile("kb_sb_setup_bcast",kb_sb_setup_bcast)    
+    !    
+    call append_profile("time_hxv_direct",t_hxv_direct)
+    call append_profile("time_hxv_1LxHR",t_hxv_1LxHR)
+    call append_profile("time_hxv_HLx1R",t_hxv_HLx1R)
+    call append_profile("time_hxv_AxB",t_hxv_AxB)
+    call append_profile("time_hxv_B",t_hxv_B)
+    call append_profile("time_hxv_A",t_hxv_A)
+    !
+    call append_profile("time_a2av",t_a2av)
+    call append_profile("kb_sent_a2av",kb_sent_a2av)
+    call append_profile("kb_recv_a2av",kb_recv_a2av)
+    !
+    call append_profile("HxV_Nop",dble(NumOp))
+    !
+    call append_profile("time_rdm_get",t_rdm_get)
+    call append_profile("kb_sent_gthr",kb_sent_gthr)
+    call append_profile("kb_recv_gthr",kb_recv_gthr)
+    call append_profile("time_rdm_diag",t_rdm_diag)
+    call append_profile("time_rdm_renorm",t_rdm_renorm)
+    !
+    call append_profile("time_dmrg_step",t_dmrg_step)
+    !
+    if(MpiMaster)then
+       open(free_unit(unit),file="full_profile_"//&
+            to_lower(DMRGtype)//"DMRG_L"//str(left%length)//".out")
+       do i=1,size(prof_times)
+          write(unit,*)prof_names(i),prof_times(i)
+       enddo
+       close(unit)
+    endif
+#endif
+    call reset_profile()
+    !
+  end subroutine set_profile
+
+
+
+
+
+
+  subroutine append_profile(string,time)
+    character(len=*) :: string
+    real(8)          :: time
+    if(MpiMaster)call append(prof_names,string)
+    if(MpiMaster)call append(prof_times,time)
+  end subroutine append_profile
+
 
 
 
@@ -223,6 +426,7 @@ contains
   subroutine dmrg_set_MpiComm()
 #ifdef _MPI
     integer :: ierr
+    integer :: typesize
     MpiComm_Global = MPI_COMM_WORLD
     MpiComm        = MPI_COMM_WORLD
     call Mpi_Comm_group(MpiComm_Global,MpiGroup_Global,ierr)
@@ -230,6 +434,16 @@ contains
     MpiSize        = get_Size_MPI(MpiComm_Global)
     MpiRank        = get_Rank_MPI(MpiComm_Global)
     MpiMaster      = get_Master_MPI(MpiComm_Global)
+    !
+    !Returns the byte dimension for a single element of MPI_DOUBLE_PRECISION/COMPLEX type
+    call MPI_Type_size(MPI_DOUBLE_COMPLEX, typesize, ierr);C_kb_size =dble(typesize)/1000d0
+    call MPI_Type_size(MPI_DOUBLE_PRECISION,typesize,ierr);D_kb_size =dble(typesize)/1000d0
+    call MPI_Type_size(MPI_INTEGER, typesize, ierr)       ;I_kb_size =dble(typesize)/1000d0
+#ifdef _CMPLX
+    DATA_kb_size=C_kb_size
+#else
+    DATA_kb_size=D_kb_size
+#endif
 #ifdef _DEBUG
     write(Logfile,"(A)")"DEBUG dmrg_set_MpiComm: setting MPI comm"
 #endif
@@ -265,17 +479,23 @@ contains
 #ifdef _MPI
   subroutine vector_transpose_MPI(nrow,qcol,a,ncol,qrow,b)
     !
-    integer                            :: nrow !Global number of rows 
-    integer                            :: ncol !Global number of columns
-    integer                            :: qrow !Local number of rows on each thread
-    integer                            :: qcol !Local number of columns on each thread
-    real(8)                            :: a(nrow,qcol) ! Input vector to be transposed
-    real(8)                            :: b(ncol,qrow) ! Output vector :math:`b = v^T`
-    real(8),dimension(:),allocatable   :: Vtmp
-    integer,allocatable,dimension(:,:) :: send_counts,send_offset
-    integer,allocatable,dimension(:,:) :: recv_counts,recv_offset
-    integer                            :: counts,Ntot
-    integer                            :: i,j,irank,ierr
+    integer                             :: nrow !Global number of rows 
+    integer                             :: ncol !Global number of columns
+    integer                             :: qrow !Local number of rows on each thread
+    integer                             :: qcol !Local number of columns on each thread
+#ifdef _CMPLX    
+    complex(8)                          :: a(nrow,qcol) ! Input vector to be transposed
+    complex(8)                          :: b(ncol,qrow) ! Output vector :math:`b = v^T`
+    complex(8),dimension(:),allocatable :: Vtmp
+#else
+    real(8)                             :: a(nrow,qcol) ! Input vector to be transposed
+    real(8)                             :: b(ncol,qrow) ! Output vector :math:`b = v^T`
+    real(8),dimension(:),allocatable    :: Vtmp
+#endif
+    integer,allocatable,dimension(:,:)  :: send_counts,send_offset
+    integer,allocatable,dimension(:,:)  :: recv_counts,recv_offset
+    integer                             :: counts,Ntot
+    integer                             :: i,j,irank,ierr
     !
     counts = Nrow/MpiSize
     Ntot   = Ncol/MpiSize
@@ -322,6 +542,7 @@ contains
     enddo
     !
     !
+    t0=t_start()
     do j=1,Ntot
        !Fix issue with empty columns arising from having few MPI nodes
        if(j<=size(A,2))then
@@ -329,21 +550,35 @@ contains
        else
           allocate(Vtmp(0))
        endif
+
+#ifdef _CMPLX
+       call MPI_AllToAllV(& ! A(:,j),send_counts(:,j),send_offset(:,j),MPI_DOUBLE_PRECISION,&
+            Vtmp,send_counts(:,j),send_offset(:,j),MPI_DOUBLE_COMPLEX,&
+            B(:,:),recv_counts(:,j),recv_offset(:,j),MPI_DOUBLE_COMPLEX,&
+            MpiComm,ierr)
+#else
        call MPI_AllToAllV(& ! A(:,j),send_counts(:,j),send_offset(:,j),MPI_DOUBLE_PRECISION,&
             Vtmp,send_counts(:,j),send_offset(:,j),MPI_DOUBLE_PRECISION,&
             B(:,:),recv_counts(:,j),recv_offset(:,j),MPI_DOUBLE_PRECISION,&
             MpiComm,ierr)
+#endif
        deallocate(Vtmp)
     enddo
+    t_a2av=t_a2av+t_stop()
     !
     call local_transpose(b,ncol,qrow)
+    !
+    !
+    !Accumulate onto global variable (initialized or reset to 0 somewhere else)
+    kb_sent_a2av = kb_sent_a2av + sum(send_counts)*DATA_kb_size
+    kb_recv_a2av = kb_recv_a2av + sum(recv_counts)*DATA_kb_size
     !
     return
   end subroutine vector_transpose_MPI
   !
   subroutine local_transpose(mat,nrow,ncol)
-    integer                      :: nrow,ncol
-    real(8),dimension(Nrow,Ncol) :: mat
+    integer                             :: nrow,ncol
+    real(8),dimension(Nrow,Ncol)        :: mat
     mat = transpose(reshape(mat,[Ncol,Nrow]))
   end subroutine local_transpose
   !=========================================================
@@ -396,6 +631,7 @@ contains
        pCounts=0
        pOffset=0
        call MPI_AllGather(mpiDl(k),1,MPI_INTEGER,pCounts,1,MPI_INTEGER,MpiComm,MpiIerr)
+       kb_recv_sctr = kb_recv_sctr + sum(pCounts)*DATA_kb_size
        !
        !Get Offset:
        pOffset(0)=0
@@ -414,6 +650,7 @@ contains
        vloc_start = 1 + mpiOffset(k)
        vloc_end   = mpiDl(k)+mpiOffSet(k)
        !
+       t0=t_start()
 #ifdef _CMPLX
        call MPI_Scatterv(V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,&
             Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,0,MpiComm,MpiIerr)
@@ -421,7 +658,12 @@ contains
        call MPI_Scatterv(V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_PRECISION,&
             Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
 #endif
+       t_sctr=t_sctr+t_stop()
     enddo
+    !
+    ! call Sum_MPI(MpiComm,kb_recv_sctr)
+    ! call Max_MPI(MpiCOmm,t_sctr)
+    kb_sent_sctr=kb_recv_sctr
     !
     return
   end subroutine scatter_vector_MPI_v1
@@ -495,6 +737,7 @@ contains
        pCounts=0
        pOffset=0
        call MPI_AllGather(mpiDl(k),1,MPI_INTEGER,pCounts,1,MPI_INTEGER,MpiComm,MpiIerr)
+       kb_sent_gthr = kb_sent_gthr + sum(pCounts)*DATA_kb_size
        !
        !Get Offset:
        pOffset(0)=0
@@ -513,6 +756,7 @@ contains
           v_end = 1
        endif
        !
+       t0=t_start()
 #ifdef _CMPLX
        call MPI_Gatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,&
             V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,0,MpiComm,MpiIerr)
@@ -520,8 +764,12 @@ contains
        call MPI_Gatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_PRECISION,&
             V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_PRECISION,0,MpiComm,MpiIerr)
 #endif
+       t_gthr=t_gthr+t_stop()
     enddo
     !
+    ! call Sum_MPI(MpiComm,kb_sent_gthr)
+    ! call Max_MPI(MpiComm,t_gthr)
+    kb_recv_gthr=kb_sent_gthr
     return
   end subroutine gather_vector_MPI_v1
 
@@ -595,6 +843,7 @@ contains
        pCounts=0
        pOffset=0
        call MPI_AllGather(mpiDl(k),1,MPI_INTEGER,pCounts,1,MPI_INTEGER,MpiComm,MpiIerr)
+       kb_recv_agthr = kb_recv_agthr + sum(pCounts)*DATA_kb_size
        !
        !Get Offset:
        pOffset(0)=0
@@ -608,6 +857,7 @@ contains
        v_start = 1 + Offset(k)
        v_end = Drs(k)*Dls(k)+OffSet(k)
        !
+       t0 = t_start()
 #ifdef _CMPLX
        call MPI_AllGatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_COMPLEX,&
             V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_COMPLEX,MpiComm,MpiIerr)
@@ -615,14 +865,14 @@ contains
        call MPI_AllGatherv(Vloc(vloc_start:vloc_end),mpiDl(k),MPI_DOUBLE_PRECISION,&
             V(v_start:v_end),pCounts,pOffset,MPI_DOUBLE_PRECISION,MpiComm,MpiIerr)
 #endif
+       t_agthr=t_agthr+t_stop()
     enddo
+    !
+    ! call Sum_MPI(MpiComm,kb_recv_agthr)
+    ! call Max_MPI(MpiComm,t_agthr)
     !
     return
   end subroutine allgather_vector_MPI
-
-
-
-
 
 #endif
 

@@ -8,7 +8,6 @@ MODULE DMRG_CONNECT
   public :: connect_fermion_blocks
   public :: connect_spin_blocks
 
-
 contains
 
   
@@ -33,6 +32,7 @@ contains
 #endif
     !
     if(MpiMaster)call start_timer("Enlarge blocks "//str(grow_))
+    t0=t_start()
     !
     if(.not.self%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing self.H operator in the list"
@@ -155,6 +155,8 @@ contains
     call Barrier_MPI(MpiComm)
 #endif
     if(MpiMaster)call stop_timer("Enlarge blocks")
+    t_enlarge_blocks=t_enlarge_blocks+t_stop()
+    t_connect_blocks=0d0  !reset: this is counted in here
     !
   end subroutine enlarge_block
 
@@ -181,6 +183,8 @@ contains
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
+    !
+    t0=t_start()
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
@@ -234,6 +238,9 @@ contains
        call Cl(io)%free
        call Cr(io)%free
     enddo
+    !
+    t_connect_blocks=t_connect_blocks+t_stop()
+    !
   end function connect_fermion_blocks
 
 
@@ -257,6 +264,8 @@ contains
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
+    !
+    t0=t_start()
     !
     !Hij is shared:
     !Hij = Hmodel(left,right)
@@ -290,6 +299,9 @@ contains
        call Sl(ispin)%free
        call Sr(ispin)%free
     enddo
+    !
+    t_connect_blocks=t_connect_blocks+t_stop()
+    !
   end function connect_spin_blocks
 
 

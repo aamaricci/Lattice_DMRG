@@ -24,6 +24,7 @@ INCLUDE(${CMAKE_MODULE_PATH}/ColorsMsg.cmake)
 
 # Set some options the user may choose
 OPTION(USE_MPI "Set MPI pre-compilation flag" ON)
+OPTION(PROFILE "Set Code Profiling" ON)
 OPTION(VERBOSE "Build a verbose Makefile" OFF)
 OPTION(WITH_BLAS_LAPACK "Use internal Blas/Lapack" OFF)
 IF(VERBOSE)

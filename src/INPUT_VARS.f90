@@ -262,6 +262,7 @@ contains
        call scifor_version()
        call code_version(git_code_version)
     endif
+    !
   end subroutine read_input
 
 

@@ -63,9 +63,13 @@ contains
     init_left   = block(dot(1))
     init_right  = block(dot(1))
     !
+    call reset_profile()
+    !    
     init_called =.true.
+    !
   end subroutine init_dmrg
 
+  
 
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
@@ -91,6 +95,9 @@ contains
     if(allocated(gs_vector))deallocate(gs_vector)
     if(allocated(sb_states))deallocate(sb_states)
     init_called  = .false.
+    !
+    call reset_profile()
+    !
 #ifdef _MPI
     if(check_MPI())call dmrg_del_MpiComm()
 #endif
@@ -232,7 +239,7 @@ contains
   subroutine step_dmrg(type,label,sweep)
     character(len=1) :: type
     integer,optional :: label,sweep
-    integer          :: iLabel
+    integer          :: iLabel,unit,i
     integer          :: m_sb
     integer          :: m_rleft,m_rright
     integer          :: m_es,m_ee
@@ -241,6 +248,7 @@ contains
     integer          :: current_L
     integer          :: Lleft,Lright
     logical          :: bool1,bool2,renormalize
+
     !
     !just 4 DMRG_graphic
     iLabel=0;if(present(label))iLabel=label
@@ -270,16 +278,18 @@ contains
     !
     !> START DMRG STEP:
     if(MpiMaster)call dmrg_graphic(iLabel)
+
     if(MpiMaster)then
        if(save_all_blocks)then
-          call left%save(block_file//suffix_dmrg('left',left%length)//".dmrg")
-          call right%save(block_file//suffix_dmrg('right',right%length)//".dmrg")
+          call left%save(block_file//suffix_dmrg('left',left%length)//".dmrg",gzip=.true.)
+          call right%save(block_file//suffix_dmrg('right',right%length)//".dmrg",gzip=.true.)
        else
-          call left%save(block_file//suffix_dmrg('left')//".dmrg")
-          call right%save(block_file//suffix_dmrg('right')//".dmrg")
+          call left%save(block_file//suffix_dmrg('left')//".dmrg",gzip=left%length==Ldmrg-1)
+          call right%save(block_file//suffix_dmrg('right')//".dmrg",gzip=right%length==Ldmrg-1)
        endif
     endif
     if(MpiMaster)call start_timer()
+    t0=t_start()
     !
     !
     !#################################
@@ -289,7 +299,6 @@ contains
     Lright=right%length
     call enlarge_block(left,dot(left%length+1),grow='left')
     call enlarge_block(right,dot(left%length+2),grow='right')
-    !
     !
     !#################################
     !    Build SUPER-BLOCK Sector
@@ -302,6 +311,9 @@ contains
     !In DMRG_SUPERBLOCK:
     call sb_get_states()
     m_sb = size(sb_states)
+    rdcd_sb_dim=m_sb
+    full_sb_dim=m_eleft*m_eright
+    
     !#################################
     !      WRITE AND EXIT
     !#################################
@@ -332,6 +344,8 @@ contains
     !#################################
     !In DMRG_SUPERBLOCK:
     call sb_diag()
+
+
     if(MpiMaster)then
        write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
        select case(left%type())
@@ -373,12 +387,14 @@ contains
     !
     !> STOP DMRG STEP:
     if(MpiMaster)call stop_timer("dmrg_step")
-    !
     if(MpiMaster)then
        call write_energy()
        call write_truncation()
        call write_entanglement()
     endif
+    !
+    t_dmrg_step=t_stop()
+    call set_profile()
     !
     !Clean memory:
     call spHsb%free()

@@ -48,6 +48,7 @@ contains
 #endif
     !
     if(MpiMaster)call start_timer("Setup SB Sparse")
+    t0=t_start()
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing left.H operator in the list"
@@ -74,11 +75,20 @@ contains
          + sp_kron(id(m_left),right%operators%op("H"),sb_states)
     !
     if(MpiMaster)call stop_timer("Setup SB Sparse")
+    t_setup_sb_sparse=t_stop()
+    t_connect_blocks=0d0
     !
   end subroutine Setup_SuperBlock_Sparse
 
 
 
+
+
+
+
+
+
+  
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                       DIRECT MODE
@@ -110,6 +120,7 @@ contains
          stop "Setup_SuperBlock_Direct ERROR: left.Type != right.Type"
     !
     !
+    t0=t_start()
     select case(to_lower(type))
     case default;stop "Setup_SuperBlock_Direct ERROR: wrong left/right.Type"
     case ("spin","s")
@@ -117,8 +128,13 @@ contains
     case ("fermion","f,","electron","e")
        call Setup_SuperBlock_Fermion_Direct()
     end select
+    t_setup_sb_direct=t_stop()
   end subroutine Setup_SuperBlock_Direct
 
+
+
+
+  
   !##################################################################
   !                          SPIN CASE
   !##################################################################
@@ -140,7 +156,7 @@ contains
     write(LOGfile,*)"DEBUG: Setup SB Direct - spin"
 #endif
     !
-    if(MpiMaster)call start_timer("Setup SB Spin Direct")
+    if(MpiMaster)call start_timer("Setup SB Direct")
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
@@ -239,6 +255,7 @@ contains
        if(MpiStatus)then
           call Hleft(isb)%bcast()
           call Hright(isb)%bcast()
+          kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
        endif
 #endif
        !
@@ -261,6 +278,7 @@ contains
           call B(it,isb)%bcast()
           mpiRowOffset(it,isb)=mpiOffset(isb)           
           mpiColOffset(it,isb)=mpiOffset(isb)
+          kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
        !
@@ -287,6 +305,7 @@ contains
           call B(it,isb)%bcast()
           mpiRowOffset(it,isb)=mpiOffset(isb)           
           mpiColOffset(it,isb)=mpiOffset(jsb)
+          kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
        !
@@ -306,6 +325,7 @@ contains
           call B(it,isb)%bcast()
           mpiRowOffset(it,isb)=mpiOffset(jsb)           
           mpiColOffset(it,isb)=mpiOffset(isb)
+          kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
     enddo
@@ -316,8 +336,7 @@ contains
     enddo
     deallocate(Sleft,Sright)
     !
-    if(MpiMaster)call stop_timer("Setup SB Spin Direct")
-    !
+    if(MpiMaster)call stop_timer("Setup SB Direct")
   end subroutine Setup_SuperBlock_Spin_Direct
 
 
@@ -349,7 +368,7 @@ contains
     write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
     !
-    if(MpiMaster)call start_timer("Setup SB Fermion Direct")
+    if(MpiMaster)call start_timer("Setup SB Direct")
     !
     if(.not.left%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing left.H operator in the list"
@@ -367,7 +386,7 @@ contains
     tNso = 2*count(Hij/=zero)
     Nsb  = size(sb_sector)
     !
-    !Massive allocation
+    !
     !Massive allocation
     if(allocated(tMap))deallocate(tMap)
     allocate(tMap(2,Nso,Nso))
@@ -443,6 +462,7 @@ contains
        enddo
     endif
     !
+    !
     !A(it,k).Nrow = DLk ;if(Hconjg) DLq
     !A(it,k).Ncol = DLq ;if(Hconjg) DLk
     !B(it,k).Nrow = DRk ;if(Hconjg) DRq
@@ -460,6 +480,7 @@ contains
        if(MpiStatus)then
           call Hleft(isb)%bcast()
           call Hright(isb)%bcast()
+          kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
        endif
 #endif
        !
@@ -492,6 +513,8 @@ contains
                    call B(it,isb)%bcast()
                    mpiRowOffset(it,isb)=mpiOffset(isb)           
                    mpiColOffset(it,isb)=mpiOffset(jsb)
+                   kb_sb_setup_bcast = kb_sb_setup_bcast + &
+                        A(it,isb)%bytes() + B(it,isb)%bytes()
                 endif
 #endif
                 !
@@ -512,6 +535,8 @@ contains
                    call B(it,isb)%bcast()
                    mpiRowOffset(it,isb)=mpiOffset(jsb)           
                    mpiColOffset(it,isb)=mpiOffset(isb)
+                   kb_sb_setup_bcast = kb_sb_setup_bcast + &
+                        A(it,isb)%bytes() + B(it,isb)%bytes()
                 endif
 #endif
              enddo
@@ -530,8 +555,7 @@ contains
     enddo
     deallocate(Cleft,Cright)
     !
-    if(MpiMaster)call stop_timer("Setup SB Fermion Direct")
-    !
+    if(MpiMaster)call stop_timer("Setup SB Direct")
   end subroutine Setup_SuperBlock_Fermion_Direct
 
 
@@ -557,6 +581,7 @@ contains
     real(8),dimension(Nloc)    :: Hv
     real(8)                    :: val
 #endif
+    t0=t_start()
     Hv=zero
     do i=1,Nloc
        matmul: do jcol=1, spHsb%row(i)%Size
@@ -565,10 +590,14 @@ contains
           Hv(i) = Hv(i) + val*v(j)
        end do matmul
     end do
+    t_hxv_sparse=t_hxv_sparse+t_stop()
   end subroutine spMatVec_sparse_main
 
 
 
+
+
+  
   !##################################################################
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
@@ -594,10 +623,12 @@ contains
     integer                               :: ia,ib,ic,ja,jb,jc
     !
     Hv=zero
+    t0=t_start()
     !> loop over all the SB sectors:
     sector: do k=1,size(sb_sector)
        !
        !> apply the 1^L x H^r
+       t0 = t_start()
        do il=1,Dls(k)           !Fix the column il: v_il 
           !
           do ir=1,Drs(k)        !H^r.v_il
@@ -611,8 +642,10 @@ contains
           enddo
           !
        enddo
+       t_hxv_1LxHR=t_hxv_1LxHR + t_stop()
        !
        !> apply the H^L x 1^r
+       t0 = t_start()
        do ir=1,Drs(k)           !Fix the row ir: v_ir
           !
           do il=1,Dls(k)        !H^l.v_ir
@@ -626,6 +659,7 @@ contains
           enddo
           !
        enddo
+       t_hxv_HLx1R=t_hxv_HLx1R + t_stop()
        ! !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
        !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
@@ -635,6 +669,7 @@ contains
        !   C.A^T  : [B.Nrow,A.Ncol].[A.Ncol,A.Nrow]
        !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
        !              [B.Nrow,A.Nrow] = vec(Hv)
+       t0 = t_start()
        do it=1,tNso
           q = isb2jsb(it,k)
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
@@ -645,6 +680,7 @@ contains
           !   \sum_bcol B(bi,bj)V_q(bj,aj)=C(bi,aj)
           !   j = bj+(aj-1)B.Ncol + ColOffset_q
           !   \sum_bcol B(bi,bj)v_q(j)=C(bi,aj)
+          t0=t_start()         
           do aj=1,A(it,k)%Ncol             !
              do bi=1,B(it,k)%Nrow
                 if(B(it,k)%row(bi)%Size==0)cycle
@@ -659,9 +695,12 @@ contains
                 !
              enddo
           enddo
+          t_hxv_B=t_hxv_B+t_stop()
+          !
           !2. evaluate MMP: C.A^t
           !   \sum_aj C(bi,aj)A^t(aj,ai)
           !  =\sum_aj [A(ai,aj)C^t(aj,bi)]^T
+          t0=t_start()
           do bi=1,B(it,k)%Nrow
              !
              do ai=1,A(it,k)%Nrow
@@ -677,10 +716,17 @@ contains
                 !
              enddo
           enddo
+          t_hxv_B=t_hxv_B+t_stop()
+          !
           deallocate(C)
        enddo
-
+       !
+       t_hxv_AxB=t_hxv_AxB+t_stop()
+       !
     enddo sector
+    !
+    t_hxv_direct=t_hxv_direct + t_stop()
+    !
   end subroutine spMatVec_direct_main
 
 
@@ -725,11 +771,14 @@ contains
     if(.not.MpiStatus)stop "spMatVec_mpi_normal_main ERROR: MpiStatus = F"
     !
     !
+
     Hv=zero
+    t0=t_start()
     !> loop over all the SB sectors: k
     sector: do k=1,size(sb_sector)
        !       
        !> apply the 1^L x H^r: share L columns
+       t0=t_start()
        do il=1,mpiDls(k)   !Fix the column il(q): v_il(q) for each thread
           !
           do ir=1,Drs(k)   !H^r.v_il
@@ -743,9 +792,11 @@ contains
           enddo
           !
        enddo
-       !
+       t_hxv_1LxHR=t_hxv_1LxHR+t_stop()
+       !       
        !> apply the H^L x 1^r
        !L part: non-contiguous in memory -> MPI transposition
+       t0=t_start()
        allocate(vt(mpiDrs(k)*Dls(k))) ;vt=zero
        allocate(Hvt(mpiDrs(k)*Dls(k)));Hvt=zero
        i_start = 1 + mpiOffset(k)
@@ -768,6 +819,7 @@ contains
        call vector_transpose_MPI(Dls(k),mpiDrs(k),Hvt,Drs(k),mpiDls(k),vt)
        Hv(i_start:i_end) = Hv(i_start:i_end) + Vt
        deallocate(vt,Hvt)
+       t_hxv_HLx1R=t_hxv_HLx1R+t_stop()
        !
        !> apply the term sum_k sum_it A_it(k).x.B_it(k)
        !Hv = (A.x.B)vec(V) --> (A.x.B).V  -> vec(B.V.A^T)
@@ -778,7 +830,7 @@ contains
        !(A.C^T)^T : [ [A.Nrow,A.Ncol].[A.Ncol,B.Nrow] ]^T
        !              [B.Nrow,A.Nrow] = vec(Hv)
        !
-
+       t0=t_start()
        do it=1,tNso
           if(.not.A(it,k)%status.OR..not.B(it,k)%status)cycle
           !
@@ -800,6 +852,7 @@ contains
           !
           allocate(C(B(it,k)%Nrow,mpiAcol));C=zero
           !
+          t0=t_start()
           do aj=1,mpiAcol
              !
              do bi=1,B(it,k)%Nrow
@@ -816,6 +869,7 @@ contains
                 !
              enddo
           enddo
+          t_hxv_B=t_hxv_B+t_stop()
           !
           !Up to here we built "few", thread-related, columns of C(b,j*)
           !In the next step we will need to get [A.C^T]^T
@@ -828,12 +882,14 @@ contains
           ! = [Hvt[A.Nrow,mpiBrow]]^T
           ! => Hv[B.Nrow,mpiArow]
           !
+
           allocate(Ct(A(it,k)%Ncol,mpiBrow));Ct=zero
           call vector_transpose_MPI(B(it,k)%Nrow,mpiAcol,C,A(it,k)%Ncol,mpiBrow,Ct)
           !
           allocate(vt(mpiArow*B(it,k)%Nrow)) ; vt=zero
           allocate(Hvt(A(it,k)%Nrow*mpiBrow));Hvt=zero
           !
+          t0=t_start()
           do bi=1,mpiBrow
              !
              do ai=1,A(it,k)%Nrow
@@ -848,6 +904,7 @@ contains
                 !
              enddo
           enddo
+          t_hxv_A=t_hxv_A+t_stop()
           !
           call vector_transpose_MPI(A(it,k)%Nrow,mpiBrow,Hvt,B(it,k)%Nrow,mpiArow,vt)
           i_start = 1 + mpiRowOffset(it,k)
@@ -857,11 +914,14 @@ contains
           !
           deallocate(C,Ct,Hvt,Vt)
        enddo
+       t_hxv_AxB=t_hxv_AxB+t_stop()
        !
     enddo sector
+    t_hxv_direct=t_hxv_direct + t_stop()
   end subroutine spMatVec_MPI_direct_main
 
 
+  
 
 
   !##################################################################

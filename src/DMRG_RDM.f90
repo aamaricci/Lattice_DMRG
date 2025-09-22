@@ -43,6 +43,7 @@ contains
 #endif
     !
     !
+    t0=t_start()
     call rho_left%free()
     call rho_right%free()
     !
@@ -81,6 +82,7 @@ contains
        !
     enddo
     if(MpiMaster)call stop_timer("Get \rho")
+    t_rdm_get=t_stop()
     !
     call sb_delete_dims()
     if(allocated(rho))deallocate(rho)
@@ -183,15 +185,15 @@ contains
        if(left%length+right%length==2)return
        !
        if(MpiMaster)then
-          call start_timer("Diag rho "//to_lower(str(label)))
+          call start_timer("Diag rho "//to_lower(str(label)));t0=t_start()
           call rho_left%eigh(sort=.true.,reverse=.true.)
-          call stop_timer("Diag rho "//to_lower(str(label)))
+          call stop_timer("Diag rho "//to_lower(str(label)));t_rdm_diag=t_rdm_diag+t_stop()
           !
           if(allocated(rho_left_evals))deallocate(rho_left_evals)
           allocate(rho_left_evals, source=rho_left%evals())
           !
           !Build Truncated Density Matrices:
-          call start_timer("Renormalize "//to_lower(str(label)))
+          call start_timer("Renormalize "//to_lower(str(label)));t0=t_start()
           if(Mstates/=0)then
              m_s   = min(Mstates,m_left,size(rho_left_evals))
           elseif(Estates/=0d0)then
@@ -214,7 +216,7 @@ contains
           call left%put_omat(str(left%length),trRho_left,'')
           !>Renormalize Blocks:
           call left%renormalize(as_matrix(trRho_left))
-          call stop_timer("Renormalize "//to_lower(str(label)))
+          call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif
 #ifdef _MPI
        if(MpiStatus)call Bcast_MPI(MpiComm,m_s)
@@ -266,15 +268,15 @@ contains
        if(left%length+right%length==2)return
        !
        if(MpiMaster)then
-          call start_timer("Diag rho "//to_lower(str(label)))
+          call start_timer("Diag rho "//to_lower(str(label)));t0=t_start()
           call rho_right%eigh(sort=.true.,reverse=.true.)
-          call stop_timer("Diag rho "//to_lower(str(label)))
+          call stop_timer("Diag rho "//to_lower(str(label)));t_rdm_diag=t_rdm_diag+t_stop()
           !
           if(allocated(rho_right_evals))deallocate(rho_right_evals)
           allocate(rho_right_evals, source=rho_right%evals())
           !
           !Build Truncated Density Matrices:
-          call start_timer("Renormalize "//to_lower(str(label)))
+          call start_timer("Renormalize "//to_lower(str(label)));t0=t_start()
           if(Mstates/=0)then
              m_e   = min(Mstates,m_right,size(rho_right_evals))
           elseif(Estates/=0d0)then
@@ -297,7 +299,7 @@ contains
           call right%put_omat(str(right%length),trRho_right,'')
           !>Renormalize Blocks:
           call right%renormalize(as_matrix(trRho_right))
-          call stop_timer("Renormalize "//to_lower(str(label)))
+          call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif
 #ifdef _MPI
        if(MpiStatus)call Bcast_MPI(MpiComm,m_e)
