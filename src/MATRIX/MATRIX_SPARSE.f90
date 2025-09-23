@@ -1366,7 +1366,7 @@ contains
     if(.not.check_MPI())stop "sp_get_kbytes error: check_MPI=F"
     call MPI_Type_size(MPI_INTEGER, typesize, ierr)
 #ifdef _CMPLX
-    call MPI_Type_size(MPI_DOUBLE_COMPLEX, typsize, ierr)
+    call MPI_Type_size(MPI_DOUBLE_COMPLEX, typesize, ierr)
 #else
     call MPI_Type_size(MPI_DOUBLE_PRECISION, typesize, ierr)
 #endif

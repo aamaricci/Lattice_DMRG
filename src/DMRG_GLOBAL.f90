@@ -324,11 +324,12 @@ contains
     call append_profile("time_dmrg_step",t_dmrg_step)
     !
     if(MpiMaster)then
-       open(free_unit(unit),file="full_profile_"//&
-            to_lower(DMRGtype)//"DMRG_L"//str(left%length)//".out")
+       unit=fopen("full_profile_"//to_lower(DMRGtype)//"DMRG.out",append=.true.)
+       write(unit,*)"# STEP:",left%length
        do i=1,size(prof_times)
           write(unit,*)prof_names(i),prof_times(i)
        enddo
+       write(unit,*)""
        close(unit)
     endif
 #endif
@@ -577,8 +578,12 @@ contains
   end subroutine vector_transpose_MPI
   !
   subroutine local_transpose(mat,nrow,ncol)
-    integer                             :: nrow,ncol
-    real(8),dimension(Nrow,Ncol)        :: mat
+    integer                         :: nrow,ncol
+#ifdef _CMPLX
+    complex(8),dimension(Nrow,Ncol) :: mat
+#else
+    real(8),dimension(Nrow,Ncol)    :: mat
+#endif
     mat = transpose(reshape(mat,[Ncol,Nrow]))
   end subroutine local_transpose
   !=========================================================
