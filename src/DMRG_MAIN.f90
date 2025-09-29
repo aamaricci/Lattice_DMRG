@@ -248,7 +248,6 @@ contains
     integer          :: current_L
     integer          :: Lleft,Lright
     logical          :: bool1,bool2,renormalize
-
     !
     !just 4 DMRG_graphic
     iLabel=0;if(present(label))iLabel=label

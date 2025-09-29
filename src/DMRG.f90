@@ -16,8 +16,8 @@ MODULE DMRG
   USE DMRG_MAIN
   USE DMRG_MEASURE
   !
-#ifdef _DEBUG
-  !< uncomment this to compile kron_ tests
+  !< uncomment this to compile tests
+#if (defined _DEBUG) || (defined _TESTING)
   USE DMRG_GLOBAL
   USE DMRG_SUPERBLOCK_SETUP
   USE DMRG_CONNECT

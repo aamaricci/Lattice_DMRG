@@ -25,7 +25,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES GNU) # this is gfortran
     SET(CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
   ENDIF()
   SET(CMAKE_Fortran_FLAGS_RELEASE "-O3 -funroll-loops")
-  SET(CMAKE_Fortran_FLAGS_TESTING "-O1 -fimplicit-none -p -g -Wsurprising  -Waliasing -fbacktrace -ffree-line-length-none")
+  SET(CMAKE_Fortran_FLAGS_TESTING "-O3 ")
   SET(CMAKE_Fortran_FLAGS_DEBUG   "-O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check -Wall -pedantic")
   SET(CMAKE_Fortran_FLAGS_AGGRESSIVE   "-O0 -p -g  -fbacktrace -fwhole-file -fcheck=all -fbounds-check -fsanitize=address -Wall -Waliasing -Wsurprising -Wampersand -Warray-bounds -Wc-binding-type -Wcharacter-truncation -Wconversion -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wno-align-commons -Wno-overwrite-recursive -Wno-tabs -Wreal-q-constant -Wunderflow -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfrontend-loop-interchange -Wtarget-lifetime")
   # -fdebug-aux-vars
@@ -33,7 +33,7 @@ elseif(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
   SET(CMAKE_Fortran_MODDIR_FLAG    "-module ") #remember the ending white space here 
   SET(CMAKE_Fortran_FLAGS          "-fpp")
   SET(CMAKE_Fortran_FLAGS_RELEASE  "-O3 ")
-  SET(CMAKE_Fortran_FLAGS_TESTING  "-O1 -g")
+  SET(CMAKE_Fortran_FLAGS_TESTING  "-O2 ")
   SET(CMAKE_Fortran_FLAGS_DEBUG    "-p -O0 -g -fpe1 -warn -debug extended -traceback -check all,noarg_temp_created")
   SET(CMAKE_Fortran_FLAGS_AGGRESSIVE"-p -O0 -g -fpe1 -warn -debug extended -traceback -check all,noarg_temp_created")
 
@@ -41,7 +41,7 @@ elseif(CMAKE_Fortran_COMPILER_ID MATCHES G95)
   SET(CMAKE_Fortran_MODDIR_FLAG   "-fmod=")
   SET(CMAKE_Fortran_FLAGS         "-cpp")
   SET(CMAKE_Fortran_FLAGS_RELEASE "-O3")
-  SET(CMAKE_Fortran_FLAGS_TESTING "-O1  -fsloppy-char")
+  SET(CMAKE_Fortran_FLAGS_TESTING "-O2  -fsloppy-char")
   SET(CMAKE_Fortran_FLAGS_DEBUG   "-O0 -g -ftrace=full")
   SET(CMAKE_Fortran_FLAGS_AGGRESSIVE   "-O0 -g -ftrace=full")
   
@@ -70,6 +70,10 @@ ENDIF()
 
 IF( "${BUILD_TYPE}" MATCHES "DEBUG")
   ADD_DEFINITIONS(-D_DEBUG)
+ENDIF()
+
+IF( "${BUILD_TYPE}" MATCHES "TESTING")
+  ADD_DEFINITIONS(-D_TESTING)
 ENDIF()
 
 IF( "${BUILD_TYPE}" MATCHES "AGGRESSIVE")
