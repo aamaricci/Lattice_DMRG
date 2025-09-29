@@ -238,10 +238,7 @@ contains
           call left_basis%append( qn=rho_left%qn(m=im) )
 #endif
        enddo
-
-       if(MpiMaster)call left_basis%show()
-       call Barrier_MPI(MpiComm)
-       
+       !       
        call left%set_basis(basis=left_basis)
        !
        Mtr = m_s
@@ -325,10 +322,7 @@ contains
           call right_basis%append( qn=rho_right%qn(m=im) )
 #endif
        enddo
-
-       if(MpiMaster)call right_basis%show()
-       call Barrier_MPI(MpiComm)
-       
+       !
        call right%set_basis(basis=right_basis)
        !
        Mtr = m_e

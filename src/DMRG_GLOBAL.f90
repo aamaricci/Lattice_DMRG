@@ -132,6 +132,7 @@ MODULE DMRG_GLOBAL
   real(8)                                        :: kb_recv_gthr
   real(8)                                        :: kb_sent_agthr
   real(8)                                        :: kb_recv_agthr
+  real(8)                                        :: kb_agthr_sb_states
   real(8)                                        :: kb_sb_setup_bcast
   !
   real(8)                                        :: D_kb_size
@@ -229,9 +230,10 @@ contains
     kb_sent_sctr      = 0d0
     kb_recv_sctr      = 0d0
     kb_sent_gthr      = 0d0
-    kb_recv_gthr      = 0d0
+    kb_recv_gthr      = 0d0    
     kb_sent_agthr     = 0d0
     kb_recv_agthr     = 0d0
+    kb_agthr_sb_states= 0d0
     kb_sb_setup_bcast = 0d0
     !
     if(allocated(prof_times))deallocate(prof_times)
@@ -250,6 +252,7 @@ contains
        call Max_MPI(MpiComm,t_enlarge_blocks)
        !
        call Max_MPI(MpiComm,t_sb_get_states)
+       call Sum_MPI(MpiComm,kb_agthr_sb_states)
        !
        call Max_MPI(MpiComm,t_sb_diag)
        call Max_MPI(MpiComm,t_sctr)
@@ -291,6 +294,7 @@ contains
     call append_profile("time_enlarge_blocks",t_enlarge_blocks) !>= t_connect_blocks
     !
     call append_profile("time_sb_get_states",t_sb_get_states)
+    call append_profile("kb_agthr_sb_states",kb_agthr_sb_states)
     !
     call append_profile("time_sb_diag",t_sb_diag)
     call append_profile("kb_sent_sctr",kb_sent_sctr)
@@ -872,9 +876,6 @@ contains
 #endif
        t_agthr=t_agthr+t_stop()
     enddo
-    !
-    ! call Sum_MPI(MpiComm,kb_recv_agthr)
-    ! call Max_MPI(MpiComm,t_agthr)
     !
     return
   end subroutine allgather_vector_MPI
