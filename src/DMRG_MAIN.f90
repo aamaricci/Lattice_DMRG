@@ -281,11 +281,11 @@ contains
 
     if(MpiMaster)then
        if(save_all_blocks)then
-          call left%save(block_file//suffix_dmrg('left',left%length)//".dmrg",gzip=.true.)
-          call right%save(block_file//suffix_dmrg('right',right%length)//".dmrg",gzip=.true.)
+          call left%save(block_file//suffix_dmrg('left',left%length)//".used",gzip=.true.)
+          call right%save(block_file//suffix_dmrg('right',right%length)//".used",gzip=.true.)
        else
-          call left%save(block_file//suffix_dmrg('left')//".dmrg",gzip=left%length==Ldmrg-1)
-          call right%save(block_file//suffix_dmrg('right')//".dmrg",gzip=right%length==Ldmrg-1)
+          call left%save(block_file//suffix_dmrg('left')//".used",gzip=left%length==Ldmrg-1)
+          call right%save(block_file//suffix_dmrg('right')//".used",gzip=right%length==Ldmrg-1)
        endif
     endif
     if(MpiMaster)call start_timer()
