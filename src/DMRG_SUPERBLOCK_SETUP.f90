@@ -238,10 +238,6 @@ contains
        enddo
     endif
     !
-    !A(it,k).Nrow = DLk ;if(Hconjg) DLq
-    !A(it,k).Ncol = DLq ;if(Hconjg) DLk
-    !B(it,k).Nrow = DRk ;if(Hconjg) DRq
-    !B(it,k).Ncol = DRq ;if(Hconjg) DRk
     isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)

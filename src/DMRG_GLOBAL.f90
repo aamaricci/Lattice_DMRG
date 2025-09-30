@@ -305,7 +305,7 @@ contains
     !
     call append_profile("time_setup_sb_direct",t_setup_sb_direct)
     call append_profile("kb_sb_setup_bcast",kb_sb_setup_bcast)    
-    !    
+    !
     call append_profile("time_hxv_direct",t_hxv_direct)
     call append_profile("time_hxv_1LxHR",t_hxv_1LxHR)
     call append_profile("time_hxv_HLx1R",t_hxv_HLx1R)

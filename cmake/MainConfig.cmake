@@ -23,8 +23,8 @@ IF( (NOT GIT_BRANCH MATCHES "main") )
     SET(PREFIX_PATH  "${PREFIX_PATH}/${GIT_BRANCH}")
 ENDIF()
 
-#If DEBUG, add /debug to
-IF("${BUILD_TYPE}" MATCHES "debug" OR "${BUILD_TYPE}" MATCHES "aggressive")
+#If DEBUG or TESTING or AGGRESSIVE, add /<build_type>  to module path
+IF("${BUILD_TYPE}" MATCHES "debug" OR "${BUILD_TYPE}" MATCHES "aggressive" OR "${BUILD_TYPE}" MATCHES "testing")
   SET(PREFIX_PATH  "${PREFIX_PATH}/${BUILD_TYPE}")
 ENDIF()
 

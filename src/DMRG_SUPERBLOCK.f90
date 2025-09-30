@@ -80,13 +80,14 @@ contains
        Iend   = Nr(ql)*Nl(ql)
 #ifdef _MPI
        if(MpiStatus)then
-          call Bcast_MPI(MpiComm,Rdim)
           Q(ql) = (Nr(ql)*Nl(ql))/MpiSize
           R(ql) = 0
           if(MpiRank == MpiSize-1)R(ql)=mod(Nr(ql)*Nl(ql),MpiSize)
           Qoffset(ql) = sum(Q(1:ql-1)+R(1:ql-1))
           Istart = 1+MpiRank*Q(ql)
           Iend   = (MpiRank+1)*Q(ql) + R(ql)
+          if(MpiMaster)Rdim=right%dim
+          call Bcast_MPI(MpiComm,Rdim)
        endif
 #endif
        !
@@ -247,8 +248,6 @@ contains
     if(allocated(gs_energy))deallocate(gs_energy)
     allocate(gs_energy(Neigen));gs_energy=zero
     !
-    if(MpiMaster)call start_timer("Diag H_sb")
-    t0=t_start()
     !
     if(lanc_solve)then          !Use (P)-Arpack
        !
@@ -258,6 +257,8 @@ contains
        vecDim = sb_vecDim_Hv()
        allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        !
+       if(MpiMaster)call start_timer("Diag H_sb")
+       t0=t_start()
 #ifdef _MPI
        if(MpiStatus)then          
           call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
@@ -279,6 +280,8 @@ contains
             tol=lanc_tolerance,&
             iverbose=(verbose>4),NumOp=NumOp)
 #endif
+       if(MpiMaster)call stop_timer("Diag H_sb")
+       t_sb_diag=t_stop()
        !
     else !use LAPACK
        !
@@ -288,8 +291,13 @@ contains
        vecDim = sb_vecDim_Hv()
        allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        allocate(evals(m_sb))
-
+       !
+       if(MpiMaster)call start_timer("Diag H_sb")
+       t0=t_start()
        if(MpiMaster)call eigh(Hsb,evals)
+       if(MpiMaster)call stop_timer("Diag H_sb")
+       t_sb_diag=t_stop()
+       !
 #ifdef _MPI
        if(MpiStatus)then
           call Bcast_MPI(MpiComm,evals)
@@ -309,8 +317,7 @@ contains
        deallocate(Hsb,evals)
        !
     endif
-    if(MpiMaster)call stop_timer("Diag H_sb")
-    t_sb_diag=t_stop()
+    !
     !Free Memory
     call sb_delete_Hv()
     !
