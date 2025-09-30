@@ -146,6 +146,7 @@ contains
     real(8),dimension(:),allocatable             :: dq
     integer,dimension(:,:,:),allocatable         :: tMap
     type(sparse_matrix),allocatable,dimension(:) :: Sleft,Sright
+    type(sparse_matrix)                          :: Hl,Hr
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable        :: Hij
 #else
@@ -218,6 +219,7 @@ contains
     allocate(IsHconjg(tNso,Nsb))
     allocate(Sleft(Nspin),Sright(Nspin))
     !
+    t0=t_start()
     dq=[1d0]
     do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
@@ -229,6 +231,7 @@ contains
        AJ(jsb)%states = sb2block_states(qm,'left')
        BJ(jsb)%states = sb2block_states(qm,'right')
     enddo
+    print*,"Get_AI,J BI,J:",t_stop()
     !
     !>ROOT get basic operators. Nodes can not.
     if(MpiMaster)then
@@ -236,16 +239,21 @@ contains
           Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
           Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
        enddo
+       Hl = left%operators%op("H")
+       Hr = right%operators%op("H")
     endif
+    !
+    print*,MpiRank,Nsb
     !
     isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
        !> get: H*^L  and H*^R (ROOT exclusive)
+       if(MpiMaster)t0=t_start()
        if(MpiMaster)then
-          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+          Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+          Hright(isb)= sp_filter(Hr,BI(isb)%states)
        endif
 #ifdef _MPI
        if(MpiStatus)then
@@ -254,9 +262,12 @@ contains
           kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
        endif
 #endif
+       if(MpiMaster)print*,isb,"H_L, H_R:",t_stop()
+
        !
        !DIAGONAL:
-       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (ROOT exclusive)      
+       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (ROOT exclusive)
+       if(MpiMaster)t0=t_start()
        it=tMap(1,1,1)
        if(MpiMaster)then
           A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
@@ -277,9 +288,11 @@ contains
           kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
+       if(MpiMaster)print*,isb,"Sz,Sz:",t_stop()
        !
        !
        !
+       if(MpiMaster)t0=t_start()
        dq = [1d0]
        qm = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
@@ -304,8 +317,10 @@ contains
           kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
+       if(MpiMaster)print*,isb,"S+, S-:",t_stop()
        !
        !> get H.c. + Row/Col Offsets
+       if(MpiMaster)t0=t_start()
        it=tMap(3,1,1)
        if(MpiMaster)then
           A(it,isb) = hconjg(A(tMap(2,1,1),isb))
@@ -324,6 +339,8 @@ contains
           kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
+       if(MpiMaster)print*,isb,"S-, S+:",t_stop()
+       if(MpiMaster)print*,""
     enddo
     !
     do ispin=1,Nspin
