@@ -466,10 +466,12 @@ contains
     allocate(IsHconjg(tNso,Nsb))
     allocate(Cleft(Nso),Cright(Nso))
     !
+
+    
     do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
-       BI(isb)%states = sb2block_states(qn,'right')       
+       BI(isb)%states = sb2block_states(qn,'right')
        do ispin=1,Nspin
           dq = qnup   ; if(ispin==2)dq=qndw
           qm = qn - dq
@@ -496,26 +498,47 @@ contains
        enddo
        Hl = left%operators%op("H")
        Hr = right%operators%op("H")
-       print*,shape(Hl)
     endif
+#ifdef _MPI
+    if(MpiStatus)then
+       call Hl%bcast()
+       call Hr%bcast()
+    endif
+#endif
+
+
+    do isb=1+MpiRank,Nsb,MpiSize
+       qn = sb_sector%qn(index=isb)
+       Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+       Hright(isb)= sp_filter(Hr,BI(isb)%states)
+    enddo
+#ifdef _MPI
+    if(MpiStatus)then
+       call AllGather_MPI(MpiComm,Hleft)
+       call AllGather_MPI(MpiComm,Hright)
+       do isb=1,Nsb
+          kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
+       enddo
+    endif
+#endif
 
     
+
     isb2jsb=0
-    if(MpiMaster)call start_timer()
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
-       if(MpiMaster)then
-          Hleft(isb) = sp_filter(Hl,AI(isb)%states)
-          Hright(isb)= sp_filter(Hr,BI(isb)%states)
-       endif
-#ifdef _MPI
-       if(MpiStatus)then
-          call Hleft(isb)%bcast()
-          call Hright(isb)%bcast()
-          kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
-       endif
-#endif
+       !        if(MpiMaster)then
+       !           Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+       !           Hright(isb)= sp_filter(Hr,BI(isb)%states)
+       !        endif
+       ! #ifdef _MPI
+       !        if(MpiStatus)then
+       !           call Hleft(isb)%bcast()
+       !           call Hright(isb)%bcast()
+       !           kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
+       !        endif
+       ! #endif
        !
        !> get it=1,io,jo: A = H(a,b)*[Cl(a,s)^+@P] .x. B = Cr(b,s)  + Row/Col Offsets
        !> get it=2,io,jo: A = H(a,b)*[Cl(a,s)@P] .x. B = Cr(b,s)^+  + Row/Col Offsets
@@ -579,7 +602,6 @@ contains
        if(MpiMaster)print*,isb,Nsb
        if(MpiMaster)call eta(isb,Nsb)
     enddo
-    if(MpiMaster)call stop_timer()
     !
     call P%free()
     do ispin=1,Nspin

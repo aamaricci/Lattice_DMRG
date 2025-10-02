@@ -24,6 +24,8 @@ contains
 
 
 
+
+
   !-----------------------------------------------------------------!
   ! purpose: build the list of states compatible with the specified
   ! quantum numbers
@@ -104,7 +106,7 @@ contains
 
   !   !This is the MPI version
   !   subroutine sb_get_states()
-  !     integer                          :: ql,iright
+  !     integer                          :: ql,iright,i
   !     integer                          :: ir,il,istate,unit,k,Nsl
   !     real(8),dimension(:),allocatable :: left_qn,right_qn
   !     integer,dimension(:),allocatable :: left_map,right_map
@@ -113,7 +115,6 @@ contains
   !     integer                          :: istart,iend,ierr,Rdim
   !     integer,dimension(:),allocatable :: sb_states_tmp      
   !     !
-  !     unit = 900+MpiRank
   ! #ifdef _DEBUG
   !     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
   ! #endif
@@ -215,12 +216,42 @@ contains
   !     !
   ! #ifdef _MPI
   !     !
-  !     if(MpiStatus)call AllGather_sb_states()
+  !     if(MpiStatus)then
+  !        call gather_sb_states()
+  !        ! call Bcast_MPI(MpiComm,sb_states)
+  !     endif
+
+  !     allocate(sb_states_tmp(sum(Nl*Nr)))
+  !     sb_states_tmp=0
+
   !     !
+  !     if(MpiMaster)then
+  !        do i=1,size(sb_states)
+  !           write(400,*)sb_states(i)
+  !        enddo
+  !        rewind(400)
+  !     endif
+  !     call Barrier_MPI()
+
+
+  !     do i=1,size(sb_states)
+  !        read(400,*)sb_states_tmp(i)
+  !     enddo
+  !     rewind(400)
+
+  !     do i=1,size(sb_states)
+  !        write(500+MpiRank,*)sb_states_tmp(i)
+  !     enddo
+  !     rewind(500+MpiRank)
+
+  !     if(any(sb_states_tmp/=sb_states))then
+  !        stop "ERROR In SB_states"
+  !     endif
+
   !     !   
   !   contains
   !     !
-  !     subroutine allgather_sb_states()
+  !     subroutine gather_sb_states()
   !       integer                          :: i,Ntot,ql
   !       integer                          :: itmp_start,itmp_end,i_start,i_end
   !       integer,dimension(:),allocatable :: pCounts,pOffset
@@ -246,7 +277,7 @@ contains
   !          enddo
   !          !
   !          itmp_start = 1+Qoffset(ql)
-  !          itmp_end   = Q(ql) + R(ql) +Qoffset(ql)
+  !          itmp_end   = Q(ql) + R(ql) + Qoffset(ql)
   !          !
   !          i_start = 1 + Offset(ql)
   !          i_end   = Nl(ql)*Nr(ql) + OffSet(ql)
@@ -255,7 +286,10 @@ contains
   !               sb_states_tmp(itmp_start:itmp_end),Q(ql)+R(ql),MPI_INTEGER,&
   !               sb_states(i_start:i_end),pCounts,pOffset,MPI_INTEGER,MpiComm,MpiIerr)
   !       enddo
-  !     end subroutine allgather_sb_states
+  !       !
+  !       deallocate(sb_states_tmp)
+  !       !
+  !     end subroutine gather_sb_states
   ! #endif
   !   end subroutine sb_get_states
 
@@ -592,6 +626,9 @@ contains
 
 
 END MODULE DMRG_SUPERBLOCK
+
+
+
 
 
 
