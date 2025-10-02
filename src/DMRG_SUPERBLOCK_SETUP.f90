@@ -240,45 +240,35 @@ contains
        Hl = left%operators%op("H")
        Hr = right%operators%op("H")
     endif
-    
-    ! #ifdef _MPI
-    !     if(MpiStatus)then
-    !        call Hl%bcast()
-    !        call Hr%bcast()
-    !     endif
-    ! #endif
-    !     do isb=1+MpiRank,Nsb,MpiSize
-    !        qn = sb_sector%qn(index=isb)
-    !        Hleft(isb) = sp_filter(Hl,AI(isb)%states)
-    !        Hright(isb)= sp_filter(Hr,BI(isb)%states)
-    !     enddo
-    ! #ifdef _MPI
-    !     if(MpiStatus)then
-    !        call Barrier_MPI(MpiComm)
-    !        call AllGather_MPI(MpiComm,Hleft)
-    !        call AllGather_MPI(MpiComm,Hright)
-    !        do isb=1,Nsb
-    !           kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
-    !        enddo
-    !     endif
-    ! #endif
+#ifdef _MPI
+    if(MpiStatus)then
+       call Hl%bcast()
+       call Hr%bcast()
+    endif
+#endif
     !
-
+    !It is possible to MPI split the construction of the H_L,R blocks
+    do isb=1+MpiRank,Nsb,MpiSize
+       qn = sb_sector%qn(index=isb)
+       Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+       Hright(isb)= sp_filter(Hr,BI(isb)%states)
+    enddo
+#ifdef _MPI
+    if(MpiStatus)then
+       call AllGather_MPI(MpiComm,Hleft)
+       call AllGather_MPI(MpiComm,Hright)
+       do isb=1,Nsb
+          kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
+       enddo
+    endif
+#endif
+    !
+    !
+    !This is more complicated as there are components which are skipped
+    !due to QN condition. Anyway this part is in general less heavy.
     isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
-       !
-       if(MpiMaster)then
-          Hleft(isb) = sp_filter(Hl,AI(isb)%states)
-          Hright(isb)= sp_filter(Hr,BI(isb)%states)
-       endif
-#ifdef _MPI
-       if(MpiStatus)then
-          call Hleft(isb)%bcast()
-          call Hright(isb)%bcast()
-          kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
-       endif
-#endif
        !
        !get  A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (DIAGONAL)
        it = tMap(1,1,1)
@@ -351,6 +341,7 @@ contains
                A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
+       if(MpiMaster)call eta(isb,Nsb)
     enddo
     !
     do ispin=1,Nspin
@@ -367,6 +358,11 @@ contains
 
 
 
+
+
+
+
+  
 
 
 
@@ -466,8 +462,8 @@ contains
     allocate(IsHconjg(tNso,Nsb))
     allocate(Cleft(Nso),Cright(Nso))
     !
-
-    
+    !
+    !All nodes filter QN states:
     do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
@@ -481,9 +477,6 @@ contains
           BJ(jsb)%states = sb2block_states(qm,'right')
        enddo
     enddo
-
-
-
     !
     !
     ! ROOT get basic operators from L/R blocks
@@ -505,8 +498,8 @@ contains
        call Hr%bcast()
     endif
 #endif
-
-
+    !
+    !It is possible to MPI split the construction of the H_L,R blocks
     do isb=1+MpiRank,Nsb,MpiSize
        qn = sb_sector%qn(index=isb)
        Hleft(isb) = sp_filter(Hl,AI(isb)%states)
@@ -521,24 +514,12 @@ contains
        enddo
     endif
 #endif
-
-    
-
+    !
+    !This is more complicated as there are components which are skipped
+    !due to QN condition. Anyway this part is in general less heavy.
     isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
-       !
-       !        if(MpiMaster)then
-       !           Hleft(isb) = sp_filter(Hl,AI(isb)%states)
-       !           Hright(isb)= sp_filter(Hr,BI(isb)%states)
-       !        endif
-       ! #ifdef _MPI
-       !        if(MpiStatus)then
-       !           call Hleft(isb)%bcast()
-       !           call Hright(isb)%bcast()
-       !           kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
-       !        endif
-       ! #endif
        !
        !> get it=1,io,jo: A = H(a,b)*[Cl(a,s)^+@P] .x. B = Cr(b,s)  + Row/Col Offsets
        !> get it=2,io,jo: A = H(a,b)*[Cl(a,s)@P] .x. B = Cr(b,s)^+  + Row/Col Offsets
@@ -599,7 +580,6 @@ contains
           !
        enddo
        !
-       if(MpiMaster)print*,isb,Nsb
        if(MpiMaster)call eta(isb,Nsb)
     enddo
     !

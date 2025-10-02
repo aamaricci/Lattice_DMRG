@@ -1717,9 +1717,7 @@ contains
        enddo
     enddo
     !
-    print*,'free'
     call AxB_local%free()
-
     !
   contains
     !
