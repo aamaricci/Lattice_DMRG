@@ -146,6 +146,7 @@ contains
     real(8),dimension(:),allocatable             :: dq
     integer,dimension(:,:,:),allocatable         :: tMap
     type(sparse_matrix),allocatable,dimension(:) :: Sleft,Sright
+    type(sparse_matrix)                          :: Hl,Hr
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable        :: Hij
 #else
@@ -236,6 +237,8 @@ contains
           Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
           Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
        enddo
+       Hl = left%operators%op("H")
+       Hr = right%operators%op("H")
     endif
     !
     isb2jsb=0
@@ -244,8 +247,8 @@ contains
        !
        !> get: H*^L  and H*^R (ROOT exclusive)
        if(MpiMaster)then
-          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+          Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+          Hright(isb)= sp_filter(Hr,BI(isb)%states)
        endif
 #ifdef _MPI
        if(MpiStatus)then
@@ -324,12 +327,15 @@ contains
           kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
+       if(MpiMaster)call eta(isb,Nsb)
     enddo
     !
     do ispin=1,Nspin
        call Sleft(ispin)%free()
        call Sright(ispin)%free()
     enddo
+    call Hl%free()
+    call Hr%free()    
     deallocate(Sleft,Sright)
     !
     if(MpiMaster)call stop_timer("Setup SB Direct")
@@ -352,7 +358,7 @@ contains
     real(8),dimension(2),parameter               :: qnup=[1d0,0d0]
     real(8),dimension(2),parameter               :: qndw=[0d0,1d0]
     integer,dimension(:,:,:),allocatable         :: tMap
-    type(sparse_matrix)                          :: P
+    type(sparse_matrix)                          :: P,Hl,Hr
     type(sparse_matrix),allocatable,dimension(:) :: Cleft,Cright
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable        :: Hij
@@ -456,6 +462,8 @@ contains
              Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
           enddo
        enddo
+       Hl = left%operators%op("H")
+       Hr = right%operators%op("H")
     endif
     !
     !
@@ -469,8 +477,8 @@ contains
        !
        !> get: H*^L  and H*^R
        if(MpiMaster)then
-          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+          Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+          Hright(isb)= sp_filter(Hr,BI(isb)%states)
        endif
 #ifdef _MPI
        if(MpiStatus)then
@@ -539,9 +547,12 @@ contains
           enddo
           !
        enddo
+       if(MpiMaster)call eta(isb,Nsb)
     enddo
     !
     call P%free()
+    call Hl%free()
+    call Hr%free()
     do ispin=1,Nspin
        do iorb=1,Norb
           io = iorb+(ispin-1)*Norb
