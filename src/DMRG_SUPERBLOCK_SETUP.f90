@@ -88,7 +88,7 @@ contains
 
 
 
-  
+
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                       DIRECT MODE
@@ -134,7 +134,7 @@ contains
 
 
 
-  
+
   !##################################################################
   !                          SPIN CASE
   !##################################################################
@@ -219,7 +219,6 @@ contains
     allocate(IsHconjg(tNso,Nsb))
     allocate(Sleft(Nspin),Sright(Nspin))
     !
-    t0=t_start()
     dq=[1d0]
     do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
@@ -231,9 +230,8 @@ contains
        AJ(jsb)%states = sb2block_states(qm,'left')
        BJ(jsb)%states = sb2block_states(qm,'right')
     enddo
-    print*,"Get_AI,J BI,J:",t_stop()
     !
-    !>ROOT get basic operators. Nodes can not.
+    ! ROOT get basic operators from L/R blocks
     if(MpiMaster)then
        do ispin=1,Nspin
           Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
@@ -242,15 +240,34 @@ contains
        Hl = left%operators%op("H")
        Hr = right%operators%op("H")
     endif
+    
+    ! #ifdef _MPI
+    !     if(MpiStatus)then
+    !        call Hl%bcast()
+    !        call Hr%bcast()
+    !     endif
+    ! #endif
+    !     do isb=1+MpiRank,Nsb,MpiSize
+    !        qn = sb_sector%qn(index=isb)
+    !        Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+    !        Hright(isb)= sp_filter(Hr,BI(isb)%states)
+    !     enddo
+    ! #ifdef _MPI
+    !     if(MpiStatus)then
+    !        call Barrier_MPI(MpiComm)
+    !        call AllGather_MPI(MpiComm,Hleft)
+    !        call AllGather_MPI(MpiComm,Hright)
+    !        do isb=1,Nsb
+    !           kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
+    !        enddo
+    !     endif
+    ! #endif
     !
-    print*,MpiRank,Nsb
-    !
+
     isb2jsb=0
     do isb=1,Nsb
        qn = sb_sector%qn(index=isb)
        !
-       !> get: H*^L  and H*^R (ROOT exclusive)
-       if(MpiMaster)t0=t_start()
        if(MpiMaster)then
           Hleft(isb) = sp_filter(Hl,AI(isb)%states)
           Hright(isb)= sp_filter(Hr,BI(isb)%states)
@@ -262,13 +279,9 @@ contains
           kb_sb_setup_bcast = kb_sb_setup_bcast + Hleft(isb)%bytes() + Hright(isb)%bytes()
        endif
 #endif
-       if(MpiMaster)print*,isb,"H_L, H_R:",t_stop()
-
        !
-       !DIAGONAL:
-       !> get: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (ROOT exclusive)
-       if(MpiMaster)t0=t_start()
-       it=tMap(1,1,1)
+       !get  A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (DIAGONAL)
+       it = tMap(1,1,1)
        if(MpiMaster)then
           A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
           B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
@@ -285,20 +298,20 @@ contains
           call B(it,isb)%bcast()
           mpiRowOffset(it,isb)=mpiOffset(isb)           
           mpiColOffset(it,isb)=mpiOffset(isb)
-          kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
+          kb_sb_setup_bcast = kb_sb_setup_bcast + &
+               A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
-       if(MpiMaster)print*,isb,"Sz,Sz:",t_stop()
        !
        !
-       !
-       if(MpiMaster)t0=t_start()
+       !> get it=2: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets
+       !> get it=3: A = Jxy*S_l+ .x. B = [S_r+]^+=S_r- + Row/Col Offsets 
        dq = [1d0]
        qm = qn - dq
        if(.not.sb_sector%has_qn(qm))cycle
        jsb = sb_sector%index(qn=qm)
        !
-       !> get: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets 
+       !it=2
        it=tMap(2,1,1)
        if(MpiMaster)then
           A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AJ(jsb)%states)
@@ -314,13 +327,11 @@ contains
           call B(it,isb)%bcast()
           mpiRowOffset(it,isb)=mpiOffset(isb)           
           mpiColOffset(it,isb)=mpiOffset(jsb)
-          kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
+          kb_sb_setup_bcast = kb_sb_setup_bcast + &
+               A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
-       if(MpiMaster)print*,isb,"S+, S-:",t_stop()
-       !
-       !> get H.c. + Row/Col Offsets
-       if(MpiMaster)t0=t_start()
+       !it=2
        it=tMap(3,1,1)
        if(MpiMaster)then
           A(it,isb) = hconjg(A(tMap(2,1,1),isb))
@@ -336,11 +347,10 @@ contains
           call B(it,isb)%bcast()
           mpiRowOffset(it,isb)=mpiOffset(jsb)           
           mpiColOffset(it,isb)=mpiOffset(isb)
-          kb_sb_setup_bcast = kb_sb_setup_bcast + A(it,isb)%bytes() + B(it,isb)%bytes()
+          kb_sb_setup_bcast = kb_sb_setup_bcast + &
+               A(it,isb)%bytes() + B(it,isb)%bytes()
        endif
 #endif
-       if(MpiMaster)print*,isb,"S-, S+:",t_stop()
-       if(MpiMaster)print*,""
     enddo
     !
     do ispin=1,Nspin
@@ -351,6 +361,12 @@ contains
     !
     if(MpiMaster)call stop_timer("Setup SB Direct")
   end subroutine Setup_SuperBlock_Spin_Direct
+
+
+
+
+
+
 
 
 
@@ -371,6 +387,7 @@ contains
     integer,dimension(:,:,:),allocatable         :: tMap
     type(sparse_matrix)                          :: P
     type(sparse_matrix),allocatable,dimension(:) :: Cleft,Cright
+    type(sparse_matrix)                          :: Hl,Hr
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable        :: Hij
 #else
@@ -449,10 +466,10 @@ contains
     allocate(IsHconjg(tNso,Nsb))
     allocate(Cleft(Nso),Cright(Nso))
     !
-    do isb=1,size(sb_sector)
+    do isb=1,Nsb
        qn             = sb_sector%qn(index=isb)
        AI(isb)%states = sb2block_states(qn,'left')
-       BI(isb)%states = sb2block_states(qn,'right')
+       BI(isb)%states = sb2block_states(qn,'right')       
        do ispin=1,Nspin
           dq = qnup   ; if(ispin==2)dq=qndw
           qm = qn - dq
@@ -462,8 +479,12 @@ contains
           BJ(jsb)%states = sb2block_states(qm,'right')
        enddo
     enddo
+
+
+
     !
     !
+    ! ROOT get basic operators from L/R blocks
     if(MpiMaster)then
        P = left%operators%op("P")
        do ispin=1,Nspin
@@ -473,21 +494,20 @@ contains
              Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
           enddo
        enddo
+       Hl = left%operators%op("H")
+       Hr = right%operators%op("H")
+       print*,shape(Hl)
     endif
-    !
-    !
-    !A(it,k).Nrow = DLk ;if(Hconjg) DLq
-    !A(it,k).Ncol = DLq ;if(Hconjg) DLk
-    !B(it,k).Nrow = DRk ;if(Hconjg) DRq
-    !B(it,k).Ncol = DRq ;if(Hconjg) DRk
+
+    
     isb2jsb=0
-    do isb=1,size(sb_sector)
-       qn   = sb_sector%qn(index=isb)
+    if(MpiMaster)call start_timer()
+    do isb=1,Nsb
+       qn = sb_sector%qn(index=isb)
        !
-       !> get: H*^L  and H*^R
        if(MpiMaster)then
-          Hleft(isb) = sp_filter(left%operators%op("H"),AI(isb)%states)
-          Hright(isb)= sp_filter(right%operators%op("H"),BI(isb)%states)
+          Hleft(isb) = sp_filter(Hl,AI(isb)%states)
+          Hright(isb)= sp_filter(Hr,BI(isb)%states)
        endif
 #ifdef _MPI
        if(MpiStatus)then
@@ -497,7 +517,8 @@ contains
        endif
 #endif
        !
-       !> get A.x.B terms:
+       !> get it=1,io,jo: A = H(a,b)*[Cl(a,s)^+@P] .x. B = Cr(b,s)  + Row/Col Offsets
+       !> get it=2,io,jo: A = H(a,b)*[Cl(a,s)@P] .x. B = Cr(b,s)^+  + Row/Col Offsets
        do ispin=1,Nspin
           dq = qnup ; if(ispin==2)dq=qndw
           qm = qn - dq
@@ -510,7 +531,7 @@ contains
                 jo = jorb+(ispin-1)*Norb
                 if(Hij(io,jo)==0d0)cycle
                 !
-                !> get: A = H(a,b)*[Cl(a,s)^+@P] .x. B = Cr(b,s)  + Row/Col Offsets
+                !it=1,a,b
                 it=tMap(1,io,jo)
                 if(MpiMaster)then
                    A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AJ(jsb)%states)
@@ -530,9 +551,7 @@ contains
                         A(it,isb)%bytes() + B(it,isb)%bytes()
                 endif
 #endif
-                !
-                !
-                !> get H.c. + Row/Col Offsets
+                !it=2,a,b
                 it=tMap(2,io,jo)
                 if(MpiMaster)then
                    A(it,isb) = hconjg(A(tMap(1,io,jo),isb))
@@ -556,7 +575,11 @@ contains
           enddo
           !
        enddo
+       !
+       if(MpiMaster)print*,isb,Nsb
+       if(MpiMaster)call eta(isb,Nsb)
     enddo
+    if(MpiMaster)call stop_timer()
     !
     call P%free()
     do ispin=1,Nspin
@@ -566,12 +589,12 @@ contains
           call Cright(io)%free()
        enddo
     enddo
+    call Hl%free()
+    call Hr%free()
     deallocate(Cleft,Cright)
     !
     if(MpiMaster)call stop_timer("Setup SB Direct")
   end subroutine Setup_SuperBlock_Fermion_Direct
-
-
 
 
 
@@ -610,7 +633,7 @@ contains
 
 
 
-  
+
   !##################################################################
   !              SuperBlock MATRIX-VECTOR PRODUCTS
   !              using shared quantities in GLOBAL
@@ -789,7 +812,7 @@ contains
     t0=t_start()
     !> loop over all the SB sectors: k
     sector: do k=1,size(sb_sector)
-       !       
+       !
        !> apply the 1^L x H^r: share L columns
        t0=t_start()
        do il=1,mpiDls(k)   !Fix the column il(q): v_il(q) for each thread
@@ -934,7 +957,7 @@ contains
   end subroutine spMatVec_MPI_direct_main
 
 
-  
+
 
 
   !##################################################################
@@ -947,12 +970,17 @@ contains
     real(8),dimension(:)             :: q
     character(len=*)                 :: label
     integer,dimension(:),allocatable :: tmp,states,sb_map
-    integer                          :: i,istate,l,r,isb,m
+    integer                          :: i,istate,l,r,isb,m,Rdim
     !
     if(.not.associated(sb_sector%root))&
          stop "sb2block_states error: sb_sector is not allocated"
     !
     if(allocated(states))deallocate(states)
+    !
+    !     if(MpiMaster)Rdim=right%dim
+    ! #ifdef _MPI
+    !     if(MpiStatus)call Bcast_MPI(MpiComm,Rdim)
+    ! #endif
     !
     !> get the map from the QN of the sector:
     sb_map = sb_sector%map(qn=q)
@@ -960,17 +988,18 @@ contains
     !> left,right, sb_sector and sb_states have to be known at this time:
     ! add a check
     if(MpiMaster)then
+       rDim=right%Dim
        select case(to_lower(str(label)))
        case("left","l","sys","s")
           do i=1,size(sb_map)
              istate = sb_states(sb_map(i))
-             l = (istate-1)/right%Dim+1
+             l = (istate-1)/rDim+1
              call append(tmp,l)
           enddo
        case("right","r","env","e")
           do i=1,size(sb_map)
              istate = sb_states(sb_map(i))
-             r = mod(istate,right%Dim);if(r==0)r=right%Dim
+             r = mod(istate,rDim);if(r==0)r=rDim
              call append(tmp,r)
           enddo
        end select
@@ -982,7 +1011,7 @@ contains
        call Bcast_MPI(MpiComm,m)
        if(.not.MpiMaster)allocate(states(m))
        call Bcast_MPI(MpiComm,states)
-    endif    
+    endif
 #endif
   end function sb2block_states
 
