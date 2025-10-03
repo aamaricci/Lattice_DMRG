@@ -172,7 +172,7 @@ contains
        if(MpiStatus)then
           !This condition protect against problems too small compared to MpiSize:
           !Solve serial and scatter the result
-          call sb_check_vecDim_Hv(fMPI)
+          call sb_check_Hv(fMPI)
           if(fMpi)then
              allocate(gs_tmp(m_sb,Neigen))
              if(MpiMaster)call sp_eigh(spHtimesV_p,gs_energy,gs_tmp,&
@@ -336,7 +336,7 @@ contains
           spHtimesV_p => spMatVec_direct_main
 #ifdef _MPI
           if(MpiStatus)then
-             call sb_check_vecDim_Hv(fMPI)
+             call sb_check_Hv(fMPI)
              if(fMPI)then  !this is true for all nodes at once see sb_vecDim_Hv
                 write(LogFile,"(A)")"ARPACK: using SERIAL over MPI as MpiSize > N"
                 spHtimesV_p => spMatVec_direct_main
@@ -389,10 +389,6 @@ contains
     call sb_delete_dims()
     if(allocated(RowOffset))deallocate(RowOffset)
     if(allocated(ColOffset))deallocate(ColOffset)
-#ifdef _MPI
-    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
-    if(allocated(mpiColOffset))deallocate(mpiColOffset)
-#endif
     !
   end subroutine sb_delete_Hv
 
@@ -444,7 +440,7 @@ contains
 
 
 
-  subroutine sb_check_vecDim_Hv(anyZero)
+  subroutine sb_check_Hv(anyZero)
     integer :: vecDim           !vector or vector chunck dimension
     integer :: ierr
     logical :: hasZero,anyZero
@@ -459,7 +455,7 @@ contains
        !anyZero=T if at least 1 nodes has vecDim==0
     end if
 #endif
-  end subroutine sb_check_vecDim_Hv
+  end subroutine sb_check_Hv
 
 END MODULE DMRG_SUPERBLOCK
 

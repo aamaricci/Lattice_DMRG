@@ -90,7 +90,7 @@ MODULE DMRG_GLOBAL
   type(sparse_matrix),allocatable,dimension(:,:) :: A,B
   integer,dimension(:),allocatable               :: Dls,Drs,Offset
   integer,dimension(:,:),allocatable             :: RowOffset,ColOffset,isb2jsb
-  logical,dimension(:,:),allocatable             :: IsHconjg
+  integer,dimension(:,:),allocatable             :: IsHconjg
 
 
   !Profiling stuff
@@ -168,7 +168,6 @@ MODULE DMRG_GLOBAL
   integer,allocatable,dimension(:)               :: mpiDrs
   integer,allocatable,dimension(:)               :: mpiDl,mpiDr
   integer,allocatable,dimension(:)               :: mpiOffset
-  integer,allocatable,dimension(:,:)             :: mpiRowOffset,mpiColOffset
   integer                                        :: mpiL=0,mpiR=0
 
 
@@ -413,8 +412,6 @@ contains
     if(allocated(mpiDl))deallocate(mpiDl)
     if(allocated(mpiDr))deallocate(mpiDr)
     if(allocated(mpiOffset))deallocate(mpiOffset)
-    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
-    if(allocated(mpiColOffset))deallocate(mpiColOffset)
 #endif
   end subroutine sb_delete_dims
 

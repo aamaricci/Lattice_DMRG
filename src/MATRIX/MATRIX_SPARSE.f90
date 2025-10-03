@@ -1468,16 +1468,14 @@ contains
     do i=1,N
        do j=1,M
           owner_rank = global_ownership(i,j)
-          ! Check for errors - an element must have an owner.
+          ! If owner_rank is -1, it means NO process initialized this element.
+          ! Skip the broadcast, leave A(i) uninitialized state on all processes.
           if (owner_rank == -1) then
-             if (master) write(*,*) "sp_array_all_gather ERROR: Element ", i,j, " has no owner."
-             call MPI_Abort(comm, 1, ierr)
+             cycle
+          else
+             !Owner exist, bcast to all nodes
+             call A(i,j)%bcast(comm,root=owner_rank)
           endif
-          !
-          ! The owner_rank process broadcasts its A(i) to everyone (including itself,
-          ! which is harmless). The `bcast` method handles all the packing/unpacking.
-          ! The root of the broadcast is the owner_rank.
-          call A(i,j)%bcast(comm,root=owner_rank)
        enddo
     enddo
     !
