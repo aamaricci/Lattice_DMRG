@@ -96,6 +96,7 @@ INCLUDE(${CMAKE_MODULE_PATH}/MainConfig.cmake)
 # Define some directories
 SET(LIB_SRC ${CMAKE_SOURCE_DIR}/src)
 SET(LIB_ETC ${CMAKE_SOURCE_DIR}/etc)
+SET(LIB_TEST ${CMAKE_SOURCE_DIR}/test)
 SET(LIB_ENV ${CMAKE_SOURCE_DIR}/etc/environment_modules)
 SET(LIB_TMP_INC ${CMAKE_BINARY_DIR}/include)
 SET(LIB_TMP_ETC ${CMAKE_BINARY_DIR}/etc)

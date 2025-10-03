@@ -26,7 +26,7 @@ contains
 
 
   !-----------------------------------------------------------------!
-  ! Purpose: build the list of states compatible with the specified
+  ! purpose: build the list of states compatible with the specified
   ! quantum numbers
   !SUPERBLOCK SHARED THINGS:
   ! integer,dimension(:),allocatable               :: sb_states
@@ -111,34 +111,6 @@ contains
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   !-----------------------------------------------------------------!
   ! Purpose: Diagonalize the SuperBlock problem.
   !-----------------------------------------------------------------!
@@ -147,12 +119,12 @@ contains
     integer                               :: Nitermax,Neigen,Nblock
     real(8),dimension(:),allocatable      :: evals
 #ifdef _CMPLX
-    complex(8),dimension(:,:),allocatable :: Hsb
+    complex(8),dimension(:,:),allocatable :: Hsb,gs_tmp
 #else
-    real(8),dimension(:,:),allocatable    :: Hsb
+    real(8),dimension(:,:),allocatable    :: Hsb,gs_tmp
 #endif
     integer                               :: vecDim,Nloc,m_tmp
-    logical                               :: exist,lanc_solve
+    logical                               :: exist,lanc_solve,fMpi
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
@@ -182,17 +154,35 @@ contains
        !
        if(allocated(gs_vector))deallocate(gs_vector)
        vecDim = sb_vecDim_Hv()
+       !
        allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        !
        if(MpiMaster)call start_timer("Diag H_sb")
        t0=t_start()
 #ifdef _MPI
-       if(MpiStatus)then          
-          call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
-               Nblock,&
-               Nitermax,&
-               tol=lanc_tolerance,&
-               iverbose=(verbose>4),NumOp=NumOp)
+       if(MpiStatus)then
+          !This condition protect against problems too small compared to MpiSize:
+          !Solve serial and scatter the result
+          call sb_check_Hv(fMPI)
+          if(fMpi)then
+             allocate(gs_tmp(m_sb,Neigen))
+             if(MpiMaster)call sp_eigh(spHtimesV_p,gs_energy,gs_tmp,&
+                  Nblock,&
+                  Nitermax,&
+                  tol=lanc_tolerance,&
+                  iverbose=(verbose>4),NumOp=NumOp)
+             call Bcast_MPI(MpiComm,gs_energy)
+             call sb_build_dims()
+             call scatter_vector_MPI(MpiComm,gs_tmp,gs_vector)
+             call sb_delete_dims()
+             deallocate(gs_tmp)
+          else
+             call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
+                  Nblock,&
+                  Nitermax,&
+                  tol=lanc_tolerance,&
+                  iverbose=(verbose>4),NumOp=NumOp)
+          endif
        else
           call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
                Nblock,&
@@ -271,7 +261,8 @@ contains
     real(8),dimension(:,:),allocatable,optional    :: Hmat
 #endif
     real(8),dimension(:),allocatable               :: qn
-    integer                                        :: q,m_sb,Nsb,irank
+    integer                                        :: q,m_sb,Nsb,irank,vecDim
+    logical :: fMPI
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock build H*v"
@@ -282,7 +273,6 @@ contains
     Nsb  = size(sb_sector)
     !
 #ifdef _MPI
-#ifdef _DEBUG
     if(allocated(Dls))deallocate(Dls)
     if(allocated(Drs))deallocate(Drs)
     if(allocated(mpiDls))deallocate(mpiDls)
@@ -294,6 +284,7 @@ contains
        mpiDls(q) = Dls(q)/MpiSize
        if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
     enddo
+#ifdef _DEBUG
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
        if(MpiMaster)write(*,*)"         mpiRank,          mpiDls        -        mpiDl        -      mpiL    -   mpiOffset"
        do irank=0,MpiSize-1
@@ -304,8 +295,8 @@ contains
        enddo
        call Barrier_MPI(MpiComm)
     endif
-    deallocate(Dls,Drs,mpiDls)
 #endif
+    deallocate(Dls,Drs,mpiDls)
 #endif
     !
     !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
@@ -335,7 +326,15 @@ contains
           call Setup_SuperBlock_Direct() !<- SETUP MPI here
           spHtimesV_p => spMatVec_direct_main
 #ifdef _MPI
-          if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
+          if(MpiStatus)then
+             call sb_check_Hv(fMPI)
+             if(fMPI)then  !this is true for all nodes at once see sb_vecDim_Hv
+                write(LogFile,"(A)")"ARPACK: using SERIAL over MPI as MpiSize > N"
+                spHtimesV_p => spMatVec_direct_main
+             else
+                spHtimesV_p => spMatVec_MPI_direct_main
+             endif
+          endif
 #endif
           !
        end select
@@ -381,10 +380,6 @@ contains
     call sb_delete_dims()
     if(allocated(RowOffset))deallocate(RowOffset)
     if(allocated(ColOffset))deallocate(ColOffset)
-#ifdef _MPI
-    if(allocated(mpiRowOffset))deallocate(mpiRowOffset)
-    if(allocated(mpiColOffset))deallocate(mpiColOffset)
-#endif
     !
   end subroutine sb_delete_Hv
 
@@ -396,7 +391,7 @@ contains
   function sb_vecDim_Hv() result(vecDim)
     integer                          :: vecDim           !vector or vector chunck dimension
     real(8),dimension(:),allocatable :: qn
-    integer                          :: q,Nsb
+    integer                          :: q,Nsb,i
     !
     Nsb  = size(sb_sector)
     if(allocated(Dls))deallocate(Dls)
@@ -430,11 +425,28 @@ contains
 #endif
     !
     vecDim = sum(mpiDl)
-    !
   end function sb_vecDim_Hv
 
 
 
+
+
+  subroutine sb_check_Hv(anyZero)
+    integer :: vecDim           !vector or vector chunck dimension
+    integer :: ierr
+    logical :: hasZero,anyZero
+    !
+    anyZero=.false.
+    !
+#ifdef _MPI
+    if(MpiStatus)then
+       vecDim  = sb_vecDim_Hv()
+       hasZero = (vecDim == 0)  !T if a rank has vecDim==0
+       call MPI_ALLREDUCE(hasZero, anyZero, 1, MPI_LOGICAL, MPI_LOR, MpiComm, ierr)
+       !anyZero=T if at least 1 nodes has vecDim==0
+    end if
+#endif
+  end subroutine sb_check_Hv
 
 END MODULE DMRG_SUPERBLOCK
 
@@ -456,7 +468,7 @@ END MODULE DMRG_SUPERBLOCK
 !   ! NEEDS TO BE FURTHER TESTES AS NODES GET DIFFERENT SB_STATES IN THE END.
 !   ! The AllGather is apparently wrong... needs to study this better.
 !   subroutine sb_get_states()
-!     integer                          :: ql,iright
+!     integer                          :: ql,iright,i
 !     integer                          :: ir,il,istate,unit,k,Nsl
 !     real(8),dimension(:),allocatable :: left_qn,right_qn
 !     integer,dimension(:),allocatable :: left_map,right_map
@@ -484,7 +496,7 @@ END MODULE DMRG_SUPERBLOCK
 !     Nsl = size(left%sectors(1))
 !     allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl),Q(Nsl),R(Nsl),Qoffset(Nsl))
 !     !
-!     qSector: do ql=1,Nsl
+!     do ql=1,Nsl
 !        left_qn   = left%sectors(1)%qn(index=ql)
 !        right_qn  = current_target_qn - left_qn
 !        if(.not.right%sectors(1)%has_qn(right_qn))cycle
@@ -504,7 +516,8 @@ END MODULE DMRG_SUPERBLOCK
 !        Nr(ql) = size(right_map)
 !        Offset(ql)=sum(Nl(1:ql-1)*Nr(1:ql-1))
 !        if(allocated(Astates))deallocate(Astates)
-!        allocate(Astates(Nr(ql)*Nl(ql)));Astates=0
+!        allocate(Astates(Nr(ql)*Nl(ql)))
+!        Astates=0
 !        !
 !        Istart = 1
 !        Iend   = Nr(ql)*Nl(ql)
@@ -521,7 +534,7 @@ END MODULE DMRG_SUPERBLOCK
 !        endif
 ! #endif
 !        !
-!        kstates: do k=Istart,Iend
+!        do k=Istart,Iend
 !           ir = mod(k,Nr(ql));if(ir==0)ir=Nr(ql)
 !           il = (k-1)/Nr(ql)+1
 !           istate=right_map(ir) + (left_map(il)-1)*Rdim
@@ -544,9 +557,9 @@ END MODULE DMRG_SUPERBLOCK
 ! #endif
 ! #endif
 !           Astates(k) = k+Offset(ql) !==size(sb_states)
-!        enddo kstates
+!        enddo
 !        !
-!        !
+!        !       
 ! #ifdef _MPI
 !        if(MpiStatus)then
 !           call MPI_Allreduce(MPI_IN_PLACE, Astates, size(Astates), MPI_INTEGER, MPI_SUM, MpiComm, ierr)
@@ -558,23 +571,55 @@ END MODULE DMRG_SUPERBLOCK
 !        call sb_sector%appends(qn=left_qn,istates=Astates)
 ! #endif
 !        !      
-!     enddo qSector
+!     enddo
 !     !
-! #ifdef _MPI
-!     if(MpiStatus)call AllGather_sb_states()
-! #endif    
-!     if(MpiMaster)call stop_timer()
+!     if(MpiMaster)call stop_timer("Get SB states")
 !     t_sb_get_states=t_stop()
 !     !
 ! #ifdef _MPI
+!     !
+!     if(MpiStatus)then
+!        call gather_sb_states()
+!        ! call Bcast_MPI(MpiComm,sb_states)
+!     endif
+
+!     allocate(sb_states_tmp(sum(Nl*Nr)))
+!     sb_states_tmp=0
+
+!     !
+!     if(MpiMaster)then
+!        do i=1,size(sb_states)
+!           write(400,*)sb_states(i)
+!        enddo
+!        rewind(400)
+!     endif
+!     call Barrier_MPI()
+
+
+!     do i=1,size(sb_states)
+!        read(400,*)sb_states_tmp(i)
+!     enddo
+!     rewind(400)
+
+!     do i=1,size(sb_states)
+!        write(500+MpiRank,*)sb_states_tmp(i)
+!     enddo
+!     rewind(500+MpiRank)
+
+!     if(any(sb_states_tmp/=sb_states))then
+!        stop "ERROR In SB_states"
+!     endif
+
+!     !   
 !   contains
-!     subroutine allgather_sb_states()
+!     !
+!     subroutine gather_sb_states()
 !       integer                          :: i,Ntot,ql
 !       integer                          :: itmp_start,itmp_end,i_start,i_end
 !       integer,dimension(:),allocatable :: pCounts,pOffset
 !       integer                          :: MpiIerr
 !       !
-!       Ntot = sum(Nl*Nr)         !size of the sb_array
+!       Ntot = sum(Nl*Nr)
 !       allocate(sb_states(Ntot))
 !       sb_states=0
 !       !
@@ -594,7 +639,7 @@ END MODULE DMRG_SUPERBLOCK
 !          enddo
 !          !
 !          itmp_start = 1+Qoffset(ql)
-!          itmp_end   = Q(ql) + R(ql) +Qoffset(ql)
+!          itmp_end   = Q(ql) + R(ql) + Qoffset(ql)
 !          !
 !          i_start = 1 + Offset(ql)
 !          i_end   = Nl(ql)*Nr(ql) + OffSet(ql)
@@ -603,6 +648,8 @@ END MODULE DMRG_SUPERBLOCK
 !               sb_states_tmp(itmp_start:itmp_end),Q(ql)+R(ql),MPI_INTEGER,&
 !               sb_states(i_start:i_end),pCounts,pOffset,MPI_INTEGER,MpiComm,MpiIerr)
 !       enddo
-!     end subroutine allgather_sb_states
+!       deallocate(sb_states_tmp)
+!       !
+!     end subroutine gather_sb_states
 ! #endif
 !   end subroutine sb_get_states

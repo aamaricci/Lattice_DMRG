@@ -1,3 +1,9 @@
+FC=mpif90
+FFLAG = -O2 -ffree-line-length-none
+FPPMPI=-cpp -D_MPI
+FFLAGS= ${FFLAG} ${FPPMPI}
+
+
 TSTDIR=src
 TSTBIN=bin
 
