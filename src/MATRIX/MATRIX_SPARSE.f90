@@ -1411,16 +1411,16 @@ contains
     ! Step 2: Iterate through the array and broadcast each element from its owner.
     do i = 1, N
        owner_rank = global_ownership(i)
-       ! Check for errors - an element must have an owner.
+       !
+       ! If owner_rank is -1, it means NO process initialized this element.
+       ! Skip the broadcast, leave A(i) uninitialized state on all processes.
        if (owner_rank == -1) then
-          if (master) write(*,*) "sp_array_all_gather ERROR: Element ", i, " has no owner."
-          call MPI_Abort(comm, 1, ierr)
+          cycle
+       else
+          !Owner exist, bcast to all nodes
+          call A(i)%bcast(comm,root=owner_rank)
        endif
        !
-       ! The owner_rank process broadcasts its A(i) to everyone (including itself,
-       ! which is harmless). The `bcast` method handles all the packing/unpacking.
-       ! The root of the broadcast is the owner_rank.
-       call A(i)%bcast(comm,root=owner_rank)
     enddo
     !
     deallocate(global_ownership)
@@ -2286,8 +2286,8 @@ program testSPARSE_MATRICES
 
 
   if(master)print*,"read A&B:"
-  call a%read(file="sp_a.dat")
-  call b%read(file="sp_b.dat")
+  if(master)call a%read(file="sp_a.dat")
+  if(master)call b%read(file="sp_b.dat")
 
   if(master)print*,"show A:"
   if(master)call a%show()
@@ -2304,7 +2304,7 @@ program testSPARSE_MATRICES
 
 
 
-  
+
   if(master)print*,"CHECK A.Bcast"
   call a%free()
   call Barrier_MPI(comm)
@@ -2336,23 +2336,22 @@ program testSPARSE_MATRICES
 
 
 
-  
 
-  if(master)print*,"CHECK AllGather_MPI(comm,A)"
-  allocate(vecA(5))
 
+  if(master)print*,"CHECK AllGather_MPI(comm,A) case 1 (Ncpu</>N[3])"
+  allocate(vecA(3))
+  !
   do i=1+rank,size(vecA),ncpu
      if(mod(i,2)==0)then
         print*,rank,i,"EVEN"
-        vecA(i) = as_sparse(Gamma13)
+        vecA(i) = as_sparse(Sz*i)
      else
         print*,rank,i,"ODD"
-        vecA(i) = as_sparse(Gamma03)
+        vecA(i) = as_sparse(S0*i)
      endif
   enddo
   call Barrier_MPI(comm)
-
-
+  !
   do irank=0,ncpu-1
      if(irank==rank)then
         print *, "--- BEFORE All-Gather on rank:",rank,", ---"
@@ -2363,9 +2362,9 @@ program testSPARSE_MATRICES
      endif
      call Barrier_MPI(comm)
   enddo
-
+  !
   call AllGather_MPI(comm,vecA)
-
+  !
   do irank=0,ncpu-1
      if(irank==rank)then
         print *, "--- AFTER All-Gather on rank:",rank,", ---"
@@ -2376,10 +2375,65 @@ program testSPARSE_MATRICES
      endif
      call Barrier_MPI(comm)
   enddo
+  !
+  do i=1,size(vecA)
+     call vecA(i)%free()
+  enddo
+  deallocate(vecA)
+  print*,""
 
 
-  
-  
+
+
+
+  if(master)print*,"CHECK AllGather_MPI(comm,A) Case 2: if()cycle"
+  allocate(vecA(5))
+  !
+  do i=1+rank,size(vecA),ncpu
+     if(i==3)then
+        if(master)print*, "INFO: Index 3 is being skipped by all processes."
+        cycle
+     endif
+     vecA(i) = as_sparse(S0*i)
+  enddo
+  !
+  call Barrier_MPI(comm)
+  !
+  if(master)then
+     print *, "--- BEFORE All-Gather on rank:",rank,", ---"
+     do i = 1, size(vecA)
+        print *, "A(", i, ") status: ", vecA(i)%status
+        if (vecA(i)%status) call vecA(i)%show()
+     enddo
+  endif
+  call Barrier_MPI(comm)
+  !
+  call AllGather_MPI(comm,vecA)
+  !
+  call Barrier_MPI(comm)
+  do irank=0,ncpu-1
+     if(irank==rank)then
+        print *, "--- AFTER All-Gather on rank:",rank,", ---"
+        do i = 1, size(vecA)
+           print *, "A(", i, ") status: ", vecA(i)%status
+           if (vecA(i)%status) then
+              print*, "  -> Matrix A(",i,") received and initialized:"
+              call vecA(i)%show()
+           else
+              print*, "  -> Matrix A(",i,") is correctly uninitialized."
+           endif
+        enddo
+     endif
+     call Barrier_MPI(comm)
+  enddo
+  !
+  do i=1,size(vecA)
+     call vecA(i)%free()
+  enddo
+  deallocate(vecA)
+
+
+
   call finalize_MPI()
 
 

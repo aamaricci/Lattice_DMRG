@@ -128,12 +128,12 @@ contains
     integer                               :: Nitermax,Neigen,Nblock
     real(8),dimension(:),allocatable      :: evals
 #ifdef _CMPLX
-    complex(8),dimension(:,:),allocatable :: Hsb
+    complex(8),dimension(:,:),allocatable :: Hsb,gs_tmp
 #else
-    real(8),dimension(:,:),allocatable    :: Hsb
+    real(8),dimension(:,:),allocatable    :: Hsb,gs_tmp
 #endif
     integer                               :: vecDim,Nloc,m_tmp
-    logical                               :: exist,lanc_solve
+    logical                               :: exist,lanc_solve,fMpi
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
@@ -163,17 +163,35 @@ contains
        !
        if(allocated(gs_vector))deallocate(gs_vector)
        vecDim = sb_vecDim_Hv()
+       !
        allocate(gs_vector(vecDim,Neigen));gs_vector=zero
        !
        if(MpiMaster)call start_timer("Diag H_sb")
        t0=t_start()
 #ifdef _MPI
-       if(MpiStatus)then          
-          call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
-               Nblock,&
-               Nitermax,&
-               tol=lanc_tolerance,&
-               iverbose=(verbose>4),NumOp=NumOp)
+       if(MpiStatus)then
+          !This condition protect against problems too small compared to MpiSize:
+          !Solve serial and scatter the result
+          call sb_check_vecDim_Hv(fMPI)
+          if(fMpi)then
+             allocate(gs_tmp(m_sb,Neigen))
+             if(MpiMaster)call sp_eigh(spHtimesV_p,gs_energy,gs_tmp,&
+                  Nblock,&
+                  Nitermax,&
+                  tol=lanc_tolerance,&
+                  iverbose=(verbose>4),NumOp=NumOp)
+             call Bcast_MPI(MpiComm,gs_energy)
+             call sb_build_dims()
+             call scatter_vector_MPI(MpiComm,gs_tmp,gs_vector)
+             call sb_delete_dims()
+             deallocate(gs_tmp)
+          else
+             call sp_eigh(MpiComm,spHtimesV_p,gs_energy,gs_vector,&
+                  Nblock,&
+                  Nitermax,&
+                  tol=lanc_tolerance,&
+                  iverbose=(verbose>4),NumOp=NumOp)
+          endif
        else
           call sp_eigh(spHtimesV_p,gs_energy,gs_vector,&
                Nblock,&
@@ -252,7 +270,8 @@ contains
     real(8),dimension(:,:),allocatable,optional    :: Hmat
 #endif
     real(8),dimension(:),allocatable               :: qn
-    integer                                        :: q,m_sb,Nsb,irank
+    integer                                        :: q,m_sb,Nsb,irank,vecDim
+    logical :: fMPI
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock build H*v"
@@ -263,7 +282,6 @@ contains
     Nsb  = size(sb_sector)
     !
 #ifdef _MPI
-#ifdef _DEBUG
     if(allocated(Dls))deallocate(Dls)
     if(allocated(Drs))deallocate(Drs)
     if(allocated(mpiDls))deallocate(mpiDls)
@@ -275,6 +293,7 @@ contains
        mpiDls(q) = Dls(q)/MpiSize
        if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
     enddo
+#ifdef _DEBUG
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
        if(MpiMaster)write(*,*)"         mpiRank,          mpiDls        -        mpiDl        -      mpiL    -   mpiOffset"
        do irank=0,MpiSize-1
@@ -285,8 +304,8 @@ contains
        enddo
        call Barrier_MPI(MpiComm)
     endif
-    deallocate(Dls,Drs,mpiDls)
 #endif
+    deallocate(Dls,Drs,mpiDls)
 #endif
     !
     !IF PRESENT HMAT: get SB_H sparse > dump it to dense Hmat > return
@@ -316,7 +335,15 @@ contains
           call Setup_SuperBlock_Direct() !<- SETUP MPI here
           spHtimesV_p => spMatVec_direct_main
 #ifdef _MPI
-          if(MpiStatus)spHtimesV_p => spMatVec_MPI_direct_main
+          if(MpiStatus)then
+             call sb_check_vecDim_Hv(fMPI)
+             if(fMPI)then  !this is true for all nodes at once see sb_vecDim_Hv
+                write(LogFile,"(A)")"ARPACK: using SERIAL over MPI as MpiSize > N"
+                spHtimesV_p => spMatVec_direct_main
+             else
+                spHtimesV_p => spMatVec_MPI_direct_main
+             endif
+          endif
 #endif
           !
        end select
@@ -377,7 +404,7 @@ contains
   function sb_vecDim_Hv() result(vecDim)
     integer                          :: vecDim           !vector or vector chunck dimension
     real(8),dimension(:),allocatable :: qn
-    integer                          :: q,Nsb
+    integer                          :: q,Nsb,i
     !
     Nsb  = size(sb_sector)
     if(allocated(Dls))deallocate(Dls)
@@ -411,11 +438,28 @@ contains
 #endif
     !
     vecDim = sum(mpiDl)
-    !
   end function sb_vecDim_Hv
 
 
 
+
+
+  subroutine sb_check_vecDim_Hv(anyZero)
+    integer :: vecDim           !vector or vector chunck dimension
+    integer :: ierr
+    logical :: hasZero,anyZero
+    !
+    anyZero=.false.
+    !
+#ifdef _MPI
+    if(MpiStatus)then
+       vecDim  = sb_vecDim_Hv()
+       hasZero = (vecDim == 0)  !T if a rank has vecDim==0
+       call MPI_ALLREDUCE(hasZero, anyZero, 1, MPI_LOGICAL, MPI_LOR, MpiComm, ierr)
+       !anyZero=T if at least 1 nodes has vecDim==0
+    end if
+#endif
+  end subroutine sb_check_vecDim_Hv
 
 END MODULE DMRG_SUPERBLOCK
 
