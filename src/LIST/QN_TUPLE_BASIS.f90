@@ -417,21 +417,23 @@ contains
   !              SHOW TVECTOR
   !##################################################################
   !##################################################################
-  subroutine show_tbasis(self)
-    class(tbasis) :: self
-    integer       :: Nqn,Qdim,i,j
+  subroutine show_tbasis(self,unit)
+    class(tbasis)    :: self
+    integer,optional :: unit
+    integer          :: Nqn,Qdim,i,j,unit_
     !
+    unit_=6;if(present(unit))unit_=unit
     do i=1,size(self%basis)
-       write(*,"(I6,2x)",advance='no')i
-       write(*,"(A1)",advance='no')"["
-       write(*,"(F6.2,A1)",advance='no')self%basis(i)%qn(1)
+       write(unit_,"(I6,2x)",advance='no')i
+       write(unit_,"(A1)",advance='no')"["
+       write(unit_,"(F6.2,A1)",advance='no')self%basis(i)%qn(1)
        do j=2,self%Qdim
-          write(*,"(A1,F6.2)",advance='no')",",self%basis(i)%qn(j)
+          write(unit_,"(A1,F6.2)",advance='no')",",self%basis(i)%qn(j)
        enddo
-       write(*,"(A1)",advance='no')"]"
-       write(*,*)""
+       write(unit_,"(A1)",advance='no')"]"
+       write(unit_,*)""
     enddo
-    write(*,*)""
+    write(unit_,*)""
   end subroutine show_tbasis
 
 

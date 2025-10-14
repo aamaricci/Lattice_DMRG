@@ -131,10 +131,6 @@ contains
        call self%set_basis( basis=enl_basis )
     end select
     !
-#ifdef _DEBUG
-    if(MpiMaster.AND.verbose>5)call self%show(file="Enl"//str(grow_)//"_"//str(self%length)//".dat")
-#endif
-    !
     if(MpiMaster)then
        if(.not.self%is_valid())then
           write(LOGfile,*)"ENLARGE_BLOCK error: not valid enlarged_block "//str(grow_)

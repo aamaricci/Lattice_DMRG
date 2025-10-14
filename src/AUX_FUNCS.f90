@@ -8,14 +8,18 @@ MODULE AUX_FUNCS
   !AUX:
   interface append
      module procedure :: append_I
+     module procedure :: append_Iv
      module procedure :: append_D
+     module procedure :: append_Dv
      module procedure :: append_C
      module procedure :: append_Ch
   end interface append
 
   interface add_to
      module procedure :: append_I
+     module procedure :: append_Iv
      module procedure :: append_D
+     module procedure :: append_Dv
      module procedure :: append_C
   end interface add_to
 
@@ -216,6 +220,32 @@ contains
     if(allocated(tmp))deallocate(tmp)
   end subroutine append_I
 
+  pure subroutine append_Iv(vec,val)
+    integer,dimension(:),allocatable,intent(inout) :: vec
+    integer,dimension(:),intent(in)                :: val  
+    integer,dimension(:),allocatable               :: tmp
+    integer                                        :: n,m
+    !
+    m = size(val)
+    if (allocated(vec)) then
+       n = size(vec)
+       allocate(tmp(n+m))
+       tmp(:n) = vec
+       call move_alloc(tmp,vec)
+       n = n + m
+    else
+       n = m
+       allocate(vec(n))
+    end if
+    !
+    !Put val as last entry:
+    vec(n-m+1:n) = val
+    !
+    if(allocated(tmp))deallocate(tmp)
+  end subroutine append_Iv
+
+
+
   pure subroutine append_D(vec,val)
     real(8),dimension(:),allocatable,intent(inout) :: vec
     real(8),intent(in)                             :: val  
@@ -238,6 +268,31 @@ contains
     !
     if(allocated(tmp))deallocate(tmp)
   end subroutine append_D
+
+  pure subroutine append_Dv(vec,val)
+    real(8),dimension(:),allocatable,intent(inout) :: vec
+    real(8),dimension(:),intent(in)                :: val  
+    real(8),dimension(:),allocatable               :: tmp
+    integer                                        :: n,m
+    !
+    m = size(val)
+    if (allocated(vec)) then
+       n = size(vec)
+       allocate(tmp(n+m))
+       tmp(:n) = vec
+       call move_alloc(tmp,vec)
+       n = n + m
+    else
+       n = m
+       allocate(vec(n))
+    end if
+    !
+    !Put val as last entry:
+    vec(n-m+1:n) = val
+    !
+    if(allocated(tmp))deallocate(tmp)
+  end subroutine append_Dv
+
 
   pure subroutine append_C(vec,val)
     complex(8),dimension(:),allocatable,intent(inout) :: vec

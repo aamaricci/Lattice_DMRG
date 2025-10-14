@@ -47,41 +47,43 @@ contains
     call rho_left%free()
     call rho_right%free()
     !
-    if(MpiMaster)call start_timer("Get \rho")
-    do isb=1,size(sb_sector)
-       sb_qn   = sb_sector%qn(index=isb)
-       sb_map  = sb_sector%map(index=isb)
-       Nleft   = size(left%sectors(1)%map(qn=sb_qn))
-       Nright  = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
-       if(Nleft*Nright==0)cycle
-       !
-       qn  = sb_qn
+    if(MpiMaster)then
+       call start_timer("Get \rho")
+       do isb=1,size(sb_sector)
+          sb_qn   = sb_sector%qn(index=isb)
+          sb_map  = sb_sector%map(index=isb)
+          Nleft   = size(left%sectors(1)%map(qn=sb_qn))
+          Nright  = size(right%sectors(1)%map(qn=(current_target_qn - sb_qn)))
+          if(Nleft*Nright==0)cycle
+          !
+          qn  = sb_qn
 #ifdef _MPI
-       if(MpiStatus)then
-          rho = build_density_matrix(Nleft,Nright,v_state(:,1),sb_map,'left')
-       else
+          if(MpiStatus)then
+             rho = build_density_matrix(Nleft,Nright,v_state(:,1),sb_map,'left')
+          else
+             rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left')
+          endif
+#else
           rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left')
-       endif
-#else
-       rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'left')
 #endif
-       if(MpiMaster)call rho_left%append(rho,qn=qn,map=left%sectors(1)%map(qn=qn))
-       !
-       !
-       qn  = current_target_qn-sb_qn
+          call rho_left%append(rho,qn=qn,map=left%sectors(1)%map(qn=qn))
+          !
+          !
+          qn  = current_target_qn-sb_qn
 #ifdef _MPI
-       if(MpiStatus)then
-          rho = build_density_matrix(Nleft,Nright,v_state(:,1),sb_map,'right') 
-       else
-          rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
-       endif
+          if(MpiStatus)then
+             rho = build_density_matrix(Nleft,Nright,v_state(:,1),sb_map,'right') 
+          else
+             rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
+          endif
 #else
-       rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
+          rho = build_density_matrix(Nleft,Nright,gs_vector(:,1),sb_map,'right') 
 #endif
-       if(MpiMaster)call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
-       !
-    enddo
-    if(MpiMaster)call stop_timer("Get \rho")
+          call rho_right%append(rho,qn=qn,map=right%sectors(1)%map(qn=qn))
+          !
+       enddo
+       call stop_timer("Get \rho")
+    endif
     t_rdm_get=t_stop()
     !
     call sb_delete_dims()
@@ -176,6 +178,10 @@ contains
     m_left  = left%dim
     m_right = right%dim
     !
+
+    if(allocated(qn))deallocate(qn)
+    allocate(qn, mold=current_target_qn)
+    !
     select case(to_lower(str(label)))
 !!!!!#################################
 !!!!!      LEFT
@@ -224,21 +230,12 @@ contains
        !
        !>Prepare output and update basis state
        do im=1,m_s
+          if(MpiMaster)qn = rho_left%qn(m=im)
 #ifdef _MPI
-          if(MpiStatus)then
-             if(allocated(qn))deallocate(qn)
-             allocate(qn, mold=current_target_qn)
-             if(MpiMaster)qn = rho_left%qn(m=im)
-             call Bcast_Mpi(MpiComm,qn)
-             call left_basis%append( qn=qn )
-          else
-             call left_basis%append( qn=rho_left%qn(m=im) )
-          endif
-#else
-          call left_basis%append( qn=rho_left%qn(m=im) )
+          if(MpiStatus)call Bcast_Mpi(MpiComm,qn)
 #endif
+          call left_basis%append( qn=qn )
        enddo
-       !       
        call left%set_basis(basis=left_basis)
        !
        Mtr = m_s
@@ -307,22 +304,14 @@ contains
 #endif
        !
        !>Prepare output and update basis state
+       !>Prepare output and update basis state
        do im=1,m_e
+          if(MpiMaster)qn = rho_right%qn(m=im)
 #ifdef _MPI
-          if(MpiStatus)then
-             if(allocated(qn))deallocate(qn)
-             allocate(qn, mold=current_target_qn)
-             if(MpiMaster)qn = rho_right%qn(m=im)
-             call Bcast_Mpi(MpiComm,qn)
-             call right_basis%append( qn=qn )
-          else
-             call right_basis%append( qn=rho_right%qn(m=im) )
-          endif
-#else
-          call right_basis%append( qn=rho_right%qn(m=im) )
+          if(MpiStatus)call Bcast_Mpi(MpiComm,qn)
 #endif
+          call right_basis%append( qn=qn )
        enddo
-       !
        call right%set_basis(basis=right_basis)
        !
        Mtr = m_e
