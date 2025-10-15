@@ -17,7 +17,9 @@ MODULE INPUT_VARS
   !Threshold energy used to evaluate the number of states to keep.
   !If 0d0 use fixed Mdmrg.
   integer              :: QNdim
-  !Number of Conserved quantum numbers to consider:
+  !Number of conserved Quantum Numbers to consider:
+  character(len=12)    :: QNtype
+  !Type of conserved Quantum Numbers, local: q in [0,1], global: Q in [-Ldmrg,Ldmrg] 
   real(8),allocatable  :: Dmrg_QN(:)
   !Desired Target Quantum Numbers: size(DMRG_QN)=QNdim
   integer              :: Nsweep
@@ -163,11 +165,13 @@ contains
     call parse_input_variable(QNdim,"QNdim",INPUTunit,&
          default=1,&
          comment="Total  conserved abelian quantum numbers to consider.")
-
-    allocate(Dmrg_QN(QNdim))
+    allocate(Dmrg_QN(QNdim))    
+    call parse_input_variable(QNtype,"QNtype",INPUTunit,&
+         default="local",&
+         comment="Type of conserved Quantum Numbers, local: q in [0,1], global: Q in [-Ldmrg,Ldmrg]")
     call parse_input_variable(DMRG_QN,"DMRG_QN",INPUTunit,&
-         default=(/(0.5d0,i=1,QNdim )/),&
-         comment="Target Sector QN in units [0:1]. 1/2=Half-filling")
+         default=(/(0d0,i=1,QNdim )/),&
+         comment="Target Sector QN in units specified by QNtype")
 
     call parse_input_variable(Norb,"NORB",INPUTunit,&
          default=1,&

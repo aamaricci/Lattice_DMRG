@@ -304,7 +304,7 @@ contains
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
        !
-       if(MpiMaster)call eta(isb,Nsb)
+       if(MpiMaster.AND.mod(isb,5)==0)write(LOGfile,*)"isb:",isb,"/",Nsb
     enddo
 #ifdef _MPI
     if(MpiStatus)then
@@ -528,7 +528,7 @@ contains
           enddo
           !
        enddo
-       if(MpiMaster)call eta(isb,Nsb)
+       if(MpiMaster.AND.mod(isb,5)==0)write(LOGfile,*)"isb:",isb,"/",Nsb
     enddo
 #ifdef _MPI
     if(MpiStatus)then

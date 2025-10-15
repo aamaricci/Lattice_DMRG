@@ -305,14 +305,20 @@ contains
     m_eleft           = left%dim
     m_eright          = right%dim
     current_L         = left%length + right%length
-    current_target_QN = int(target_qn*current_L*Norb)
+    select case(str(to_lower(QNtype(1:1))))
+    case default;stop "DMRG_MAIN error: QNtype != [local,global]"
+    case("l")
+       current_target_QN = int(target_qn*current_L*Norb)
+    case("g")
+       current_target_QN = min(current_L,int(target_qn*Norb)) !to check
+    end select
     !
     !In DMRG_SUPERBLOCK:
     call sb_get_states()
     m_sb = size(sb_states)
     rdcd_sb_dim=m_sb
     full_sb_dim=m_eleft*m_eright
-    
+
     !#################################
     !      WRITE AND EXIT
     !#################################

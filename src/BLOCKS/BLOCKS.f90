@@ -485,7 +485,7 @@ contains
     character(len=*) :: file
     call file_gunzip(str(file)) !if not zipped: returns
     call self%read(file=str(file))
-    call file_gzip(str(file))    
+    ! call file_gzip(str(file))    
   end subroutine load_block
 
 
