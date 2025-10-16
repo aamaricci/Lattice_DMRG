@@ -1,22 +1,7 @@
 repo
 *.o
 *.mod
+build*
 git_version.inc
 .DS_Store
-<<<<<<< HEAD
-<<<<<<< HEAD
-*build*
-cmplx3.0.0
-=======
-test
-build
-<<<<<<< HEAD
->>>>>>> 82ec5df (Included local test for each auxiliary module in their respective directories.)
-=======
-build3.0.0
-=======
-*build*
->>>>>>> 7fd23fe (Test testing update)
-cmplx3.0.0
->>>>>>> b9bb505 (Testing test)
 src/VERSION.f90

@@ -54,7 +54,7 @@ jobs:
 #******** TESTING PART ********
 # Testing
       - name: Building tests
-        run:  |
+        run: |
           source ~/.scifor_config_user
           source ~/.dmrg_config_user
           export PKG_CONFIG_PATH=~/.pkgconfig.d
@@ -66,6 +66,12 @@ jobs:
 
       - name: Testing...
         run: |
+          source ~/.scifor_config_user
+          source ~/.dmrg_config_user
+          export PKG_CONFIG_PATH=~/.pkgconfig.d
+          export GLOB_INC=$( pkg-config --cflags scifor dmrg)
+          export GLOB_LIB=$( pkg-config --libs   scifor dmrg | sed  "s/;/ /g"  | sed 's/\\/  /g' )
+          cd Lattice_DMRG/test
           cd Lattice_DMRG/test
           make test
 

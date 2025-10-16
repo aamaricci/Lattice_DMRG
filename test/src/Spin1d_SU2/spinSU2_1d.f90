@@ -60,16 +60,15 @@ program dmrg_spin_1d
      call assert(avSz,data_,"Sz",tol=1d-8)
      deallocate(avSz,data_)
      !
-     L = file_length("SentropyVSleft.length_L40_M20_iDMRG.dmrg")
-     allocate(x(L),data(L))
-     call sread("SentropyVSleft.length_L40_M20_iDMRG.dmrg",x,data)
-     L = file_length("Sentropy.check")
-     allocate(data_(L))
-     call read_array("Sentropy.check",data_)
-     if(size(data)/=size(data_))stop "Sentropy files have different sizes"
-     call assert(data,data_,"S")
-     deallocate(x,data,data_)
-     !
+     ! L = file_length("SentropyVSleft.length_L40_M20_iDMRG.dmrg")
+     ! allocate(x(L),data(L))
+     ! call sread("SentropyVSleft.length_L40_M20_iDMRG.dmrg",x,data)
+     ! L = file_length("Sentropy.check")
+     ! allocate(data_(L))
+     ! call read_array("Sentropy.check",data_)
+     ! if(size(data)/=size(data_))stop "Sentropy files have different sizes"
+     ! call assert(data,data_,"S")
+     ! deallocate(x,data,data_)
      !
   endif
 

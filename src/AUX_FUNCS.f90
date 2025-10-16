@@ -12,6 +12,7 @@ MODULE AUX_FUNCS
      module procedure :: append_D
      module procedure :: append_Dv
      module procedure :: append_C
+     module procedure :: append_Cv
      module procedure :: append_Ch
   end interface append
 
@@ -21,6 +22,8 @@ MODULE AUX_FUNCS
      module procedure :: append_D
      module procedure :: append_Dv
      module procedure :: append_C
+     module procedure :: append_Cv
+     module procedure :: append_Ch
   end interface add_to
 
   interface cumulate
@@ -316,6 +319,31 @@ contains
     !
     if(allocated(tmp))deallocate(tmp)
   end subroutine append_C
+
+  pure subroutine append_Cv(vec,val)
+    complex(8),dimension(:),allocatable,intent(inout) :: vec
+    complex(8),dimension(:),intent(in)                :: val  
+    complex(8),dimension(:),allocatable               :: tmp
+    integer                                           :: n,m
+    !
+    m = size(val)
+    if (allocated(vec)) then
+       n = size(vec)
+       allocate(tmp(n+m))
+       tmp(:n) = vec
+       call move_alloc(tmp,vec)
+       n = n + m
+    else
+       n = m
+       allocate(vec(n))
+    end if
+    !
+    !Put val as last entry:
+    vec(n-m+1:n) = val
+    !
+    if(allocated(tmp))deallocate(tmp)
+  end subroutine append_Cv
+
 
   pure subroutine append_Ch(vec,val)
     character(len=*),dimension(:),allocatable,intent(inout) :: vec

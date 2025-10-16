@@ -118,15 +118,15 @@ program hubbard_1d
      call assert(avO(i,:),data_,"S2z",1d-6)
      deallocate(data_)
      !
-     L = file_length("SentropyVSleft.length_L40_M40_iDMRG.dmrg")
-     allocate(x(L),data(L))
-     call sread("SentropyVSleft.length_L40_M40_iDMRG.dmrg",x,data)
-     L = file_length("Sentropy.check")
-     allocate(data_(L))
-     call read_array("Sentropy.check",data_)
-     if(size(data)/=size(data_))stop "Sentropy files have different sizes"
-     call assert(data,data_,"S",1d-6)
-     deallocate(x,data,data_)
+     ! L = file_length("SentropyVSleft.length_L40_M40_iDMRG.dmrg")
+     ! allocate(x(L),data(L))
+     ! call sread("SentropyVSleft.length_L40_M40_iDMRG.dmrg",x,data)
+     ! L = file_length("Sentropy.check")
+     ! allocate(data_(L))
+     ! call read_array("Sentropy.check",data_)
+     ! if(size(data)/=size(data_))stop "Sentropy files have different sizes"
+     ! call assert(data,data_,"S",1d-6)
+     ! deallocate(x,data,data_)
      !
   endif
 

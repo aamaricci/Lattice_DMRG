@@ -36,7 +36,7 @@ all:
 	@echo "compiling $(EXE).f90 "
 	@echo ""
 	$(FC) $(FLAG) $(OBJS) $(EXE).f90 -o $(TSTBIN)/$(EXE).x -I../ ${GLOB_INC} ${GLOB_LIB}
-	@cp *.conf *.check $(TSTBIN)/
+	@cp -v *.conf *.check block*restart $(TSTBIN)/
 
 
 clean: 

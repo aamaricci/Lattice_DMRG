@@ -467,14 +467,17 @@ contains
 
 
   function sp_filter_matrix_1(A,states) result(Ak)
-    class(sparse_matrix), intent(in) :: A
-    integer,dimension(:),intent(in)  :: states
-    type(sparse_matrix)              :: Ak
-    integer                          :: istate,jstate
+    class(sparse_matrix), intent(in)    :: A
+    integer,dimension(:),intent(in)     :: states
+    type(sparse_matrix)                 :: Ak
+    integer                             :: ii,istate,jstate
+    integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
-    complex(8)                       :: val
+    complex(8),dimension(:),allocatable :: vals
+    complex(8)                          :: val
 #else
-    real(8)                          :: val
+    real(8),dimension(:),allocatable    :: vals
+    real(8)                             :: val
 #endif
     !
     if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
@@ -482,17 +485,27 @@ contains
     call Ak%free()
     call Ak%init(size(states),size(states))
     !
+    if(allocated(vals))deallocate(vals)
+    if(allocated(cols))deallocate(cols)
+    allocate(vals(size(states)))
+    allocate(cols(size(states)))
+    !
     do istate = 1,size(states)
-       i=states(istate)
+       i   = states(istate)
+       ii  = 0
+       vals= 0
+       cols= 0
        do jstate=1,size(states)
-          j=states(jstate)
-          val = A%get(i,j)
+          j  = states(jstate)
+          val= A%get(i,j)
           if(val==zero)cycle
-          call append(Ak%row(istate)%vals,val)
-          call append(Ak%row(istate)%cols,jstate)
+          ii = ii+1
+          vals(ii)=val
+          cols(ii)=jstate
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
-          !
        enddo
+       call append(Ak%row(istate)%vals,vals(1:ii))
+       call append(Ak%row(istate)%cols,cols(1:ii))
     enddo
   end function sp_filter_matrix_1
 
@@ -500,27 +513,41 @@ contains
     class(sparse_matrix), intent(in) :: A
     integer,dimension(:),intent(in)  :: Istates,Jstates
     type(sparse_matrix)              :: Ak
-    integer                          :: istate,jstate
+    integer                             :: ii,istate,jstate
+    integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
-    complex(8)                       :: val
+    complex(8),dimension(:),allocatable :: vals
+    complex(8)                          :: val
 #else
-    real(8)                          :: val
+    real(8),dimension(:),allocatable    :: vals
+    real(8)                             :: val
 #endif
     !
     call Ak%free()
     call Ak%init(size(Istates),size(Jstates))
     !
+    if(allocated(vals))deallocate(vals)
+    if(allocated(cols))deallocate(cols)
+    allocate(vals(size(Jstates)))
+    allocate(cols(size(Jstates)))
+    !
     do istate = 1,size(Istates)
-       i=Istates(istate)
+       i   = Istates(istate)
+       ii  = 0
+       vals= 0
+       cols= 0
        do jstate=1,size(Jstates)
           j=Jstates(jstate)
           val = A%get(i,j)
           if(val==zero)cycle
-          call append(Ak%row(istate)%vals,val)
-          call append(Ak%row(istate)%cols,jstate)
+          ii = ii+1
+          vals(ii)=val
+          cols(ii)=jstate
           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
           !
        enddo
+       call append(Ak%row(istate)%vals,vals(1:ii))
+       call append(Ak%row(istate)%cols,cols(1:ii))
     enddo
   end function sp_filter_matrix_2
 
