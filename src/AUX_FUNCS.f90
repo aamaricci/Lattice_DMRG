@@ -476,6 +476,14 @@ contains
 
 
 
+  function fcheck(fname,wzip) result(fexist)
+    character(len=*) :: fname
+    logical,optional :: wzip
+    logical          :: fexist,wzip_
+    wzip_=.true.;if(present(wzip))wzip_=wzip
+    inquire(file=str(fname), exist=fexist)
+    if(wzip_)inquire(file=str(fname)//".gz", exist=fexist)
+  end function fcheck
 
 
   function fopen(fname,append) result(unit)

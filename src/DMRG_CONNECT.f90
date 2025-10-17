@@ -48,6 +48,7 @@ contains
 #ifdef _DEBUG
        write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
+       t0=t_start()
        select case(str(grow_))
        case ("left","l")
           Hb = self%operators%op("H").x.id(dot%dim)
@@ -70,13 +71,15 @@ contains
              H2 = connect_fermion_blocks(as_block(dot),self)
           end select
        end select
-       call self%put_op("H", Hb +  Hd + H2, type="bosonic")
+       call self%put_op("H", sp_add3(Hb,Hd,H2), type="bosonic")
+       write(LOGfile,*)"Build&Put H*",t_stop()
        !
        !
        !> Update all the other operators in the list:
 #ifdef _DEBUG
        write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
 #endif
+       t0=t_start()
        do i=1,size(self%operators)
           key   = str(self%operators%key(index=i))
           otype = str(self%operators%type(index=i))
@@ -113,6 +116,7 @@ contains
              call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
           end select
        enddo
+       write(LOGfile,*)"Build&Put O*",t_stop()
     endif
     !
     !> Enlarge dimensions
@@ -120,6 +124,7 @@ contains
     self%Dim    = self%Dim*dot%Dim
     !
     !> Enlarge the basis states
+    if(MpiMaster)t0=t_start()
     call self%get_basis(self_basis)
     call dot%get_basis(dot_basis)
     select case(str(grow_))
@@ -130,6 +135,7 @@ contains
        enl_basis = (dot_basis.o.self_basis)
        call self%set_basis( basis=enl_basis )
     end select
+    if(MpiMaster)write(LOGfile,*)"Build basis",t_stop()
     !
     if(MpiMaster)then
        if(.not.self%is_valid())then

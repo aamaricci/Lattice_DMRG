@@ -221,7 +221,7 @@ contains
           !>Store all the rotation/truncation matrices:
           call left%put_omat(str(left%length),trRho_left,'')
           !>Renormalize Blocks:
-          call left%renormalize(as_matrix(trRho_left))
+          call left%renormalize(trRho_left)
           call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif
 #ifdef _MPI
@@ -296,7 +296,8 @@ contains
           !>Store all the rotation/truncation matrices:
           call right%put_omat(str(right%length),trRho_right,'')
           !>Renormalize Blocks:
-          call right%renormalize(as_matrix(trRho_right))
+          ! call right%renormalize(as_matrix(trRho_right))
+          call right%renormalize(trRho_right)
           call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif
 #ifdef _MPI

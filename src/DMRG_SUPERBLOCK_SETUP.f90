@@ -263,6 +263,9 @@ contains
     if(MpiMaster)t0=t_start()
     isb2jsb=0
     do isb=1+MpiRank,Nsb,MpiSize
+       !
+       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//" N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
+       !
        qn = sb_sector%qn(index=isb)
        !
        Hleft(isb) = sp_filter(Hl,AI(isb)%states)
@@ -304,7 +307,6 @@ contains
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
        !
-       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)
     enddo
     if(MpiMaster)print*,"Get Op Blocks:",t_stop()
     !
@@ -451,7 +453,7 @@ contains
        AI(isb)%states = sb2block_states(qn,'left')
        BI(isb)%states = sb2block_states(qn,'right')
     enddo
-    if(MpiMaster)print*,"Get Filtered States:",t_stop()
+    if(MpiMaster)write(LOGfile,*)"Get Filtered States:",t_stop()
     !
     !
     ! ROOT get basic operators from L/R blocks and bcast them
@@ -482,12 +484,15 @@ contains
        call Hr%bcast()
     endif
 #endif
-    if(MpiMaster)print*,"Build Operators:",t_stop()
+    if(MpiMaster)write(LOGfile,*)"Build Operators:",t_stop()
     !
     !It is possible to MPI split the construction of the H_L,H_R,A,B ops
     if(MpiMaster)t0=t_start()
     isb2jsb=0
     do isb=1+MpiRank,Nsb,MpiSize
+       !
+       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//" N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
+       !
        qn = sb_sector%qn(index=isb)
        !
        Hleft(isb) = sp_filter(Hl,AI(isb)%states)
@@ -528,9 +533,8 @@ contains
           enddo
           !
        enddo
-       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)
     enddo
-    if(MpiMaster)print*,"Get Op Blocks:",t_stop()
+    if(MpiMaster)write(LOGfile,*)"Get Op Blocks:",t_stop()
     !
 #ifdef _MPI
     if(MpiStatus)then

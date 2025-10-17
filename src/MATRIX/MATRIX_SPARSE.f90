@@ -178,6 +178,10 @@ MODULE MATRIX_SPARSE
      module procedure :: sp_filter_matrix_2
   end interface sp_filter
 
+  interface sp_add3
+     module procedure :: sp_plus3_matrix
+  end interface sp_add3
+  
 #ifdef _MPI
   interface  AllGather_MPI
      module procedure ::  sp_array_all_gather_1
@@ -204,6 +208,7 @@ MODULE MATRIX_SPARSE
   public :: matmul
   public :: sp_eye
   public :: sp_filter
+  public :: sp_add3
 #ifdef _MPI
   public :: operator(.pm.)
   public :: AllGather_MPI
@@ -269,13 +274,10 @@ contains
     if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
     call sparse%free()
     call sparse%init(b%Nrow,b%Ncol)
-    print*,b%Nrow,b%Ncol
     do i=1,b%Nrow
-       print*,i,b%row(i)%size
        do j=1,b%row(i)%size
           col = b%row(i)%cols(j)
           val = b%row(i)%vals(j)
-          print*,i,col,val
           call sparse%insert(val,i,col)          
        enddo
     enddo
@@ -466,90 +468,162 @@ contains
 
 
 
+
+  !+------------------------------------------------------------------+
+  !PURPOSE: Filter the sparse matrix along given Row-states or Row- and
+  ! Col-states
+  !+------------------------------------------------------------------+
+
+
   function sp_filter_matrix_1(A,states) result(Ak)
     class(sparse_matrix), intent(in)    :: A
     integer,dimension(:),intent(in)     :: states
     type(sparse_matrix)                 :: Ak
-    integer                             :: ii,istate,jstate
-    integer,dimension(:),allocatable    :: cols
+    integer                             :: Nstates, Nrow, M
+    integer, dimension(:), allocatable  :: local_map
+    integer, dimension(:), allocatable  :: nnz_count
+    integer                             :: i,j,jj,istate,jstate
 #ifdef _CMPLX
-    complex(8),dimension(:),allocatable :: vals
     complex(8)                          :: val
 #else
-    real(8),dimension(:),allocatable    :: vals
     real(8)                             :: val
 #endif
+    !
     !
     if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
     !
+    Nstates = size(states)
+    Nrow = A%Nrow
+    !
     call Ak%free()
-    call Ak%init(size(states),size(states))
+    call Ak%init(Nstates,Nstates)
     !
-    if(allocated(vals))deallocate(vals)
-    if(allocated(cols))deallocate(cols)
-    allocate(vals(size(states)))
-    allocate(cols(size(states)))
     !
-    do istate = 1,size(states)
-       i   = states(istate)
-       ii  = 0
-       vals= 0
-       cols= 0
-       do jstate=1,size(states)
-          j  = states(jstate)
-          val= A%get(i,j)
-          if(val==zero)cycle
-          ii = ii+1
-          vals(ii)=val
-          cols(ii)=jstate
-          Ak%row(istate)%Size = Ak%row(istate)%Size + 1
+    ! A Map to invert the states arrray.
+    ! This is used later to lookup with O(1) access non-zero elements on a
+    ! given row
+    allocate(local_map(Nrow))
+    local_map = 0
+    do istate = 1, Nstates
+       local_map(states(istate)) = istate
+    enddo
+    !
+    ! Count how many nnz elements of A will be present in A(k) (a block of A)
+    allocate(nnz_count(Nstates))
+    nnz_count = 0
+    do istate = 1, Nstates
+       i = states(istate)
+       do jj = 1, A%row(i)%Size
+          j  = A%row(i)%cols(jj)
+          ! Controlla se anche la colonna appartiene agli stati filtrati
+          if (local_map(j) > 0) nnz_count(istate) = nnz_count(istate) + 1
        enddo
-       call append(Ak%row(istate)%vals,vals(1:ii))
-       call append(Ak%row(istate)%cols,cols(1:ii))
+    enddo
+    !
+    !Re-allocate vals and cols of Ak to nnz value so we avoid call to append:
+    do istate = 1, Nstates
+       M = nnz_count(istate)
+       if (M == 0) cycle
+       Ak%row(istate)%Size = M
+       if(allocated(Ak%row(istate)%vals))deallocate(Ak%row(istate)%vals)
+       if(allocated(Ak%row(istate)%cols))deallocate(Ak%row(istate)%cols)
+       allocate(Ak%row(istate)%vals(M))
+       allocate(Ak%row(istate)%cols(M))
+    enddo
+    !
+    ! Build  Ak 
+    nnz_count = 0 ! Re-use nnz_count
+    do istate = 1, Nstates
+       i = states(istate)
+       do jj = 1, A%row(i)%Size
+          j  = A%row(i)%cols(jj)
+          jstate = local_map(j)
+          if(jstate==0)cycle
+          val = A%row(i)%vals(jj)
+          nnz_count(istate) = nnz_count(istate) + 1
+          Ak%row(istate)%vals(nnz_count(istate)) = val
+          Ak%row(istate)%cols(nnz_count(istate)) = jstate
+       enddo
     enddo
   end function sp_filter_matrix_1
 
+
   function sp_filter_matrix_2(A,Istates,Jstates) result(Ak)
-    class(sparse_matrix), intent(in) :: A
-    integer,dimension(:),intent(in)  :: Istates,Jstates
-    type(sparse_matrix)              :: Ak
-    integer                             :: ii,istate,jstate
-    integer,dimension(:),allocatable    :: cols
+    class(sparse_matrix), intent(in)    :: A
+    integer,dimension(:),intent(in)     :: Istates,Jstates
+    type(sparse_matrix)                 :: Ak
+    integer                             :: NIstates, NJstates, Nrow, Ncol, M
+    integer, dimension(:), allocatable  :: local_map !this is now for Jstates
+    integer, dimension(:), allocatable  :: nnz_count
+    integer                             :: i,j,ii,jj,istate,jstate
 #ifdef _CMPLX
-    complex(8),dimension(:),allocatable :: vals
     complex(8)                          :: val
 #else
-    real(8),dimension(:),allocatable    :: vals
     real(8)                             :: val
 #endif
     !
+    ! if(.not.A%status)stop "sp_filter_matrix_2: A.status=F"
+    !
+    NIstates = size(Istates)
+    NJstates = size(Jstates)
+    Ncol     = A%Ncol
+    !
     call Ak%free()
-    call Ak%init(size(Istates),size(Jstates))
+    call Ak%init(NIstates,NJstates)
     !
-    if(allocated(vals))deallocate(vals)
-    if(allocated(cols))deallocate(cols)
-    allocate(vals(size(Jstates)))
-    allocate(cols(size(Jstates)))
+    ! A Map to invert the states arrray.
+    ! This is used later to lookup with O(1) access non-zero elements on a
+    ! given row
+    allocate(local_map(Ncol))
+    local_map = 0
+    do jstate = 1, NJstates
+       local_map(Jstates(jstate)) = jstate
+    enddo
     !
-    do istate = 1,size(Istates)
-       i   = Istates(istate)
-       ii  = 0
-       vals= 0
-       cols= 0
-       do jstate=1,size(Jstates)
-          j=Jstates(jstate)
-          val = A%get(i,j)
-          if(val==zero)cycle
-          ii = ii+1
-          vals(ii)=val
-          cols(ii)=jstate
-          Ak%row(istate)%Size = Ak%row(istate)%Size + 1
-          !
+    ! Count how many nnz elements of A will be present in A(k) (a block of A)
+    allocate(nnz_count(NIstates))
+    nnz_count = 0
+    do istate = 1, NIstates
+       i = Istates(istate)
+       do jj = 1, A%row(i)%Size
+          j  = A%row(i)%cols(jj)
+          ! Controlla se l'indice di colonna è valido e se appartiene a Jstates
+          if (j > Ncol) cycle
+          if (local_map(j) > 0)nnz_count(istate) = nnz_count(istate) + 1
        enddo
-       call append(Ak%row(istate)%vals,vals(1:ii))
-       call append(Ak%row(istate)%cols,cols(1:ii))
+    enddo
+    !
+    !Re-allocate vals and cols of Ak to nnz value so we avoid call to append:
+    do istate = 1, NIstates
+       M = nnz_count(istate)
+       if (M == 0) cycle
+       Ak%row(istate)%Size = M
+       if(allocated(Ak%row(istate)%vals))deallocate(Ak%row(istate)%vals)
+       if(allocated(Ak%row(istate)%cols))deallocate(Ak%row(istate)%cols)
+       allocate(Ak%row(istate)%vals(M))
+       allocate(Ak%row(istate)%cols(M))
+    enddo
+    !
+    ! Build  Ak 
+    nnz_count = 0 ! Re-use nnz_count
+    do istate = 1, NIstates
+       i = Istates(istate)
+       do jj = 1, A%row(i)%Size
+          j     = A%row(i)%cols(jj)
+          if(j > Ncol) cycle        
+          jstate = local_map(j)
+          if(jstate==0)cycle
+          val = A%row(i)%vals(jj)
+          nnz_count(istate) = nnz_count(istate) + 1
+          Ak%row(istate)%vals(nnz_count(istate)) = val
+          Ak%row(istate)%cols(nnz_count(istate)) = jstate
+       enddo
     enddo
   end function sp_filter_matrix_2
+
+
+
+
 
 
   !##################################################################
@@ -640,10 +714,10 @@ contains
     !
     if(.not.sparse%status)return
     write(unit_,*)sparse%Nrow,sparse%Ncol
-    write(unit_,*)sparse%nnz()
     do i=1,sparse%Nrow
+       write(unit_,*)sparse%row(i)%size
        do j=1,sparse%row(i)%size
-          write(unit_,*)i,sparse%row(i)%cols(j),sparse%row(i)%vals(j)
+          write(unit_,*)sparse%row(i)%cols(j),sparse%row(i)%vals(j)
        enddo
     enddo
     if(present(file))close(unit_)
@@ -658,12 +732,13 @@ contains
     integer,optional                   :: unit
     integer                            :: unit_
     integer                            :: Ns,Nrow,Ncol
-    integer                            :: nnz,inz
+    integer                            :: irow,i,nsize
     integer                            :: row,col
+    integer,allocatable                :: cols(:)
 #ifdef _CMPLX
-    complex(8)                         :: val
+    complex(8),allocatable             :: vals(:)
 #else
-    real(8)                            :: val
+    real(8),allocatable                :: vals(:)
 #endif
     !
     unit_=-1
@@ -674,12 +749,20 @@ contains
     if(sparse%status)call sparse%free()
     read(unit_,*)Nrow,Ncol
     call sparse%init(Nrow,Ncol)
-    read(unit_,*)nnz
-    do inz=1,nnz
-       read(unit_,*)row,col,val
-       call sparse%fast_insert(val,row,col)
+    allocate(vals(Ncol));vals=0
+    allocate(cols(Ncol));cols=0
+    do irow=1,Nrow
+       read(unit_,*)nsize
+       if(nsize==0)cycle
+       do i=1,nsize
+          read(unit_,*)cols(i),vals(i)
+       enddo
+       sparse%row(irow)%size=nsize
+       call append(sparse%row(irow)%cols,cols(1:nsize))
+       call append(sparse%row(irow)%vals,vals(1:nsize))
     enddo
     if(present(file))close(unit_)
+    deallocate(vals,cols)
   end subroutine sp_read_matrix
 
 
@@ -747,57 +830,78 @@ contains
   !AxB(1+rowB*(i-1):rowB*i,1+colB*(j-1):colB*j)  =  A(i,j)*B(:,:)
   !+------------------------------------------------------------------+
   function sp_kron_matrix(A,B) result(AxB)
-    type(sparse_matrix), intent(in) :: A,B
-    type(sparse_matrix)             :: AxB
-    integer                         :: i,icol,j,k,kcol,l
-    integer                         :: indx_row,indx_col
+    type(sparse_matrix), intent(in)     :: A,B
+    type(sparse_matrix)                 :: AxB
+    integer                             :: i,icol,j,k,kcol,l,ii
+    integer                             :: indx_row,indx_col
+    integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
-    complex(8)                      :: value
+    complex(8),dimension(:),allocatable :: vals
+    complex(8)                          :: value
 #else
-    real(8)                         :: value
+    real(8),dimension(:),allocatable    :: vals
+    real(8)                             :: value
 #endif
     if(.not.A%status)stop "sp_kron_matrix: A.status=F"
     if(.not.B%status)stop "sp_kron_matrix: B.status=F"
     call AxB%free()
     call AxB%init(a%Nrow*b%Nrow,a%Ncol*b%Ncol)
+    allocate(cols(a%Ncol*b%Ncol))
+    allocate(vals(a%Ncol*b%Ncol))
     do indx_row = 1,A%Nrow*B%Nrow
        k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
        i = (indx_row-1)/B%Nrow+1
+       ii=0
+       vals=0
+       cols=0
        do icol=1,A%row(i)%size
           j = A%row(i)%cols(icol)
           do kcol=1,B%row(k)%size
              l = B%row(k)%cols(kcol)
              indx_col = l + (j-1)*B%Ncol
-             value    = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
-             !
-             call append(AxB%row(indx_row)%vals,value)
-             call append(AxB%row(indx_row)%cols,indx_col)
+             ii = ii+1            
+             ! value    = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
+             ! !
+             ! call append(AxB%row(indx_row)%vals,value)
+             ! call append(AxB%row(indx_row)%cols,indx_col)
+             vals(ii) = A%row(i)%vals(icol)*B%row(k)%vals(kcol)
+             cols(ii) = indx_col
              AxB%row(indx_row)%Size = AxB%row(indx_row)%Size + 1
-             !
           enddo
        enddo
+       call append(AxB%row(indx_row)%vals,vals(1:ii))
+       call append(AxB%row(indx_row)%cols,cols(1:ii))
     enddo
+    deallocate(vals,cols)
   end function sp_kron_matrix
 
   function sp_restricted_kron_matrix(A,B,states) result(AxB)
-    type(sparse_matrix), intent(in) :: A,B
-    integer,dimension(:),intent(in) :: states
-    type(sparse_matrix)             :: AxB,Ap,Bp
-    integer                         :: i,icol,j,k,kcol,l,istate,jstate
-    integer                         :: indx_row,indx_col
+    type(sparse_matrix), intent(in)     :: A,B
+    integer,dimension(:),intent(in)     :: states
+    type(sparse_matrix)                 :: AxB,Ap,Bp
+    integer                             :: i,icol,j,k,kcol,l,istate,jstate,ii
+    integer                             :: indx_row,indx_col
+    integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
-    complex(8)                      :: val,Aval,Bval
+    complex(8),dimension(:),allocatable :: vals
+    complex(8)                          :: val,Aval,Bval
 #else
-    real(8)                         :: val,Aval,Bval
+    real(8),dimension(:),allocatable    :: vals
+    real(8)                             :: val,Aval,Bval
 #endif
     !
     call AxB%free()
     call AxB%init(size(states),size(states))
     !
+    allocate(cols(size(states)))
+    allocate(vals(size(states)))
     do istate = 1,size(states)
        indx_row=states(istate)
        i = (indx_row-1)/B%Nrow+1
        k = mod(indx_row,B%Nrow);if(k==0)k=B%Nrow
+       ii=0
+       vals=0
+       cols=0
        do jstate=1,size(states)
           indx_col=states(jstate)
           j = (indx_col-1)/B%Ncol+1
@@ -808,27 +912,36 @@ contains
                (.not.any(B%row(k)%cols==l)) )cycle
           Aval = A%get(i,j)
           Bval = B%get(k,l)
-          call append(AxB%row(istate)%vals,Aval*Bval)
-          call append(AxB%row(istate)%cols,jstate)
+          ii   = ii+1
+          vals(ii) = Aval*Bval
+          cols(ii) = jstate
+          ! call append(AxB%row(istate)%vals,Aval*Bval)
+          ! call append(AxB%row(istate)%cols,jstate)
           AxB%row(istate)%Size = AxB%row(istate)%Size + 1
        enddo
+       call append(AxB%row(istate)%vals,vals(1:ii))
+       call append(AxB%row(istate)%cols,cols(1:ii))
     enddo
+    deallocate(vals,cols)    
   end function sp_restricted_kron_matrix
 
 
 
 
   function sp_matmul_matrix(A,B) result(AxB)
-    type(sparse_matrix), intent(in)    :: A,B
-    type(sparse_matrix)                :: Bt,AxB
-    integer                            :: i,icol,j,jcol,k
+    type(sparse_matrix), intent(in)     :: A,B
+    type(sparse_matrix)                 :: Bt,AxB
+    integer                             :: i,icol,j,jcol,k,ii
+    integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
-    complex(8)                         :: value
+    complex(8),dimension(:),allocatable :: vals
+    complex(8)                          :: value
 #else
-    real(8)                            :: value
+    real(8),dimension(:),allocatable    :: vals
+    real(8)                             :: value
 #endif
-    integer, dimension(:), allocatable :: indx_A, indx_B
-    integer                            :: count
+    integer, dimension(:), allocatable  :: indx_A, indx_B
+    integer                             :: count
     !
     if(.not.A%status)stop "sp_matmul_matrix: A.status=F"
     if(.not.B%status)stop "sp_matmul_matrix: B.status=F"
@@ -838,10 +951,16 @@ contains
     call AxB%init(a%Nrow,b%Ncol)
     Bt = B%t()
     !
+    allocate(cols(b%Ncol))
+    allocate(vals(b%Ncol))
+    !
     do i=1,AxB%Nrow    !==A.Nrow
+       ii  = 0
+       cols= 0
+       vals= 0
        do j=1,AxB%Ncol !==Bt.Nrow=B.Ncol
-          if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
-          call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
+          ! if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
+          call get_intersection(A%row(i)%cols, Bt%row(j)%cols) !count = 0 cycle 
           value = zero
           do k=1,count
              icol = indx_A(k)
@@ -849,13 +968,16 @@ contains
              value    = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
           enddo
           if(value==zero)cycle
-          call append(AxB%row(i)%vals,value)
-          call append(AxB%row(i)%cols,j)
-          AxB%row(i)%Size = AxB%row(i)%Size + 1
+          ii = ii + 1
+          vals(ii) = value
+          cols(ii) = j
        enddo
+       AxB%row(i)%Size = ii
+       call append(AxB%row(i)%vals,vals(1:ii))
+       call append(AxB%row(i)%cols,cols(1:ii))
     enddo
     call Bt%free
-    !
+    deallocate(cols,vals)
   contains
     !
     logical function check_intersection(A, B)
@@ -941,32 +1063,8 @@ contains
   function sp_dgr_matrix(a) result(c)
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
-    integer                          :: col
-#ifdef _CMPLX
-    complex(8)                       :: val
-#else
-    real(8)                          :: val
-#endif
-    if(.not.a%status)stop "sp_dgr_matrix: A.status=F"
-    call c%init(a%Ncol,a%Nrow)       !hconjg
-    do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)
-#ifdef _CMPLX
-          call c%insert(conjg(val),col,i)
-#else
-          call c%insert(val,col,i)
-#endif
-       enddo
-    enddo
-  end function sp_dgr_matrix
-
-
-  function sp_transpose_matrix(a) result(c)
-    class(sparse_matrix), intent(in) :: a
-    type(sparse_matrix)              :: c
-    integer                          :: col
+    integer                          :: i, j, k, col, M, pos
+    integer, allocatable             :: nnz_per_row(:), idx(:)
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
@@ -974,38 +1072,143 @@ contains
 #endif
     if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
+    !
+    !Count how many elements are per row with a given col-index
+    allocate(nnz_per_row(c%Nrow)) ! c%Nrow == a%Ncol
+    nnz_per_row = 0
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)
-          call c%insert(val,col,i)
+          nnz_per_row(col) = nnz_per_row(col) + 1
        enddo
     enddo
+    !Allocate C manually to correct size
+    do k = 1, c%Nrow
+       M = nnz_per_row(k)
+       c%row(k)%size = M
+       if(allocated(c%row(k)%vals)) deallocate(c%row(k)%vals)
+       if(allocated(c%row(k)%cols)) deallocate(c%row(k)%cols)
+       allocate(c%row(k)%vals(M))
+       allocate(c%row(k)%cols(M))
+    enddo
+    !Build C using a counter to get the incremental col position:
+    allocate(idx(c%Nrow))
+    idx = 0
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          k      = a%row(i)%cols(j)  ! A-col => new C-row index
+          val    = a%row(i)%vals(j)
+          idx(k) = idx(k) + 1      !advance counter 
+          pos    = idx(k)
+          c%row(k)%cols(pos) = i
+#ifdef _CMPLX
+          c%row(k)%vals(pos) = conjg(val)
+#else
+          c%row(k)%vals(pos) = val
+#endif
+       enddo
+    enddo
+    deallocate(nnz_per_row, idx)
+  end function sp_dgr_matrix
+
+
+  function sp_transpose_matrix(a) result(c)
+    class(sparse_matrix), intent(in) :: a
+    type(sparse_matrix)              :: c
+    integer                          :: i, j, k, col, M, pos
+    integer, allocatable             :: nnz_per_row(:), idx(:)
+#ifdef _CMPLX
+    complex(8)                       :: val
+#else
+    real(8)                          :: val
+#endif
+    if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
+    call c%init(a%Ncol,a%Nrow)       !tranpose
+    !
+    !Count how many elements are per row with a given col-index
+    allocate(nnz_per_row(c%Nrow)) ! c%Nrow == a%Ncol
+    nnz_per_row = 0
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          col = a%row(i)%cols(j)
+          nnz_per_row(col) = nnz_per_row(col) + 1
+       enddo
+    enddo
+    !Allocate C manually to correct size
+    do k = 1, c%Nrow
+       M = nnz_per_row(k)
+       c%row(k)%size = M
+       if(allocated(c%row(k)%vals)) deallocate(c%row(k)%vals)
+       if(allocated(c%row(k)%cols)) deallocate(c%row(k)%cols)
+       allocate(c%row(k)%vals(M))
+       allocate(c%row(k)%cols(M))
+    enddo
+    !Build C using a counter to get the incremental col position:
+    allocate(idx(c%Nrow))
+    idx = 0
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          k      = a%row(i)%cols(j)  ! A-col => new C-row index
+          val    = a%row(i)%vals(j)
+          idx(k) = idx(k) + 1      !advance counter 
+          pos    = idx(k)
+          c%row(k)%cols(pos) = i
+          c%row(k)%vals(pos) = val
+       enddo
+    enddo
+    deallocate(nnz_per_row, idx)
   end function sp_transpose_matrix
 
 
   function sp_hconjg_matrix(a) result(c)
     class(sparse_matrix), intent(in) :: a
     type(sparse_matrix)              :: c
-    integer                          :: col
+    integer                          :: i, j, k, col, M, pos
+    integer, allocatable             :: nnz_per_row(:), idx(:)
 #ifdef _CMPLX
     complex(8)                       :: val
 #else
     real(8)                          :: val
 #endif
-    if(.not.a%status)stop "sp_hconjg_matrix: A.status=F"
+    if(.not.a%status)stop "sp_transpose_matrix: A.status=F"
     call c%init(a%Ncol,a%Nrow)       !tranpose
+    !
+    !Count how many elements are per row with a given col-index
+    allocate(nnz_per_row(c%Nrow)) ! c%Nrow == a%Ncol
+    nnz_per_row = 0
     do i=1,a%Nrow
        do j=1,a%row(i)%size
           col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)
+          nnz_per_row(col) = nnz_per_row(col) + 1
+       enddo
+    enddo
+    !Allocate C manually to correct size
+    do k = 1, c%Nrow
+       M = nnz_per_row(k)
+       c%row(k)%size = M
+       if(allocated(c%row(k)%vals)) deallocate(c%row(k)%vals)
+       if(allocated(c%row(k)%cols)) deallocate(c%row(k)%cols)
+       allocate(c%row(k)%vals(M))
+       allocate(c%row(k)%cols(M))
+    enddo
+    !Build C using a counter to get the incremental col position:
+    allocate(idx(c%Nrow))
+    idx = 0
+    do i=1,a%Nrow
+       do j=1,a%row(i)%size
+          k      = a%row(i)%cols(j)  ! A-col => new C-row index
+          val    = a%row(i)%vals(j)
+          idx(k) = idx(k) + 1      !advance counter 
+          pos    = idx(k)
+          c%row(k)%cols(pos) = i
 #ifdef _CMPLX
-          call c%insert(conjg(val),col,i)
+          c%row(k)%vals(pos) = conjg(val)
 #else
-          call c%insert((val),col,i)
+          c%row(k)%vals(pos) = val
 #endif
        enddo
     enddo
+    deallocate(nnz_per_row, idx)
   end function sp_hconjg_matrix
 
 
@@ -1015,21 +1218,13 @@ contains
   subroutine sp_matrix_equal_matrix(a,b)
     type(sparse_matrix),intent(inout) :: a
     type(sparse_matrix),intent(in)    :: b
-    integer                           :: col
-#ifdef _CMPLX
-    complex(8)                        :: val
-#else
-    real(8)                           :: val
-#endif
     if(.not.b%status)stop "sp_matrix_equal_matrix: B.status=F"
     call a%free()
     call a%init(b%Nrow,b%Ncol)
     do i=1,b%Nrow
-       do j=1,b%row(i)%size
-          col = b%row(i)%cols(j)
-          val = b%row(i)%vals(j)
-          call a%insert(val,i,col)          
-       enddo
+       a%row(i)%size = b%row(i)%size
+       call append(a%row(i)%cols,b%row(i)%cols)
+       call append(a%row(i)%vals,b%row(i)%vals)
     enddo
   end subroutine sp_matrix_equal_matrix
 
@@ -1041,17 +1236,13 @@ contains
   subroutine sp_matrix_equal_scalar(a,c)
     type(sparse_matrix),intent(inout) :: a
 #ifdef _CMPLX
-    complex(8)                        :: val
     complex(8),intent(in)             :: c
 #else
-    real(8)                           :: val
     real(8),intent(in)                :: c
 #endif
     if(.not.a%status)stop "sp_matrix_equal_matrix: A.status=F"
     do i=1,a%Nrow
-       do j=1,a%row(i)%size          
-          a%row(i)%vals(j) = c
-       enddo
+       a%row(i)%vals = c
     enddo
   end subroutine sp_matrix_equal_scalar
 
@@ -1060,28 +1251,199 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  Sparse matrix addition spA + spB = spC
   !+------------------------------------------------------------------+
+  !   function sp_plus_matrix(a,b) result(c)
+  !     type(sparse_matrix), intent(in) :: a,b
+  !     type(sparse_matrix)             :: c
+  !     integer                         :: col
+  ! #ifdef _CMPLX
+  !     complex(8)                      :: val
+  ! #else
+  !     real(8)                         :: val
+  ! #endif
+  !     if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
+  !     if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
+  !     if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
+  !     if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
+  !     c=a                         !copy a into c
+  !     do i=1,b%Nrow
+  !        do j=1,b%row(i)%size
+  !           col = b%row(i)%cols(j)
+  !           val = b%row(i)%vals(j)
+  !           call c%insert(val,i,col)
+  !        enddo
+  !     enddo
+  !   end function sp_plus_matrix
+
   function sp_plus_matrix(a,b) result(c)
     type(sparse_matrix), intent(in) :: a,b
     type(sparse_matrix)             :: c
-    integer                         :: col
+    integer                         :: i, na, nb, p, q, nn, col_a, col_b
+    integer,allocatable             :: cols(:)
 #ifdef _CMPLX
-    complex(8)                      :: val
+    complex(8), allocatable         :: vals(:)
+    complex(8)                      :: va, vb
 #else
-    real(8)                         :: val
+    real(8), allocatable            :: vals(:)
+    real(8)                         :: va, vb
 #endif
-    if(.not.a%status)stop "sp_plus_matrix error: a.status=F"
-    if(.not.b%status)stop "sp_plus_matrix error: b.status=F"
-    if(a%Nrow/=b%Nrow)stop "sp_plus_matrix error: a.Nrow != b.Nrow"
-    if(a%Ncol/=b%Ncol)stop "sp_plus_matrix error: a.Ncol != b.Ncol"
-    c=a                         !copy a into c
-    do i=1,b%Nrow
-       do j=1,b%row(i)%size
-          col = b%row(i)%cols(j)
-          val = b%row(i)%vals(j)
-          call c%insert(val,i,col)
-       enddo
-    enddo
+    if(.not.a%status) stop "sp_plus_matrix_merge error: a.status=F"
+    if(.not.b%status) stop "sp_plus_matrix_merge error: b.status=F"
+    if(a%Nrow /= b%Nrow) stop "sp_plus_matrix_merge error: Nrow mismatch"
+    if(a%Ncol /= b%Ncol) stop "sp_plus_matrix_merge error: Ncol mismatch"
+    !
+    call c%free()
+    call c%init(a%Nrow,a%Ncol)
+    !
+    do i=1,a%Nrow
+       na = a%row(i)%size
+       nb = b%row(i)%size
+       if(na+nb == 0) cycle
+       ! allocate worst-case storage
+       allocate(cols(na+nb))
+       allocate(vals(na+nb))
+       p = 1
+       q = 1
+       nn = 0
+       do while(p <= na .or. q <= nb)
+          if(p > na) then
+             ! copy remaining from b
+             nn = nn + 1
+             cols(nn) = b%row(i)%cols(q)
+             vals(nn) = b%row(i)%vals(q)
+             q = q + 1
+          elseif(q > nb) then
+             nn = nn + 1
+             cols(nn) = a%row(i)%cols(p)
+             vals(nn) = a%row(i)%vals(p)
+             p = p + 1
+          else
+             col_a = a%row(i)%cols(p)
+             col_b = b%row(i)%cols(q)
+             if(col_a == col_b) then
+                va = a%row(i)%vals(p)
+                vb = b%row(i)%vals(q)
+                nn = nn + 1
+                cols(nn) = col_a
+                vals(nn) = va + vb
+                p = p + 1; q = q + 1
+             elseif(col_a < col_b) then
+                nn = nn + 1
+                cols(nn) = col_a
+                vals(nn) = a%row(i)%vals(p)
+                p = p + 1
+             else
+                nn = nn + 1
+                cols(nn) = col_b
+                vals(nn) = b%row(i)%vals(q)
+                q = q + 1
+             endif
+          endif
+       end do
+       !
+       c%row(i)%size = nn
+       call append(c%row(i)%cols,cols(1:nn))
+       call append(c%row(i)%vals,vals(1:nn))
+       deallocate(cols,vals)
+    end do
   end function sp_plus_matrix
+
+
+
+  ! Merge three sparse matrices a, b, c into d in one rowwise pass.
+  function sp_plus3_matrix(a,b,c) result(d)
+    type(sparse_matrix), intent(in) :: a,b,c
+    type(sparse_matrix)             :: d
+    integer                         :: i, na, nb, nc, p, q, r, nn
+    integer                         :: ca, cb, cc
+    real(8)                         :: sumv
+    integer, allocatable            :: cols(:)
+#ifdef _CMPLX
+    complex(8), allocatable         :: vals(:)
+    complex(8)                      :: va, vb, vc
+#else
+    real(8), allocatable            :: vals(:)
+    real(8)                         :: va, vb, vc
+#endif
+    if(.not.a%status .or. .not.b%status .or. .not.c%status) stop "sp_plus3_matrix: status error"
+    if(a%Nrow /= b%Nrow .or. a%Nrow /= c%Nrow) stop "sp_plus3_matrix: Nrow mismatch"
+    if(a%Ncol /= b%Ncol .or. a%Ncol /= c%Ncol) stop "sp_plus3_matrix: Ncol mismatch"
+    !
+    call d%free()
+    call d%init(a%Nrow, a%Ncol)
+    !
+    do i = 1, a%Nrow
+       na = a%row(i)%size; nb = b%row(i)%size; nc = c%row(i)%size
+       if(na+nb+nc == 0) cycle
+       ! allocate worst-case once for this row
+       allocate(cols(na+nb+nc))
+       allocate(vals(na+nb+nc))
+       !
+       p = 1
+       q = 1
+       r = 1
+       nn = 0
+       !
+       do while(p<=na .or. q<=nb .or. r<=nc)
+          !
+          ca = huge(1)
+          cb = huge(1)
+          cc = huge(1)
+          if(p<=na) ca = a%row(i)%cols(p)
+          if(q<=nb) cb = b%row(i)%cols(q)
+          if(r<=nc) cc = c%row(i)%cols(r)
+          !
+          if(ca <= cb .AND. ca <= cc) then
+             va   = a%row(i)%vals(p)
+             sumv = va
+             if(cb == ca) then
+                sumv = sumv + b%row(i)%vals(q)
+                q = q+1
+             endif
+             if(cc == ca) then
+                sumv = sumv + c%row(i)%vals(r)
+                r = r+1
+             endif
+             p = p + 1
+             if(abs(sumv)>1d-16)then
+                nn = nn + 1
+                cols(nn) = ca
+                vals(nn) = sumv
+             endif
+          elseif(cb <= ca .AND. cb <= cc) then
+             vb   = b%row(i)%vals(q)
+             sumv = vb
+             if(cc == cb) then
+                sumv = sumv + c%row(i)%vals(r)
+                r = r+1
+             end if
+             q = q + 1
+             if(abs(sumv)>1d-16) then
+                nn = nn + 1
+                cols(nn) = cb
+                vals(nn) = sumv
+             endif
+          else
+             vc   = c%row(i)%vals(r)
+             sumv = vc
+             r = r + 1
+             if(abs(sumv)>1d-16) then
+                nn = nn + 1
+                cols(nn) = cc
+                vals(nn) = sumv
+             end if
+          end if
+       end do
+       !
+       d%row(i)%size = nn
+       if(nn > 0) then
+          call append(d%row(i)%cols, cols(1:nn))
+          call append(d%row(i)%vals, vals(1:nn))
+       end if
+       deallocate(cols, vals)
+       !
+    end do
+  end function sp_plus3_matrix
+
 
 
   !+------------------------------------------------------------------+
@@ -1131,11 +1493,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals*C)
     enddo
   end function sp_left_product_matrix_i
 
@@ -1153,11 +1513,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals*C)
     enddo
   end function sp_left_product_matrix_d
 
@@ -1172,11 +1530,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals*C)
     enddo
   end function sp_left_product_matrix_c
 #endif
@@ -1201,11 +1557,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals*C)
     enddo
   end function sp_right_product_matrix_i
 
@@ -1223,11 +1577,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals*C)
     enddo
   end function sp_right_product_matrix_d
 
@@ -1242,11 +1594,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)*C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals*C)
     enddo
   end function sp_right_product_matrix_c
 #endif
@@ -1271,11 +1621,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)/C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals/C)
     enddo
   end function sp_right_division_matrix_i
 
@@ -1293,11 +1641,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)/C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals/C)
     enddo
   end function sp_right_division_matrix_d
 
@@ -1312,11 +1658,9 @@ contains
     call b%free()
     call b%init(a%Nrow,a%Ncol)
     do i=1,a%Nrow
-       do j=1,a%row(i)%size
-          col = a%row(i)%cols(j)
-          val = a%row(i)%vals(j)/C
-          call b%insert(val,i,col)
-       enddo
+       b%row(i)%size=a%row(i)%size
+       call append(b%row(i)%cols,a%row(i)%cols)
+       call append(b%row(i)%vals,a%row(i)%vals/C)
     enddo
   end function sp_right_division_matrix_c
 #endif
@@ -1657,21 +2001,24 @@ contains
 
 #ifdef _MPI
   function sp_p_matmul_matrix(A,B) result(AxB)
-    class(sparse_matrix), intent(in)   :: A,B
-    type(sparse_matrix)                :: Bt,AxB,AxB_local
-    integer                            :: i,icol,j,jcol,k, ierr
-    integer                            :: comm_
-    integer                            :: rank, ncpu
-    integer                            :: i_start, i_end, Nrows_per_cpu, remainder
-    integer                            :: p_i_start, p_i_end
-    integer                            :: p_rank, Nsize
+    class(sparse_matrix), intent(in)    :: A,B
+    type(sparse_matrix)                 :: Bt,AxB,AxB_local
+    integer                             :: i,icol,j,jcol,k, ierr
+    integer                             :: comm_
+    integer                             :: rank, ncpu
+    integer                             :: i_start, i_end, Nrows_per_cpu, remainder
+    integer                             :: p_i_start, p_i_end
+    integer                             :: p_rank, Nsize,ii
+    integer,dimension(:),allocatable    :: cols
 #ifdef _CMPLX
-    complex(8)                         :: value
+    complex(8),dimension(:),allocatable :: vals
+    complex(8)                          :: value
 #else
-    real(8)                            :: value
+    real(8),dimension(:),allocatable    :: vals
+    real(8)                             :: value
 #endif
-    integer, dimension(:), allocatable :: indx_A, indx_B
-    integer                            :: count
+    integer, dimension(:), allocatable  :: indx_A, indx_B
+    integer                             :: count
     !
     if(.not.check_MPI())stop "sp_p_matmul_matrix error: check_MPI=F"
     comm_ = MPI_COMM_WORLD!;if(present(comm))comm_=comm
@@ -1686,8 +2033,13 @@ contains
     ! Local Computation
     ! Each process computes its assigned rows and stores them in a local matrix.
     call AxB_local%init(A%Nrow, B%Ncol)
+    allocate(cols(B%Ncol))
+    allocate(vals(B%Ncol))
     do i=1+rank, A%Nrow, ncpu
        !
+       ii  = 0
+       vals= 0
+       cols= 0
        do j=1,Bt%Nrow
           if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
           call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
@@ -1698,13 +2050,17 @@ contains
              value = value + A%row(i)%vals(icol)*Bt%row(j)%vals(jcol)
           enddo
           if(value==zero)cycle
-          call append(AxB_local%row(i)%vals,value)
-          call append(AxB_local%row(i)%cols,j)
+          ii = ii+1
+          vals(ii) = value
+          cols(ii) = j
           AxB_local%row(i)%Size = AxB_local%row(i)%Size + 1
        enddo
        !
+       call append(AxB_local%row(i)%vals,vals(1:ii))!value)
+       call append(AxB_local%row(i)%cols,cols(1:ii))!j)
     enddo
     call Bt%free
+    deallocate(vals,cols)
     !
     ! All-Gather Results
     ! The AxB_local are now gathered onto all processes.
@@ -2554,6 +2910,102 @@ end program testSPARSE_MATRICES
 #endif
 
 
+
+
+
+
+!   function sp_filter_matrix_1(A,states) result(Ak)
+!     class(sparse_matrix), intent(in)    :: A
+!     integer,dimension(:),intent(in)     :: states
+!     type(sparse_matrix)                 :: Ak
+!     integer                             :: ii,istate,jstate
+!     integer,dimension(:),allocatable    :: cols
+! #ifdef _CMPLX
+!     complex(8),dimension(:),allocatable :: vals
+!     complex(8)                          :: val
+! #else
+!     real(8),dimension(:),allocatable    :: vals
+!     real(8)                             :: val
+! #endif
+!     !
+!     if(.not.A%status)stop "sp_filter_matrix_1: A.status=F"
+!     !
+!     call Ak%free()
+!     call Ak%init(size(states),size(states))
+!     !
+!     allocate(vals(size(states)))
+!     allocate(cols(size(states)))
+!     !
+!     do istate = 1,size(states)
+!        i   = states(istate)
+!        ii  = 0
+!        vals= 0
+!        cols= 0
+!        do jstate=1,size(states)
+!           j  = states(jstate)
+!           val= A%get(i,j)
+!           if(val==zero)cycle
+!           ii = ii+1
+!           vals(ii)=val
+!           cols(ii)=jstate
+!           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
+!        enddo
+!        call append(Ak%row(istate)%vals,vals(1:ii))
+!        call append(Ak%row(istate)%cols,cols(1:ii))
+!     enddo
+!     deallocate(vals,cols)
+!   end function sp_filter_matrix_1
+
+!   function sp_filter_matrix_2(A,Istates,Jstates) result(Ak)
+!     class(sparse_matrix), intent(in) :: A
+!     integer,dimension(:),intent(in)  :: Istates,Jstates
+!     type(sparse_matrix)              :: Ak
+!     integer                             :: ii,istate,jstate
+!     integer,dimension(:),allocatable    :: cols
+! #ifdef _CMPLX
+!     complex(8),dimension(:),allocatable :: vals
+!     complex(8)                          :: val
+! #else
+!     real(8),dimension(:),allocatable    :: vals
+!     real(8)                             :: val
+! #endif
+!     !
+!     call Ak%free()
+!     call Ak%init(size(Istates),size(Jstates))
+!     !
+!     allocate(vals(size(Jstates)))
+!     allocate(cols(size(Jstates)))
+!     !
+!     do istate = 1,size(Istates)
+!        i   = Istates(istate)
+!        ii  = 0
+!        vals= 0
+!        cols= 0
+!        do jstate=1,size(Jstates)
+!           j=Jstates(jstate)
+!           val = A%get(i,j)
+!           if(val==zero)cycle
+!           ii = ii+1
+!           vals(ii)=val
+!           cols(ii)=jstate
+!           Ak%row(istate)%Size = Ak%row(istate)%Size + 1
+!           !
+!        enddo
+!        call append(Ak%row(istate)%vals,vals(1:ii))
+!        call append(Ak%row(istate)%cols,cols(1:ii))
+!     enddo
+!     deallocate(vals,cols)
+!   end function sp_filter_matrix_2
+
+
+
+
+
+
+
+
+
+
 ! !+------------------------------------------------------------------+
 ! !PURPOSE:  Perform simple Kroenecker product of two sparse matrices
 ! !AxB(1+rowB*(i-1):rowB*i,1+colB*(j-1):colB*j)  =  A(i,j)*B(:,:)
@@ -2631,7 +3083,7 @@ end program testSPARSE_MATRICES
 
 
 
-  !   call Barrier_MPI(Comm)
+!   call Barrier_MPI(Comm)
 
 
 
@@ -2640,80 +3092,80 @@ end program testSPARSE_MATRICES
 
 
 
-  !   call a%free()
-  !   call a%init(4,4)
+!   call a%free()
+!   call a%init(4,4)
 
-  !   if(allocated(a%row(1)%vals))deallocate(a%row(1)%vals)
-  !   if(allocated(a%row(1)%cols))deallocate(a%row(1)%cols)
-  !   allocate(a%row(1)%vals(1))
-  !   allocate(a%row(1)%cols(1))
+!   if(allocated(a%row(1)%vals))deallocate(a%row(1)%vals)
+!   if(allocated(a%row(1)%cols))deallocate(a%row(1)%cols)
+!   allocate(a%row(1)%vals(1))
+!   allocate(a%row(1)%cols(1))
 
-  !   if(master)then
-  !      a = as_sparse(Gamma13)
-  !      call a%show()
-  !      print*,""
-  !   endif
+!   if(master)then
+!      a = as_sparse(Gamma13)
+!      call a%show()
+!      print*,""
+!   endif
 
-  !   call MPI_GET_ADDRESS(a%row(1)%size, MpiBlockDisp(1), ierr)
-  !   call MPI_GET_ADDRESS(a%row(1)%cols, MpiBlockDisp(2), ierr)
-  !   call MPI_GET_ADDRESS(a%row(1)%vals, MpiBlockDisp(3), ierr)
-
-
-  !   base=MpiBlockDisp(1)
-  !   MpiBlockDisp=MpiBlockDisp-base
+!   call MPI_GET_ADDRESS(a%row(1)%size, MpiBlockDisp(1), ierr)
+!   call MPI_GET_ADDRESS(a%row(1)%cols, MpiBlockDisp(2), ierr)
+!   call MPI_GET_ADDRESS(a%row(1)%vals, MpiBlockDisp(3), ierr)
 
 
-  !   mpiBlockLen(1)=1
-  !   mpiBlockLen(2)=1
-  !   mpiBlockLen(3)=1
-
-  !   mpiBlockType(1)=MPI_INTEGER
-  !   mpiBlockType(2)=MPI_INTEGER
-  ! #ifdef _CMPLX
-  !   mpiBlockType(3)=MPI_DOUBLE_COMPLEX
-  ! #else
-  !   mpiBlockType(3)=MPI_DOUBLE_PRECISION
-  ! #endif
-
-  !   call MPI_TYPE_CREATE_STRUCT(mpiBlockNum,mpiBlockLen,MpiBlockDisp,MpiBlockType,MpiSparse_Row,ierr)
-  !   call MPI_TYPE_COMMIT(mpiSparse_Row,ierr)
+!   base=MpiBlockDisp(1)
+!   MpiBlockDisp=MpiBlockDisp-base
 
 
-  !   call MPI_BCAST(a%row(1),1,mpiSparse_Row,0,MPI_COMM_WORLD,ierr)
+!   mpiBlockLen(1)=1
+!   mpiBlockLen(2)=1
+!   mpiBlockLen(3)=1
 
-  !   ! a%row(1)%size=1
-  !   ! a%row(1)%vals(1)=1d0
-  !   ! a%row(1)%cols(1)=3
-  !   print*,""
-  !   call a%show()
-  !   call a%free()
-  !   print*,""
-  !   print*,""
-  !   call Barrier_MPI(comm)
+!   mpiBlockType(1)=MPI_INTEGER
+!   mpiBlockType(2)=MPI_INTEGER
+! #ifdef _CMPLX
+!   mpiBlockType(3)=MPI_DOUBLE_COMPLEX
+! #else
+!   mpiBlockType(3)=MPI_DOUBLE_PRECISION
+! #endif
 
-  !   call a%free()
-  !   call Barrier_MPI(comm)
-  !   if(master)then
-  !      a = as_sparse(kron(Gamma13,Sz))
-  !      print*,"Master a=\G_13.x.S_z:"
-  !      call a%show()
-  !      print*,""
-  !   endif
-  !   call Barrier_MPI(comm)
+!   call MPI_TYPE_CREATE_STRUCT(mpiBlockNum,mpiBlockLen,MpiBlockDisp,MpiBlockType,MpiSparse_Row,ierr)
+!   call MPI_TYPE_COMMIT(mpiSparse_Row,ierr)
 
-  !   if(rank==1)then
-  !      print*,"Node a"
-  !      call a%show()
-  !   endif
-  !   call Barrier_MPI(comm)
-  !   if(master)print*,""
-  !   if(master)print*,"Bcast a: 0 --> node"
-  !   call sp_Bcast(comm,a)
-  !   call Barrier_MPI(comm)
 
-  !   if(rank==1)then
-  !      print*,"Node a"
-  !      call a%show()
-  !   endif
-  !   call Barrier_MPI(comm)
-  !   if(master)print*,""
+!   call MPI_BCAST(a%row(1),1,mpiSparse_Row,0,MPI_COMM_WORLD,ierr)
+
+!   ! a%row(1)%size=1
+!   ! a%row(1)%vals(1)=1d0
+!   ! a%row(1)%cols(1)=3
+!   print*,""
+!   call a%show()
+!   call a%free()
+!   print*,""
+!   print*,""
+!   call Barrier_MPI(comm)
+
+!   call a%free()
+!   call Barrier_MPI(comm)
+!   if(master)then
+!      a = as_sparse(kron(Gamma13,Sz))
+!      print*,"Master a=\G_13.x.S_z:"
+!      call a%show()
+!      print*,""
+!   endif
+!   call Barrier_MPI(comm)
+
+!   if(rank==1)then
+!      print*,"Node a"
+!      call a%show()
+!   endif
+!   call Barrier_MPI(comm)
+!   if(master)print*,""
+!   if(master)print*,"Bcast a: 0 --> node"
+!   call sp_Bcast(comm,a)
+!   call Barrier_MPI(comm)
+
+!   if(rank==1)then
+!      print*,"Node a"
+!      call a%show()
+!   endif
+!   call Barrier_MPI(comm)
+!   if(master)print*,""
