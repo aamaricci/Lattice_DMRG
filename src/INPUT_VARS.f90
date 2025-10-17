@@ -7,98 +7,102 @@ MODULE INPUT_VARS
 
   !input variables
   !=========================================================
-  character(len=1)     :: DMRGtype
+  character(len=1)             :: DMRGtype
   !Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i
-  integer              :: Ldmrg
+  integer                      :: Ldmrg,iNlat,fNlat
   !# of iDMRG steps to take, Ldmrg=max length of the SB.
-  integer              :: Mdmrg
+  integer                      :: Mdmrg
   !# of states to retain at truncation. If 0 use Edmrg as threshold.  
-  real(8)              :: Edmrg
+  real(8)                      :: Edmrg
   !Threshold energy used to evaluate the number of states to keep.
   !If 0d0 use fixed Mdmrg.
-  integer              :: QNdim
+  integer                      :: QNdim
   !Number of conserved Quantum Numbers to consider:
-  character(len=12)    :: QNtype
+  character(len=12)            :: QNtype
   !Type of conserved Quantum Numbers, local: q in [0,1], global: Q in [-Ldmrg,Ldmrg] 
-  real(8),allocatable  :: Dmrg_QN(:)
+  real(8),allocatable          :: Dmrg_QN(:)
   !Desired Target Quantum Numbers: size(DMRG_QN)=QNdim
-  integer              :: Nsweep
+  integer                      :: Nsweep
   !# of DMRG sweep to take for finite DMRG algorithm.
-  real(8),allocatable  :: Esweep(:)
+  real(8),allocatable          :: Esweep(:)
   !list of threshold energies at each sweep in the finite DMRG algorithm.
-  integer,allocatable  :: Msweep(:)
+  integer,allocatable          :: Msweep(:)
   !list of states to optimize at each sweep in the finite DMRG algorithm.
-  integer              :: Norb
+  integer                      :: Norb
   !# of orbitals
-  integer              :: Nspin=2
+  integer                      :: Nspin=2
   !Nspin=# spins
-  ! integer              :: SUn
+  ! integer                    :: SUn
   ! !Spin representation 
-  real(8),allocatable  :: Uloc(:)
+  real(8),allocatable          :: Uloc(:)
   !local interactions
-  real(8)              :: Ust
+  real(8)                      :: Ust
   !intra-orbitals interactions
-  real(8)              :: Jh
+  real(8)                      :: Jh
   !J_Hund: Hunds' coupling constant 
-  real(8)              :: Jx
+  real(8)                      :: Jx
   !J_X: coupling constant for the spin-eXchange interaction term
-  real(8)              :: Jp
+  real(8)                      :: Jp
   !J_P: coupling constant for the Pair-hopping interaction term
-  real(8)              :: xmu=0d0
+  real(8)                      :: xmu=0d0
   !chemical potential
-  real(8)              :: temp
+  real(8)                      :: temp
   !temperature
-  real(8)              :: deg_evals_threshold
+  real(8)                      :: deg_evals_threshold
   !threshold for degenerate eigenvalues of rho
-  real(8)              :: eps
+  real(8)                      :: eps
   !broadening
-  real(8)              :: wini,wfin
+  real(8)                      :: wini,wfin
   !frequency range
-  logical              :: HFmode
+  logical                      :: HFmode
   !flag for HF interaction form U(n-1/2)(n-1/2) VS Unn
-  real(8)              :: cutoff
+  real(8)                      :: cutoff
   !cutoff for spectral summation
-  real(8)              :: gs_threshold
+  real(8)                      :: gs_threshold
   !Energy threshold for ground state degeneracy loop up
-  logical,allocatable  :: gf_flag(:)
+  logical,allocatable          :: gf_flag(:)
   !evaluate Green's functions for Norb+1
-  logical,allocatable  :: chispin_flag(:)
+  logical,allocatable          :: chispin_flag(:)
   !evaluate spin susceptibility for Norb+1
-  integer              :: filling
+  integer                      :: filling
   !Total number of allowed electrons
-  logical              :: sparse_H
+  logical                      :: sparse_H
   !flag to select  storage of sparse matrix H (mem--, cpu++) if TRUE,
   !or direct on-the-fly H*v product (mem++, cpu--
-  integer              :: verbose
+  integer                      :: verbose
   !Flag to control verbosity of the library
-  character(len=12)    :: lanc_method
+  character(len=12)            :: lanc_method
   !select the lanczos method to be used in the determination of the spectrum.
   !ARPACK (default), LANCZOS (T=0 only) 
-  real(8)              :: lanc_tolerance
+  real(8)                      :: lanc_tolerance
   !Tolerance for the Lanczos iterations as used in Arpack and plain lanczos. 
-  integer              :: lanc_niter
+  integer                      :: lanc_niter
   !Max number of Lanczos iterations
-  integer              :: lanc_ngfiter
+  integer                      :: lanc_ngfiter
   !Max number of iteration in resolvant tri-diagonalization
-  integer              :: lanc_ncv_factor
+  integer                      :: lanc_ncv_factor
   !Set the size of the block used by Lanczos-Arpack as:
   !(Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)
-  integer              :: lanc_ncv_add
+  integer                      :: lanc_ncv_add
   !Adds up to the size of the block to prevent it to become too small
   !(Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)
-  integer              :: lanc_neigen
+  integer                      :: lanc_neigen
   !Number of required eigenvalues per sector in the SuperBlock
-  integer              :: lanc_dim_threshold
+  integer                      :: lanc_dim_threshold
   !Min dimension threshold to use Lanczos determination of the
   !spectrum rather than Lapack based exact diagonalization.
-  character(len=:),allocatable    :: block_file
+  logical                      :: save_block
+  !flag to trigger block storage to file
+  character(len=:),allocatable :: block_file
   !Name prefix of the stored block file at each iteration, used to restart DMRG.
-  logical              :: save_all_blocks
+  logical                      :: save_all_blocks
+  !flag to save all blocks or just the last one (true if Build_type=DEBUG)
+  !
   !Some parameters for function dimension:
   !=========================================================
-  integer              :: Lmats
-  integer              :: Lreal
-  integer              :: Ltau
+  integer                      :: Lmats
+  integer                      :: Lreal
+  integer                      :: Ltau
 
   !LOG
   !=========================================================
@@ -142,7 +146,8 @@ contains
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&
          comment="iDMRG steps to take=max length of the SB.")
-
+    iNlat=2*Ldmrg+2
+    fNlat=2*Ldmrg
     call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,&
          default=0,&
          comment="Number of states for truncation. If 0 use Edmrg as threshold.")
@@ -233,7 +238,8 @@ contains
     call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,&
          default=1024,comment="Dimension threshold for Lapack use.")
     !
-    !File Names:
+    call parse_input_variable(save_block,"SAVE_BLOCK",INPUTunit,default=.true.,&
+         comment="Logical flag to trigger block storage. DEBUG enforce T ")
     call parse_input_variable(block_file_,"BLOCK_FILE",INPUTunit,default='block',&
          comment="Name prefix of the stored block file at each iteration, used to restart DMRG.")
     block_file=str(block_file_)
@@ -242,20 +248,9 @@ contains
     !    
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")
     !
-    !
-#ifdef _MPI
-    if(check_MPI())then
-       if(.not.master)then
-          LOGfile=1000-rank
-          ! open(LOGfile,file="stdOUT.rank"//str(rank)//".dmrg")
-          do i=1,get_Size_MPI(MPI_COMM_WORLD)
-             if(i==rank)write(*,"(A,I0,A,I0)")"Rank ",rank," writing to unit: ",LOGfile
-          enddo
-       endif
-    endif
-#endif
 #ifdef _DEBUG
-    save_all_blocks=.true.
+    save_block     =.true.
+    save_all_blocks=.true.    
 #endif
     !
     call set_store_size(1000)

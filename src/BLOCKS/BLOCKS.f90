@@ -1,5 +1,5 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,set_store_size
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,set_store_size,t_start,t_stop
   USE AUX_FUNCS
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
@@ -198,25 +198,21 @@ contains
   !+------------------------------------------------------------------+
   !PURPOSE:  
   !+------------------------------------------------------------------+
-  subroutine rotate_operators_block(self,Umat)
+  subroutine rotate_operators_block(self,Urho)
     class(block)                     :: self
-#ifdef _CMPLX
-    complex(8),dimension(:,:)        :: Umat   ![N,M]
-#else
-    real(8),dimension(:,:)           :: Umat   ![N,M]
-#endif
+    type(sparse_matrix)              :: Urho
     integer                          :: i,N,M  !N=self%dim,M=truncated dimension
     type(sparse_matrix)              :: Op
     character(len=:),allocatable     :: key,type
     !
-    N = size(Umat,1)
-    M = size(Umat,2)
+    N = Urho%Nrow
+    M = Urho%Ncol
     if(N/=self%dim) stop "self.renormalize error: size(Umat,1) != self.dim"
     do i=1,size(self%operators)
        key  = self%operators%key(index=i)
        type = self%operators%type(index=i)
        Op   = self%operators%op(index=i)
-       call self%put_op(str(key),rotate_and_truncate(Op,Umat,N,M), type)
+       call self%put_op(str(key),rotate_and_truncate(Op), type)
     enddo
     self%dim = M
     !
@@ -224,35 +220,18 @@ contains
     !
   contains
     !
-    !Udgr.rho.U [M,N].[N,N].[N,M]=[M,M]
-    function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
+    !Udgr.O.U: [M,N].[N,N].[N,M]=[M,M]
+    function rotate_and_truncate(Op) result(RotOp)
       type(sparse_matrix),intent(in) :: Op
-      integer                        :: N,M
       type(sparse_matrix)            :: RotOp
-#ifdef _CMPLX
-      complex(8),dimension(N,M)      :: trRho
-      complex(8),dimension(M,M)      :: Umat
-      complex(8),dimension(N,N)      :: OpMat
-#else
-      real(8),dimension(N,M)         :: trRho
-      real(8),dimension(M,M)         :: Umat
-      real(8),dimension(N,N)         :: OpMat
-#endif
-      N = size(trRho,1)
-      M = size(trRho,2)
       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
-      OpMat= Op%as_matrix()
-#ifdef _CMPLX
-      Umat = matmul( matmul( conjg(transpose(trRho)),OpMat),trRho) 
-#else
-      Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
-#endif
-      call RotOp%load( Umat )
+      RotOp = matmul( matmul(Urho%dgr(),Op), Urho)
     end function rotate_and_truncate
     !
   end subroutine rotate_operators_block
   !
+
 
 
   !##################################################################
@@ -483,9 +462,11 @@ contains
   subroutine load_block(self,file)
     class(block)     :: self
     character(len=*) :: file
-    call file_gunzip(str(file)) !if not zipped: returns
+    logical          :: bool
+    inquire(file=str(file), exist=bool)
+    if(.not.bool)return         !silently return 
+    write(*,*)"Loading from: "//str(file)
     call self%read(file=str(file))
-    ! call file_gzip(str(file))    
   end subroutine load_block
 
 
@@ -707,3 +688,63 @@ end program testBLOCKS
 
 
 
+
+
+
+
+
+!   subroutine rotate_operators_block(self,Umat)
+!     class(block)                     :: self
+! #ifdef _CMPLX
+!     complex(8),dimension(:,:)        :: Umat   ![N,M]
+! #else
+!     real(8),dimension(:,:)           :: Umat   ![N,M]
+! #endif
+!     integer                          :: i,N,M  !N=self%dim,M=truncated dimension
+!     type(sparse_matrix)              :: Op
+!     character(len=:),allocatable     :: key,type
+!     !
+!     N = size(Umat,1)
+!     M = size(Umat,2)
+!     if(N/=self%dim) stop "self.renormalize error: size(Umat,1) != self.dim"
+!     do i=1,size(self%operators)
+!        key  = self%operators%key(index=i)
+!        type = self%operators%type(index=i)
+!        Op   = self%operators%op(index=i)
+!        call self%put_op(str(key),rotate_and_truncate(Op,Umat,N,M), type)
+!     enddo
+!     self%dim = M
+!     !
+!     call Op%free()
+!     !
+!   contains
+!     !
+!     !Udgr.rho.U [M,N].[N,N].[N,M]=[M,M]
+!     function rotate_and_truncate(Op,trRho,N,M) result(RotOp)
+!       type(sparse_matrix),intent(in) :: Op
+!       integer                        :: N,M
+!       type(sparse_matrix)            :: RotOp
+! #ifdef _CMPLX
+!       complex(8),dimension(N,M)      :: trRho
+!       complex(8),dimension(M,M)      :: Umat
+!       complex(8),dimension(N,N)      :: OpMat
+! #else
+!       real(8),dimension(N,M)         :: trRho
+!       real(8),dimension(M,M)         :: Umat
+!       real(8),dimension(N,N)         :: OpMat
+! #endif
+!       N = size(trRho,1)
+!       M = size(trRho,2)
+!       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
+!            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
+!       OpMat= Op%as_matrix()
+! #ifdef _CMPLX
+!       Umat = matmul( matmul( conjg(transpose(trRho)),OpMat),trRho) 
+! #else
+!       Umat = matmul( matmul(transpose(trRho),OpMat),trRho) 
+! #endif
+!       call RotOp%load( Umat )
+!     end function rotate_and_truncate
+!     !
+!   end subroutine rotate_operators_block
+!   !

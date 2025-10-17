@@ -45,15 +45,15 @@ contains
     allocate(HopH, source=Hij)
     !
     !SETUP the Dots: this is unsatisfactory
-    allocate(dot(2*Ldmrg+2))
+    allocate(dot(iNlat))
     select case(size(ModelDot))
     case (1)
-       do ilat=1,2*Ldmrg+2
+       do ilat=1,iNlat
           dot(ilat) = ModelDot(1)
        enddo
     case default
-       if(size(ModelDot)/=2*Ldmrg+2)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg+2 or 1"
-       do ilat=1,2*Ldmrg+2
+       if(size(ModelDot)/=iNlat)stop "Init_DMRG ERROR: size(ModelDot) != 2*Ldmrg+2 or 1"
+       do ilat=1,iNlat
           dot(ilat) = ModelDot(ilat)
        enddo
     end select
@@ -80,7 +80,7 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: Finalize DMRG"
 #endif
     if(allocated(HopH))deallocate(HopH)    
-    do ilat=1,2*Ldmrg
+    do ilat=1,iNlat
        call dot(ilat)%free()
     enddo
     deallocate(dot)
@@ -142,6 +142,7 @@ contains
     left =init_left
     right=init_right
     !
+    !User should gunzip the blocks file before 
     inquire(file=str(block_file//suffix_dmrg('left')//".restart"), exist=bool_left)
     inquire(file=str(block_file//suffix_dmrg('right')//".restart"), exist=bool_right)
     if(bool_left.AND.bool_right)then
@@ -183,7 +184,7 @@ contains
     !
     !
     !Infinite DMRG
-    allocate(blocks_list(2,2*Ldmrg))
+    allocate(blocks_list(2,fNlat))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
     do while (left%length < Ldmrg)
@@ -203,18 +204,18 @@ contains
           if(MpiMaster)write(*,"(A,I3,F8.4)")"Sweep, E:",im,Esweep(im)
        endif
        !
-       do while(left%length < 2*Ldmrg)
-          right = blocks_list(right_label,2*Ldmrg - left%length)
+       do while(left%length < fNlat)
+          right = blocks_list(right_label,fNlat - left%length)
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
-       do while(right%length < 2*Ldmrg)
-          left = blocks_list(left_label,2*Ldmrg - right%length)
+       do while(right%length < fNlat)
+          left = blocks_list(left_label,fNlat - right%length)
           call step_dmrg('f',2,im)
           blocks_list(2,right%length)= right
        enddo
-       do while(left%length <= Ldmrg)
-          right = blocks_list(right_label,2*Ldmrg - left%length)
+       do while(left%length <= Ldmrg) !Ldmrg=fNlat/2
+          right = blocks_list(right_label,fNlat - left%length)
           call step_dmrg('f',1,im)
           blocks_list(1,left%length) = left
        enddo
@@ -277,14 +278,15 @@ contains
     !
     !> START DMRG STEP:
     if(MpiMaster)call dmrg_graphic(iLabel)
-
-    if(MpiMaster)then
-       if(save_all_blocks)then
-          call left%save(block_file//suffix_dmrg('left',left%length)//".used",gzip=.true.)
-          call right%save(block_file//suffix_dmrg('right',right%length)//".used",gzip=.true.)
-       else
-          call left%save(block_file//suffix_dmrg('left')//".used",gzip=left%length==Ldmrg-1)
-          call right%save(block_file//suffix_dmrg('right')//".used",gzip=right%length==Ldmrg-1)
+    if(save_block)then
+       if(MpiMaster)then
+          if(save_all_blocks)then
+             call left%save(block_file//suffix_dmrg('left',left%length)//".used",gzip=.true.)
+             call right%save(block_file//suffix_dmrg('right',right%length)//".used",gzip=.true.)
+          else
+             if(left%length==Ldmrg-1) call left%save(block_file//suffix_dmrg('left')//".used",gzip=.true.)
+             if(right%length==Ldmrg-1)call right%save(block_file//suffix_dmrg('right')//".used",gzip=.true.)
+          endif
        endif
     endif
     if(MpiMaster)call start_timer()
