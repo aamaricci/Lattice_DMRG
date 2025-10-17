@@ -6,10 +6,6 @@ MODULE DMRG_SUPERBLOCK
   implicit none
   private
 
-  interface sb_get_states
-     !module procedure :: sb_get_states_serial
-     module procedure :: sb_get_states_mpi
-  end interface sb_get_states
 
   public :: sb_get_states
   public :: sb_diag
@@ -36,95 +32,7 @@ contains
   ! integer,dimension(:),allocatable   :: sb_states
   ! type(sectors_list)                 :: sb_sector
   !-----------------------------------------------------------------!
-  subroutine sb_get_states_serial()
-    integer                          :: ql,ipr,rDim,total_states
-    integer                          :: ir,il,istate,unit,k,Nsl,i0,i1
-    real(8),dimension(:),allocatable :: left_qn,right_qn
-    integer,dimension(:),allocatable :: left_map,right_map
-    integer,dimension(:),allocatable :: Astates,Istates
-    integer,dimension(:),allocatable :: Nl,Nr,Offset,Nk
-    !
-#ifdef _DEBUG
-    if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
-#endif
-    !
-    if(MpiMaster)call start_timer("Build SB states")
-    t0=t_start()
-    !
-    !INIT SB STATES OBJECTS:
-    if(allocated(sb_states))deallocate(sb_states)
-    call sb_sector%free()
-    !
-    Nsl = size(left%sectors(1))
-    ipr = Nsl/10; if(ipr==0)ipr = 2
-    allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl),Nk(Nsl))    
-    !
-    if(MpiMaster)rDim=right%Dim
-#ifdef _MPI
-    if(MpiStatus)call Bcast_MPI(MpiComm,rDim)
-#endif
-    !
-    !Pre-computation loop:
-    total_states = 0
-    do ql = 1, Nsl
-       left_qn  = left%sectors(1)%qn(index=ql)
-       right_qn = current_target_qn - left_qn
-       if (.not. right%sectors(1)%has_qn(right_qn)) cycle
-       left_map  = left%sectors(1)%map(qn=left_qn)
-       right_map = right%sectors(1)%map(qn=right_qn)
-       Nl(ql) = size(left_map)
-       Nr(ql) = size(right_map)
-       Nk(ql) = Nl(ql) * Nr(ql)
-       total_states = total_states + Nk(ql)
-    end do
-    !Get index Offset among sectors
-    Offset(1) = 0
-    do ql = 2, Nsl
-       Offset(ql) = Offset(ql-1) + Nk(ql-1)
-    end do
-    !Check sanity
-    if(total_states==0)then
-       if(MpiMaster) call stop_timer("Build SB states")
-       t_sb_get_states=t_stop()
-       stop "sb_get_states ERROR: total_states=0. There are no SB states."
-    endif
-    !
-    !Main work here:
-    if(allocated(sb_states))deallocate(sb_states)
-    allocate(sb_states(total_states));sb_states = 0
-    allocate(Astates(total_states))  ;Astates   = 0
-    do ql=1,Nsl
-       left_qn   = left%sectors(1)%qn(index=ql)
-       right_qn  = current_target_qn - left_qn
-       if(.not.right%sectors(1)%has_qn(right_qn))cycle
-       left_map  = left%sectors(1)%map(qn=left_qn)
-       right_map = right%sectors(1)%map(qn=right_qn)
-       !
-       do il=1,Nl(ql)
-          i0 = 1+(il-1)*Nr(ql) + Offset(ql)
-          i1 = il*Nr(ql)       + Offset(ql)
-          sb_states( i0 : i1 ) = right_map(:) + (left_map(il)-1)*rDim
-          Astates( i0 : i1 ) = (/( k, k=1, Nr(ql) )/) + i0-1 !== Offset(ql) + (il-1)*Nr(ql)
-       enddo
-       if(MpiMaster.AND.mod(ql,ipr)==0)write(LOGfile,*)"ql:",ql,"/",Nsl
-    enddo
-    !
-    ! Finalize sector states calculation
-    do ql = 1, Nsl
-       if (Nk(ql) == 0) cycle
-       left_qn  = left%sectors(1)%qn(index=ql)
-       i0 = 1     + Offset(ql)
-       i1 = Nk(ql)+ Offset(ql)
-       call sb_sector%appends(qn=left_qn, istates=Astates(i0 : i1) )
-    enddo
-    deallocate(Astates)
-    !
-    if(MpiMaster)call stop_timer("Build SB states")
-    t_sb_get_states=t_stop()
-  end subroutine sb_get_states_serial
-
-
-  subroutine sb_get_states_mpi()
+  subroutine sb_get_states()
     integer                          :: ql,ipr,rDim,total_states
     integer                          :: ir,il,istate,unit,k,Nsl,i0,i1
     integer                          :: Istart,Istep,Ierr
@@ -176,6 +84,8 @@ contains
        if(MpiMaster) call stop_timer("Build SB states")
        t_sb_get_states=t_stop()
        stop "sb_get_states ERROR: total_states=0. There are no SB states."
+    else
+       if(MpiMaster)write(LOGfile,*)"Total States:",total_states
     endif
     !
     !Main work here:
@@ -197,13 +107,15 @@ contains
        left_map  = left%sectors(1)%map(qn=left_qn)
        right_map = right%sectors(1)%map(qn=right_qn)
        !
+       !There is no real advantage in doing this MPI
        do il=istart,Nl(ql),istep
           i0 = 1+(il-1)*Nr(ql) + Offset(ql)
           i1 = il*Nr(ql)       + Offset(ql)
           sb_states( i0 : i1 ) = right_map(:) + (left_map(il)-1)*rDim
           Astates( i0 : i1 ) = (/( k, k=1, Nr(ql) )/) + i0-1 !== Offset(ql) + (il-1)*Nr(ql)
        enddo
-       if(MpiMaster.AND.mod(ql,ipr)==0)write(LOGfile,*)"ql:"//str(ql)//"/"//str(Nsl)
+       if(MpiMaster.AND.mod(ql,ipr)==0)&
+            write(LOGfile,*)"ql:"//str(ql)//"/"//str(Nsl)//" N(ql):"//str(Nl(ql))
     enddo
     !
     !Bulk MPI reduction
@@ -212,7 +124,7 @@ contains
        call MPI_ALLREDUCE(MPI_IN_PLACE, sb_states, total_states, &
             MPI_INTEGER, MPI_SUM, MpiComm, ierr)
        call MPI_ALLREDUCE(MPI_IN_PLACE, Astates, total_states,   &
-            MPI_INTEGER, MPI_SUM, MpiComm, ierr)
+            MPI_INTEGER, MPI_SUM, MpiComm, ierr)       
     end if
 #endif
     !
@@ -228,7 +140,7 @@ contains
     !
     if(MpiMaster)call stop_timer("Build SB states")
     t_sb_get_states=t_stop()
-  end subroutine sb_get_states_mpi
+  end subroutine sb_get_states
 
 
 
@@ -588,273 +500,3 @@ END MODULE DMRG_SUPERBLOCK
 
 
 
-
-! subroutine sb_get_states_()
-!   integer                          :: ql,iright
-!   integer                          :: ir,il,istate,unit,k,Nsl
-!   real(8),dimension(:),allocatable :: left_qn,right_qn
-!   integer,dimension(:),allocatable :: left_map,right_map
-!   integer,dimension(:),allocatable :: Astates
-!   integer,dimension(:),allocatable :: Nl,Nr,Offset
-!   !
-! #ifdef _DEBUG
-!   if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock get states"
-! #endif
-!   !
-!   if(MpiMaster)call start_timer("Build SB states")
-!   t0=t_start()
-!   !
-!   !INIT SB STATES OBJECTS:
-!   if(allocated(sb_states))deallocate(sb_states)
-!   call sb_sector%free()
-!   !
-! #ifdef _DEBUG
-!   if(MpiMaster.AND.verbose>5)unit = fopen('SB_list_'//str(left%length)//'.dat')
-! #endif
-!   !
-!   Nsl = size(left%sectors(1))
-!   allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl))
-!   !
-!   do ql=1,Nsl
-!      left_qn   = left%sectors(1)%qn(index=ql)
-!      right_qn  = current_target_qn - left_qn
-!      if(.not.right%sectors(1)%has_qn(right_qn))cycle
-!      !
-!      left_map  = left%sectors(1)%map(qn=left_qn)
-!      right_map = right%sectors(1)%map(qn=right_qn)
-!      !
-! #ifdef _DEBUG
-!      if(MpiMaster.AND.verbose>5)then
-!         write(unit,*)" "
-!         write(unit,*)left_qn,right_qn,size(left_map),size(right_map)
-!      endif
-! #endif
-!      !
-!      Nl(ql) = size(left_map)
-!      Nr(ql) = size(right_map)
-!      Offset(ql)=sum(Nl(1:ql-1)*Nr(1:ql-1))
-!      if(allocated(Astates))deallocate(Astates)
-!      allocate(Astates(Nr(ql)*Nl(ql)));Astates=0
-!      !
-!      do k=1,Nr(ql)*Nl(ql)
-!         ir = mod(k,Nr(ql));if(ir==0)ir=Nr(ql)
-!         il = (k-1)/Nr(ql)+1
-!         istate=right_map(ir) + (left_map(il)-1)*right%Dim
-!         call append(sb_states, istate)
-!         Astates(k) = k+Offset(ql) !==size(sb_states)
-! #ifdef _DEBUG
-!         if(MpiMaster.AND.verbose>5)&
-!              write(unit,*)left_map(il),right_map(ir),istate,size(sb_states),k+Offset(ql)
-! #endif
-!      enddo
-!      call sb_sector%appends(qn=left_qn,istates=Astates)
-!   enddo
-!   !
-! #ifdef _DEBUG
-!   if(MpiMaster.AND.verbose>5)close(unit)
-! #endif
-!   !
-!   if(MpiMaster)call stop_timer("Build SB states")
-!   t_sb_get_states=t_stop()
-! end subroutine sb_get_states_
-
-
-
-
-!NOT WORKING SO FAR: see improved version above
-!   !-----------------------------------------------------------------!
-!   ! purpose: build the list of states compatible with the specified
-!   ! quantum numbers. MPI PARALLEL VERSION.
-!   !-----------------------------------------------------------------!
-!   subroutine sb_get_states_mpi()
-!     integer                            :: ql, ir, il, istate, k, Nsl, Offset, Nk
-!     real(8), dimension(:), allocatable :: left_qn, right_qn
-!     integer, dimension(:), allocatable :: left_map, right_map
-!     integer,dimension(:),allocatable   :: Nl,Nr
-!     ! MPI-specific variables
-!     integer, dimension(:), allocatable :: local_sb_states, Astates
-!     integer                            :: num_k_total, k_start, k_end, local_size
-!     integer                            :: ierr
-!     integer, dimension(:), allocatable :: recvcounts, displs, tmp_sector
-!     integer                            :: total_sector, i_start, i_end
-!     logical                            :: rQbool
-!     !
-! #ifdef _DEBUG
-!     if(MpiMaster) write(LOGfile,*) "DEBUG: SuperBlock get states (MPI Parallel)"
-! #endif
-!     !
-!     if(MpiMaster) call start_timer("Build SB states")
-!     t0 = t_start()
-!     !
-!     ! INIT SB OBJECTS ON ALL RANKS
-!     if(allocated(sb_states)) deallocate(sb_states)
-!     call sb_sector%free()    
-!     !
-!     Nsl = size(left%sectors(1))
-!     allocate(Nl(Nsl),Nr(Nsl))
-!     Nl = 0 ; Nr = 0
-!     !
-!     do ql=1,Nsl
-!        left_qn   = left%sectors(1)%qn(index=ql)
-!        right_qn  = current_target_qn - left_qn
-!        rQbool    = right%sectors(1)%has_qn(right_qn)
-!        if(.not. rQbool) cycle
-!        left_map  = left%sectors(1)%map(qn=left_qn)
-!        right_map = right%sectors(1)%map(qn=right_qn)
-!        Nl(ql)    = size(left_map)
-!        Nr(ql)    = size(right_map)
-!     enddo
-!     !
-!     allocate(sb_states(sum(Nl*Nr)))
-!     sb_states=0
-!     !
-!     ! LOOP OVER SECTORS TO COMPUTE LOCAL STATES
-!     ! Each rank computes its share of states and appends them to a local list.
-!     qleft:do ql=1,Nsl
-!        left_qn   = left%sectors(1)%qn(index=ql)
-!        right_qn  = current_target_qn - left_qn
-!        rQbool    = right%sectors(1)%has_qn(right_qn)
-!        if(.not. rQbool) cycle
-!        left_map  = left%sectors(1)%map(qn=left_qn)
-!        right_map = right%sectors(1)%map(qn=right_qn)
-!        !
-!        Offset    = sum(Nl(1:ql-1)*Nr(1:ql-1))
-!        Nk     = Nl(ql)*Nr(ql)
-!        !
-!        ! Divide the inner loop's iterations (k) among MPI ranks
-!        call distribute_work(Nk, k_start, k_end)
-!        !
-!        ! Each rank computes its local set of states for this sector
-!        if(allocated(local_sb_states)) deallocate(local_sb_states)
-!        allocate(local_sb_states(0))
-!        do k=k_start,k_end
-!           ir = mod(k-1, Nr(ql)) + 1
-!           il = (k-1) / Nr(ql) + 1
-!           istate = right_map(ir) + (left_map(il)-1) * right%Dim
-!           write(650+MpiRank,*)k,il,ir,left_map(il),right_map(ir),istate
-!           call append(local_sb_states, istate)
-!        enddo
-!        write(650+MpiRank,*)
-!        write(600+MpiRank,*)local_sb_states
-!        !
-!        !Gather SB STATES from this sector:    
-! #ifdef _MPI
-!        if(MpiStatus) then
-!           local_size = size(local_sb_states)
-!           !
-!           allocate(recvcounts(MpiSize), displs(MpiSize))
-!           call MPI_Allgather(local_size, 1, MPI_INTEGER, recvcounts, 1, &
-!                MPI_INTEGER, MpiComm, ierr)
-!           !
-!           displs(1) = 0
-!           do k=2,MpiSize
-!              displs(k) = displs(k-1) + recvcounts(k-1)
-!           enddo
-!           !
-!           ! total elements for this sector:
-!           total_sector = sum(recvcounts)
-!           !
-!           ! determine where (global) this sector must be placed in sb_states
-!           i_start = 1     + Offset
-!           i_end   = Nk + Offset
-!           !
-!           ! controllo rapido (debug)
-!           if (total_sector /= (i_end - i_start + 1)) then
-!              if (MpiRank == 0) then
-!                 write(*,*) 'ERROR: mismatch sizes for sector ', ql, &
-!                      ' total_sector=', total_sector, &
-!                      ' expected=', (i_end - i_start + 1)
-!              end if
-!           end if
-!           !
-!           ! temporary buffer for gathered sector (contiguous)
-!           allocate(tmp_sector(total_sector))
-!           !
-!           ! Allgatherv for the sector
-!           call MPI_Allgatherv(local_sb_states, local_size, MPI_INTEGER, &
-!                tmp_sector, recvcounts, displs, MPI_INTEGER, MpiComm, ierr)
-!           !
-!           ! Copia nella locazione globale corretta (mantiene ordine seriale per il settore)
-!           sb_states(i_start:i_end) = tmp_sector
-!           !
-!           write(700+MpiRank,*) 'sector', ql, ' checksum=', sum(sb_states(i_start:i_end))
-!           !
-!           !free memory
-!           deallocate(recvcounts, displs, tmp_sector)
-!        else
-!           sb_states = local_sb_states
-!        endif
-! #else
-!        sb_states = local_sb_states
-! #endif
-!        deallocate(local_sb_states)
-!        !
-!     enddo qleft
-!     !
-!     write(400+MpiRank,*)sb_states
-!     !
-!     !
-!     ! Finally: reconstruct SB_SECTOR on all ranks
-!     do ql=1,Nsl
-!        if(Nl(ql)*Nr(ql)==0) cycle
-!        !
-!        left_qn = left%sectors(1)%qn(index=ql)
-!        Offset  = sum(Nl(1:ql-1)*Nr(1:ql-1))
-!        !
-!        allocate(Astates(Nl(ql)*Nr(ql)))
-!        do k=1,Nr(ql)*Nl(ql)
-!           Astates(k) = k + Offset
-!        enddo
-!        call sb_sector%appends(qn=left_qn,istates=Astates)
-!        deallocate(Astates)
-!        !
-!     enddo
-!     !
-!     call sb_sector%show(unit=500+MpiRank)
-!     !
-!     write(600+MpiRank,*)""
-!     write(700+MpiRank,*)""
-!     write(650+MpiRank,*)""
-!     write(400+MpiRank,*)""
-!     write(500+MpiRank,*)""
-!     !
-!     deallocate(Nl, Nr)
-!     !
-!     if(MpiMaster) call stop_timer("Build SB states")
-!     t_sb_get_states = t_stop()
-!     !
-!   contains
-!     !
-!     ! Helper subroutine for simple block distribution of work
-!     subroutine distribute_work(total_items, item_start, item_end)
-!       integer, intent(in)  :: total_items
-!       integer, intent(out) :: item_start, item_end
-!       integer              :: Q, R
-!       !
-!       if (total_items > 0) then
-! #ifdef _MPI
-!          if (MpiStatus) then
-!             Q = total_items / MpiSize
-!             R = mod(total_items, MpiSize)
-!             if (MpiRank < R) then
-!                item_start = MpiRank * (Q + 1) + 1
-!                item_end   = item_start + Q
-!             else
-!                item_start = MpiRank * Q + R + 1
-!                item_end   = item_start + Q - 1
-!             endif
-!          else
-!             item_start = 1
-!             item_end   = total_items
-!          endif
-! #else
-!          item_start = 1
-!          item_end = total_items
-! #endif
-!       else
-!          item_start = 1
-!          item_end   = 0
-!       endif
-!     end subroutine distribute_work
-!     !
-!   end subroutine sb_get_states_mpi

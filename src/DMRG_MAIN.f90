@@ -142,6 +142,7 @@ contains
     left =init_left
     right=init_right
     !
+    !User should gunzip the blocks file before 
     inquire(file=str(block_file//suffix_dmrg('left')//".restart"), exist=bool_left)
     inquire(file=str(block_file//suffix_dmrg('right')//".restart"), exist=bool_right)
     if(bool_left.AND.bool_right)then
@@ -277,14 +278,15 @@ contains
     !
     !> START DMRG STEP:
     if(MpiMaster)call dmrg_graphic(iLabel)
-
-    if(MpiMaster)then
-       if(save_all_blocks)then
-          call left%save(block_file//suffix_dmrg('left',left%length)//".used",gzip=.true.)
-          call right%save(block_file//suffix_dmrg('right',right%length)//".used",gzip=.true.)
-       else
-          call left%save(block_file//suffix_dmrg('left')//".used",gzip=left%length==Ldmrg-1)
-          call right%save(block_file//suffix_dmrg('right')//".used",gzip=right%length==Ldmrg-1)
+    if(save_block)then
+       if(MpiMaster)then
+          if(save_all_blocks)then
+             call left%save(block_file//suffix_dmrg('left',left%length)//".used",gzip=.true.)
+             call right%save(block_file//suffix_dmrg('right',right%length)//".used",gzip=.true.)
+          else
+             call left%save(block_file//suffix_dmrg('left')//".used",gzip=left%length==Ldmrg-1)
+             call right%save(block_file//suffix_dmrg('right')//".used",gzip=right%length==Ldmrg-1)
+          endif
        endif
     endif
     if(MpiMaster)call start_timer()

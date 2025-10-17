@@ -483,9 +483,11 @@ contains
   subroutine load_block(self,file)
     class(block)     :: self
     character(len=*) :: file
-    call file_gunzip(str(file)) !if not zipped: returns
+    logical          :: bool
+    inquire(file=str(file), exist=bool)
+    if(.not.bool)return         !silently return 
+    write(*,*)"Loading from: "//str(file)
     call self%read(file=str(file))
-    ! call file_gzip(str(file))    
   end subroutine load_block
 
 

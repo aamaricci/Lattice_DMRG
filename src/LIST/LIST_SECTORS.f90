@@ -305,17 +305,13 @@ contains
     end do
     !
     if(iadd)then                !QN exists: create a new map
-       do i=1,size(istates)
-          call append(c%map,istates(i))
-       enddo
+       call append(c%map,istates)
        ! call sort_quicksort(c%map)
     else                        !QN does not exist: create a new element
        allocate(p%next)
        p%next%qn    = qn
        p%next%index = p%index+1
-       do i=1,size(istates)
-          call append(p%next%map,istates(i))
-       enddo
+       call append(p%next%map,istates)
        ! call sort_quicksort(p%next%map)
        if(.not.associated(c))then !end of the list special case (c=>c%next)
           p%next%next  => null()
