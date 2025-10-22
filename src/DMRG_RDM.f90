@@ -219,7 +219,12 @@ contains
           truncation_error_left  = 1d0 - sum(rho_left_evals(1:m_s))
           trRho_left             = rho_left%sparse(m_left,m_s)
           !>Store all the rotation/truncation matrices:
-          call left%put_omat(str(left%length),trRho_left,'')
+          if(save_umat)then
+             select case(store_umat)
+             case('b');call left%put_omat(str(left%length),trRho_left,'')
+             case('f');call left%write_omat(str(left%length),trRho_left,'',suffix_dmrg('left')//".restart")
+             end select
+          endif
           !>Renormalize Blocks:
           call left%renormalize(trRho_left)
           call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
@@ -294,9 +299,14 @@ contains
           truncation_error_right = 1d0 - sum(rho_right_evals(1:m_e))
           trRho_right            = rho_right%sparse(m_right,m_e)
           !>Store all the rotation/truncation matrices:
-          call right%put_omat(str(right%length),trRho_right,'')
+          if(save_umat)then
+             select case(store_umat)
+             case('b');call right%put_omat(str(right%length),trRho_right,'')
+             case('f');call right%write_omat(str(right%length),trRho_right,'',suffix_dmrg('right')//".restart")
+             end select
+          endif
+          !>Renormalize 
           !>Renormalize Blocks:
-          ! call right%renormalize(as_matrix(trRho_right))
           call right%renormalize(trRho_right)
           call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif

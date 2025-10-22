@@ -1,6 +1,7 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,set_store_size,t_start,t_stop
+  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,set_store_size,t_start,t_stop,wait,check_MPI,get_Master_MPI
   USE AUX_FUNCS
+  USE INPUT_VARS, only: block_file,umat_file,LOGfile
   USE MATRIX_SPARSE
   USE TUPLE_BASIS
   USE LIST_OPERATORS
@@ -22,6 +23,7 @@ MODULE BLOCKS
      procedure,pass :: free        => free_block
      procedure,pass :: put_op      => put_op_block
      procedure,pass :: put_omat    => put_omat_block
+     procedure,pass :: write_omat  => write_omat_block
      procedure,pass :: get_basis   => get_basis_block
      procedure,pass :: set_basis   => set_basis_block
      procedure,pass :: show        => show_block
@@ -79,6 +81,7 @@ contains
     self%length = 0
     self%Dim    = 1
     call self%operators%free()
+    call self%omatrices%free()
     if(allocated(self%sectors))then
        call self%sectors%free()
        deallocate(self%sectors)
@@ -93,14 +96,14 @@ contains
   !PURPOSE:  Intrinsic constructor
   !+------------------------------------------------------------------+
   function constructor_from_scrath(length,Dim,sectors,operators,omatrices,opname,SiteType) result(self)
-    integer,intent(in)              :: length
-    integer,intent(in)              :: Dim
-    type(sectors_list),intent(in)   :: sectors(:)
-    type(operators_list),intent(in) :: operators
-    type(operators_list),intent(in) :: omatrices
-    character(len=:),allocatable    :: OpName
-    character(len=:),allocatable    :: SiteType
-    type(block)                     :: self
+    integer,intent(in)                       :: length
+    integer,intent(in)                       :: Dim
+    type(sectors_list),intent(in)            :: sectors(:)
+    type(operators_list),intent(in)          :: operators
+    type(operators_list),intent(in)  :: omatrices
+    character(len=:),allocatable             :: OpName
+    character(len=:),allocatable             :: SiteType
+    type(block)                              :: self
     self%length    = length
     self%Dim       = Dim
     self%operators = operators
@@ -163,6 +166,29 @@ contains
     character(len=*),intent(in)    :: type
     call self%omatrices%put(str(key),op,type)
   end subroutine put_omat_block
+
+
+
+  subroutine write_omat_block(self,key,op,type,suffix)
+    class(block)                   :: self
+    character(len=*),intent(in)    :: key
+    type(sparse_matrix),intent(in) :: op
+    character(len=*),intent(in)    :: type
+    character(len=*),intent(in)    :: suffix
+    integer :: unit
+    unit = fopen(str(umat_file)//str(suffix),append=.true.)
+    write(unit,*)str(key)
+    if(str(type)=="")then
+       write(unit,*)"none"
+    else
+       write(unit,*)str(type)
+    endif
+    call op%write(unit=unit)
+    close(unit)
+  end subroutine write_omat_block
+
+  
+
 
 
   !+------------------------------------------------------------------+
@@ -360,113 +386,156 @@ contains
 
 
 
-  subroutine write_block(self,file,unit)
+  subroutine write_block(self,suffix)
     class(block)              :: self
-    character(len=*),optional :: file
-    integer,optional          :: unit
-    integer                   :: unit_
+    character(len=*)          :: suffix
+    integer                   :: Bunit,Uunit
     !
-    unit_=-1
-    if(present(file))open(free_unit(unit_),file=str(file))
-    if(present(unit))unit_=unit
-    if(unit_==-1)stop "write_block error: no input +file or +unit given"
+    open(free_unit(Bunit),file=str(block_file)//str(suffix) )
     !
     !General info:
-    write(unit_,*)self%length
-    write(unit_,*)self%Dim
-    write(unit_,*)self%SiteType
-    write(unit_,*)self%OpName
+    write(Bunit,*)self%length
+    write(Bunit,*)self%Dim
+    write(Bunit,*)self%SiteType
+    write(Bunit,*)self%OpName
     !
     !Sectors:
-    write(unit_,*)size(self%sectors)
+    write(Bunit,*)size(self%sectors)
     !
     do i=1,size(self%sectors)
-       call self%sectors(i)%write(unit=unit_)
+       call self%sectors(i)%write(unit=Bunit)
     enddo
     !
-    !Operators:
-    call self%operators%write(unit=unit_)
+    !Operators
+    call self%operators%write(unit=Bunit)
     !
     !Omatrices
-    call self%omatrices%write(unit=unit_)
+    call self%omatrices%write(unit=Bunit)
     !
-    if(present(file))close(unit_)
+    close(Bunit)
+    !
   end subroutine write_block
 
 
 
 
-  subroutine save_block(self,file,gzip)
+  subroutine save_block(self,suffix,gzip)
     class(block)     :: self
-    character(len=*) :: file
+    character(len=*) :: suffix
     integer          :: unit_
-    logical          :: gzip
-    !
-    open(free_unit(unit_),file=str(file))
-    call self%write(unit=unit_)
-    close(unit_)
-    if(gzip)call file_gzip(str(file))
+    logical          :: gzip,fbool
+    call self%write(str(suffix))
+    if(gzip)then
+       call file_gzip(str(block_file)//str(suffix))
+       inquire(file=str(umat_file)//str(suffix), exist=fbool)
+       if(fbool)call file_gzip(str(umat_file)//str(suffix))
+    endif
   end subroutine save_block
 
 
 
-  subroutine read_block(self,file,unit)
+
+
+
+  
+
+  subroutine read_block(self,suffix)
     class(block)                   :: self
-    character(len=*),optional      :: file
-    integer,optional               :: unit
-    integer                        :: unit_
+    character(len=*)               :: suffix
+    integer                        :: Bunit,Uunit
     integer                        :: SectorSize
-    integer                        :: length
+    integer                        :: length,il
     integer                        :: Dim
     type(sectors_list),allocatable :: sectors(:)
     type(operators_list)           :: operators
     type(operators_list)           :: omatrices
-    character(len=32)             :: OpName
-    character(len=32)             :: SiteType
+    type(sparse_matrix)            :: umat
+    character(len=32)              :: OpName,key,type
+    character(len=32)              :: SiteType
+    logical                        :: fbool
+
     !
-    unit_=-1
-    if(present(file))open(free_unit(unit_),file=str(file))
-    if(present(unit))unit_=unit
-    if(unit_==-1)stop "read_formatted_block error: no input +file or +unit given"
+    open(free_unit(Bunit),file=str(block_file)//str(suffix) )
     !
     !General info:
-    read(unit_,*)length
-    read(unit_,*)Dim
-    read(unit_,*)SiteType
-    read(unit_,*)OpName
+    read(Bunit,*)length
+    read(Bunit,*)Dim
+    read(Bunit,*)SiteType
+    read(Bunit,*)OpName
     !
     !Sectors:
-    read(unit_,*)SectorSize
+    read(Bunit,*)SectorSize
     allocate(sectors(SectorSize))
     do i=1,SectorSize
-       call sectors(i)%read(unit=unit_)
+       call sectors(i)%read(unit=Bunit)
     enddo
     !
     !Operators:
-    call operators%read(unit=unit_)
+    call operators%read(unit=Bunit)
     !
     !Omatrices
-    call omatrices%read(unit=unit_)
+    call omatrices%read(unit=Bunit)
+    !if no Umat are included then it reads only the '1'.
+    !try to read the rest from file. however this is enough
+    !to restart basic calculation, not to measure.
+    inquire(file=str(umat_file)//str(suffix), exist=fbool)
+    if(fbool)then
+       open(free_unit(Uunit),file=str(umat_file)//str(suffix))
+       do il=2,length
+          read(Uunit,*)key
+          read(Uunit,*)type
+          call umat%read(unit=Uunit)
+          call omatrices%put(str(key),umat,str(type))
+       enddo
+       call umat%free()
+       close(Uunit)
+    endif
+    !
+    if(size(omatrices)/=length)then
+       write(LOGfile,*)"read_block WARNING: could not read self.omatrices. No measurements will be possible."
+       call wait(1000)
+    endif
+    !
     !
     self = block(length,Dim,sectors,operators,omatrices,str(opname),str(SiteType))
     !
-    if(present(file))close(unit_)
+    close(Bunit)
     do i=1,SectorSize
        call sectors(i)%free()
     enddo
     call operators%free()
     call omatrices%free()
+    !
   end subroutine read_block
 
 
-  subroutine load_block(self,file)
+  subroutine load_block(self,suffix)
     class(block)     :: self
-    character(len=*) :: file
-    logical          :: bool
-    inquire(file=str(file), exist=bool)
-    if(.not.bool)return         !silently return 
-    write(*,*)"Loading from: "//str(file)
-    call self%read(file=str(file))
+    character(len=*) :: suffix
+    logical          :: bool,gzbool,master=.true.
+#ifdef _MPI
+    if(check_MPI())master=get_Master_MPI()
+#endif
+    !Check if block_file exists:
+    inquire(file=str(block_file)//str(suffix), exist=bool)
+    if(.not.bool)then
+       inquire(file=str(block_file)//str(suffix)//".gz", exist=gzbool)
+       if(.not.gzbool)return
+       if(master)call file_gunzip(str(block_file)//str(suffix))
+    endif
+    if(master)write(LOGfile,*)"Loading from: "//str(block_file)//str(suffix)
+    !
+    !Check if umat_file exists:
+    inquire(file=str(umat_file)//str(suffix), exist=bool)
+    if(.not.bool)then
+       inquire(file=str(umat_file)//str(suffix)//".gz", exist=gzbool)
+       if(gzbool.AND.master)call file_gunzip(str(umat_file)//str(suffix))
+       if(gzbool)bool=.true.
+    endif
+    if(bool.AND.master)write(LOGfile,*)"Loading from: "//str(umat_file)//str(suffix)
+    !
+    call self%read(str(suffix))
+    !
   end subroutine load_block
 
 

@@ -447,7 +447,7 @@ contains
     DATA_kb_size=D_kb_size
 #endif
 #ifdef _DEBUG
-    write(Logfile,*)"DEBUG: dmrg_set_MpiComm - setting MPI comm"
+    if(MpiMaster)write(Logfile,*)"DEBUG: dmrg_set_MpiComm - setting MPI comm"
 #endif
 #endif
   end subroutine dmrg_set_MpiComm
@@ -460,10 +460,10 @@ contains
     MpiStatus      = .false.
     MpiSize        = 1
     MpiRank        = 0
-    MpiMaster      = .true.
 #ifdef _DEBUG
-    write(Logfile,*)"DEBUG: dmrg_del_MpiComm - deleting MPI comm"
+    if(MpiMaster)write(Logfile,*)"DEBUG: dmrg_del_MpiComm - deleting MPI comm"
 #endif
+    MpiMaster      = .true.
 #endif
   end subroutine dmrg_del_MpiComm
 

@@ -143,13 +143,13 @@ contains
     right=init_right
     !
     !User should gunzip the blocks file before 
-    inquire(file=str(block_file//suffix_dmrg('left')//".restart"), exist=bool_left)
-    inquire(file=str(block_file//suffix_dmrg('right')//".restart"), exist=bool_right)
-    if(bool_left.AND.bool_right)then
-       call left%load(str(block_file//suffix_dmrg('left')//".restart"))
-       call right%load(str(block_file//suffix_dmrg('right')//".restart"))
-       if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length after reading"
-    end if
+    ! inquire(file=str(block_file//suffix_dmrg('left')//".restart"), exist=bool_left)
+    ! inquire(file=str(block_file//suffix_dmrg('right')//".restart"), exist=bool_right)
+    ! if(bool_left.AND.bool_right)then
+    call left%load(str(suffix_dmrg('left')//".restart"))
+    call right%load(str(suffix_dmrg('right')//".restart"))
+    if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length after reading"
+    ! end if
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
@@ -281,11 +281,11 @@ contains
     if(save_block)then
        if(MpiMaster)then
           if(save_all_blocks)then
-             call left%save(block_file//suffix_dmrg('left',left%length)//".used",gzip=.true.)
-             call right%save(block_file//suffix_dmrg('right',right%length)//".used",gzip=.true.)
+             call left%save(suffix_dmrg('left',left%length)//".restart",gzip=.true.)
+             call right%save(suffix_dmrg('right',right%length)//".restart",gzip=.true.)
           else
-             if(left%length==Ldmrg-1) call left%save(block_file//suffix_dmrg('left')//".used",gzip=.true.)
-             if(right%length==Ldmrg-1)call right%save(block_file//suffix_dmrg('right')//".used",gzip=.true.)
+             if(left%length==Ldmrg-1) call left%save(suffix_dmrg('left')//".restart",gzip=.true.)
+             if(right%length==Ldmrg-1)call right%save(suffix_dmrg('right')//".restart",gzip=.true.)
           endif
        endif
     endif
@@ -351,7 +351,7 @@ contains
     !#################################
     !In DMRG_SUPERBLOCK:
     call sb_diag()
-
+    
 
     if(MpiMaster)then
        write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"

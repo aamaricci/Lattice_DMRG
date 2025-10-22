@@ -1,6 +1,6 @@
 MODULE MATRIX_SPARSE  
   USE SCIFOR, only: str,free_unit,assert_shape,zeye,eye
-  USE AUX_FUNCS, only: show_fmt,append
+  USE AUX_FUNCS, only: show_fmt,append,fopen
 #ifdef _MPI
   USE SF_MPI
   USE MPI
@@ -2041,7 +2041,6 @@ contains
        vals= 0
        cols= 0
        do j=1,Bt%Nrow
-          if(.NOT.check_intersection(A%row(i)%cols, Bt%row(j)%cols))cycle
           call get_intersection(A%row(i)%cols, Bt%row(j)%cols)
           value = zero
           do k=1,count
@@ -2101,15 +2100,6 @@ contains
     call AxB_local%free()
     !
   contains
-    !
-    logical function check_intersection(A, B)
-      integer, dimension(:), intent(in) :: A, B
-      integer                           :: i
-      do i=1,size(A)
-         check_intersection=any(B==A(i))
-         if(check_intersection)exit
-      enddo
-    end function check_intersection
     !
     subroutine get_intersection(A, B)
       integer, dimension(:), intent(in) :: A, B

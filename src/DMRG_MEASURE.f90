@@ -55,6 +55,15 @@ contains
     if(MpiStatus.AND.MpiMaster)write(LOGfile,*)"DEBUG: using MPI"
 #endif
     !
+    if(MpiMaster)then
+       if(any([size(left%omatrices),size(right%omatrices)]==1))then
+          write(LOGfile,*)"Init_Measure_DMRG: either Block=L,R block have size(Block.omatrices)==1."
+          write(LOGfile,*)"Init_Measure_DMRG: No rotation matrices are present.                    "
+          write(LOGfile,*)"Init_Measure_DMRG: No measurements are possible.                        "
+          stop
+       endif
+    endif
+    !
     if(measure_status)call End_Measure_DMRG()
     Nsb  = size(sb_sector)
     !
@@ -146,6 +155,8 @@ contains
     pos_=arange(1,Np);if(present(pos))pos_=pos
     !
     call Init_measure_dmrg(msg)
+    print*,MpiRank
+    
     do i=1,Np
        ipos    = pos_(i)
        vals(i) = Measure_Op_DMRG(Op,ipos)
@@ -415,7 +426,7 @@ contains
     integer                          :: i,istart,iend,it
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Advance Correlator"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Advance Correlator"
 #endif
     !
     !The lenght of the last block contributing to the SB construction-> \psi

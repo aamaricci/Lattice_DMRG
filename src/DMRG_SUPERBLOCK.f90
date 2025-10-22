@@ -49,8 +49,7 @@ contains
     t0=t_start()
     !
     !INIT SB STATES OBJECTS:
-    if(allocated(sb_states))deallocate(sb_states)
-    call sb_sector%free()
+    call sb_del_states()
     !
     Nsl = size(left%sectors(1))
     ipr = max(2,Nsl/10)!; if(ipr==0)ipr = 2
@@ -145,6 +144,14 @@ contains
 
 
 
+
+  
+  subroutine sb_del_states()
+    !    
+    if(allocated(sb_states))deallocate(sb_states)
+    call sb_sector%free()
+    !
+  end subroutine sb_del_states
 
 
 
@@ -416,6 +423,8 @@ contains
     endif
     !
     call sb_delete_dims()
+    if(allocated(isb2jsb))deallocate(isb2jsb)
+    if(allocated(IsHconjg))deallocate(IsHconjg)
     if(allocated(RowOffset))deallocate(RowOffset)
     if(allocated(ColOffset))deallocate(ColOffset)
     !
