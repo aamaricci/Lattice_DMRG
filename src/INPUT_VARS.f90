@@ -267,8 +267,8 @@ contains
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")
     !
 #ifdef _DEBUG
-    save_block     =.true.
-    save_all_block =.true.
+    save_block      =.true.
+    save_all_blocks =.true.
 #endif
     !
     store_umat=to_lower(store_umat)

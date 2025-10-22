@@ -225,13 +225,16 @@ contains
              case('f');call left%write_omat(str(left%length),trRho_left,'',suffix_dmrg('left')//".restart")
              end select
           endif
-          !>Renormalize Blocks:
-          call left%renormalize(trRho_left)
-          call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif
 #ifdef _MPI
        if(MpiStatus)call Bcast_MPI(MpiComm,m_s)
-#endif
+       if(MpiStatus)call trRho_left%bcast()
+#endif       
+       !>Renormalize Blocks:
+       call operators_renormalization(left,trRho_left)
+       ! call left%renormalize(trRho_left)
+       if(MpiMaster)call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
+       !
        !
        !>Prepare output and update basis state
        do im=1,m_s
@@ -305,16 +308,17 @@ contains
              case('f');call right%write_omat(str(right%length),trRho_right,'',suffix_dmrg('right')//".restart")
              end select
           endif
-          !>Renormalize 
-          !>Renormalize Blocks:
-          call right%renormalize(trRho_right)
-          call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        endif
 #ifdef _MPI
        if(MpiStatus)call Bcast_MPI(MpiComm,m_e)
+       if(MpiStatus)call trRho_right%bcast()
 #endif
+       !>Renormalize Blocks:
+       call operators_renormalization(right,trRho_right)
+       ! call right%renormalize(trRho_right)
+       if(MpiMaster)call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
        !
-       !>Prepare output and update basis state
+       !
        !>Prepare output and update basis state
        do im=1,m_e
           if(MpiMaster)qn = rho_right%qn(m=im)
@@ -350,6 +354,64 @@ contains
     return
   end subroutine renormalize_block
 
+
+
+
+
+
+  !+------------------------------------------------------------------+
+  !PURPOSE:  
+  !+------------------------------------------------------------------+
+  subroutine operators_renormalization(self,Urho)
+    type(block)                  :: self
+    type(sparse_matrix)          :: Urho
+    integer                      :: i,N,M  !N=self%dim,M=truncated dimension
+    type(sparse_matrix)          :: Op,rOp
+    character(len=:),allocatable :: key,type
+    !
+    !0. Master checks dimensions:
+    N = Urho%Nrow
+    M = Urho%Ncol
+    if(MpiMaster.AND.(N/=self%dim)) stop "self.renormalize error: size(Umat,1) != self.dim"
+    !
+    do i=1,size(self%operators)
+       !1. Master retrieve operator and check dimensions
+       if(MpiMaster)Op  = self%operators%op(index=i)
+       call Op%bcast()
+       if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
+               stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
+       !2. All nodes rotate&truncate
+       rOp = rotate_and_truncate(Op)
+       !4. Master store renormalized operator
+       if(MpiMaster)then
+          key  = self%operators%key(index=i)
+          type = self%operators%type(index=i)
+          call self%put_op(str(key),rOp, type)
+       endif
+    enddo
+    self%dim = M
+    !
+    call Op%free()
+    call rOp%free()
+    !
+  contains
+    !
+    !Udgr.O.U: [M,N].[N,N].[N,M]=[M,M]
+    function rotate_and_truncate(Op) result(RotOp)
+      type(sparse_matrix) :: Op
+      type(sparse_matrix) :: RotOp
+#ifdef _MPI
+      if(MpiStatus)then
+         RotOp = (Urho%dgr().pm.Op).pm.Urho
+      else
+         RotOp = matmul( matmul(Urho%dgr(),Op), Urho)
+      endif
+#else
+      RotOp = matmul( matmul(Urho%dgr(),Op), Urho)
+#endif
+    end function rotate_and_truncate
+    !
+  end subroutine operators_renormalization
 
 
 END MODULE DMRG_RDM
