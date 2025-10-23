@@ -512,27 +512,15 @@ contains
   subroutine load_block(self,suffix)
     class(block)     :: self
     character(len=*) :: suffix
-    logical          :: bool,gzbool,master=.true.
-#ifdef _MPI
-    if(check_MPI())master=get_Master_MPI()
-#endif
+    logical          :: bool,gzbool
     !Check if block_file exists:
     inquire(file=str(block_file)//str(suffix), exist=bool)
-    if(.not.bool)then
-       inquire(file=str(block_file)//str(suffix)//".gz", exist=gzbool)
-       if(.not.gzbool)return
-       if(master)call file_gunzip(str(block_file)//str(suffix))
-    endif
-    if(master)write(LOGfile,*)"Loading from: "//str(block_file)//str(suffix)
+    if(.not.bool)return
+    write(LOGfile,*)"Loading from: "//str(block_file)//str(suffix)
     !
     !Check if umat_file exists:
     inquire(file=str(umat_file)//str(suffix), exist=bool)
-    if(.not.bool)then
-       inquire(file=str(umat_file)//str(suffix)//".gz", exist=gzbool)
-       if(gzbool.AND.master)call file_gunzip(str(umat_file)//str(suffix))
-       if(gzbool)bool=.true.
-    endif
-    if(bool.AND.master)write(LOGfile,*)"Loading from: "//str(umat_file)//str(suffix)
+    if(bool)write(LOGfile,*)"Loading from: "//str(umat_file)//str(suffix)
     !
     call self%read(str(suffix))
     !

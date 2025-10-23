@@ -613,7 +613,7 @@ contains
     logical                          :: MpiMaster
     !
 #ifdef _DEBUG
-    if(verbose>4)write(Logfile,*)"DEBUG: d_scatter_vector_MPI: scatter v into vloc"
+    if(MpiMaster.AND.verbose>4)write(Logfile,*)"DEBUG: d_scatter_vector_MPI: scatter v into vloc"
 #endif
     !
     if( MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null )return
@@ -686,7 +686,7 @@ contains
     integer                   :: N,Nloc,Neigen,i
     !
 #ifdef _DEBUG
-    if(verbose>4)write(Logfile,*)"DEBUG scatter_vector_MPI: scatter many v"
+    if(MpiMaster.AND.verbose>4)write(Logfile,*)"DEBUG scatter_vector_MPI: scatter many v"
 #endif
     N      = size(v,1)
     Nloc   = size(vloc,1)
@@ -719,7 +719,7 @@ contains
     logical                          :: MpiMaster
     !
 #ifdef _DEBUG
-    if(verbose>4)write(Logfile,*)"DEBUG d_gather_basis_MPI: gather  v"
+    if(MpiMaster.AND.verbose>4)write(Logfile,*)"DEBUG d_gather_basis_MPI: gather  v"
 #endif
     !
     if(  MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null ) return
@@ -791,7 +791,7 @@ contains
     integer                   :: N,Nloc,Neigen,i
     !
 #ifdef _DEBUG
-    if(verbose>4)write(Logfile,*)"DEBUG gather_vector_MPI: gather many v"
+    if(MpiMaster.AND.verbose>4)write(Logfile,*)"DEBUG gather_vector_MPI: gather many v"
 #endif
     N      = size(v,1)
     Nloc   = size(vloc,1)
@@ -825,7 +825,7 @@ contains
     logical                          :: MpiMaster
     !
 #ifdef _DEBUG
-    if(verbose>4)write(Logfile,*)"DEBUG d_allgather_basis_MPI: allgather v"
+    if(MpiMaster.AND.verbose>4)write(Logfile,*)"DEBUG d_allgather_basis_MPI: allgather v"
 #endif
     !
     if(  MpiComm == MPI_UNDEFINED .OR. MpiComm == Mpi_Comm_Null ) return

@@ -47,7 +47,7 @@ contains
     type(sparse_matrix)             :: H2
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Setup SB Sparse"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Setup SB Sparse"
 #endif
     !
     if(MpiMaster)call start_timer("Setup SB Sparse")
@@ -110,7 +110,7 @@ contains
     character(len=:),allocatable                 :: type
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Setup SB Direct"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Setup SB Direct"
 #endif
     !
     if(.not.left%operators%has_key("H"))&
@@ -376,7 +376,7 @@ contains
 #endif
     !
 #ifdef _DEBUG
-    write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
+    if(MpiMaster)write(LOGfile,*)"DEBUG: Setup SB Direct - fermion"
 #endif
     !
     if(MpiMaster)call start_timer("Setup SB Direct, Nsb: "//str(size(sb_sector)))

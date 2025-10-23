@@ -52,8 +52,12 @@ contains
     call sb_del_states()
     !
     Nsl = size(left%sectors(1))
-    ipr = max(2,Nsl/10)!; if(ipr==0)ipr = 2
-    allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl),Nk(Nsl))    
+    !ipr = max(2,Nsl/10)!; if(ipr==0)ipr = 2
+    allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl),Nk(Nsl))
+    Nl=0
+    Nr=0
+    Nk=0
+    Offset=0
     !
     if(MpiMaster)rDim=right%Dim
 #ifdef _MPI
@@ -113,7 +117,7 @@ contains
           sb_states( i0 : i1 ) = right_map(:) + (left_map(il)-1)*rDim
           Astates( i0 : i1 ) = (/( k, k=1, Nr(ql) )/) + i0-1 !== Offset(ql) + (il-1)*Nr(ql)
        enddo
-       if(MpiMaster.AND.mod(ql,ipr)==0)&
+       if(MpiMaster)&           !.AND.mod(ql,ipr)==0)&
             write(LOGfile,*)"ql:"//str(ql)//"/"//str(Nsl)//" N(ql):"//str(Nl(ql))
     enddo
     !
@@ -123,7 +127,7 @@ contains
        call MPI_ALLREDUCE(MPI_IN_PLACE, sb_states, total_states, &
             MPI_INTEGER, MPI_SUM, MpiComm, ierr)
        call MPI_ALLREDUCE(MPI_IN_PLACE, Astates, total_states,   &
-            MPI_INTEGER, MPI_SUM, MpiComm, ierr)       
+            MPI_INTEGER, MPI_SUM, MpiComm, ierr)
     end if
 #endif
     !
