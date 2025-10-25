@@ -36,6 +36,7 @@ MODULE BLOCKS
      procedure,pass :: save        => save_block
      procedure,pass :: read        => read_block
      procedure,pass :: load        => load_block
+     procedure,pass :: load_umat   => load_umat_block
   end type block
 
 
@@ -187,7 +188,7 @@ contains
     close(unit)
   end subroutine write_omat_block
 
-  
+
 
 
 
@@ -437,7 +438,6 @@ contains
 
 
 
-  
 
   subroutine read_block(self,suffix)
     class(block)                   :: self
@@ -453,7 +453,6 @@ contains
     character(len=32)              :: OpName,key,type
     character(len=32)              :: SiteType
     logical                        :: fbool
-
     !
     open(free_unit(Bunit),file=str(block_file)//str(suffix) )
     !
@@ -493,7 +492,6 @@ contains
     !
     if(size(omatrices)/=length)then
        write(LOGfile,*)"read_block WARNING: could not read self.omatrices. No measurements will be possible."
-       call wait(1000)
     endif
     !
     !
@@ -507,6 +505,8 @@ contains
     call omatrices%free()
     !
   end subroutine read_block
+
+
 
 
   subroutine load_block(self,suffix)
@@ -525,6 +525,31 @@ contains
     call self%read(str(suffix))
     !
   end subroutine load_block
+
+
+  subroutine load_umat_block(self,suffix,length)
+    class(block)                   :: self
+    character(len=*)               :: suffix
+    integer                        :: length
+    integer                        :: il,Uunit
+    type(sparse_matrix)            :: umat
+    character(len=32)              :: OpName,key,type
+    character(len=32)              :: SiteType
+    logical                        :: fbool
+    !to restart basic calculation, not to measure.
+    inquire(file=str(umat_file)//str(suffix), exist=fbool)
+    if(fbool)then
+       open(free_unit(Uunit),file=str(umat_file)//str(suffix))
+       do il=2,length
+          read(Uunit,*)key
+          read(Uunit,*)type
+          call umat%read(unit=Uunit)
+          call self%omatrices%put(str(key),umat,str(type))
+       enddo
+       call umat%free()
+       close(Uunit)
+    endif
+  end subroutine load_umat_block
 
 
 END MODULE BLOCKS

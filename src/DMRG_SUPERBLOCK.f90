@@ -52,6 +52,10 @@ contains
     call sb_del_states()
     !
     Nsl = size(left%sectors(1))
+    if(Nsl==0)then
+       if(MpiMaster)write(LOGfile,*)"sb_get_states error: Nsl==0, blocks seem empty."
+       stop
+    endif
     !ipr = max(2,Nsl/10)!; if(ipr==0)ipr = 2
     allocate(Nl(Nsl),Nr(Nsl),Offset(Nsl),Nk(Nsl))
     Nl=0
@@ -149,7 +153,7 @@ contains
 
 
 
-  
+
   subroutine sb_del_states()
     !    
     if(allocated(sb_states))deallocate(sb_states)

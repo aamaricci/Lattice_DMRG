@@ -50,28 +50,32 @@ contains
   subroutine Init_Measure_dmrg(msg)
     real(8),dimension(:),allocatable :: qn
     character(len=*),optional        :: msg
+    integer,dimension(2)             :: omat_dims
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init measure"
+#ifdef _MPI
     if(MpiStatus.AND.MpiMaster)write(LOGfile,*)"DEBUG: using MPI"
 #endif
+#endif
     !
-    if(MpiMaster)then
-       if(any([size(left%omatrices),size(right%omatrices)]==1))then
-          write(LOGfile,*)"Init_Measure_DMRG: either Block=L,R block have size(Block.omatrices)==1."
-          write(LOGfile,*)"Init_Measure_DMRG: No rotation matrices are present.                    "
-          write(LOGfile,*)"Init_Measure_DMRG: No measurements are possible.                        "
-          stop
-       endif
+    if(MpiMaster)omat_dims = [size(left%omatrices),size(right%omatrices)]
+#ifdef _MPI
+    call Bcast_MPI(MpiComm,omat_dims)
+#endif
+    if(any(omat_dims==1))then
+       measure_status=.false.
+       return
     endif
     !
     if(measure_status)call End_Measure_DMRG()
-    Nsb  = size(sb_sector)
     !
     string="";if(present(msg))string=msg
     !
     if(MpiMaster)call start_timer("Start measuring..."//str(string))
     !
     call sb_build_dims()
+    !
+    Nsb  = size(sb_sector)
     !
     allocate(LI(Nsb))
     allocate(RI(Nsb))
@@ -99,7 +103,13 @@ contains
   end subroutine End_measure_DMRG
 
 
-
+  subroutine Error_measure_DMRG
+    if(MpiMaster)then
+       write(LOGfile,*)"Init_Measure_DMRG: either Block=L,R block have size(Block.omatrices)==1."
+       write(LOGfile,*)"Init_Measure_DMRG: No rotation matrices are present.                    "
+       write(LOGfile,*)"Init_Measure_DMRG: No measurements are possible.                        "
+    endif
+  end subroutine Error_measure_DMRG
 
   !##################################################################
   !              Measure local Operator Op
@@ -155,8 +165,11 @@ contains
     pos_=arange(1,Np);if(present(pos))pos_=pos
     !
     call Init_measure_dmrg(msg)
-    print*,MpiRank
-    
+    if(.not.measure_status)then
+       call Error_measure_DMRG
+       return
+    endif
+    !
     do i=1,Np
        ipos    = pos_(i)
        vals(i) = Measure_Op_DMRG(Op,ipos)
@@ -207,6 +220,11 @@ contains
     allocate(vals(M,Np))
     !
     call Init_measure_dmrg(msg)
+    if(.not.measure_status)then
+       call Error_measure_DMRG
+       return
+    endif
+    !
     do i=1,Np
        ipos = pos_(i)
        do j=1,M

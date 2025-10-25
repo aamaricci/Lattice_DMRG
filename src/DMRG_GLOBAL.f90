@@ -59,6 +59,7 @@ MODULE DMRG_GLOBAL
   real(8)                                        :: truncation_error_left,truncation_error_right
   character(len=:),allocatable                   :: suffix
   real(8),dimension(:),allocatable               :: target_Qn,current_target_QN
+  integer                                        :: current_L
   type(block)                                    :: init_left,init_right
   logical                                        :: init_called=.false.
 #ifdef _CMPLX
@@ -418,7 +419,19 @@ contains
 
 
 
+  subroutine sb_set_current_qn()
+    current_L         = left%length + right%length
+    select case(str(to_lower(QNtype(1:1))))
+    case default;stop "DMRG_MAIN error: QNtype != [local,global]"
+    case("l")
+       current_target_QN = int(target_qn*current_L*Norb)
+    case("g")
+       current_target_QN = min(current_L,int(target_qn*Norb)) !to check
+    end select
+  end subroutine sb_set_current_qn
 
+
+  
   !##################################################################
   !##################################################################
   !                   MPI AUX FUNCTIONS

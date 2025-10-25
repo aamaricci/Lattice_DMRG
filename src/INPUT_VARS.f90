@@ -93,16 +93,17 @@ MODULE INPUT_VARS
   !spectrum rather than Lapack based exact diagonalization.
   logical                      :: save_umat
   !flag to save Rotation matrices, default=T
-  character(len=1)             :: store_umat
-  !Name where to save (and retrieve) Rotation matrices
-  character(len=:),allocatable :: umat_file
-  !Name prefix of the stored block file at each iteration, used to restart DMRG.
   logical                      :: save_block
   !flag to trigger block storage to file
-  character(len=:),allocatable :: block_file
-  !Name prefix of the stored block file at each iteration, used to restart DMRG.
   logical                      :: save_all_blocks
   !flag to save all blocks or just the last one (true if Build_type=DEBUG)
+  character(len=1)             :: store_umat
+  !index flag to save (and retrieve) Rotation matrices
+  character(len=:),allocatable :: umat_file
+  !Name prefix of the stored Umatrix file, used to restart DMRG.
+  character(len=:),allocatable :: block_file
+  !Name prefix of the stored block file, used to restart DMRG.
+
   !
   !Some parameters for function dimension:
   !=========================================================
@@ -246,22 +247,24 @@ contains
          default=1024,comment="Dimension threshold for Lapack use.")
     !
     !>Save Blocks tuning:
+    call parse_input_variable(save_umat,"SAVE_UMAT",INPUTunit,default=.true.,&
+         comment="Logical flag to save Rotation matrices, default=T.")
     call parse_input_variable(save_block,"SAVE_BLOCK",INPUTunit,default=.true.,&
          comment="Logical flag to trigger block storage. DEBUG enforces T ")
-    call parse_input_variable(block_file_,"BLOCK_FILE",INPUTunit,default='block',&
-         comment="Name prefix of the stored block file at each iteration, used to restart DMRG.")
-    block_file=str(block_file_)
+    !
     call parse_input_variable(save_all_blocks,"SAVE_ALL_BLOCKS",INPUTunit,default=.false.,&
          comment="Logical flag to save all blocks (T) or just the last (F, default). DEBUG enforces T")
     !
-    !>Save Umatrices tuning:
-    call parse_input_variable(save_umat,"SAVE_UMAT",INPUTunit,default=.true.,&
-         comment="Logical flag to save Rotation matrices, default=T.")
     call parse_input_variable(store_umat,"STORE_UMAT",INPUTunit,default='b',&
-         comment="Name where to save (and retrieve) Rotation matrices: b=Block, f=File")
+         comment="Chr flag to save (and retrieve) Rotation matrices: b=Block, f=File")
+    !
     call parse_input_variable(umat_file_,"UMAT_FILE",INPUTunit,default='umat',&
-         comment="Name suffix of the stored rotation matrices file at each iteration, used to measure in DMRG.")
+         comment="Name suffix of the stored rotation matrices, used to measure in DMRG.")
     umat_file=str(umat_file_)
+    call parse_input_variable(block_file_,"BLOCK_FILE",INPUTunit,default='block',&
+         comment="Name prefix of the stored block file, used to restart DMRG.")
+    block_file=str(block_file_)
+
     !
     !    
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")

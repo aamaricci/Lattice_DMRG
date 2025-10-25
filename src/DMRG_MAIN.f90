@@ -67,9 +67,12 @@ contains
     !    
     init_called =.true.
     !
+    left =init_left
+    right=init_right
+    !
   end subroutine init_dmrg
 
-  
+
 
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
@@ -106,6 +109,11 @@ contains
 
 
 
+
+
+
+
+
   !##################################################################
   !              RUN DMRG ALGORITHM
   !##################################################################
@@ -127,9 +135,6 @@ contains
 
 
 
-  !##################################################################
-  !              FINITE/INFINITE DMRG ALGORITHM
-  !##################################################################
   subroutine infinite_DMRG()
     logical :: bool_left,bool_right
     !
@@ -139,17 +144,11 @@ contains
     !
     if(.not.init_called)&
          stop "infinite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
-    left =init_left
-    right=init_right
     !
-    !User should gunzip the blocks file before 
-    ! inquire(file=str(block_file//suffix_dmrg('left')//".restart"), exist=bool_left)
-    ! inquire(file=str(block_file//suffix_dmrg('right')//".restart"), exist=bool_right)
-    ! if(bool_left.AND.bool_right)then
+    !User should gunzip the blocks file before. If files not found, just return.
     call left%load(str(suffix_dmrg('left')//".restart"))
     call right%load(str(suffix_dmrg('right')//".restart"))
-    if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length after reading"
-    ! end if
+    if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length"
     !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
@@ -158,8 +157,11 @@ contains
 
 
 
+
+
+
   subroutine finite_DMRG()
-    integer                                :: i,im,right_label,left_label,current_L
+    integer                                :: i,im,right_label,left_label
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
     integer                                :: j
@@ -176,9 +178,6 @@ contains
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
     !
-    left =init_left
-    right=init_right
-    !
     left_label =1 
     right_label=2
     !
@@ -187,6 +186,16 @@ contains
     allocate(blocks_list(2,fNlat))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
+    !Attempt to read from files:
+    do j=1,Ldmrg-1
+       call left%load(str(suffix_dmrg('left',j)//".restart"))
+       call right%load(str(suffix_dmrg('right',j)//".restart"))
+       blocks_list(left_label , left%length)=left
+       blocks_list(right_label,right%length)=right
+    enddo
+    if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length"
+
+
     do while (left%length < Ldmrg)
        call step_dmrg('i')
        blocks_list(left_label , left%length)=left
@@ -198,6 +207,7 @@ contains
     !
     !Finite DMRG: start sweep forth&back:
     do im=1,size(Msweep)
+
        if(Esweep(im)==0)then
           if(MpiMaster)write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
        else
@@ -246,7 +256,6 @@ contains
     integer          :: m_es,m_ee
     integer          :: m_left,m_right
     integer          :: m_eleft,m_eright
-    integer          :: current_L
     integer          :: Lleft,Lright
     logical          :: bool1,bool2,renormalize
     !
@@ -306,14 +315,8 @@ contains
     !#################################
     m_eleft           = left%dim
     m_eright          = right%dim
-    current_L         = left%length + right%length
-    select case(str(to_lower(QNtype(1:1))))
-    case default;stop "DMRG_MAIN error: QNtype != [local,global]"
-    case("l")
-       current_target_QN = int(target_qn*current_L*Norb)
-    case("g")
-       current_target_QN = min(current_L,int(target_qn*Norb)) !to check
-    end select
+    ! current_L         = left%length + right%length
+    call sb_set_current_QN()    !contains current_L
     !
     !In DMRG_SUPERBLOCK:
     call sb_get_states()
@@ -351,8 +354,7 @@ contains
     !#################################
     !In DMRG_SUPERBLOCK:
     call sb_diag()
-    
-
+    !
     if(MpiMaster)then
        write(LOGfile,*)"- - - - - - - - - - - - - - - - - - - - -"
        select case(left%type())
@@ -432,6 +434,8 @@ contains
   !##################################################################
   !                 WRITE TO FILE
   !##################################################################
+
+
   !-----------------------------------------------------------------!
   ! Purpose: write energy to file
   !-----------------------------------------------------------------!
