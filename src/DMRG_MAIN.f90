@@ -127,7 +127,6 @@ contains
     select case(to_lower(DMRGtype))
     case('i');call infinite_DMRG()
     case('f');call finite_DMRG()
-    case default;stop "ERROR DMRG: unsupported DMRGtype: DMRGtype !=['i','f']"
     end select
   end subroutine RUN_DMRG
 
@@ -161,10 +160,9 @@ contains
 
 
   subroutine finite_DMRG()
-    integer                                :: i,im,right_label,left_label
+    integer                                :: i,j,im,right_label,left_label
     type(block),dimension(:,:),allocatable :: blocks_list
     type(block)                            :: tmp
-    integer                                :: j
     logical                                :: ExitSweep
     integer                                :: m_rleft,m_rright
     !
@@ -172,8 +170,6 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
     !
-    ! if(mod(Ldmrg,2)/=0)&
-    !      stop "finite_DMRG ERROR: Ldmrg%2 != 0. Ldmrg input must be an even number."
     !
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
@@ -181,21 +177,19 @@ contains
     left_label =1 
     right_label=2
     !
-    !
     !Infinite DMRG
     allocate(blocks_list(2,fNlat))
     blocks_list(left_label,1)=left
     blocks_list(right_label,1)=right
     !Attempt to read from files:
     do j=1,Ldmrg-1
-       call left%load(str(suffix_dmrg('left',j)//".restart"))
-       call right%load(str(suffix_dmrg('right',j)//".restart"))
+       call left%load(str(suffix_dmrg('left',j,'i')//".restart"))
+       call right%load(str(suffix_dmrg('right',j,'i')//".restart"))
        blocks_list(left_label , left%length)=left
        blocks_list(right_label,right%length)=right
     enddo
     if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length"
-
-
+    !
     do while (left%length < Ldmrg)
        call step_dmrg('i')
        blocks_list(left_label , left%length)=left
@@ -206,8 +200,13 @@ contains
     if(MpiMaster)print*,""
     !
     !Finite DMRG: start sweep forth&back:
+    do j=1,fNlat-1
+       call blocks_list(1,j)%load( str(suffix_dmrg('left',j,'f')//".restart") )
+       call blocks_list(2,j)%load( str(suffix_dmrg('right',j,'f')//".restart") )
+    enddo
+    !
     do im=1,size(Msweep)
-
+       !
        if(Esweep(im)==0)then
           if(MpiMaster)write(*,"(A,I3,I6)")"Sweep, M:",im,Msweep(im)
        else
@@ -290,11 +289,11 @@ contains
     if(save_block)then
        if(MpiMaster)then
           if(save_all_blocks)then
-             call left%save(suffix_dmrg('left',left%length)//".restart",gzip=.true.)
-             call right%save(suffix_dmrg('right',right%length)//".restart",gzip=.true.)
+             call left%save(suffix_dmrg('left',left%length,type)//".restart",gzip=.true.)
+             call right%save(suffix_dmrg('right',right%length,type)//".restart",gzip=.true.)
           else
-             if(left%length==Ldmrg-1) call left%save(suffix_dmrg('left')//".restart",gzip=.true.)
-             if(right%length==Ldmrg-1)call right%save(suffix_dmrg('right')//".restart",gzip=.true.)
+             if(left%length==Ldmrg-1) call left%save(suffix_dmrg('left',type=type)//".restart",gzip=.true.)
+             if(right%length==Ldmrg-1)call right%save(suffix_dmrg('right',type=type)//".restart",gzip=.true.)
           endif
        endif
     endif
@@ -443,7 +442,7 @@ contains
     integer                   :: current_L
     integer                   :: Eunit
     current_L = left%length + right%length
-    Eunit     = fopen("energyVSleft.length_"//str(suffix),append=.true.)
+    Eunit     = fopen("energyVSleft.length"//str(suffix),append=.true.)
     write(Eunit,*)left%length,gs_energy/current_L/Norb,right%length
     close(Eunit)
   end subroutine write_energy
@@ -456,7 +455,7 @@ contains
     integer                   :: current_L
     integer                   :: Eunit
     current_L = left%length + right%length
-    Eunit     = fopen("truncationVSleft.length_"//str(suffix),append=.true.)
+    Eunit     = fopen("truncationVSleft.length"//str(suffix),append=.true.)
     write(Eunit,*)left%length,&
          truncation_error_left/current_L/Norb,&
          truncation_error_right/current_L/Norb,right%length
@@ -477,7 +476,7 @@ contains
        if(rho_left_evals(i)<=0d0)cycle
        entropy = entropy-rho_left_evals(i)*log(rho_left_evals(i))
     enddo
-    Eunit     = fopen("SentropyVSleft.length_"//str(suffix),append=.true.)
+    Eunit     = fopen("SentropyVSleft.length"//str(suffix),append=.true.)
     write(Eunit,*)left%length,entropy,right%length
     close(Eunit)
   end subroutine write_entanglement

@@ -716,7 +716,7 @@ contains
     integer          :: x_
     integer          :: i,Eunit
     x_ = left%length;if(present(x))x_=x
-    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
+    Eunit     = fopen(str(file)//str(suffix),append=.true.)
     write(Eunit,*)x_,val
     close(Eunit)
   end subroutine write_user_scalar
@@ -728,7 +728,7 @@ contains
     integer          :: x_(size(vals))
     integer          :: i,Eunit
     x_=arange(1,size(vals));if(present(x))x_=x
-    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
+    Eunit     = fopen(str(file)//str(suffix),append=.true.)
     do i=1,size(vals)
        write(Eunit,*)x_(i),vals(i)
     enddo
@@ -742,7 +742,7 @@ contains
     integer          :: x_(size(vals,2))
     integer          :: i,j,Eunit
     x_=arange(1,size(vals,2));if(present(x))x_=x
-    Eunit     = fopen(str(file)//"_"//str(suffix),append=.true.)
+    Eunit     = fopen(str(file)//str(suffix),append=.true.)
     do i=1,size(vals,2)
        write(Eunit,*)x_(i),(vals(j,i),j=1,size(vals,1))
     enddo

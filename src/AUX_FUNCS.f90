@@ -140,14 +140,14 @@ contains
     im_  = Nsweep ;if(present(im))im_=im
     select case(to_lower(str(type)))
     case default
-       label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_User")
-       if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_User")
+       label=str("_L"//str(Ldmrg)//"_"//str(DMRGtype)//"DMRG_User")
+       if(Edmrg/=0d0)label=str("_L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_User")
     case('i')
-       label=str("L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG")
-       if(Edmrg/=0d0)label=str("L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
+       label=str("_L"//str(Ldmrg)//"_M"//str(Mdmrg)//"_iDMRG")
+       if(Edmrg/=0d0)label=str("_L"//str(Ldmrg)//"_Err"//str(Edmrg)//"_iDMRG")
     case('f')
-       label="L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
-       if(Esweep(im)/=0d0)label="L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
+       label="_L"//str(Ldmrg)//"_M"//str(Msweep(im))//"_sweep"//str(im_)
+       if(Esweep(im)/=0d0)label="_L"//str(Ldmrg)//"_Err"//str(Esweep(im_))//"_sweep"//str(im_)
     end select
     label=str(label)//".dmrg"
   end function label_dmrg
@@ -157,12 +157,14 @@ contains
 
 
 
-  function suffix_dmrg(self,len) result(label)
+  function suffix_dmrg(self,len,type) result(label)
     character(len=*)             :: self
     integer,optional             :: len
-    character(len=4)             :: len_
+    character(len=1),optional    :: type
+    character(len=1)             :: type_
     character(len=:),allocatable :: label
     !
+    type_=DMRGtype;if(present(type))type_=type
     !
     select case(to_lower(str(self(1:1))))
     case default
@@ -175,6 +177,9 @@ contains
        label="_right"
        if(present(len))label="_L"//str(len)//"_right"
     end select
+    !
+    if(type_/='i')&
+         label=str(label)//"_"//str(type_)//"DMRG"
     !
   end function suffix_dmrg
 

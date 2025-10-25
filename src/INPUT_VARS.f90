@@ -150,6 +150,10 @@ contains
     call parse_input_variable(DMRGtype,"DMRGtype",INPUTunit,&
          default='i',&
          comment="Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i")
+    select case(to_lower(DMRGtype))
+    case('i','f');continue
+    case default;stop "ERROR DMRG: unsupported DMRGtype: DMRGtype !=['i','f']"
+    end select
 
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&
@@ -280,7 +284,7 @@ contains
     case default;stop "Input error: store_umat!=[b,f]"
     end select
     !
-    call set_store_size(1000)
+    call set_store_size(1)
     !
     if(master)then
        call print_input()
