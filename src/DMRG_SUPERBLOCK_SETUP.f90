@@ -364,8 +364,9 @@ contains
     real(8),dimension(:),allocatable             :: qn,qm
     type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
     real(8),dimension(:),allocatable             :: dq
-    real(8),dimension(2),parameter               :: qnup=[1d0,0d0]
-    real(8),dimension(2),parameter               :: qndw=[0d0,1d0]
+    ! real(8),dimension(2),parameter               :: qnup=[1d0,0d0]
+    ! real(8),dimension(2),parameter               :: qndw=[0d0,1d0]
+    real(8),dimension(:),allocatable             :: qnup,qndw
     integer,dimension(:,:,:),allocatable         :: tMap
     type(sparse_matrix)                          :: P,Hl,Hr
     type(sparse_matrix),allocatable,dimension(:) :: Cleft,Cright
@@ -481,6 +482,22 @@ contains
     endif
 #endif
     if(MpiMaster)write(LOGfile,*)"Build Operators:",t_stop()
+    !
+    !Setup dQ for each mode: dQ is Q after application of B=C(b,s)
+    !the Hermitian cobjugate is obtained by symmetry
+    allocate(qnup, mold=current_target_qn)
+    allocate(qndw, mold=current_target_qn)
+    select case(dmrg_mode)
+    case default
+       qnup = [1d0,0d0]         !Nup->Nup-1 (destroy electron spin-UP)
+       qndw = [0d0,1d0]         !Ndw->Ndw-1 (destroy electron spin-DW)
+    case("superc")
+       qnup = [ 1d0]            !Sz->Sz-1 (destroy electron spin-UP)
+       qndw = [-1d0]            !Sz->Sz+1 (destroy electron spin-DW)
+    case("nonsu2")
+       qnup = [ 1d0]            !N->N-1 (destroy electron whatever spin)
+       qndw = [ 1d0]            !N->N-1 (destroy electron whatever spin)
+    end select
     !
     !It is possible to MPI split the construction of the H_L,H_R,A,B ops
     if(MpiMaster)t0=t_start()

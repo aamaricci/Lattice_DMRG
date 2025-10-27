@@ -403,7 +403,7 @@ contains
     !> Build QN for the local basis:
     allocate(self%sectors(1))
     Basis = Build_BasisStates()
-    self%sectors(1) = sectors_list( tbasis(Basis,Qdim=2) )
+    self%sectors(1) = sectors_list( tbasis(Basis,Qdim=Get_QNdimension()) )
     !
     call Delete_LocalFock_Space()
     !

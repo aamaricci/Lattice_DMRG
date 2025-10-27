@@ -12,6 +12,9 @@ MODULE HLOCAL
   integer,save                          :: Nfock    !Dim of the local Fock space
   integer,save                          :: Nsectors !Number of sectors
   integer,allocatable,dimension(:)      :: getDim             ! [Nsectors]
+  integer,allocatable,dimension(:)      :: getSector
+  integer,allocatable,dimension(:)      :: getSz
+  integer,allocatable,dimension(:)      :: getN
 
   !---------------- SECTOR-TO-LOCAL-FOCK SPACE STRUCTURE -------------------!
   type sector_map
@@ -31,6 +34,9 @@ MODULE HLOCAL
      integer,dimension(:),allocatable          :: Ndws
      integer                                   :: Nup
      integer                                   :: Ndw
+     integer                                   :: Sz
+     integer                                   :: Ntot
+     integer                                   :: Nlanc
      logical                                   :: status=.false.
   end type local_fock_sector
 
@@ -54,6 +60,8 @@ MODULE HLOCAL
 
   public :: Build_BasisStates
   public :: Build_FermionicSign
+  public :: Get_QNdimension
+  
 contains
 
 
@@ -68,7 +76,7 @@ contains
     integer :: DimUp,DimDw
     integer :: DimUps(1),DimDws(1)
     integer :: Nups(1),Ndws(1)
-    integer :: isector
+    integer :: isector,dim,isz,in
     !
     Ns       = Norb
     Ns_Orb   = Ns
@@ -77,7 +85,15 @@ contains
     Nfocks(1)= 2**Ns
     Nfocks(2)= 2**Ns
     Nfock    = product(Nfocks)!(2**Ns)*(2**Ns)
-    Nsectors = ((Ns_Orb+1)*(Ns_Orb+1))**Ns_Ud
+
+    select case(dmrg_mode)
+    case default                !normal
+       Nsectors = ((Ns_Orb+1)*(Ns_Orb+1))**Ns_Ud
+    case ("superc")
+       Nsectors = 2*Ns_orb+1    !sz=-Ns:Ns=2*Ns+1
+    case ("nonsu2")
+       Nsectors = 2*Ns_orb+1    !n=0:2*Ns=2*Ns+1                 
+    end select
     !
     write(*,"(A)")"Init Local Fock space:"
     write(*,"(A,I15)") '# of levels           = ',Ns
@@ -88,22 +104,52 @@ contains
     write(LOGfile,"(A)") bg_red('Warning: DIAGONAL HAMILTONIAN OPERATORS only')
     !
     !Allocate some indexing arrays
-    allocate(getDim(Nsectors))          ;getDim=0
+    allocate(getDim(Nsectors)) ;getDim=0
+    allocate(getSz(Nsectors))  ;getSz=0
+    allocate(getN(Nsectors))   ;getN=0
     !
-    !
-    do isector=1,Nsectors
-       call get_DimUp(isector,DimUps)
-       call get_DimDw(isector,DimDws)
-       DimUp = product(DimUps)
-       DimDw = product(DimDws)  
-       getDim(isector)  = DimUp*DimDw
-    enddo
+    select case(dmrg_mode)
+    case default                !normal
+       allocate(getSector(0))   !unused
+       do isector=1,Nsectors
+          call get_DimUp(isector,DimUps)
+          call get_DimDw(isector,DimDws)
+          DimUp = product(DimUps)
+          DimDw = product(DimDws)  
+          getDim(isector)  = DimUp*DimDw
+       enddo
+    case ("superc")
+       allocate(getSector(-Ns:Ns))
+       getSector= 0
+       isector  = 0
+       do isz=-Ns,Ns
+          isector=isector+1
+          getSector(isz) = isector
+          getSz(isector) = isz
+          getDim(isector)= get_superc_sector_dimension(isz)
+       enddo
+    case ("nonsu2")
+       allocate(getSector(0:2*Ns))
+       getSector=0
+       isector  =0
+       do in=0,2*Ns
+          isector=isector+1
+          getSector(in)  = isector
+          getN(isector)  = in
+          getDim(isector)= get_nonsu2_sector_dimension(in)
+       enddo
+    end select
     !
     !
     call Write_FockStates()
     !
     return
   end subroutine Init_LocalFock_Space
+
+
+
+
+
 
 
   !##################################################################
@@ -124,6 +170,10 @@ contains
     Nfock    = 0
     Nsectors = 0
     deallocate(getDim)
+    if(allocated(getSector))deallocate(getSector)
+    if(allocated(getDim))deallocate(getDim)
+    if(allocated(getSz))deallocate(getSz)
+    if(allocated(getN))deallocate(getN)
     return
   end subroutine Delete_LocalFock_Space
 
@@ -136,43 +186,84 @@ contains
   !##################################################################
   !##################################################################
   subroutine Build_LocalFock_Sector(isector,self)
-    integer,intent(in)                  :: isector
-    type(local_fock_sector)             :: self
-    integer                             :: iup,idw
-    integer                             :: nup_,ndw_
-    integer                             :: dim,iud
+    integer,intent(in)      :: isector
+    type(local_fock_sector) :: self
+    integer                 :: iup,idw
+    integer                 :: nup_,ndw_,sz_,nt_
+    integer                 :: dim,iud
     !
     if(self%status)call Delete_LocalFock_Sector(self)
     !
     self%index = isector
     !
-    allocate(self%H(Ns_Ud))
-    allocate(self%DimUps(Ns_Ud))
-    allocate(self%DimDws(Ns_Ud))
-    allocate(self%Nups(Ns_Ud))
-    allocate(self%Ndws(Ns_Ud))
-    !
-    call get_Nup(isector,self%Nups);self%Nup=sum(self%Nups)
-    call get_Ndw(isector,self%Ndws);self%Ndw=sum(self%Ndws)
-    call get_DimUp(isector,self%DimUps);self%DimUp=product(self%DimUps)
-    call get_DimDw(isector,self%DimDws);self%DimDw=product(self%DimDws)
-    self%Dim=self%DimUp*self%DimDw
-    !
 
-    call map_allocate(self%H,[self%Dim])
-    !
-    dim=0
-    do idw=0,2**Ns-1
-       ndw_= popcnt(idw)
-       if(ndw_ /= self%Ndws(1))cycle
-       do iup=0,2**Ns-1
-          nup_ = popcnt(iup)
-          if(nup_ /= self%Nups(1))cycle
-          dim      = dim+1
-          self%H(1)%map(dim) = iup + idw*2**Ns
+    select case (dmrg_mode)
+    case default
+       !
+       allocate(self%H(Ns_Ud))
+       allocate(self%DimUps(Ns_Ud))
+       allocate(self%DimDws(Ns_Ud))
+       allocate(self%Nups(Ns_Ud))
+       allocate(self%Ndws(Ns_Ud))
+       !
+       call get_Nup(isector,self%Nups);self%Nup=sum(self%Nups)
+       call get_Ndw(isector,self%Ndws);self%Ndw=sum(self%Ndws)
+       call get_DimUp(isector,self%DimUps);self%DimUp=product(self%DimUps)
+       call get_DimDw(isector,self%DimDws);self%DimDw=product(self%DimDws)
+       self%Dim=self%DimUp*self%DimDw
+       !
+       call map_allocate(self%H,[self%Dim])
+       !
+       dim=0
+       do idw=0,2**Ns-1
+          ndw_= popcnt(idw)
+          if(ndw_ /= self%Ndws(1))cycle
+          do iup=0,2**Ns-1
+             nup_ = popcnt(iup)
+             if(nup_ /= self%Nups(1))cycle
+             dim      = dim+1
+             self%H(1)%map(dim) = iup + idw*2**Ns
+          enddo
        enddo
-    enddo
-    !
+       !
+    case ("superc")
+       allocate(self%H(1))
+       self%Sz    = getSz(isector)
+       self%Dim   = getDim(isector)
+       !
+       call map_allocate(self%H,[self%Dim])
+       !
+       dim=0
+       do idw=0,2**Ns-1
+          ndw_= popcnt(idw)
+          do iup=0,2**Ns-1
+             nup_ = popcnt(iup)
+             sz_  = nup_ - ndw_
+             if(sz_ /= self%Sz)cycle
+             dim=dim+1
+             self%H(1)%map(dim) = iup + idw*2**Ns
+          enddo
+       enddo
+       !
+    case ("nonsu2")
+       allocate(self%H(1))
+       self%Ntot = getN(isector)
+       self%Dim  = getDim(isector)
+       !
+       call map_allocate(self%H,[self%Dim])
+       !
+       dim=0
+       do idw=0,2**Ns-1
+          ndw_= popcnt(idw)
+          do iup=0,2**Ns-1
+             nup_ = popcnt(iup)
+             nt_  = nup_ + ndw_
+             if(nt_ /= self%Ntot)cycle
+             dim=dim+1
+             self%H(1)%map(dim) = iup + idw*2**Ns
+          enddo
+       enddo
+    end select
     self%status=.true.
     !
   end subroutine Build_LocalFock_Sector
@@ -192,6 +283,9 @@ contains
     self%Dim=0
     self%Nup=0
     self%Ndw=0
+    self%Sz=-1000
+    self%Ntot=-1
+    self%Nlanc=0
     self%status=.false.
   end subroutine Delete_LocalFock_Sector
 
@@ -210,44 +304,59 @@ contains
   !+-------------------------------------------------------------------+
   function build_Hlocal_operator(H) result(Hmat)
 #ifdef _CMPLX
-    complex(8),dimension(:,:)             :: H    ![Nspin*Norb,Nspin*Norb]
-    complex(8),dimension(:,:),allocatable :: Hmat
-    complex(8),dimension(Nspin,Ns,Ns)     :: Hloc
-    complex(8)                            :: htmp
+    complex(8),dimension(:,:)               :: H    ![Nspin*Norb,Nspin*Norb]
+    complex(8),dimension(:,:),allocatable   :: Hmat
+    complex(8)                              :: htmp
 #else
-    real(8),dimension(:,:)                :: H    ![Nspin*Norb,Nspin*Norb]
-    real(8),dimension(:,:),allocatable    :: Hmat
-    real(8),dimension(Nspin,Ns,Ns)        :: Hloc    
-    real(8)                               :: htmp
+    real(8),dimension(:,:)                  :: H    ![Nspin*Norb,Nspin*Norb]
+    real(8),dimension(:,:),allocatable      :: Hmat
+    real(8)                                 :: htmp
 #endif
-    type(local_fock_sector)               :: sectorI
-    integer                               :: isector,i,m,io,jo,iorb,ispin,jorb,ii,jj
-    integer                               :: iup,idw,mup,mdw,k1,k2
-    real(8)                               :: sg1,sg2
-    integer                               :: nup(Ns),ndw(Ns),nvec(2*Ns)
-    logical                               :: Jcondition
+    complex(8),dimension(Nspin,Nspin,Ns,Ns) :: Hloc
+
+    type(local_fock_sector)                 :: sectorI
+    integer                                 :: isector,i,m,io,jo,iorb,ispin,jspin,jorb,ii,jj
+    integer                                 :: iup,idw,mup,mdw,k1,k2,k3,k4,ia,ib
+    real(8)                                 :: sg1,sg2,sg3,sg4
+    integer                                 :: nup(Ns),ndw(Ns),nvec(2*Ns)
+    logical                                 :: Jcondition
     !
 
 #ifdef _CMPLX
     write(*,*)"Using CMPLX code"
     call wait(1000)
 #endif
-    
-    
+    !
     if(allocated(Hmat))deallocate(Hmat)
     allocate(Hmat(Nfock,Nfock))
     !
     call assert_shape(H,[Nspin*Ns,Nspin*Ns],"build_hlocal_operator","Hloc")
     !
-    do ispin=1,Nspin
-       do iorb=1,Norb
-          io = iorb+(ispin-1)*Norb      
-          do jorb=1,Norb
-             jo = jorb + (ispin-1)*Norb
-             Hloc(ispin,iorb,jorb) = H(io,jo)
+    Hloc = zero
+    select case (dmrg_mode)
+    case default
+       do ispin=1,Nspin
+          do iorb=1,Norb
+             io = iorb+(ispin-1)*Norb      
+             do jorb=1,Norb
+                jo = jorb + (ispin-1)*Norb
+                Hloc(ispin,ispin,iorb,jorb) = H(io,jo)
+             enddo
           enddo
        enddo
-    enddo
+    case ("superc","nonsu2")
+       do ispin=1,Nspin
+          do jspin=1,Nspin
+             do iorb=1,Norb
+                io = iorb+(ispin-1)*Norb      
+                do jorb=1,Norb
+                   jo = jorb + (jspin-1)*Norb
+                   Hloc(ispin,jspin,iorb,jorb) = H(io,jo)
+                enddo
+             enddo
+          enddo
+       enddo
+    end select
     !
     !
     !
@@ -265,12 +374,16 @@ contains
           !LOCAL HAMILTONIAN PART:
           ! htmp = htmp - xmu*(sum(nup)+sum(ndw))
           do io=1,Ns
-             htmp = htmp + Hloc(1,io,io)*nup(io)
-             htmp = htmp + Hloc(Nspin,io,io)*ndw(io)
+             htmp = htmp + Hloc(1,1,io,io)*nup(io)
+             htmp = htmp + Hloc(Nspin,Nspin,io,io)*ndw(io)
           enddo
           Hmat(ii,ii)=Hmat(ii,ii) + htmp
           !
-          !
+          !========================================================
+          !       LOCAL INTERACTION Hubbard-Kanamori
+          !========================================================
+          ! Diagonal part:
+          !========================================================
           !Density-density interaction: same orbital, opposite spins
           !Euloc=\sum=i U_i*(n_u*n_d)_i
           htmp = 0d0
@@ -312,15 +425,71 @@ contains
           !
           Hmat(ii,ii)=Hmat(ii,ii) + htmp
           !
+          !========================================================
+          !Non-Diagonal: SPIN-EXCHANGE (S-E) and PAIR-HOPPING TERMS
+          !========================================================
+          !    S-E: J c^+_iorb_up c^+_jorb_dw c_iorb_dw c_jorb_up  (i.ne.j) 
+          !    S-E: J c^+_{iorb} c^+_{jorb+Ns} c_{iorb+Ns} c_{jorb}
+          if(Norb>1.AND.Jx/=0d0)then
+             do iorb=1,Norb
+                do jorb=1,Norb
+                   Jcondition=(&
+                        (iorb/=jorb).AND.&
+                        (nup(jorb)==1).AND.&
+                        (ndw(iorb)==1).AND.&
+                        (ndw(jorb)==0).AND.&
+                        (nup(iorb)==0))
+                   if(Jcondition)then
+                      call c(jorb,m,k1,sg1)
+                      call c(iorb+Ns,k1,k2,sg2)
+                      call cdg(jorb+Ns,k2,k3,sg3)
+                      call cdg(iorb,k3,k4,sg4)
+                      jj   = k4+1
+                      htmp = one*Jx*sg1*sg2*sg3*sg4
+                      Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                   endif
+                enddo
+             enddo
+          endif
+          !
+          ! PAIR-HOPPING (P-H) TERMS
+          !    P-H: J c^+_iorb_up c^+_iorb_dw   c_jorb_dw   c_jorb_up  (i.ne.j) 
+          !    P-H: J c^+_{iorb}  c^+_{iorb+Ns} c_{jorb+Ns} c_{jorb}
+          if(Norb>1.AND.Jp/=0d0)then
+             do iorb=1,Norb
+                do jorb=1,Norb
+                   Jcondition=(&
+                        (iorb/=jorb).AND.&
+                        (nup(jorb)==1).AND.&
+                        (ndw(jorb)==1).AND.&
+                        (ndw(iorb)==0).AND.&
+                        (nup(iorb)==0))
+                   if(Jcondition)then
+                      call c(jorb,m,k1,sg1)
+                      call c(jorb+Ns,k1,k2,sg2)
+                      call cdg(iorb+Ns,k2,k3,sg3)
+                      call cdg(iorb,k3,k4,sg4)
+                      jj   = k4+1
+                      htmp = one*Jp*sg1*sg2*sg3*sg4
+                      Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                   endif
+                enddo
+             enddo
+          endif
+          !
+          !========================================================
+          !
+          !
           !UP electrons
           do io=1,Ns
              do jo=1,Ns
-                Jcondition = (Hloc(1,io,jo)/=zero) .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
+                Jcondition = (Hloc(1,1,io,jo)/=zero) &
+                     .AND. (Nup(jo)==1) .AND. (Nup(io)==0)
                 if (Jcondition) then
                    call c(jo,m,k1,sg1)
                    call cdg(io,k1,k2,sg2)
-                   jj    = binary_search(sectorI%H(1)%map,k2)
-                   htmp = Hloc(1,io,jo)*sg1*sg2
+                   jj = k2+1
+                   htmp = conjg(Hloc(1,1,io,jo))*sg1*sg2
                    Hmat(ii,jj)=Hmat(ii,jj) + htmp
                 endif
              enddo
@@ -329,20 +498,74 @@ contains
           !DW electrons
           do io=1,Ns
              do jo=1,Ns
-                Jcondition = (Hloc(Nspin,io,jo)/=zero) .AND. (Ndw(jo)==1) .AND. (Ndw(io)==0)
+                Jcondition = (Hloc(Nspin,Nspin,io,jo)/=zero) .AND. &
+                     (Ndw(jo)==1) .AND. (Ndw(io)==0)
                 if (Jcondition) then
                    call c(jo+Ns,m,k1,sg1)
                    call cdg(io+Ns,k1,k2,sg2)
-                   jj    = binary_search(sectorI%H(1)%map,k2)
-                   htmp = Hloc(Nspin,io,jo)*sg1*sg2
+                   jj = k2+1
+                   htmp = conjg(Hloc(Nspin,Nspin,io,jo))*sg1*sg2
                    Hmat(ii,jj)=Hmat(ii,jj) + htmp
                 endif
              enddo
           enddo
           !
+          !Off-diagonal spin-part
+          !Superc: SC symmetry breaking
+          !NonSU2: SU(2)-breaking terms, local SOC, etc.
+          select case(dmrg_mode)
+          case default;continue
+          case ("superc")
+             do iorb=1,Norb
+                do jorb=1,Norb
+                   !
+                   Jcondition=(Hloc(1,2,iorb,jorb)/=zero) .AND. &
+                        (nup(iorb)==1) .AND. (ndw(jorb)==1)
+                   if(Jcondition)then
+                      call c(iorb,m,k1,sg1)
+                      call c(jorb+Ns,k1,k2,sg2)
+                      jj   = k2+1
+                      htmp = conjg(Hloc(1,2,iorb,jorb))*sg1*sg2
+                      Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                   endif
+                   !
+                   !
+                   Jcondition=(Hloc(2,1,iorb,jorb)/=zero) .AND. &
+                        (nup(iorb)==0) .AND. (ndw(jorb)==0)
+                   if(Jcondition)then
+                      call cdg(jorb+Ns,m,k1,sg1)
+                      call cdg(iorb,k1,k2,sg2)
+                      jj   = k2+1
+                      htmp = conjg(Hloc(2,1,iorb,jorb))*sg1*sg2
+                      Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                   endif
+                enddo
+             enddo
+          case ('nonsu2')
+             do ispin=1,Nspin
+                jspin = 3-ispin !ispin=1,jspin=2, ispin=2,jspin=1
+                do iorb=1,Norb
+                   do jorb=1,Norb
+                      ia = iorb + (ispin-1)*Ns
+                      ib = jorb + (jspin-1)*Ns
+                      Jcondition=(Hloc(ispin,jspin,iorb,jorb)/=zero) .AND. &
+                           (nvec(ib)==1) .AND. (nvec(ia)==0)
+                      if(Jcondition)then
+                         call c(ib,m,k1,sg1)
+                         call cdg(ia,k1,k2,sg2)
+                         jj   = k2+1
+                         htmp = conjg(Hloc(ispin,jspin,iorb,jorb))*sg1*sg2
+                         Hmat(ii,jj)=Hmat(ii,jj) + htmp
+                      endif
+                   enddo
+                enddo
+             enddo
+          end select
           !
        enddo
+       !
        call Delete_LocalFock_Sector(sectorI)
+       !
     enddo
   end function build_hlocal_operator
 
@@ -384,6 +607,10 @@ contains
     enddo
   end function build_C_operator
 
+
+
+
+  
   function build_Cdg_operator(iorb,ispin) result(CDGmat)
     integer                               :: iorb,ispin
     type(local_fock_sector)               :: sectorI
@@ -472,9 +699,13 @@ contains
        Ndw = popcnt(idw)
        do iup = 0,NN-1
           Nup = popcnt(iup)
-          i      = iup + idw*NN
-          call print_conf(iup,Ns,.false.)
-          call print_conf(idw,Ns,.true.)
+          select case (dmrg_mode)
+          case default
+             call print_conf(iup,Ns,.false.)
+             call print_conf(idw,Ns,.true.)
+          case("superc","nonsu2")
+             call print_conf(iup + idw*2**Ns,2*Ns,.true.)
+          end select
        enddo
     enddo
   end subroutine Write_FockStates
@@ -497,13 +728,20 @@ contains
     if(allocated(Hvec))deallocate(Hvec)
     !
     NN = 2**Ns
+    !
     do idw = 0,NN-1
        Ndw = popcnt(idw)
        do iup = 0,NN-1
           Nup = popcnt(iup)
-          i   = iup + idw*NN
-          call append(Hvec,nup)
-          call append(Hvec,ndw)
+          select case (dmrg_mode)
+          case default
+             call append(Hvec,nup)
+             call append(Hvec,ndw)
+          case("superc")
+             call append(Hvec,nup-ndw)
+          case("nonsu2")
+             call append(Hvec,nup+ndw)
+          end select
        enddo
     enddo
   end function Build_BasisStates
@@ -541,7 +779,15 @@ contains
 
 
 
+  function Get_QNdimension() result(dim)
+    integer :: dim
+    select case(dmrg_mode)
+    case default;dim=2
+    case("superc","nonsu2");dim=1
+    end select
+  end function Get_QNdimension
 
+  
   !##################################################################
   !##################################################################
   !               RETRIEVE INFO PROCEDURES: Nup,Ndw,DimUp,DimDw
@@ -588,6 +834,28 @@ contains
     DimDws(1) = binomial(Ns,Ndws(1))
   end subroutine get_DimDw
 
+
+  function get_normal_sector_dimension(n,m) result(dim)
+    integer,intent(in) :: n,m
+    integer            :: dim
+    dim = binomial(n,m)
+  end function get_normal_sector_dimension
+
+  function get_superc_sector_dimension(mz) result(dim)
+    integer :: mz
+    integer :: i,dim,Nb
+    dim=0
+    Nb=Ns-mz
+    do i=0,Nb/2 
+       dim=dim + 2**(Nb-2*i)*binomial(ns,Nb-2*i)*binomial(ns-Nb+2*i,i)
+    enddo
+  end function get_superc_sector_dimension
+
+  function get_nonsu2_sector_dimension(n) result(dim)
+    integer :: n
+    integer :: dim
+    dim=binomial(2*Ns,n)
+  end function get_nonsu2_sector_dimension
 
 
 
@@ -807,13 +1075,21 @@ program testHLOCAL
   call Init_LocalFock_Space()
 
   allocate(hloc(Nspin*Norb,Nspin*Norb))
-  hloc=0d0;if(Norb==2)hloc=0.5d0*kron(pauli_0,pauli_z)
+  hloc=0d0
+  if(dmrg_mode=="superc")hloc=0.01d0*pauli_x
+  if(Norb==2)then
+     hloc=0.5d0*kron(pauli_0,pauli_z)
+     if(dmrg_mode=="nonsu2")hloc=hloc+0.01d0*kron(pauli_x,pauli_x)
+  endif
   call print_matrix(Hloc)
 
   print*,""
   print*,"H:"
   Hlocal = build_Hlocal_operator(hloc)
   call print_matrix(Hlocal)
+
+
+
 
   print*,""
   print*,"C_up:"
@@ -860,18 +1136,22 @@ program testHLOCAL
   call print_matrix(Docc)
 
 
+  print*,""
+  print*,"Build BasisStates:"  
   Hvec = Build_BasisStates()
   print*,size(Hvec)
   print*,Hvec
 
 
 
-
+  print*,""
+  print*,"Build Fermionic sign:"  
   P = Build_FermionicSign()
   call print_matrix(P)
-  print*,""
+  print*,"kSz(2*Norb)"
   call print_matrix(kSz(2*Norb))
 
+  print*,"diag(P)-diag(kSz):"    
   print*,diagonal(P)-diagonal(kSz(2*Norb))
   call Delete_LocalFock_space()
 

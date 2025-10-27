@@ -22,6 +22,8 @@ MODULE INPUT_VARS
   !Type of conserved Quantum Numbers, local: q in [0,1], global: Q in [-Ldmrg,Ldmrg] 
   real(8),allocatable          :: Dmrg_QN(:)
   !Desired Target Quantum Numbers: size(DMRG_QN)=QNdim
+  character(len=7)             :: Dmrg_mode            !
+  !Flag to set the DMRG mode: normal[,superc,nonsu2]
   integer                      :: Nsweep
   !# of DMRG sweep to take for finite DMRG algorithm.
   real(8),allocatable          :: Esweep(:)
@@ -179,6 +181,9 @@ contains
          default=(/(Edmrg,i=1,Nsweep )/),&
          comment="!list of error threshold for each sweep in a finite DMRG algorithm.")
 
+    call parse_input_variable(dmrg_mode,"DMRG_MODE",INPUTunit,&
+         default='normal',&
+         comment="Flag to set DMRG type: normal=normal, superc=superconductive, nonsu2=broken SU(2)")
     call parse_input_variable(QNdim,"QNdim",INPUTunit,&
          default=1,&
          comment="Total  conserved abelian quantum numbers to consider.")
@@ -225,11 +230,11 @@ contains
          comment="threshold for degenerate eigenvalues of rho")
     !
     call parse_input_variable(verbose,"VERBOSE",INPUTunit,&
-         default=3,&
+         default=6,&
          comment="Verbosity level: 0=almost nothing --> 5:all. Really: all")
     !
     call parse_input_variable(sparse_H,"SPARSE_H",INPUTunit,&
-         default=.true.,&
+         default=.false.,&
          comment="Sparse H*v: True = allocate sparse; False=direct product using QN decomposition")
     !
     !> Lanczos parameters:
@@ -243,9 +248,9 @@ contains
          comment="Set the size of the Arpack block (Ncv=lanc_ncv_factor*Neigen+lanc_ncv_add)")
     call parse_input_variable(lanc_niter,"LANC_NITER",INPUTunit,default=512,&
          comment="Number of Lanczos iteration in spectrum determination.")
-    call parse_input_variable(lanc_ngfiter,"LANC_NGFITER",INPUTunit,default=200,&
-         comment="Number of Lanczos iteration in GF determination. Number of momenta.")
-    call parse_input_variable(lanc_tolerance,"LANC_TOLERANCE",INPUTunit,default=1d-18,&
+    ! call parse_input_variable(lanc_ngfiter,"LANC_NGFITER",INPUTunit,default=200,&
+    !      comment="Number of Lanczos iteration in GF determination. Number of momenta.")
+    call parse_input_variable(lanc_tolerance,"LANC_TOLERANCE",INPUTunit,default=1d-12,&
          comment="Tolerance for the Lanczos iterations as used in Arpack and plain lanczos.")
     call parse_input_variable(lanc_dim_threshold,"LANC_DIM_THRESHOLD",INPUTunit,&
          default=1024,comment="Dimension threshold for Lapack use.")

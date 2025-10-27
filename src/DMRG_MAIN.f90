@@ -335,14 +335,14 @@ contains
             "Enlarged Blocks Dim                  :",m_eleft,m_eright
        write(LOGfile,"(A,"//str(size(current_target_QN))//"F24.15)")&
             "Target_QN                            :",current_target_QN
+       write(LOGfile,"(A,I12)")&
+            "SuperBlock Length                    :",current_L
        write(LOGfile,"(A,3x,G24.15)")&
             "Total                                :",sum(current_target_QN)
        write(LOGfile,"(A,3x,G24.15)")&
-            "Filling                              :",sum(current_target_QN)/current_L
+            "Total/L                              :",sum(current_target_QN)/current_L
        write(LOGfile,"(A,3x,G24.15)")&
-            "Filling/Norb                         :",sum(current_target_QN)/current_L/Norb
-       write(LOGfile,"(A,I12)")&
-            "SuperBlock Length                    :",current_L
+            "Total/L/Norb                         :",sum(current_target_QN)/current_L/Norb
        write(LOGfile,"(A,I12,A2,I12,A1,F10.5,A1)")&
             "SuperBlock Dimension  (tot)          :", &
             m_sb," (",m_eleft*m_eright,")",100*dble(m_sb)/m_eleft/m_eright,"%"
