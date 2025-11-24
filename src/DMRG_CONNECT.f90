@@ -10,36 +10,55 @@ MODULE DMRG_CONNECT
 
 contains
 
-  
+
   !-----------------------------------------------------------------!
   ! Purpose: enlarge a given BLOCK "SELF" growing it left/right with
   ! a SITE "DOT" (specified in the init)
   !-----------------------------------------------------------------!
-  subroutine enlarge_block(self,dot,grow)
+  subroutine enlarge_block(self,dot,label,link)
     type(block)                  :: self
     type(site)                   :: dot
-    character(len=*),optional    :: grow
-    character(len=16)            :: grow_
+    character(len=*),optional    :: label
+    character(len=*),optional    :: link
+    character(len=1)             :: label_
+    character(len=1)             :: ilink
     character(len=:),allocatable :: key,dtype,otype
     type(tbasis)                 :: self_basis,dot_basis,enl_basis
     type(sparse_matrix)          :: Hb,Hd,H2,eO
-    integer                      :: i
+    integer                      :: i,l
     !
-    grow_=str('left');if(present(grow))grow_=to_lower(str(grow))
+    label_='l'; if(present(label))label_=to_lower(str(label(1:1)))
+    iLink ="n";if(present(Link))iLink=to_lower(str(Link(1:1)))
+
     !
 #ifdef _DEBUG
-    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block"//str(grow_)
+    if(MpiMaster)write(LOGfile,*)"DEBUG: ENLARGE block"//str(label_)
 #endif
     !
-    if(MpiMaster)call start_timer("Enlarge blocks "//str(grow_))
+    if(MpiMaster)call start_timer("Enlarge blocks "//str(label_))
     t0=t_start()
+    !
+    dtype=to_lower(dot%type())
+
+    select case(label_)
+    case default;stop "Enlarge_Block ERROR: label_ not in ['l','r']"
+    case ("l","r");continue
+    end select
+    !
+    select case(dtype(1:1))
+    case default;stop "Enlarge_Block ERROR: wrong dot.Type"
+    case ("s","f","e","b");continue
+    end select
+
+    select case(iLink)
+    case default;stop "Enlarge_Block ERROR: iLink not in ['n','p']"
+    case ("n","p");continue
+    end select
     !
     if(.not.self%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing self.H operator in the list"
     if(.not.dot%operators%has_key("H"))&
          stop "Enlarge_Block ERROR: Missing dot.H operator in the list"
-    !
-    dtype=dot%type()
     if(dtype/=self%type())&
          stop "Enlarge_Block ERROR: Dot.Type != Self.Type"
     !    
@@ -49,33 +68,48 @@ contains
        write(LOGfile,*)"DEBUG: ENLARGE block: update H"
 #endif
        t0=t_start()
-       select case(str(grow_))
-       case ("left","l")
-          Hb = self%operators%op("H").x.id(dot%dim)
-          Hd = id(self%dim).x.dot%operators%op("H")
-          select case(dtype)
-          case default;stop "Enlarge_Block ERROR: wrong dot.Type"
-          case ("spin","s")
-             H2 = connect_spin_blocks(self,as_block(dot))
-          case ("fermion","f,","electron","e")
-             H2 = connect_fermion_blocks(self,as_block(dot))
+       select case(iLink)          
+       case ("n")  !OBC/PBC_next L:[o-o...o-]-*; R:*-[-o...o-o]
+          select case(label_)
+          case ("l")
+             Hb = self%operators%op("H").x.id(dot%dim)
+             Hd = id(self%dim).x.dot%operators%op("H")
+             select case(dtype(1:1))
+             case ("s")    ;H2 = connect_spin_blocks(self,as_block(dot),link=iLink)
+             case ("f","e");H2 = connect_fermion_blocks(self,as_block(dot),link=iLink)
+             end select
+          case ("r")
+             Hb = id(dot%dim).x.self%operators%op("H")
+             Hd = dot%operators%op("H").x.id(self%dim)
+             select case(dtype(1:1))
+             case ("s")     ;H2 = connect_spin_blocks(as_block(dot),self,link=iLink)
+             case ("f,","e");H2 = connect_fermion_blocks(as_block(dot),self,link=iLink)
+             end select
           end select
-       case ("right","r")
-          Hb = id(dot%dim).x.self%operators%op("H")
-          Hd = dot%operators%op("H").x.id(self%dim)
-          select case(dtype)
-          case default;stop "Enlarge_Block ERROR: wrong dot.Type"
-          case ("spin","s")
-             H2 = connect_spin_blocks(as_block(dot),self)
-          case ("fermion","f,","electron","e")
-             H2 = connect_fermion_blocks(as_block(dot),self)
+       case ("p")  !PBC_prev L:@-[-o...o-o]; R:[o-o...o-]-@
+          select case(label_)
+          case ("l")
+             Hb = id(dot%dim).x.self%operators%op("H")
+             Hd = dot%operators%op("H").x.id(self%dim)
+             select case(dtype(1:1))
+             case ("s")     ;H2 = connect_spin_blocks(as_block(dot),self,link=iLink)
+             case ("f,","e");H2 = connect_fermion_blocks(as_block(dot),self,link=iLink)
+             end select
+          case ("r")
+             Hb = self%operators%op("H").x.id(dot%dim)
+             Hd = id(self%dim).x.dot%operators%op("H")
+             select case(dtype(1:1))
+             case ("s")    ;H2 = connect_spin_blocks(self,as_block(dot),link=iLink)
+             case ("f","e");H2 = connect_fermion_blocks(self,as_block(dot),link=iLink)
+             end select
           end select
        end select
        call self%put_op("H", sp_add3(Hb,Hd,H2), type="bosonic")
        write(LOGfile,*)"Build&Put H*",t_stop()
        !
        !
-       !> Update all the other operators in the list:
+       !
+       !> Update all the other operators in the list involved in the enlargement procedure:
 #ifdef _DEBUG
        write(LOGfile,*)"DEBUG: ENLARGE block: update Op list"
 #endif
@@ -85,35 +119,56 @@ contains
           otype = str(self%operators%type(index=i))
           if(key=="H")cycle
           !
-          !Bosonic operators:
-          !O_L -> I_L.x.O_d  | O_R -> O_d.x.I_R
-          !Fermionic operators:
-          !O_L -> P_L.x.O_d  | O_R -> O_d.x.I_R
-          !Sign operator:
-          !P_L -> P_L.x.P_d  | P_R -> P_d.x.P_R
-          select case(str(grow_))
-          case ("left","l")
-             select case(to_lower(str(otype))) 
-             case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
-             case('b','bose','bosonic')
-                eO = Id(self%dim)
-             case('f','fermi','fermionic')
-                eO = self%operators%op(key="P")
-             case('s','sign')
-                eO = self%operators%op(key="P")
+          !filter operators with correct link index
+          l = len(key)
+          if(to_lower(key(l:l)) /= iLink)cycle
+          !
+          select case(iLink)          
+          case ("n")  !OBC/PBC_next L:[o-o...o-]-*; R:*-[-o...o-o]
+             !Bosons   : O_L -> I_L.x.O_d  | O_R -> O_d.x.I_R
+             !Fermions : O_L -> P_L.x.O_d  | O_R -> O_d.x.I_R
+             !FermiSign: P_L -> P_L.x.P_d  | P_R -> P_d.x.P_R
+             select case(label_)
+             case ("l")
+                select case(to_lower(otype(1:1))) 
+                case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
+                case('b');eO = Id(self%dim)
+                case('f');eO = self%operators%op(key="P")
+                case('s');eO = self%operators%op(key="P")
+                end select
+                call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
+             case ("r")
+                select case(to_lower(otype(1:1)))
+                case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
+                case('b');eO = Id(self%dim)
+                case('f');eO = Id(self%dim)
+                case('s');eO = self%operators%op(key="P")
+                end select
+                call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
              end select
-             call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
-          case ("right","r")
-             select case(to_lower(str(otype)))
-             case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
-             case('b','bose','bosonic')
-                eO = Id(self%dim)
-             case('f','fermi','fermionic')
-                eO = Id(self%dim)
-             case('s','sign')
-                eO = self%operators%op(key="P")
+             !
+          case ("p")  !PBC_prev L:@-[-o...o-o]; R:[o-o...o-]-@
+             !Bosons   : O_L -> O_d.x.I_L  | O_R -> I_R.x.O_d
+             !Fermions : O_L -> O_d.x.I_L  | O_R -> P_R.x.O_d
+             !FermiSign: P_L -> P_d.x.P_L  | P_R -> P_R.x.P_d
+             select case(label_)
+             case ("l")
+                select case(to_lower(otype(1:1)))
+                case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
+                case('b');eO = Id(self%dim)
+                case('f');eO = Id(self%dim)
+                case('s');eO = self%operators%op(key="P")
+                end select
+                call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
+             case ("r")
+                select case(to_lower(otype(1:1)))
+                case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
+                case('b');eO = Id(self%dim)
+                case('f');eO = self%operators%op(key="P")
+                case('s');eO = self%operators%op(key="P")
+                end select
+                call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
              end select
-             call self%put_op(str(key), dot%operators%op(str(key)).x.eO, type=otype )
           end select
        enddo
        write(LOGfile,*)"Build&Put O*",t_stop()
@@ -127,20 +182,25 @@ contains
     if(MpiMaster)t0=t_start()
     call self%get_basis(self_basis)
     call dot%get_basis(dot_basis)
-    select case(str(grow_))
-    case ("left","l")
-       enl_basis = (self_basis.o.dot_basis)
-       call self%set_basis( basis=enl_basis )
-    case ("right","r")
-       enl_basis = (dot_basis.o.self_basis)
-       call self%set_basis( basis=enl_basis )
+    select case(iLink)          
+    case ("n")  !OBC/PBC_next L:[o-o...o-]-*; R:*-[-o...o-o]
+       select case(label_)
+       case ("l");enl_basis = (self_basis.o.dot_basis)
+       case ("r");enl_basis = (dot_basis.o.self_basis)
+       end select
+    case ("p")  !PBC_prev L:@-[-o...o-o]; R:[o-o...o-]-@
+       select case(label_)
+       case ("l");enl_basis = (dot_basis.o.self_basis)
+       case ("r");enl_basis = (self_basis.o.dot_basis)
+       end select
     end select
+    call self%set_basis( basis=enl_basis )
     if(MpiMaster)write(LOGfile,*)"Build basis",t_stop()
     !
     if(MpiMaster)then
        if(.not.self%is_valid())then
-          write(LOGfile,*)"ENLARGE_BLOCK error: not valid enlarged_block "//str(grow_)
-          call self%show(file="corrupted_enl_block_"//str(grow_)//".dat")
+          write(LOGfile,*)"ENLARGE_BLOCK error: not valid enlarged_block "//to_upper(label_)
+          call self%show(file="corrupted_enl_block_"//label_//".dat")
           stop
        endif
     endif
@@ -163,11 +223,14 @@ contains
   end subroutine enlarge_block
 
 
+  
   !H_lr = \sum_{a}h_aa*(C^+_{left,a}@P_left) x C_{right,a}] + H.c.
-  function connect_fermion_blocks(left,right,states) result(H2)
+  function connect_fermion_blocks(left,right,states,link) result(H2)
     type(block)                               :: left
     type(block)                               :: right
     integer,dimension(:),optional             :: states
+    character(len=*),optional                 :: link
+    character(len=1)                          :: ilink
     type(sparse_matrix),dimension(Nspin*Norb) :: Cl,Cr
     type(sparse_matrix)                       :: P,A
     type(sparse_matrix)                       :: H2
@@ -186,6 +249,8 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: connect Fermion blocks"
 #endif
     !
+    iLink ="n";if(present(Link))iLink=to_lower(str(Link(1:1)))
+    !
     t0=t_start()
     !
     !Hij is shared:
@@ -200,12 +265,13 @@ contains
     if(present(states))Hdims = size(states)
     call H2%init(Hdims(1),Hdims(2))
     !
+    !
     !FERMION SPECIFIC:
     !>Retrieve operators:
     do ispin=1,Nspin
        do iorb=1,Norb
-          key = "C"//left%okey(iorb,ispin)
-          io = iorb + (ispin-1)*Norb
+          key = "C"//left%okey(iorb,ispin,ilink=iLink)
+          io  = iorb + (ispin-1)*Norb
           Cl(io) = left%operators%op(key)
           Cr(io) = right%operators%op(key)
        enddo
@@ -213,15 +279,15 @@ contains
     !
     !
     !>Build H2:
-    P = left%operators%op("P")  !always acts on the Left Block
+    key = "P"//left%okey(0,0,ilink=iLink)
+    P   = left%operators%op(key)  !always acts on the Left Block
     do io=1,Nspin*Norb
        do jo=1,Nspin*Norb
-          if(Hij(io,jo)==0d0)cycle
+          if(Hij(io,jo)==zero)cycle
+          Tr = Hij(io,jo) 
 #ifdef _CMPLX
-          Tr = Hij(io,jo)
           Tl = conjg(Tr)
 #else
-          Tr = Hij(io,jo)
           Tl = Tr
 #endif
           if(present(states))then
@@ -248,10 +314,12 @@ contains
 
 
 
-  function connect_spin_blocks(left,right,states) result(H2)
+  function connect_spin_blocks(left,right,states,link) result(H2)
     type(block)                           :: left
     type(block)                           :: right
     integer,dimension(:),optional         :: states
+    character(len=*),optional             :: link
+    character(len=1)                      :: ilink
     type(sparse_matrix)                   :: Sl(Nspin)![Sz,Sp]
     type(sparse_matrix)                   :: Sr(Nspin)![Sz,Sp]
     type(sparse_matrix)                   :: H2
@@ -267,6 +335,8 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: connect Spin blocks"
 #endif
     !
+    iLink ="n";if(present(Link))iLink=to_lower(str(Link(1:1)))  
+    !
     t0=t_start()
     !
     !Hij is shared:
@@ -281,8 +351,8 @@ contains
     !
     !>Retrieve operators:
     do ispin=1,Nspin
-       Sl(ispin) = left%operators%op("S"//left%okey(0,ispin))
-       Sr(ispin) = right%operators%op("S"//right%okey(0,ispin))
+       Sl(ispin) = left%operators%op("S"//left%okey(iorb=0,ispin=ispin,ilink=iLink))
+       Sr(ispin) = right%operators%op("S"//right%okey(iorb=0,ispin=ispin,ilink=iLink))
     enddo
     !
     !>Build H2:
@@ -305,7 +375,6 @@ contains
     t_connect_blocks=t_connect_blocks+t_stop()
     !
   end function connect_spin_blocks
-
 
 
 

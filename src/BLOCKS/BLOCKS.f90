@@ -1,5 +1,7 @@
 MODULE BLOCKS
-  USE SCIFOR, only: str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,set_store_size,t_start,t_stop,wait,check_MPI,get_Master_MPI
+  USE SCIFOR, only: &
+       str,assert_shape,zeye,eye,to_lower,free_unit,file_gzip,file_gunzip,&
+       set_store_size,t_start,t_stop,wait,check_MPI,get_Master_MPI
   USE AUX_FUNCS
   USE INPUT_VARS, only: block_file,umat_file,LOGfile
   USE MATRIX_SPARSE
@@ -19,6 +21,7 @@ MODULE BLOCKS
      type(operators_list)                        :: omatrices
      character(len=:),allocatable                :: Opname
      character(len=:),allocatable                :: SiteType
+     ! character(len=:),allocatable                :: BlockTag
    contains
      procedure,pass :: free        => free_block
      procedure,pass :: put_op      => put_op_block
@@ -32,6 +35,7 @@ MODULE BLOCKS
      procedure,pass :: okey        => okey_block
      procedure,pass :: name        => Opname_block
      procedure,pass :: type        => SiteType_block
+     ! procedure,pass :: tag         => tag_block
      procedure,pass :: write       => write_block
      procedure,pass :: save        => save_block
      procedure,pass :: read        => read_block
@@ -87,6 +91,7 @@ contains
        call self%sectors%free()
        deallocate(self%sectors)
     endif
+    ! if(allocated(self%BlockTag))deallocate(self%BlockTag)
     if(allocated(self%Opname))deallocate(self%Opname)
     if(allocated(self%SiteType))deallocate(self%SiteType)
   end subroutine free_block
@@ -101,10 +106,13 @@ contains
     integer,intent(in)                       :: Dim
     type(sectors_list),intent(in)            :: sectors(:)
     type(operators_list),intent(in)          :: operators
-    type(operators_list),intent(in)  :: omatrices
+    type(operators_list),intent(in)          :: omatrices
     character(len=:),allocatable             :: OpName
     character(len=:),allocatable             :: SiteType
+    ! character(len=:),allocatable,optional    :: BlockTag
+    ! character(len=:),allocatable             :: BlockTag_
     type(block)                              :: self
+    ! BlockTag_      ="";if(present(BlockTag))BlockTag_=BlockTag
     self%length    = length
     self%Dim       = Dim
     self%operators = operators
@@ -113,14 +121,18 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i) = sectors(i)
     enddo
+    ! allocate(self%BlockTag, source=BlockTag_)
     allocate(self%OpName, source=OpName)
     allocate(self%SiteType, source=SiteType)
   end function constructor_from_scrath
 
 
   function constructor_from_site(ssite) result(self)
-    type(site),intent(in) :: ssite
-    type(block)           :: self
+    type(site),intent(in)                :: ssite
+    ! character(len=*),intent(in),optional :: BlockTag
+    ! character(len=:),allocatable         :: BlockTag_
+    type(block)                          :: self
+    ! BlockTag_="";if(present(BlockTag))BlockTag_=BlockTag
     self%length    = 1
     self%Dim       = ssite%Dim
     self%operators = ssite%operators
@@ -133,6 +145,7 @@ contains
     do i=1,size(self%sectors)
        self%sectors(i)   = ssite%sectors(i)
     enddo
+    ! allocate(self%BlockTag, source=BlockTag_)
     allocate(self%OpName, source=ssite%OpName)
     allocate(self%SiteType, source=ssite%SiteType)
   end function constructor_from_site
@@ -281,6 +294,7 @@ contains
     do i=1,size(A%sectors)
        A%sectors(i) = B%sectors(i)
     enddo
+    ! allocate(A%BlockTag, source=B%BlockTag)
     allocate(A%OpName, source=B%OpName)
     allocate(A%SiteType, source=B%SiteType)
   end subroutine equality_block
@@ -312,17 +326,20 @@ contains
   end function is_valid_block
 
 
-  function okey_block(self,iorb,ispin,isite) result(string)
+  function okey_block(self,iorb,ispin,isite,ilink) result(string)
     class(block)                 :: self
     integer,optional             :: iorb,isite,ispin
+    character(len=1),optional    :: ilink
     integer                      :: iorb_,isite_,ispin_
+    character(len=1)             :: ilink_
     character(len=:),allocatable :: string
     iorb_ =0;if(present(iorb))iorb_=iorb
     ispin_=0;if(present(ispin))ispin_=ispin
     isite_=0;if(present(isite))isite_=isite
+    ilink_="n";if(present(ilink))ilink_=ilink
     !
-    if(iorb_==0.AND.ispin_==0)stop "Okey_Block ERROR: iorb == ispin == 0"
-    string = okey(iorb_,ispin_,isite_)
+    !if(iorb_==0.AND.ispin_==0)stop "Okey_Block ERROR: iorb == ispin == 0"
+    string = okey(iorb_,ispin_,isite_,ilink_)
     !
     !
   end function okey_block
@@ -341,6 +358,16 @@ contains
     string = to_lower(str(self%SiteType))
   end function SiteType_block
 
+  ! function Tag_block(self,n) result(string)
+  !   class(block)                  :: self
+  !   integer,optional              :: n
+  !   character(len=:),allocatable :: string
+  !   if(present(n))then
+  !      allocate(string, source=self%BlockTag(1:n))
+  !   else
+  !      allocate(string, source=self%BlockTag)
+  !   endif
+  ! end function tag_block
 
 
   !##################################################################
@@ -361,18 +388,19 @@ contains
     wOMAT_=.false.;if(present(wOMAT))wOMAT_=wOMAT
     unit_=6;if(present(file))open(free_unit(unit_),file=str(file))
     !
-    write(unit_,"(A,I6)")"Block Length  =",self%length
-    write(unit_,"(A,I6)")"Block Dim     =",self%Dim
-    write(unit_,"(A,A)") "Block Type    = ",self%SiteType
-    write(unit_,"(A,I6)")"Block Sectors =",size(self%sectors)
+    ! write(unit_,"(A16,A)")"Block TAG     = ",self%BlockTag
+    write(unit_,"(A,I6)") "Block Length  = ",self%length
+    write(unit_,"(A,I6)") "Block Dim     = ",self%Dim
+    write(unit_,"(A,A)")  "Block Type    = ",self%SiteType
+    write(unit_,"(A,I6)") "Block Sectors = ",size(self%sectors)
     write(unit_,*)""
     do i=1,size(self%sectors)
-       write(unit_,"(A15,I6)")"Block Sector  =",i
+       write(unit_,"(A15,I6)")"Block Sector  = ",i
        call self%sectors(i)%show(unit=unit_)
     enddo
     if(wOP_)then
-       write(unit_,"(A)")"Block Operators:"
        write(unit_,"(A,A)")"Op Name: ",self%OpName
+       write(unit_,"(A)")"Block Operators: "
        call self%operators%show(fmt=fmt_,unit=unit_)
 
     endif
@@ -395,6 +423,7 @@ contains
     open(free_unit(Bunit),file=str(block_file)//str(suffix) )
     !
     !General info:
+    ! write(Bunit,*)self%BlockTag
     write(Bunit,*)self%length
     write(Bunit,*)self%Dim
     write(Bunit,*)self%SiteType
@@ -450,13 +479,14 @@ contains
     type(operators_list)           :: operators
     type(operators_list)           :: omatrices
     type(sparse_matrix)            :: umat
-    character(len=32)              :: OpName,key,type
+    character(len=32)              :: OpName,key,type,tag
     character(len=32)              :: SiteType
     logical                        :: fbool
     !
     open(free_unit(Bunit),file=str(block_file)//str(suffix) )
     !
     !General info:
+    ! read(Bunit,*)Tag
     read(Bunit,*)length
     read(Bunit,*)Dim
     read(Bunit,*)SiteType
@@ -495,7 +525,7 @@ contains
     endif
     !
     !
-    self = block(length,Dim,sectors,operators,omatrices,str(opname),str(SiteType))
+    self = block(length,Dim,sectors,operators,omatrices,str(opname),str(SiteType))!,str(Tag))
     !
     close(Bunit)
     do i=1,SectorSize
@@ -580,6 +610,7 @@ program testBLOCKS
   USE LIST_SECTORS
   USE SITES
   USE BLOCKS
+  USE INPUT_VARS
   implicit none
   type(block)                         :: my_block,a
   type(block),allocatable             :: my_blocks(:)
@@ -618,6 +649,7 @@ program testBLOCKS
        [sparse(Hzero),sparse(Sz),sparse(Splus)],['b','s','b']),&
        opname='S',&
        sitetype='spin')
+
   print*,"Showing the operator list:"
   call my_block%show()
   print*,""
@@ -705,7 +737,10 @@ program testBLOCKS
   call a%free()
   a = block(spin_site(3))
 
-  call a%write(file="block_a.dat")
+
+  block_file='block'
+  umat_file="umat"
+  call a%write(suffix="_a.dat")
   call a%show()
 
   print*,"Free memory..."
@@ -713,7 +748,7 @@ program testBLOCKS
 
 
   print*,"Read"
-  call a%read(file="block_a.dat")
+  call a%read(suffix="_a.dat")
   print*,"Show"
   call a%show(wOP=.true.,wOMAT=.true.)
 
@@ -721,7 +756,7 @@ program testBLOCKS
 
   print*,"Save"
   call set_store_size(0)
-  call a%save(file="a_block.dat")
+  call a%save(suffix="_b.dat",gzip=.false.)
 
 
 
@@ -730,7 +765,7 @@ program testBLOCKS
 
 
   print*,"Load from file"
-  call a%load('a_block.dat')
+  call a%load(suffix='_b.dat')
   print*,"show:"
   call a%show()
 

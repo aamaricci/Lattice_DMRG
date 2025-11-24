@@ -29,6 +29,8 @@ contains
 
 
 
+
+  
   !##################################################################
   !              SETUP THE SUPERBLOCK HAMILTONIAN
   !                      SPARSE MODE
@@ -42,9 +44,9 @@ contains
   !the other operators (small) are stored by each cpu.
   !In principle one could store any sparse matrix in parallel and build H^SB as MPI too.
   subroutine Setup_SuperBlock_Sparse()
-    integer                         :: m_left,m_right
-    character(len=:),allocatable    :: type
-    type(sparse_matrix)             :: H2
+    integer                      :: m_left,m_right
+    character(len=:),allocatable :: type
+    type(sparse_matrix)          :: H2
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: Setup SB Sparse"
@@ -58,24 +60,26 @@ contains
     if(.not.right%operators%has_key("H"))&
          stop "Setup_SuperBlock_Sparse ERROR: Missing right.H operator in the list"
     !
-    type=left%type()
-    if(type/=right%type())&
+    type=str(left%type())
+    if(type/=str(right%type()))&
          stop "Setup_SuperBlock_Sparse ERROR: left.Type != right.Type"
     !
     m_left = left%dim
     m_right= right%dim
     !
-    select case(to_lower(type))
+    select case(to_lower(type(1:1)))
     case default;stop "Setup_SuperBlock_Sparse ERROR: wrong left/right.Type"
-    case ("spin","s")
-       H2 = connect_spin_blocks(left,right,sb_states)
-    case ("fermion","f,","electron","e")
-       H2 = connect_fermion_blocks(left,right,sb_states)
+    case ("s")
+       H2 = connect_spin_blocks(left,right,sb_states,link="n")
+       if(PBCdmrg)H2 = H2 + connect_spin_blocks(left,right,sb_states,link="p")
+    case ("f","e")
+       H2 = connect_fermion_blocks(left,right,sb_states,link="n")
+       if(PBCdmrg)H2 = H2 + connect_fermion_blocks(left,right,sb_states,link="p")
     end select
     !
-    spHsb = H2 & 
+    spHsb= H2 & 
          + sp_kron(left%operators%op("H"),id(m_right),sb_states) &
-         + sp_kron(id(m_left),right%operators%op("H"),sb_states)
+         + sp_kron(id(m_left),right%operators%op("H"),sb_states) 
     !
     if(MpiMaster)call stop_timer("Setup SB Sparse")
     t_setup_sb_sparse=t_stop()
@@ -118,18 +122,15 @@ contains
     if(.not.right%operators%has_key("H"))&
          stop "Setup_SuperBlock_Direct ERROR: Missing right.H operator in the list"
     !
-    type=left%type()
-    if(type/=right%type())&
+    type=str(left%type())
+    if(type/=str(right%type()))&
          stop "Setup_SuperBlock_Direct ERROR: left.Type != right.Type"
     !
-    !
     t0=t_start()
-    select case(to_lower(type))
+    select case(to_lower(type(1:1)))
     case default;stop "Setup_SuperBlock_Direct ERROR: wrong left/right.Type"
-    case ("spin","s")
-       call Setup_SuperBlock_Spin_Direct()
-    case ("fermion","f,","electron","e")
-       call Setup_SuperBlock_Fermion_Direct()
+    case ("s")    ;call Setup_SuperBlock_Spin_Direct()
+    case ("f","e");call Setup_SuperBlock_Fermion_Direct()
     end select
     t_setup_sb_direct=t_stop()
   end subroutine Setup_SuperBlock_Direct
@@ -155,7 +156,8 @@ contains
     type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
     real(8),dimension(:),allocatable             :: dq
     integer,dimension(:,:,:),allocatable         :: tMap
-    type(sparse_matrix),allocatable,dimension(:) :: Sleft,Sright
+    type(sparse_matrix),allocatable,dimension(:) :: Sl_n,Sl_p !Left
+    type(sparse_matrix),allocatable,dimension(:) :: Sr_n,Sr_p !Right
     type(sparse_matrix)                          :: Hl,Hr
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable        :: Hij
@@ -182,8 +184,9 @@ contains
     !
     !
     Nso  = Nspin
-    tNso = 3
-    Nsb  = size(sb_sector)
+    tNso = 3                    !Sz.Sz + S+.S- + S-.S+ ([...]<->[...]) 
+    if(PBCdmrg)tNso=6           !Sz.Sz + S+.S- + S-.S+ (->[...][...]<-)
+    nsb  = size(sb_sector)
     !
     !Massive allocation
     if(allocated(tMap))deallocate(tMap)
@@ -213,15 +216,18 @@ contains
     if(allocated(Hright))deallocate(Hright)
     if(allocated(isb2jsb))deallocate(isb2jsb)
     if(allocated(IsHconjg))deallocate(IsHconjg)
-    if(allocated(Sleft))deallocate(Sleft)
-    if(allocated(Sright))deallocate(Sright)
+    if(allocated(Sl_n))deallocate(Sl_n)
+    if(allocated(Sl_p))deallocate(Sl_p)
+    if(allocated(Sr_n))deallocate(Sr_n)
+    if(allocated(Sr_p))deallocate(Sr_p)
     !    
     allocate(AI(Nsb),BI(Nsb))
     allocate(A(tNso,Nsb),B(tNso,Nsb))
     allocate(Hleft(Nsb),Hright(Nsb))
     allocate(isb2jsb(tNso,Nsb));isb2jsb=0
     allocate(IsHconjg(tNso,Nsb));IsHconjg=0
-    allocate(Sleft(Nspin),Sright(Nspin))
+    allocate(Sl_n(Nspin),Sr_n(Nspin))
+    allocate(Sl_p(Nspin),Sr_p(Nspin))
     !
     if(MpiMaster)t0=t_start()
     !Main computation:
@@ -232,13 +238,18 @@ contains
     enddo
     if(MpiMaster)print*,"Get Filtered States:",t_stop()
     !
+
     !
     ! ROOT get basic operators from L/R blocks and bcast them
     if(MpiMaster)t0=t_start()
     if(MpiMaster)then
        do ispin=1,Nspin
-          Sleft(ispin)   = left%operators%op("S"//left%okey(0,ispin))
-          Sright(ispin)  = right%operators%op("S"//right%okey(0,ispin))
+          Sl_n(ispin) = left%operators%op("S"//left%okey(0,ispin,ilink='n'))
+          Sr_n(ispin) = right%operators%op("S"//right%okey(0,ispin,ilink='n'))
+          if(PBCdmrg)then
+             Sl_p(ispin) = left%operators%op("S"//left%okey(0,ispin,ilink='p'))
+             Sr_p(ispin) = right%operators%op("S"//right%okey(0,ispin,ilink='p'))
+          endif
        enddo
        Hl = left%operators%op("H")
        Hr = right%operators%op("H")
@@ -246,8 +257,12 @@ contains
 #ifdef _MPI
     if(MpiStatus)then
        do ispin=1,Nspin
-          call Sleft(ispin)%bcast()
-          call Sright(ispin)%bcast()
+          call Sl_n(ispin)%bcast()
+          call Sr_n(ispin)%bcast()
+          if(PBCdmrg)then
+             call Sl_p(ispin)%bcast()
+             call Sr_p(ispin)%bcast()
+          endif
        enddo
        call Hl%bcast()
        call Hr%bcast()
@@ -261,17 +276,18 @@ contains
     isb2jsb=0
     do isb=1+MpiRank,Nsb,MpiSize
        !
-       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//" N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
+       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//&
+            " N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
        !
        qn = sb_sector%qn(index=isb)
        !
        Hleft(isb) = sp_filter(Hl,AI(isb)%states)
        Hright(isb)= sp_filter(Hr,BI(isb)%states)
        !
-       !get  A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (DIAGONAL)
+       !get  it=1: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (DIAGONAL)
        it = tMap(1,1,1)
-       A(it,isb) = Hij(1,1)*sp_filter(Sleft(1),AI(isb)%states,AI(isb)%states)
-       B(it,isb) = sp_filter(Sright(1),BI(isb)%states,BI(isb)%states)
+       A(it,isb) = Hij(1,1)*sp_filter(Sl_n(1),AI(isb)%states,AI(isb)%states)
+       B(it,isb) = sp_filter(Sr_n(1),BI(isb)%states,BI(isb)%states)
        qm  = qn
        jsb = isb
        Isb2Jsb(it,isb) =jsb
@@ -288,14 +304,14 @@ contains
        !
        !it=2
        it=tMap(2,1,1)
-       A(it,isb) = Hij(2,2)*sp_filter(Sleft(2),AI(isb)%states,AI(jsb)%states)
-       B(it,isb) = sp_filter(hconjg(Sright(2)),BI(isb)%states,BI(jsb)%states)
+       A(it,isb) = Hij(2,2)*sp_filter(Sl_n(2),AI(isb)%states,AI(jsb)%states)
+       B(it,isb) = sp_filter(hconjg(Sr_n(2)),BI(isb)%states,BI(jsb)%states)
        Isb2Jsb(it,isb)  =jsb
        IsHconjg(it,isb) =0!.false.
        RowOffset(it,isb)=Offset(isb)
        ColOffset(it,isb)=Offset(jsb)
        !
-       !it=2
+       !it=3
        it=tMap(3,1,1)
        A(it,isb) = hconjg(A(tMap(2,1,1),isb))
        B(it,isb) = hconjg(B(tMap(2,1,1),isb))
@@ -304,6 +320,41 @@ contains
        RowOffset(it,isb)=Offset(jsb)
        ColOffset(it,isb)=Offset(isb)
        !
+       if(PBCdmrg)then
+          !get it=4: A = Jp*S_lz .x. B = S_rz + Row/Col Offsets (DIAGONAL)
+          it = tMap(4,1,1)
+          A(it,isb) = Hij(1,1)*sp_filter(Sl_p(1),AI(isb)%states,AI(isb)%states)
+          B(it,isb) = sp_filter(Sr_p(1),BI(isb)%states,BI(isb)%states)
+          qm  = qn
+          jsb = isb
+          Isb2Jsb(it,isb) =jsb
+          IsHconjg(it,isb)=0!.false.
+          RowOffset(it,isb)=Offset(isb)           
+          ColOffset(it,isb)=Offset(isb)
+          !
+          !> get it=2: A = Jxy*S_l- .x. B = [S_r-]^+=S_r+ + Row/Col Offsets
+          !> get it=3: A = Jxy*S_l+ .x. B = [S_r+]^+=S_r- + Row/Col Offsets 
+          dq = [1d0]
+          qm = qn - dq
+          if(.not.sb_sector%has_qn(qm))cycle
+          jsb = sb_sector%index(qn=qm)
+          !
+          it=tMap(5,1,1)
+          A(it,isb) = Hij(2,2)*sp_filter(Sl_p(2),AI(isb)%states,AI(jsb)%states)
+          B(it,isb) = sp_filter(hconjg(Sr_p(2)),BI(isb)%states,BI(jsb)%states)
+          Isb2Jsb(it,isb)  =jsb
+          IsHconjg(it,isb) =0!.false.
+          RowOffset(it,isb)=Offset(isb)
+          ColOffset(it,isb)=Offset(jsb)
+          !
+          it=tMap(6,1,1)
+          A(it,isb) = hconjg(A(tMap(2,1,1),isb))
+          B(it,isb) = hconjg(B(tMap(2,1,1),isb))
+          Isb2Jsb(it,isb)  =jsb
+          IsHconjg(it,isb) =1!.true.  !exchange jsb and isb
+          RowOffset(it,isb)=Offset(jsb)
+          ColOffset(it,isb)=Offset(isb)
+       endif
     enddo
     if(MpiMaster)print*,"Get Op Blocks:",t_stop()
     !
@@ -337,12 +388,14 @@ contains
     !
     !
     do ispin=1,Nspin
-       call Sleft(ispin)%free()
-       call Sright(ispin)%free()
+       call Sl_n(ispin)%free()
+       call Sl_p(ispin)%free()
+       call Sr_n(ispin)%free()
+       call Sr_p(ispin)%free()
     enddo
     call Hl%free()
     call Hr%free()
-    deallocate(Sleft,Sright)
+    deallocate(Sl_n,Sr_n,Sl_p,Sr_p)
     deallocate(AI)
     deallocate(BI)
     !
@@ -360,16 +413,16 @@ contains
   !##################################################################
   subroutine Setup_SuperBlock_Fermion_Direct()
     integer                                      :: Nso,Nsb
-    integer                                      :: it,isb,jsb,ierr,ipr
+    integer                                      :: it,isb,jsb,ierr,ipr,fbc
     real(8),dimension(:),allocatable             :: qn,qm
     type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
     real(8),dimension(:),allocatable             :: dq
-    ! real(8),dimension(2),parameter               :: qnup=[1d0,0d0]
-    ! real(8),dimension(2),parameter               :: qndw=[0d0,1d0]
     real(8),dimension(:),allocatable             :: qnup,qndw
     integer,dimension(:,:,:),allocatable         :: tMap
-    type(sparse_matrix)                          :: P,Hl,Hr
-    type(sparse_matrix),allocatable,dimension(:) :: Cleft,Cright
+    type(sparse_matrix)                          :: Hl,Hr
+    type(sparse_matrix)                          :: P_n,P_p
+    type(sparse_matrix),allocatable,dimension(:) :: Cl_n,Cr_n
+    type(sparse_matrix),allocatable,dimension(:) :: Cl_p,Cr_p
 #ifdef _CMPLX
     complex(8),dimension(:,:),allocatable        :: Hij
 #else
@@ -394,19 +447,21 @@ contains
     allocate(Hij, source=HopH)
     !
     !
+    fbc  = 2
+    if(PBCdmrg)fbc=4
     Nso  = Nspin*Norb
-    tNso = 2*count(Hij/=zero)
+    tNso = fbc*count(Hij/=zero)
     Nsb  = size(sb_sector)
     !
     !
     !Massive allocation
     if(allocated(tMap))deallocate(tMap)
-    allocate(tMap(2,Nso,Nso))
+    allocate(tMap(fbc,Nso,Nso))
     !Creating the sequence of operators A*_q, B*_q
     ! which decompose the term H^LR of the
     ! super-block Hamiltonian.
     it = 0
-    do i=1,2
+    do i=1,fbc
        do io=1,Nso
           do jo=1,Nso
              if(Hij(io,jo)==zero)cycle
@@ -432,15 +487,18 @@ contains
     if(allocated(Hright))deallocate(Hright)
     if(allocated(isb2jsb))deallocate(isb2jsb)
     if(allocated(IsHconjg))deallocate(IsHconjg)
-    if(allocated(Cleft))deallocate(Cleft)
-    if(allocated(Cright))deallocate(Cright)
+    if(allocated(Cl_n))deallocate(Cl_n)
+    if(allocated(Cl_p))deallocate(Cl_p)
+    if(allocated(Cr_n))deallocate(Cr_n)
+    if(allocated(Cr_p))deallocate(Cr_p)
     !
     allocate(AI(Nsb),BI(Nsb))
     allocate(A(tNso,Nsb),B(tNso,Nsb))
     allocate(Hleft(Nsb),Hright(Nsb))
     allocate(isb2jsb(tNso,Nsb));isb2jsb=0
     allocate(IsHconjg(tNso,Nsb));IsHconjg=0
-    allocate(Cleft(Nso),Cright(Nso))
+    allocate(Cl_n(Nso),Cr_n(Nso))
+    allocate(Cl_p(Nso),Cr_p(Nso))
     !
     !
     if(MpiMaster)t0=t_start()
@@ -456,12 +514,17 @@ contains
     ! ROOT get basic operators from L/R blocks and bcast them
     if(MpiMaster)t0=t_start()
     if(MpiMaster)then
-       P = left%operators%op("P")
+       P_n = left%operators%op("P"//left%okey(0,0,ilink='n'))
+       if(PBCdmrg) P_p = left%operators%op("P"//left%okey(0,0,ilink='p'))
        do ispin=1,Nspin
           do iorb=1,Norb
              io = iorb+(ispin-1)*Norb
-             Cleft(io)  = left%operators%op("C"//left%okey(iorb,ispin))
-             Cright(io) = right%operators%op("C"//right%okey(iorb,ispin))
+             Cl_n(io) = left%operators%op("C"//left%okey(iorb,ispin,ilink='n'))
+             Cr_n(io) = right%operators%op("C"//right%okey(iorb,ispin,ilink='n'))
+             if(PBCdmrg)then
+                Cl_p(io) = left%operators%op("C"//left%okey(iorb,ispin,ilink='p'))
+                Cr_p(io) = right%operators%op("C"//right%okey(iorb,ispin,ilink='p'))
+             endif
           enddo
        enddo
        Hl = left%operators%op("H")
@@ -469,12 +532,17 @@ contains
     endif
 #ifdef _MPI
     if(MpiStatus)then
-       call P%bcast()
+       call P_n%bcast()
+       if(PBCdmrg)call P_p%bcast()
        do ispin=1,Nspin
           do iorb=1,Norb
              io = iorb+(ispin-1)*Norb
-             call Cleft(io)%bcast()
-             call Cright(io)%bcast()
+             call Cl_n(io)%bcast()
+             call Cr_n(io)%bcast()
+             if(PBCdmrg)then
+                call Cl_p(io)%bcast()
+                call Cr_p(io)%bcast()
+             endif
           enddo
        enddo
        call Hl%bcast()
@@ -504,7 +572,8 @@ contains
     isb2jsb=0
     do isb=1+MpiRank,Nsb,MpiSize
        !
-       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//" N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
+       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//&
+            " N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
        !
        qn = sb_sector%qn(index=isb)
        !
@@ -527,8 +596,8 @@ contains
                 !
                 !it=1,a,b
                 it=tMap(1,io,jo)
-                A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cleft(io)%dgr(),P),AI(isb)%states,AI(jsb)%states)
-                B(it,isb) = sp_filter(Cright(jo),BI(isb)%states,BI(jsb)%states)
+                A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cl_n(io)%dgr(),P_n),AI(isb)%states,AI(jsb)%states)
+                B(it,isb) = sp_filter(Cr_n(jo),BI(isb)%states,BI(jsb)%states)
                 Isb2Jsb(it,isb)  =jsb
                 IsHconjg(it,isb) =0!.false.
                 RowOffset(it,isb)=Offset(isb)           
@@ -542,6 +611,27 @@ contains
                 IsHconjg(it,isb) =1!.true.
                 RowOffset(it,isb)=Offset(jsb)
                 ColOffset(it,isb)=Offset(isb)
+                !
+                if(PBCdmrg)then
+                   !it=3,a,b
+                   it=tMap(3,io,jo)
+                   A(it,isb) = Hij(io,jo)*sp_filter(matmul(Cl_p(io)%dgr(),P_p),AI(isb)%states,AI(jsb)%states)
+                   B(it,isb) = sp_filter(Cr_p(jo),BI(isb)%states,BI(jsb)%states)
+                   Isb2Jsb(it,isb)  =jsb
+                   IsHconjg(it,isb) =0!.false.
+                   RowOffset(it,isb)=Offset(isb)           
+                   ColOffset(it,isb)=Offset(jsb)
+                   !
+                   !it=2,a,b
+                   it=tMap(4,io,jo)
+                   A(it,isb) = hconjg(A(tMap(3,io,jo),isb))
+                   B(it,isb) = hconjg(B(tMap(3,io,jo),isb))
+                   Isb2Jsb(it,isb)  =jsb
+                   IsHconjg(it,isb) =1!.true.
+                   RowOffset(it,isb)=Offset(jsb)
+                   ColOffset(it,isb)=Offset(isb)
+                end if
+                !
              enddo
           enddo
           !
@@ -575,19 +665,23 @@ contains
     endif
 #endif
     !
-    call P%free()
+    call P_n%free()
+    call P_p%free()
     call Hl%free()
     call Hr%free()
     do ispin=1,Nspin
        do iorb=1,Norb
           io = iorb+(ispin-1)*Norb
-          call Cleft(io)%free()
-          call Cright(io)%free()
+          call Cl_n(io)%free()
+          call Cr_n(io)%free()
+          call Cl_p(io)%free()
+          call Cr_p(io)%free()
        enddo
     enddo
     call Hl%free()
     call Hr%free()
-    deallocate(Cleft,Cright)
+    deallocate(Cl_n,Cr_n)
+    deallocate(Cl_p,Cr_p)
     deallocate(AI)
     deallocate(BI)
     !

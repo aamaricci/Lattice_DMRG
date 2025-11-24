@@ -9,6 +9,8 @@ MODULE INPUT_VARS
   !=========================================================
   character(len=1)             :: DMRGtype
   !Set the DMRG algorithm: 'i,I'=Infinite, 'f,F'=Finite. Default i
+  logical                      :: PBCdmrg
+  !Set the Periodic(T) or Open(F) boundary conditions. Default F (OBC)
   integer                      :: Ldmrg,iNlat,fNlat
   !# of iDMRG steps to take, Ldmrg=max length of the SB.
   integer                      :: Mdmrg
@@ -156,6 +158,10 @@ contains
     case('i','f');continue
     case default;stop "ERROR DMRG: unsupported DMRGtype: DMRGtype !=['i','f']"
     end select
+
+    call parse_input_variable(PBCdmrg,"PBCdmrg",INPUTunit,&
+         default=.false.,&
+         comment="Set the Periodic(T) or Open(F) boundary conditions. Default F (OBC)")
 
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&

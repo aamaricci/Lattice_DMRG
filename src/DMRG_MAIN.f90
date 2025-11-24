@@ -70,6 +70,8 @@ contains
     left =init_left
     right=init_right
     !
+    !add setup the map from local to global index here: 
+    !
   end subroutine init_dmrg
 
 
@@ -133,7 +135,9 @@ contains
 
 
 
-
+  !##################################################################
+  !              INFINITE DMRG ALGORITHM
+  !##################################################################
   subroutine infinite_DMRG()
     logical :: bool_left,bool_right
     !
@@ -150,7 +154,8 @@ contains
     if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length"
     !
     do while (left%length < Ldmrg)
-       call step_dmrg('i')
+       call step_dmrg('i',link='n')            ![o-o...o-]-*.*-[-o...o-o] OBC=PBC_next
+       if(PBCdmrg)call step_dmrg('i',link='p') !@-[-o...o-o].[o-o...o-]-@     PBC_prev
     enddo
   end subroutine infinite_DMRG
 
@@ -158,7 +163,9 @@ contains
 
 
 
-
+  !##################################################################
+  !              FINITE DMRG ALGORITHM (2 b checked)
+  !##################################################################
   subroutine finite_DMRG()
     integer                                :: i,j,im,right_label,left_label
     type(block),dimension(:,:),allocatable :: blocks_list
@@ -170,6 +177,8 @@ contains
     if(MpiMaster)write(LOGfile,*)"DEBUG: Finite Algorithm"
 #endif
     !
+    if(PBCdmrg)&
+         stop "finite_DMRG ERROR: Finite DMRG with PBC not yet implemented."
     !
     if(.not.init_called)&
          stop "finite_DMRG ERROR: DMRG not initialized. Call init_dmrg first."
@@ -243,25 +252,38 @@ contains
 
 
 
+
+
+
+
+  
   !##################################################################
   !              WORKHORSE: STEP DMRG 
   !##################################################################
-  subroutine step_dmrg(type,label,sweep)
-    character(len=1) :: type
-    integer,optional :: label,sweep
-    integer          :: iLabel,unit,i
-    integer          :: m_sb
-    integer          :: m_rleft,m_rright
-    integer          :: m_es,m_ee
-    integer          :: m_left,m_right
-    integer          :: m_eleft,m_eright
-    integer          :: Lleft,Lright
-    logical          :: bool1,bool2,renormalize
+  subroutine step_dmrg(type,label,sweep,link)
+    character(len=1)          :: type
+    integer,optional          :: label,sweep
+    character(len=1),optional :: link
+    integer                   :: iLabel,unit,i
+    character(len=1)          :: ilink
+    integer                   :: m_sb
+    integer                   :: m_rleft,m_rright
+    integer                   :: m_es,m_ee
+    integer                   :: m_left,m_right
+    integer                   :: m_eleft,m_eright
+    integer                   :: Lleft,Lright
+    logical                   :: bool1,bool2,renormalize
     !
     !just 4 DMRG_graphic
-    iLabel=0;if(present(label))iLabel=label
+    iLabel=0  ;if(present(label))iLabel=label
+    iLink ="n";if(present(Link))iLink=Link
+    select case(iLink)
+    case default;stop "step_dmrg ERROR: iLink not in ['n','p']"
+    case ("n","p");continue
+    end select
     !
     select case(to_lower(type))
+    case default; stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
     case('f')
        if(.not.present(sweep))stop "step_dmrg ERROR: type=F but no sweep-index provided"
        if(sweep>Nsweep.OR.sweep<1)stop "step_dmrg ERROR: isweep < 1 OR isweep > Nsweep"
@@ -272,8 +294,6 @@ contains
        Mstates=Mdmrg
        Estates=Edmrg
        suffix = label_DMRG(type)
-    case default
-       stop "step_dmrg ERROR: unsupported type. Pick Finite or Infinite"
     end select
     !    
     !
@@ -285,7 +305,7 @@ contains
     m_right = right%dim
     !
     !> START DMRG STEP:
-    if(MpiMaster)call dmrg_graphic(iLabel)
+    if(MpiMaster)call dmrg_graphic(iLabel)!,iLink)
     if(save_block)then
        if(MpiMaster)then
           if(save_all_blocks)then
@@ -306,15 +326,14 @@ contains
     !#################################
     Lleft =left%length
     Lright=right%length
-    call enlarge_block(left,dot(left%length+1),grow='left')
-    call enlarge_block(right,dot(left%length+2),grow='right')
+    call enlarge_block(left,dot(left%length+1),label='left',link=iLink)
+    call enlarge_block(right,dot(left%length+2),label='right',link=iLink)
     !
     !#################################
     !    Build SUPER-BLOCK Sector
     !#################################
-    m_eleft           = left%dim
-    m_eright          = right%dim
-    ! current_L         = left%length + right%length
+    m_eleft   = left%dim
+    m_eright  = right%dim
     call sb_set_current_QN()    !contains current_L
     !
     !In DMRG_SUPERBLOCK:
@@ -322,7 +341,7 @@ contains
     m_sb = size(sb_states)
     rdcd_sb_dim=m_sb
     full_sb_dim=m_eleft*m_eright
-
+    !
     !#################################
     !      WRITE AND EXIT
     !#################################

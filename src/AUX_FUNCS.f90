@@ -49,17 +49,36 @@ MODULE AUX_FUNCS
 contains
 
 
-
-  function okey(iorb,ispin,isite) result(string)
+  !Return a string to identify operators in Blocks/Sites
+  ! iorb=0 => spin
+  !   spin:
+  !      1 => _z
+  !      2 => _p (_+)
+  !   site:
+  !      i => _i<site,4>
+  !
+  ! iorb>0 => fermions
+  !   spin:
+  !      0 => null()
+  !     1,2=> _1,2 (up,dw)
+  !   site:
+  !      0 => null()
+  !      i => _i<site,4>
+  !
+  function okey(iorb,ispin,isite,ilink) result(string)
     integer,optional             :: iorb,isite,ispin
+    character(len=1),optional    :: ilink
     integer                      :: iorb_,isite_,ispin_
-    character(len=:),allocatable :: string,str_orb,str_spin,str_site
+    character(len=1)             :: ilink_
+    character(len=:),allocatable :: string,str_orb,str_spin,str_site,str_link
     !
-    iorb_ =0;if(present(iorb))iorb_=iorb
-    ispin_=0;if(present(ispin))ispin_=ispin
-    isite_=0;if(present(isite))isite_=isite
+    iorb_ =0  ; if(present(iorb))iorb_=iorb
+    ispin_=0  ; if(present(ispin))ispin_=ispin
+    isite_=0  ; if(present(isite))isite_=isite
+    ilink_="n"; if(present(ilink))ilink_=ilink
     !
-    if(iorb_==0.AND.ispin_==0)stop "Okey ERROR: iorb = ispin = 0"
+    !if(iorb_==0.AND.ispin_==0)stop "Okey ERROR: iorb = ispin = 0"
+    !
     if(iorb_==0)then
        str_orb =""
        !
@@ -86,8 +105,15 @@ contains
        case (0)    ;str_site=""
        end select
     endif
-
-    string = trim(str_orb)//trim(str_spin)//trim(str_site)
+    !
+    select case(to_lower(ilink_))
+    case default;str_link=""
+    case ("n")  ;str_link="_n"
+    case ("p")  ;str_link="_p"
+    end select
+    !
+    string = str(trim(str_orb)//trim(str_spin)//trim(str_site)//trim(str_link))
+    !
   end function okey
 
 

@@ -331,11 +331,11 @@ contains
     if(allocated(mpiDls))deallocate(mpiDls)
     allocate(Dls(Nsb),Drs(Nsb),mpiDls(Nsb))
     do q=1,Nsb
-       qn  = sb_sector%qn(index=q)
-       Dls(q) = sector_qn_dim(left%sectors(1),qn)
-       Drs(q) = sector_qn_dim(right%sectors(1),current_target_qn - qn)
+       qn        = sb_sector%qn(index=q)
+       Dls(q)    = sector_qn_dim(left%sectors(1),qn)
+       Drs(q)    = sector_qn_dim(right%sectors(1),current_target_qn - qn)
        mpiDls(q) = Dls(q)/MpiSize
-       if(MpiRank < mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
+       if(MpiRank< mod(Dls(q),MpiSize))mpiDls(q) = mpiDls(q)+1
     enddo
 #ifdef _DEBUG
     if(MpiStatus.AND.verbose>4.AND.(MpiComm/=Mpi_Comm_Null).AND.MpiSize>=1)then
