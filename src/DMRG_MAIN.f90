@@ -27,7 +27,7 @@ contains
     real(8),dimension(:,:)      :: Hij
 #endif
     type(site),dimension(:)     :: ModelDot
-    integer                     :: ilat
+    integer                     :: ilat,i,f,m
     !
     !
 #ifdef _MPI
@@ -70,12 +70,33 @@ contains
     left =init_left
     right=init_right
     !
-    !add setup the map from local to global index here: 
+    !add setup the map from local to global index here:
+    allocate(b2gMap(Ldmrg))
+    allocate(g2bMap(Ldmrg))    
+    if(PBCdmrg)then
+       !Ldmrg = 2*m+1
+       f = (Ldmrg+1)/2          !mid-point
+       m = (Ldmrg-1)/2
+       !
+       b2gMap(f) = 1
+       g2bMap(1) = f
+       do i=1,m
+          b2gMap(f+i)  = 2*i
+          b2gMap(f-i)  = 2*i+1
+          g2bMap(2*i)  = f+i
+          g2bMap(2*i+1)= f-i
+       enddo
+    else
+       b2gMap = (/(i,i=1,Ldmrg)/)
+       g2bMap = b2gMap
+    endif
     !
   end subroutine init_dmrg
 
 
 
+
+  
   !##################################################################
   !              FINALIZE DMRG ALGORITHM
   !##################################################################
@@ -200,7 +221,7 @@ contains
     if(left%length/=right%length)stop "infinite_DMRG error: L.length != R.length"
     !
     do while (left%length < Ldmrg)
-       call step_dmrg('i')
+       call step_dmrg('i',link='n')
        blocks_list(left_label , left%length)=left
        blocks_list(right_label,right%length)=right
     enddo
@@ -305,7 +326,7 @@ contains
     m_right = right%dim
     !
     !> START DMRG STEP:
-    if(MpiMaster)call dmrg_graphic(iLabel)!,iLink)
+    if(MpiMaster)call dmrg_graphic(iLabel,link=iLink)
     if(save_block)then
        if(MpiMaster)then
           if(save_all_blocks)then

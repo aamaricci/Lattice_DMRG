@@ -166,8 +166,17 @@ contains
     call parse_input_variable(Ldmrg,"Ldmrg",INPUTunit,&
          default=5,&
          comment="iDMRG steps to take=max length of the SB.")
+    if(PBCdmrg)then
+       if(mod(Ldmrg,2)==0)then
+          Ldmrg=Ldmrg+1 !Ldmrg = 2*k+1 for some k=1,...
+          write(LOGfile,*)"PBC + Ldmrg%2==0 => Shift Ldmrg to Odd number:",Ldmrg
+          call wait(1000)
+       endif
+    endif
     iNlat=2*Ldmrg+2
     fNlat=2*Ldmrg
+
+
     call parse_input_variable(Mdmrg,"Mdmrg",INPUTunit,&
          default=0,&
          comment="Number of states for truncation. If 0 use Edmrg as threshold.")
@@ -279,7 +288,7 @@ contains
     call parse_input_variable(block_file_,"BLOCK_FILE",INPUTunit,default='block',&
          comment="Name prefix of the stored block file, used to restart DMRG.")
     block_file=str(block_file_)
-
+    !
     !
     !    
     call parse_input_variable(LOGfile,"LOGFILE",INPUTunit,default=6,comment="LOG unit.")

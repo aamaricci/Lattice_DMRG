@@ -84,8 +84,37 @@ MODULE DMRG_GLOBAL
   !
   integer                                        :: Mstates
   real(8)                                        :: Estates
-
-
+  !
+  !Block to Global Map M and its inverse
+  !b2g_Map: maps BLOCK indices/labels set during iDMRG construction TO GLOBAL indices 1...N
+  !g2b_Map: maps GLOBAL indices TO BLOCK indices/labels as obtained during iDMRG construction
+  ! e.g.
+  ! PBC:  [7,5,3,1,2,4,6]
+  !       [1,2,3,4,5,6,7]
+  !
+  ! OBC:  [1,2,3,4,5,6,7]
+  !       [1,2,3,4,5,6,7]
+  !
+  ! maps:
+  !
+  !block index:           1 -> global index           4
+  !block index:           2 -> global index           5
+  !block index:           3 -> global index           3
+  !block index:           4 -> global index           6
+  !block index:           5 -> global index           2
+  !block index:           6 -> global index           7
+  !block index:           7 -> global index           1
+  !
+  !global index:           1 -> block index           7
+  !global index:           2 -> block index           5
+  !global index:           3 -> block index           3
+  !global index:           4 -> block index           1
+  !global index:           5 -> block index           2
+  !global index:           6 -> block index           4
+  !global index:           7 -> block index           6
+  !
+  integer,dimension(:),allocatable               :: b2gMap,g2bMap
+  !
   !Memory pool for HxV direct product 
   type(sparse_matrix),allocatable,dimension(:)   :: Hleft,Hright
   type(sparse_matrix),allocatable,dimension(:,:) :: A,B
@@ -431,7 +460,7 @@ contains
   end subroutine sb_set_current_qn
 
 
-  
+
   !##################################################################
   !##################################################################
   !                   MPI AUX FUNCTIONS
@@ -916,20 +945,28 @@ contains
 
 
 
-  subroutine dmrg_graphic(label)
-    integer                  :: label
-    integer                  :: i,N,Mleft,Mright,LMleft,LMright,index,Ltot
-    character(:),allocatable :: Ldot,Rdot
-    real(8)                  :: eps=1d-6
-    integer                  :: M=50
+  subroutine dmrg_graphic(label,link)
+    integer                   :: label
+    character(len=*),optional :: link
+    character(len=1)          :: ilink
+    integer                   :: i,N,Mleft,Mright,LMleft,LMright,index,Ltot
+    character(:),allocatable  :: Ldot,Rdot
+    real(8)                   :: eps=1d-6
+    integer                   :: M=100
+    character(len=3)         :: br,bl,tr,tl
+    !
+    ! turn each integer (byte) into a 1-byte character and concatenate
+    bl = char(int(Z'E2')) // char(int(Z'94')) // char(int(Z'94')) !└
+    br = char(int(Z'E2')) // char(int(Z'94')) // char(int(Z'98')) !┘
+    tl = char(int(Z'E2')) // char(int(Z'94')) // char(int(Z'8C')) !┌
+    tr = char(int(Z'E2')) // char(int(Z'94')) // char(int(Z'90')) !┐
+    !
+    !
+    ilink='n';if(present(link))ilink=to_lower(link(1:1))
     !
     Ltot = Ldmrg
     Ldot = bold_green('=')
-    Rdot = bold_red('-')
-    ! if(Ltot>M)then
-    !    Ldot = bg_green('=')
-    !    Rdot = bg_red('-')
-    ! endif
+    Rdot = bold_red('=')
     !
     N = int(Ltot/(M+eps))+1
     !
@@ -937,67 +974,79 @@ contains
     do i=1,3
        write(LOGfile,*)""
     enddo
-    select case(label)
-    case default; stop "dmrg_graphic error: label != 1(L),2(R)"
-    case(0)
-       Mleft  = int(left%length/(N+eps))+1
-       Mright = int(right%length/(N+eps))+1
-       LMleft = Ltot/N-Mleft
-       LMright= Ltot/N-Mright
-       index=nint(mod(dble(left%length),N+eps))
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
-            "left; right=",left%length,right%length,"|"
-       if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
-       write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
-       write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
-       write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
-       if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
+    Mleft  = int(left%length/(N+eps))+1
+    Mright = int(right%length/(N+eps))+1
+    index  = nint(mod(dble(left%length),N+eps))
+    LMleft = Ltot/N-Mleft
+    LMright= Ltot/N-Mright
+    !
+    write(LOGfile,"(A,2I4,2x)",advance="no")"left; right=",left%length+1,right%length+1
+    if(PBCdmrg)then
+       !
+       write(LOGfile,"(*(A1))",advance="no")(" ",i=1,LMleft-1)
+       select case(iLink)
+       case default
+          write(LOGfile,"(A3,A1)",advance="no")tl,"|"
+          write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
+          write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
+          write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
+          write(LOGfile,"(A1,A3)",advance='no')"|",tr
+       case('p')
+          write(LOGfile,"(A,A1,A)",advance="no")tl,"|",bold_green("*")
+          write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
+          write(LOGfile,"(A)",advance="no")bold("|")
+          write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
+          write(LOGfile,"(A,A1,A)",advance="no")bold_red("*"),"|",tr
+       end select
+       write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright-1)
        if(Ltot<=M)then
-          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
+          write(LOGfile,"(A1)",advance='yes')""
        else
-          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
+          write(LOGfile,"(2x,I3,2x,A,1x,A)",advance='yes')index,Ldot//":"//str(N)//"- ;",Rdot//":"//str(N)//"-"
+       endif
+       write(LOGfile,"(A,10x)",advance="no")"            "
+       write(LOGfile,"(*(A1))",advance="no")(" ",i=1,LMleft-1)
+       write(LOGfile,"(A)",advance="no")bl
+       write(LOGfile,"(*(A))",advance="no")(".",i=1,Mleft+Mright+5)
+       write(LOGfile,"(A)",advance="no")br
+       write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright-1)
+       write(LOGfile,"(A1)",advance='yes')""
+       !
+    else
+       !
+       select case(label)
+       case default
+          write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMleft)
+          write(LOGfile,"(A1)",advance="no")"|"
+          write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
+          write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
+          write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
+          write(LOGfile,"(A1)",advance='no')"|"
+          write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright)
+       case(1)
+          write(LOGfile,"(A1)",advance="no")"|"
+          write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
+          write(LOGfile,"(A)",advance="no")bg_green(">")//"|"//bold_red("*")
+          write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
+          write(LOGfile,"(A1)",advance="no")"|"
+       case(2)
+          write(LOGfile,"(A1)",advance="no")"|"
+          write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
+          write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
+          write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
+          write(LOGfile,"(A1)",advance="no")"|"
+       end select
+       if(Ltot<=M)then
+          write(LOGfile,"(A1)",advance='yes')""
+       else
+          write(LOGfile,"(2x,I3,2x,A,1x,A)",advance='yes')&
                index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
        endif
-    case(1)
-       Mleft  = int(left%length/(N+eps))+1
-       Mright = int(right%length/(N+eps))+1
-       LMleft = 0
-       LMright= 0
-       index=nint(mod(dble(left%length),N+eps))
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
-            "left; right=",left%length,right%length,"|"
-       if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
-       write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
-       write(LOGfile,"(A)",advance="no")bg_green(">")//"|"//bold_red("*")
-       write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
-       if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
-       if(Ltot<=M)then
-          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
-       else
-          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
-               index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
-       endif
-    case(2)
-       Mleft  = int(left%length/(N+eps))+1
-       Mright = int(right%length/(N+eps))+1
-       LMleft = 0
-       LMright= 0
-       index=nint(mod(dble(left%length),N+eps))
-       write(LOGfile,"(A,2I4,2x,A1)",advance="no")&
-            "left; right=",left%length,right%length,"|"
-       if(LMleft>0)write(LOGfile,"("//str(LMleft)//"A)",advance="no")(" ",i=1,LMleft)
-       write(LOGfile,"("//str(Mleft)//"A)",advance="no")(trim(Ldot),i=1,Mleft)
-       write(LOGfile,"(A)",advance="no")bold_green("*")//"|"//bg_red("<")
-       write(LOGfile,"("//str(Mright)//"A)",advance="no")(trim(Rdot),i=1,Mright)
-       if(LMright>0)write(LOGfile,"("//str(LMright)//"A)",advance="no")(" ",i=1,LMright)
-       if(Ltot<=M)then
-          write(LOGfile,"(A1,2x,2I4)",advance='yes')"|",left%length+1,right%length+1
-       else
-          write(LOGfile,"(A1,2x,2I4,2x,I3,2x,A,1x,A)",advance='yes')"|",left%length+1,right%length+1, &
-               index,Ldot//"->"//str(N)//"= ;",Rdot//"->"//str(N)//"-"
-       endif
-    end select
+
+    endif
+    !
     call wait(250)
+    !
   end subroutine dmrg_graphic
 
 

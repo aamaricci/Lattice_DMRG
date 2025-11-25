@@ -182,11 +182,8 @@ contains
     if(allocated(qn))deallocate(qn)
     allocate(qn, mold=current_target_qn)
     !
-    select case(to_lower(str(label)))
-!!!!!#################################
-!!!!!      LEFT
-!!!!!#################################
-    case ("left","l","sys","system","s")
+    select case(to_lower(str(label(1:1))))
+    case ("l","s")!!!!!      LEFT
        mtr = m_left
        if(left%length+right%length==2)return
        !
@@ -260,16 +257,11 @@ contains
           close(unit)
        endif
 #endif
-       !Free Rho_Left
        call left_basis%free()
        call trRho_left%free()
        call rho_left%free()
        !
-       !
-!!!!!#################################
-!!!!!      RIGHT
-!!!!!#################################
-    case ("right","r","env","environment","e")
+    case ("r","e")!!!!!      RIGHT
        mtr  = m_right
        if(left%length+right%length==2)return
        !
@@ -342,12 +334,9 @@ contains
           close(unit)
        endif
 #endif
-       !Free Rho Right:
        call right_basis%free()
        call trRho_right%free()
        call rho_right%free()
-!!!!#################################
-!!!!#################################
     case default;stop "renormalize block: wrong label, not in [left-sys|right-env]"
     end select
     !
