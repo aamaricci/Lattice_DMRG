@@ -188,7 +188,8 @@ contains
        if(left%length+right%length==2)return
        !
        if(MpiMaster)then
-          call start_timer("Diag rho "//to_lower(str(label)));t0=t_start()
+          call start_timer("Diag rho "//to_lower(str(label)));
+          t0=t_start()
           call rho_left%eigh(sort=.true.,reverse=.true.)
           call stop_timer("Diag rho "//to_lower(str(label)));t_rdm_diag=t_rdm_diag+t_stop()
           !
@@ -230,7 +231,10 @@ contains
        !>Renormalize Blocks:
        call operators_renormalization(left,trRho_left)
        ! call left%renormalize(trRho_left)
-       if(MpiMaster)call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
+       if(MpiMaster)then
+          call stop_timer("Renormalize "//to_lower(str(label)))
+          t_rdm_renorm=t_rdm_renorm+t_stop()
+       endif
        !
        !
        !>Prepare output and update basis state
@@ -308,7 +312,10 @@ contains
        !>Renormalize Blocks:
        call operators_renormalization(right,trRho_right)
        ! call right%renormalize(trRho_right)
-       if(MpiMaster)call stop_timer("Renormalize "//to_lower(str(label)));t_rdm_renorm=t_rdm_renorm+t_stop()
+       if(MpiMaster)then
+          call stop_timer("Renormalize "//to_lower(str(label)));
+          t_rdm_renorm=t_rdm_renorm+t_stop()
+       endif
        !
        !
        !>Prepare output and update basis state
@@ -366,9 +373,9 @@ contains
     do i=1,size(self%operators)
        !1. Master retrieve operator and check dimensions
        if(MpiMaster)Op  = self%operators%op(index=i)
-       call Op%bcast()
+       if(MpiStatus)call Op%bcast()
        if( any( [Op%Nrow,Op%Ncol] /= [N,N] ) ) &
-               stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
+            stop "self.renormalize error: shape(Op) != [N,N] N=size(Rho,1)"
        !2. All nodes rotate&truncate
        rOp = rotate_and_truncate(Op)
        !4. Master store renormalized operator

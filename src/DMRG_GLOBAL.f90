@@ -998,7 +998,7 @@ contains
           write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
           write(LOGfile,"(A,A1,A)",advance="no")bold_red("*"),"|",tr
        end select
-       write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright-1)
+       ! write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright-1)
        if(Ltot<=M)then
           write(LOGfile,"(A1)",advance='yes')""
        else
@@ -1009,7 +1009,7 @@ contains
        write(LOGfile,"(A)",advance="no")bl
        write(LOGfile,"(*(A))",advance="no")(".",i=1,Mleft+Mright+5)
        write(LOGfile,"(A)",advance="no")br
-       write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright-1)
+       ! write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright-1)
        write(LOGfile,"(A1)",advance='yes')""
        !
     else
@@ -1022,7 +1022,7 @@ contains
           write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
           write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
           write(LOGfile,"(A1)",advance='no')"|"
-          write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright)
+          ! write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright)
        case(1)
           write(LOGfile,"(A1)",advance="no")"|"
           write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)

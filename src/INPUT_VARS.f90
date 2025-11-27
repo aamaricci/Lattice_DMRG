@@ -170,7 +170,6 @@ contains
        if(mod(Ldmrg,2)==0)then
           Ldmrg=Ldmrg+1 !Ldmrg = 2*k+1 for some k=1,...
           write(LOGfile,*)"PBC + Ldmrg%2==0 => Shift Ldmrg to Odd number:",Ldmrg
-          call wait(1000)
        endif
     endif
     iNlat=2*Ldmrg+2
