@@ -151,7 +151,7 @@ contains
   !##################################################################
   subroutine Setup_SuperBlock_Spin_Direct()
     integer                                      :: Nso,Nsb
-    integer                                      :: it,isb,jsb,ierr
+    integer                                      :: it,isb,jsb,ierr,sizeA,sizeB
     real(8),dimension(:),allocatable             :: qn,qm
     type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
     real(8),dimension(:),allocatable             :: dq
@@ -276,8 +276,11 @@ contains
     isb2jsb=0
     do isb=1+MpiRank,Nsb,MpiSize
        !
-       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//&
-            " N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
+       sizeA=size(AI(isb)%states)
+       sizeB=size(BI(isb)%states)
+       if(MpiMaster.AND.sizeA>10)&
+            write(LOGfile,*)"isb:"//str(isb)//"/"//str(Nsb)//&
+               " N(isb):"//str(sizeA)//","//str(sizeB)
        !
        qn = sb_sector%qn(index=isb)
        !
@@ -413,7 +416,7 @@ contains
   !##################################################################
   subroutine Setup_SuperBlock_Fermion_Direct()
     integer                                      :: Nso,Nsb
-    integer                                      :: it,isb,jsb,ierr,ipr,fbc
+    integer                                      :: it,isb,jsb,ierr,ipr,fbc,sizeA,sizeB
     real(8),dimension(:),allocatable             :: qn,qm
     type(tstates),dimension(:),allocatable       :: Ai,Aj,Bi,Bj
     real(8),dimension(:),allocatable             :: dq
@@ -572,8 +575,11 @@ contains
     isb2jsb=0
     do isb=1+MpiRank,Nsb,MpiSize
        !
-       if(MpiMaster)write(LOGfile,*)"[0]isb:"//str(isb)//"/"//str(Nsb)//&
-            " N(isb):"//str(size(AI(isb)%states))//","//str(size(BI(isb)%states))
+       sizeA=size(AI(isb)%states)
+       sizeB=size(BI(isb)%states)
+       if(MpiMaster.AND.sizeA>10)&
+            write(LOGfile,*)"isb:"//str(isb)//"/"//str(Nsb)//&
+            " N(isb):"//str(sizeA)//","//str(sizeB)
        !
        qn = sb_sector%qn(index=isb)
        !

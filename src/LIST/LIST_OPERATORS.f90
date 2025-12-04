@@ -294,7 +294,7 @@ contains
        endif
        c => c%next
     end do
-    if(.not.ifound)stop "get error: not found"
+    if(.not.ifound)stop "get_op_operators_list error: not found"
     !
     op  = c%ope
     key = str(c%ckey)
@@ -337,7 +337,14 @@ contains
        endif
        c => c%next
     end do loop
-    if(.not.ifound)stop "get_op_operators_list error: not found"
+    if(.not.ifound)then
+       if(present(key))then
+          print*,"get_op_operators_list error: key not found",key
+       else
+          print*,"get_op_operators_list error: index not found",index_
+       endif
+       stop
+    endif
     !
     op = c%ope    
     !

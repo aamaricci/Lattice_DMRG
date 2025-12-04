@@ -121,7 +121,7 @@ contains
           sb_states( i0 : i1 ) = right_map(:) + (left_map(il)-1)*rDim
           Astates( i0 : i1 ) = (/( k, k=1, Nr(ql) )/) + i0-1 !== Offset(ql) + (il-1)*Nr(ql)
        enddo
-       if(MpiMaster)&           !.AND.mod(ql,ipr)==0)&
+       if(MpiMaster.AND.Nl(ql)>10)&           !.AND.mod(ql,ipr)==0)&
             write(LOGfile,*)"ql:"//str(ql)//"/"//str(Nsl)//" N(ql):"//str(Nl(ql))
     enddo
     !

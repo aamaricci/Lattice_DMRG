@@ -1002,7 +1002,8 @@ contains
        if(Ltot<=M)then
           write(LOGfile,"(A1)",advance='yes')""
        else
-          write(LOGfile,"(2x,I3,2x,A,1x,A)",advance='yes')index,Ldot//":"//str(N)//"- ;",Rdot//":"//str(N)//"-"
+          write(LOGfile,"(2x,I3,2x,A,1x,A)",advance='yes')index,Ldot//":"//str(N)//&
+               "- ;",Rdot//":"//str(N)//"-"
        endif
        write(LOGfile,"(A,10x)",advance="no")"            "
        write(LOGfile,"(*(A1))",advance="no")(" ",i=1,LMleft-1)
@@ -1016,13 +1017,13 @@ contains
        !
        select case(label)
        case default
-          write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMleft)
           write(LOGfile,"(A1)",advance="no")"|"
+          write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMleft)
           write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
           write(LOGfile,"(A)",advance="no")bold_green("*")//bold("|")//bold_red("*")
           write(LOGfile,"(*(A))",advance="no")(trim(Rdot),i=1,Mright)
+          write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright)
           write(LOGfile,"(A1)",advance='no')"|"
-          ! write(LOGfile,"(*(A))",advance="no")(" ",i=1,LMright)
        case(1)
           write(LOGfile,"(A1)",advance="no")"|"
           write(LOGfile,"(*(A))",advance="no")(trim(Ldot),i=1,Mleft)
