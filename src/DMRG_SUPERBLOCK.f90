@@ -178,6 +178,7 @@ contains
 #endif
     integer                               :: vecDim,Nloc,m_tmp
     logical                               :: exist,lanc_solve,fMpi
+    real(8) :: EH
     !
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: SuperBlock diagonalization"
@@ -252,6 +253,13 @@ contains
 #endif
        if(MpiMaster)call stop_timer("Diag H_sb")
        t_sb_diag=t_stop()
+!        allocate(gs_tmp,mold=gs_vector)
+!        call spHtimesV_p(vecDim,gs_vector(:,1),gs_tmp(:,1))
+!        EH = dot_product(gs_vector(:,1),  gs_tmp(:,1))
+! #ifdef _MPI
+!        if(MpiStatus)call Bcast_MPI(MpiComm,EH)
+! #endif
+!        write(200,*)current_L,EH/current_L
        !
     else !use LAPACK
        !

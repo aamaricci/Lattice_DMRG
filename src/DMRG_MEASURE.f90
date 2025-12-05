@@ -91,28 +91,25 @@ contains
     !
     !    
     !add setup the map from local to global index here:
+    if(allocated(b2gMap))deallocate(b2gMap)
     allocate(b2gMap(Ldmrg))
-    allocate(g2bMap(Ldmrg))    
     if(PBCdmrg)then
        !Ldmrg = 2*m+1
        f = (Ldmrg+1)/2          !mid-point
        m = (Ldmrg-1)/2
        !
        b2gMap(f) = 1
-       g2bMap(1) = f
+       ! g2bMap(1) = f
        do i=1,m
           b2gMap(f+i)  = 2*i
           b2gMap(f-i)  = 2*i+1
-          g2bMap(2*i)  = f+i
-          g2bMap(2*i+1)= f-i
+          ! g2bMap(2*i)  = f+i
+          ! g2bMap(2*i+1)= f-i
        enddo
     else
        b2gMap = (/(i,i=1,Ldmrg)/)
-       g2bMap = b2gMap
+       ! g2bMap = b2gMap
     endif
-
-    print*,b2gMap
-    print*,g2bMap
   end subroutine Init_Measure_dmrg
 
 
@@ -282,10 +279,7 @@ contains
 
 
 
-  !pos i : 1           2           3           4           5  
-  !b2gMap: 5           3           1           2           4
-  !g2bMap: 3           4           2           5           1
-
+ 
   !##################################################################
   !              BUILD LOCAL OPERATOR 
   !Purpose: return the O(i) at a site I of the chain given an 
@@ -526,7 +520,7 @@ contains
     label='l'; if(pos>L)label='r'
     !
     !Get index in the block from the position pos in the chain:
-    i=pos    ; if(pos>L)i=N+1-pos
+    i=b2gMap(pos)    ; if(pos>L)i=b2gMap(N+1-pos)
     !
     istart  = i
     select case(label)
@@ -544,37 +538,50 @@ contains
     case ("l")
        do it=istart+1,iend
           if(MpiMaster)U  = left%omatrices%op(index=it)
-#ifdef _MPI
-          if(MpiStatus)then
-             call U%bcast()
-             Oi = (U%dgr().pm.Oi).pm.U
+          call Urotate
+          if(PBCdmrg)then
+             if(mod(it,2)==0)then
+                Oi = Id(dot(it)%dim).x.Oi
+             else
+                Oi = Oi.x.Id(dot(it)%dim)
+             endif
           else
-             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Oi.x.Id(dot(it)%dim)
           endif
-#else
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-#endif
-          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r")
        do it=istart+1,iend
           if(MpiMaster)U  = right%omatrices%op(index=it)          
-#ifdef _MPI
-          if(MpiStatus)then
-             call U%bcast()
-             Oi = (U%dgr().pm.Oi).pm.U
+          call Urotate()
+          if(PBCdmrg)then
+             if(mod(it,2)==0)then
+                Oi = Oi.x.Id(dot(it)%dim)
+             else
+                Oi = Id(dot(it)%dim).x.Oi
+             endif
           else
-             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Id(dot(it)%dim).x.Oi
           endif
-#else
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-#endif
-          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
     !
     call U%free()
     !
+  contains
+    !
+    subroutine Urotate()
+#ifdef _MPI
+      if(MpiStatus)then
+         call U%bcast()
+         Oi = (U%dgr().pm.Oi).pm.U
+      else
+         Oi = matmul(matmul(U%dgr(),Oi),U)
+      endif
+#else
+      Oi = matmul(matmul(U%dgr(),Oi),U)
+#endif
+    end subroutine Urotate
+
   end function Advance_Corr_dmrg
 
 
