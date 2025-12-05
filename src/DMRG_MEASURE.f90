@@ -51,6 +51,7 @@ contains
     real(8),dimension(:),allocatable :: qn
     character(len=*),optional        :: msg
     integer,dimension(2)             :: omat_dims
+    integer                          :: ilat,i,f,m
 #ifdef _DEBUG
     if(MpiMaster)write(LOGfile,*)"DEBUG: init measure"
 #ifdef _MPI
@@ -87,7 +88,34 @@ contains
     suffix=label_DMRG('u')
     !
     measure_status=.true.
+    !
+    !    
+    !add setup the map from local to global index here:
+    allocate(b2gMap(Ldmrg))
+    allocate(g2bMap(Ldmrg))    
+    if(PBCdmrg)then
+       !Ldmrg = 2*m+1
+       f = (Ldmrg+1)/2          !mid-point
+       m = (Ldmrg-1)/2
+       !
+       b2gMap(f) = 1
+       g2bMap(1) = f
+       do i=1,m
+          b2gMap(f+i)  = 2*i
+          b2gMap(f-i)  = 2*i+1
+          g2bMap(2*i)  = f+i
+          g2bMap(2*i+1)= f-i
+       enddo
+    else
+       b2gMap = (/(i,i=1,Ldmrg)/)
+       g2bMap = b2gMap
+    endif
+
+    print*,b2gMap
+    print*,g2bMap
   end subroutine Init_Measure_dmrg
+
+
 
   subroutine End_measure_DMRG()
 #ifdef _DEBUG
@@ -103,6 +131,7 @@ contains
   end subroutine End_measure_DMRG
 
 
+
   subroutine Error_measure_DMRG
     if(MpiMaster)then
        write(LOGfile,*)"Init_Measure_DMRG: either Block=L,R block have size(Block.omatrices)==1."
@@ -110,6 +139,10 @@ contains
        write(LOGfile,*)"Init_Measure_DMRG: No measurements are possible.                        "
     endif
   end subroutine Error_measure_DMRG
+
+
+
+
 
   !##################################################################
   !              Measure local Operator Op
@@ -129,6 +162,8 @@ contains
     avOp = Average_Op_dmrg(Oi,pos)
     call Oi%free()
   end function Measure_Op_DMRG
+
+
 
 
 
@@ -186,6 +221,7 @@ contains
        allocate(avOp, source=vals)
     endif
   end subroutine Measure_dmrg_scalar
+
 
 
   subroutine Measure_DMRG_vector(Op,pos,file,avOp)
@@ -246,8 +282,9 @@ contains
 
 
 
-
-
+  !pos i : 1           2           3           4           5  
+  !b2gMap: 5           3           1           2           4
+  !g2bMap: 3           4           2           5           1
 
   !##################################################################
   !              BUILD LOCAL OPERATOR 
@@ -284,9 +321,12 @@ contains
     label='l'; if(pos>L)label='r'
     !
     !Get index in the block from the position pos in the chain:
-    i=pos    ; if(pos>L)i=N+1-pos
+    !i = M(pos)
+    !recall that M: OBC: 1+2+...Ldmrg-2+Ldmrg-1+Ldmrg
+    !               PBC: Ldmrg+Ldmrg-2..+1+..+Ldmrg-1
+    i=b2gMap(pos)    ; if(pos>L)i=b2gMap(N+1-pos)
     !
-    !Build Operator on the chain at position pos:
+    !Build Operator on the chain at position pos:   
     if(i==1)then
        Oi = Op
     else
@@ -296,49 +336,62 @@ contains
 #ifdef _MPI
           if(MpiStatus)call Bcast_MPI(MpiComm,D)
 #endif
-          Oi = Id(D).x.Op
-          if(set_basis_)then
-#ifdef _MPI
-             if(MpiStatus)then
-                if(MpiMaster)U  = left%omatrices%op(index=i)
-                call U%bcast(MpiComm)
-                Oi = U%dgr().pm.(Oi.pm.U)
+          if(PBCdmrg)then
+             if(mod(i,2)==0)then
+                Oi = Id(D).x.Op !o--x
              else
-                U  = left%omatrices%op(index=i)
-                Oi = matmul(U%dgr(),matmul(Oi,U))
+                Oi = Op.x.Id(D) !x--o
              endif
-#else
-             U  = left%omatrices%op(index=i)
-             Oi = matmul(U%dgr(),matmul(Oi,U))
-#endif
+          else
+             Oi = Id(D).x.Op    !o--x
           endif
        case('r')
           if(MpiMaster)dB = shape(right%omatrices%op(index=i-1));D=dB(2)
 #ifdef _MPI
           if(MpiStatus)call Bcast_MPI(MpiComm,D)
 #endif
-          Oi = Op.x.Id(d)
-          if(set_basis_)then
-#ifdef _MPI
-             if(MpiStatus)then
-                if(MpiMaster)U  = right%omatrices%op(index=i)
-                call U%bcast(MpiComm)
-                Oi = U%dgr().pm.(Oi.pm.U)
+          if(PBCdmrg)then
+             if(mod(i,2)==0)then
+                Oi = Op.x.Id(D) !x--o
              else
-                U  = right%omatrices%op(index=i)
-                Oi = matmul(U%dgr(),matmul(Oi,U))
+                Oi = Id(D).x.Op !o--x
              endif
-#else
-             U  = right%omatrices%op(index=i)
-             Oi = matmul(U%dgr(),matmul(Oi,U))
-#endif
+          else
+             Oi = Op.x.Id(D)    !x--o
           endif
        end select
+       !
+       !Set local Basis if required
+       if(set_basis_)call Urotate()
+       !
     endif
     !
     call U%free()
     !
+  contains
+    !
+    subroutine Urotate()
+      select case(label)
+      case("l")
+         if(MpiMaster)U = left%omatrices%op(index=i)
+      case("r")
+         if(MpiMaster)U = right%omatrices%op(index=i)
+      end select
+#ifdef _MPI
+      if(MpiStatus)then
+         call U%bcast(MpiComm)
+         Oi = U%dgr().pm.(Oi.pm.U)
+      else
+         Oi = matmul(U%dgr(),matmul(Oi,U))
+      endif
+#else
+      Oi = matmul(U%dgr(),matmul(Oi,U))
+#endif
+    end subroutine Urotate
+
   end function Build_Op_dmrg
+
+
 
 
 
@@ -373,16 +426,16 @@ contains
     label='l'; if(pos>L)label='r'
     !
     !Get index in the block from the position pos in the chain:
-    i=pos    ; if(pos>L)i=N+1-pos
+    i=b2gMap(pos)    ; if(pos>L)i=b2gMap(N+1-pos)
     !
     istart  = i
     select case(label)
     case ("l")
        istart = i ; iend   = L-1 ; if(present(nstep))iend=istart+nstep
-       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L"
+       if(iend>L-1)stop "Advance_Op_DMRG ERROR: iend > L-1"
     case ("r") 
        istart = i ; iend   = R-1 ; if(present(nstep))iend=istart+nstep
-       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R"
+       if(iend>R-1)stop "Advance_Op_DMRG ERROR: iend > R-1"
     end select
     !
     !Evolve to SB basis
@@ -391,36 +444,50 @@ contains
     case ("l") 
        do it=istart,iend
           if(MpiMaster) U  = left%omatrices%op(index=it)
-#ifdef _MPI
-          if(MpiStatus)then
-             call U%bcast()
-             Oi = (U%dgr().pm.Oi).pm.U
+          call Urotate()
+          if(PBCdmrg)then
+             if(mod(it,2)==0)then
+                Oi = Id(dot(it)%dim).x.Oi
+             else
+                Oi = Oi.x.Id(dot(it)%dim)
+             endif
           else
-             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Oi.x.Id(dot(it)%dim)
           endif
-#else
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-#endif
-          Oi = Oi.x.Id(dot(it)%dim)
        enddo
     case ("r") 
        do it=istart,iend
           if(MpiMaster) U  = right%omatrices%op(index=it)
-#ifdef _MPI
-          if(MpiStatus)then
-             call U%bcast()
-             Oi = (U%dgr().pm.Oi).pm.U
+          call Urotate()
+          if(PBCdmrg)then
+             if(mod(it,2)==0)then
+                Oi = Oi.x.Id(dot(it)%dim)
+             else
+                Oi = Id(dot(it)%dim).x.Oi
+             endif
           else
-             Oi = matmul(matmul(U%dgr(),Oi),U)
+             Oi = Id(dot(it)%dim).x.Oi
           endif
-#else
-          Oi = matmul(matmul(U%dgr(),Oi),U)
-#endif
-          Oi = Id(dot(it)%dim).x.Oi
        enddo
     end select
     !
     call U%free()
+    !
+    !
+  contains
+    !
+    subroutine Urotate()
+#ifdef _MPI
+      if(MpiStatus)then
+         call U%bcast()
+         Oi = (U%dgr().pm.Oi).pm.U
+      else
+         Oi = matmul(matmul(U%dgr(),Oi),U)
+      endif
+#else
+      Oi = matmul(matmul(U%dgr(),Oi),U)
+#endif
+    end subroutine Urotate
     !
   end function Advance_Op_dmrg
 
@@ -748,6 +815,17 @@ contains
     enddo
     close(Eunit)
   end subroutine write_user_matrix
+
+
+
+
+
+
+
+
+
+
+
 
 
 

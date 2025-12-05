@@ -70,27 +70,6 @@ contains
     left =init_left
     right=init_right
     !
-    !add setup the map from local to global index here:
-    allocate(b2gMap(Ldmrg))
-    allocate(g2bMap(Ldmrg))    
-    if(PBCdmrg)then
-       !Ldmrg = 2*m+1
-       f = (Ldmrg+1)/2          !mid-point
-       m = (Ldmrg-1)/2
-       !
-       b2gMap(f) = 1
-       g2bMap(1) = f
-       do i=1,m
-          b2gMap(f+i)  = 2*i
-          b2gMap(f-i)  = 2*i+1
-          g2bMap(2*i)  = f+i
-          g2bMap(2*i+1)= f-i
-       enddo
-    else
-       b2gMap = (/(i,i=1,Ldmrg)/)
-       g2bMap = b2gMap
-    endif
-    !
   end subroutine init_dmrg
 
 
