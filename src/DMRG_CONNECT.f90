@@ -238,51 +238,7 @@ contains
                 end select
              end select
           end select
-
-          ! select case(iLink)
-          ! case ("n")
-          !    select case(label_)
-          !    case ("l")
-          !       select case(otype)
-          !       case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','Sign']"
-          !       case('b');eO = Id(self%dim)
-          !       case('f');eO = self%operators%op(key="P"//self%okey(0,0,ilink=ilink))
-          !       case('p');eO = self%operators%op(key="P"//self%okey(0,0,ilink=ilink))
-          !       end select
-          !       call self%put_op(key, eO.x.dot%operators%op(str(key)), type=otype)
-          !    case ("r")
-          !       select case(otype)
-          !       case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','Sign']"
-          !       case('b');eO = Id(self%dim)
-          !       case('f');eO = Id(self%dim)
-          !       case('p');eO = self%operators%op(key="P"//self%okey(0,0,ilink=ilink))
-          !       end select
-          !       call self%put_op(key, dot%operators%op(str(key)).x.eO, type=otype )
-          !    end select
-          !    !
-          ! case ("p")
-          !    select case(label_)
-          !    case ("l")
-          !       select case(otype)
-          !       case default;stop "Enlarge_BLock ERROR: wrong self.operators.type L: !\in['Bosonic','Fermionic','PSign']"
-          !       case('b');eO = Id(self%dim)
-          !       case('f');eO = Id(self%dim)
-          !       case('p');eO = self%operators%op(key="P"//self%okey(0,0,ilink=ilink))
-          !       end select
-          !       call self%put_op(key, dot%operators%op(str(key)).x.eO, type=otype )
-          !    case ("r")
-          !       select case(otype)
-          !       case default;stop "Enlarge_BLock ERROR: wrong self.operators.type R: !\in['Bosonic','Fermionic','PSign']"
-          !       case('b');eO = Id(self%dim)
-          !       case('f');eO = self%operators%op(key="P"//self%okey(0,0,ilink=ilink))
-          !       case('p');eO = self%operators%op(key="P"//self%okey(0,0,ilink=ilink))
-          !       end select
-          !       call self%put_op(str(key), eO.x.dot%operators%op(str(key)), type=otype)
-          !    end select
-          ! end select
-
        enddo
-
        write(LOGfile,*)"Build&Put O*",t_stop()
     endif
     !

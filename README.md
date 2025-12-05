@@ -22,6 +22,7 @@ The structure of this code is largely inspired by the simple-DMRG project: [GitH
     - [Milestone 6](#milestone6) Further development
     - [Milestone 7](#milestone7) Distributed parallel setup. MPI-DMRG.
     - [Milestone 8](#milestone8) Profiling and `Block` I/O restart.
+    - [Milestone 9](#milestone8) Implement Periodic Boundary Conditions.
 
 - [Results](#results)
     
@@ -149,6 +150,30 @@ which, as for the term $H_L\otimes 1_R$ requires using MPI-transpose two times: 
 - [x] **Write/Read `Block` objects to restart DMRG.**
 - [x] **Implement accurate timing of the different DMRG steps beyond the actual form.**
    
+
+
+### <a name="milestone9"></a> Milestone 9
+- [x] **Development of PBC strategies using double step 2-site increment.**
+- [x] **Adapt the measurement strategy to the PBC**
+
+See graphics upon running to get a glimpse of how PBC are implemented. Schematically the difference is as follows:
+
+With OBC we grow L.block to the right `L=[o-o...o-o]-o` and R.block to the left `R=o-[o-o...o-o]`, then we form the superblock by connecting L.block with R.block and solve:
+
+OBC: `[o-o..L..o-o]-o-o-[o-o..R..o-o]`
+
+
+In PBC we need to close the chain links. To avoid having links between largely renormalized operators sitting at one end of the chain, we now grow each block in two directions (`n`, `p`).
+So L.block grows at first step as `[o-o...o-o]-o` and the next step as `o-[o-o...o-o-o]`, the R.block does the same in inverted order. The SuperBlock is formed by contacting the two blocks at each end at every step:
+
+PBC 1:   
+`.[o-o..L..o-o]-o-o-[o-o..R..o-o].`  
+`^-------------------------------^`
+
+
+PBC 2:   
+`.o-[o-o..L..o-o-o]-[o-o-o..R..o-o]-o.`  
+`^-----------------------------------^`
 
 ## <a name="results"></a> Results
 Here are some results for the Heisenberg model:  
