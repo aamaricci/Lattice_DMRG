@@ -3,7 +3,10 @@ MODULE DMRG_SUPERBLOCK
   USE DMRG_CONNECT
   USE DMRG_SUPERBLOCK_SETUP
   USE DMRG_SUPERBLOCK_HXV
-
+#ifdef _MPI
+   USE MPI
+   USE SF_MPI
+#endif
   implicit none
   private
 
